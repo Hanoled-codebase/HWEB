@@ -134,6 +134,7 @@ The CBT admin page (`/cbt/admin`) provides a role-driven interface:
 We are currently in an active migration phase, porting features from the legacy `Hanoled` and `HCBT` backends into the unified `HCORE` architecture.
 - **Identity & Auth:** Fully migrated and routed to `HCORE`.
 - **CBT Admin:** Role-driven UI with subject scoping via HCORE teaching assignments.
+- **Offline Access:** HCBT offline sync capabilities are actively being integrated.
 - **Feature Modules:** Specific feature endpoints (like students and spreadsheets) are currently being migrated and may fail gracefully in the UI until their respective logic is fully ported to `HCORE` or routed via a proxy.
 
 ## Related Services
