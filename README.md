@@ -49,11 +49,11 @@ Hweb/
 
 ### Required
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_HCORE_URL` | HCORE backend API URL | `http://localhost:4000` |
-| `NEXT_PUBLIC_HSMS_URL` | HSMS backend API URL | `http://localhost:3001` |
-| `NEXT_PUBLIC_HCBT_URL` | HCBT backend API URL | `http://localhost:4002` |
+| Variable | Description | Local | Production |
+|----------|-------------|-------|------------|
+| `NEXT_PUBLIC_HCORE_URL` | HCORE backend API URL | `http://localhost:4000` | `https://core-api.hanoled.com` |
+| `NEXT_PUBLIC_HSMS_URL` | HSMS backend API URL | `http://localhost:3001` | `https://api.hanoled.com` |
+| `NEXT_PUBLIC_HCBT_URL` | HCBT backend API URL | `http://localhost:4002` | `https://cbt-api.hanoled.com` |
 
 ### Optional
 
@@ -62,14 +62,19 @@ Hweb/
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth Client ID | `186668766929-xxx.apps.googleusercontent.com` |
 | `NEXT_PUBLIC_CBT_API_URL` | Alternative CBT API URL | `https://cbt-api.hanoled.com` |
 
-### For Deployed/Production
+### Vercel Deployment
 
-Replace `localhost` URLs with your actual backend domains:
+For Vercel deployments, set these in **Settings → Environment Variables**:
 
 ```env
-NEXT_PUBLIC_HCORE_URL=https://hcore.yourdomain.com
-NEXT_PUBLIC_HSMS_URL=https://hanoled.yourdomain.com
-NEXT_PUBLIC_HCBT_URL=https://hcbt.yourdomain.com
+NEXT_PUBLIC_HCORE_URL=https://core-api.hanoled.com
+NEXT_PUBLIC_HSMS_URL=https://api.hanoled.com
+NEXT_PUBLIC_HCBT_URL=https://cbt-api.hanoled.com
+```
+
+**Important:** HCORE's `CORS_ORIGIN` must include your Vercel deployment URL:
+```
+https://hweb-three.vercel.app,https://accounts.hanoled.com,https://core-api.hanoled.com
 ```
 
 ## Getting Started
@@ -139,11 +144,20 @@ We are currently in an active migration phase, porting features from the legacy 
 
 ## Related Services
 
-| Service | Repo | Port | Description |
-|---------|------|------|-------------|
-| **HCORE** | [Hanoled-codebase/HCORE](https://github.com/Hanoled-codebase/HCORE) | 4000 | Central identity & platform hub |
-| **HSMS** | [xamorite/Hanoled](https://github.com/xamorite/Hanoled) | 3001 | School Management System |
-| **HCBT** | [Hanoled-codebase/HCBT](https://github.com/Hanoled-codebase/HCBT) | 4002 | Computer-Based Testing Engine |
+| Service | Repo | URL | Description |
+|---------|------|-----|-------------|
+| **HCORE** | [Hanoled-codebase/HCORE](https://github.com/Hanoled-codebase/HCORE) | `core-api.hanoled.com` | Central identity & platform hub |
+| **HSMS** | [xamorite/Hanoled](https://github.com/xamorite/Hanoled) | `api.hanoled.com` | School Management System |
+| **HCBT** | [Hanoled-codebase/HCBT](https://github.com/Hanoled-codebase/HCBT) | `cbt-api.hanoled.com` | Computer-Based Testing Engine |
+
+## Deployed URLs
+
+| Environment | Service | URL |
+|-------------|---------|-----|
+| Production | **Hweb Frontend** | [`hweb-three.vercel.app`](https://hweb-three.vercel.app) |
+| Production | **HCORE API** | [`core-api.hanoled.com`](https://core-api.hanoled.com) |
+| Production | **HSMS API** | [`api.hanoled.com`](https://api.hanoled.com) |
+| Production | **HCBT API** | [`cbt-api.hanoled.com`](https://cbt-api.hanoled.com) |
 
 ---
 
