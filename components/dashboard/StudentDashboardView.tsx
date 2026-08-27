@@ -113,10 +113,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
     fetchDashboard();
   }, [orgSlug]);
 
-  const cbtBaseUrl =
-    process.env.NEXT_PUBLIC_CBT_URL ||
-    process.env.NEXT_PUBLIC_HANOLED_URL?.replace(":3000", ":3002") ||
-    "http://localhost:3002";
+
 
   if (loading) {
     return (
@@ -339,10 +336,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
                       {exam.totalQuestions} questions · {exam.duration} min · Pass mark: {exam.passMark}%
                     </p>
                   </div>
-                  <a
-                    href={`${cbtBaseUrl}/student/exam/${exam.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/cbt/student/exam/${exam.id}`}
                     className="shrink-0 ml-3"
                   >
                     <Button
@@ -351,7 +346,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
                     >
                       Start
                     </Button>
-                  </a>
+                  </Link>
                 </div>
               ))}
             </div>

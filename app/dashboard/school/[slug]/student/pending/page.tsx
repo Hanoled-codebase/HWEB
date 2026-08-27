@@ -30,10 +30,7 @@ export default function StudentPendingPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const cbtBaseUrl =
-    process.env.NEXT_PUBLIC_CBT_URL ||
-    process.env.NEXT_PUBLIC_HANOLED_URL?.replace(":3000", ":3002") ||
-    "http://localhost:3002";
+
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -97,17 +94,15 @@ export default function StudentPendingPage() {
                       </Badge>
                     </div>
                   </div>
-                  <a
-                    href={`${cbtBaseUrl}/student/exam/${exam.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/cbt/student/exam/${exam.id}`}
                     className="shrink-0"
                   >
                     <Button className="bg-blue-600 hover:bg-blue-700 text-xs gap-1.5">
                       <PlayCircle className="h-3.5 w-3.5" />
                       Start Exam
                     </Button>
-                  </a>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

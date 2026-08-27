@@ -1,17 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Mail, MapPin, Phone, Send } from "lucide-react";
+import { Metadata } from "next";
+import { Mail, MapPin, Phone, Send, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { Button } from "@/components/ui/button";
 
-const API_BASE =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/api$/, "");
+import { HSMS_BASE } from "@/lib/api";
+
+const API_BASE = HSMS_BASE;
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,104 +58,188 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white flex flex-col">
       <MarketingHeader />
 
-      <main className="flex-1 bg-slate-50/50 py-16 pb-28">
-        <div className="container px-4 md:px-6 mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-start">
-             
-             {/* Info Side */}
-             <div className="space-y-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-[3rem] bg-white px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center">
+          {/* Dot Grid Background */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
+          
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 shadow-sm transform rotate-2 hover:rotate-0 transition-transform cursor-default">
+              <MessageSquare className="h-4 w-4 text-[#1447E6]" />
+              <span className="text-sm font-bold text-[#1447E6]">Get in Touch</span>
+            </div>
+            
+            <div className="space-y-4">
+              <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
+                Let&apos;s talk about <span className="text-[#1447E6]">your school</span>
+              </h1>
+              {/* Wavy accent line under title */}
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
+              Whether you need a demo, have a question about pricing, or need technical support, our team is ready to help.
+            </p>
+          </div>
+        </section>
+
+        {/* Contact Grid Section */}
+        <section className="mt-16 grid gap-8 lg:grid-cols-2 max-w-6xl mx-auto">
+          {/* Left Column - Contact Info */}
+          <div className="space-y-8">
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col gap-8 h-full">
                <div>
-                 <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-slate-900">
-                   Get in touch with our team
-                 </h1>
-                 <p className="mt-4 text-lg text-slate-500 max-w-xl leading-relaxed">
-                   Whether you have a question about features, trials, pricing, or need a demo, our team is ready to answer all your questions.
-                 </p>
-               </div>
-
-               <div className="space-y-6 pt-4">
-                 <div className="flex items-start gap-4">
-                   <div className="bg-[#1447E6]/10 p-3 rounded-xl shrink-0 mt-1">
-                     <Mail className="h-6 w-6 text-[#1447E6]" />
-                   </div>
-                   <div>
-                     <h3 className="font-bold text-slate-900 text-lg">Email us</h3>
-                     <p className="text-slate-500">We aim to respond within 24 hours.</p>
-                     <a href="mailto:info@hanoled.com" className="text-[#1447E6] hover:underline font-medium block mt-1">info@hanoled.com</a>
-                   </div>
-                 </div>
-
-                 <div className="flex items-start gap-4">
-                   <div className="bg-[#1447E6]/10 p-3 rounded-xl shrink-0 mt-1">
-                     <Phone className="h-6 w-6 text-[#1447E6]" />
-                   </div>
-                   <div>
-                     <h3 className="font-bold text-slate-900 text-lg">Call us</h3>
-                     <p className="text-slate-500">Mon-Fri from 9am to 6pm WAT.</p>
-                     <a href="tel:+2347047396999" className="text-[#1447E6] hover:underline font-medium block mt-1">+234 704 739 6999</a>
-                   </div>
-                 </div>
-
-                 <div className="flex items-start gap-4">
-                   <div className="bg-[#1447E6]/10 p-3 rounded-xl shrink-0 mt-1">
-                     <MapPin className="h-6 w-6 text-[#1447E6]" />
-                   </div>
-                   <div>
-                     <h3 className="font-bold text-slate-900 text-lg">Visit us</h3>
-                     <p className="text-slate-500">Abeokuta & Lagos, Nigeria.</p>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-             {/* Form Side */}
-             <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200">
-               <h3 className="text-2xl font-bold text-slate-900 mb-6">Send us a message</h3>
-               <form onSubmit={handleSubmit} className="space-y-5">
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="firstName" className="text-sm font-medium text-slate-900">First Name</label>
-                      <Input id="firstName" name="firstName" placeholder="John" required className="bg-slate-50 border-slate-200" />
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Reach out directly</h3>
+                  <p className="text-slate-500 font-medium mb-4">We usually respond within 2 hours during business days.</p>
+                  <div className="flex items-center gap-3 pt-2">
+                    <div className="flex -space-x-3">
+                      {[
+                        { bg: "bg-[#7b5fff]", initials: "CS" },
+                        { bg: "bg-[#f6c24e]", initials: "TJ" },
+                        { bg: "bg-[#4ecb71]", initials: "KO" },
+                      ].map((user, i) => (
+                        <div
+                          key={i}
+                          className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-sm ${user.bg}`}
+                        >
+                          {user.initials}
+                        </div>
+                      ))}
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="lastName" className="text-sm font-medium text-slate-900">Last Name</label>
-                      <Input id="lastName" name="lastName" placeholder="Doe" required className="bg-slate-50 border-slate-200" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Support Team</span>
+                  </div>
+               </div>
+               
+               <div className="space-y-6 flex-1">
+                 {/* Email */}
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors border border-blue-100/50">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-[#1447E6]">
+                      <Mail className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Email Us</p>
+                      <a href="mailto:hello@hanoled.io" className="text-slate-500 font-medium hover:text-[#1447E6] transition-colors">
+                        hello@hanoled.io
+                      </a>
                     </div>
                  </div>
                  
-                 <div className="space-y-2">
-                   <label htmlFor="email" className="text-sm font-medium text-slate-900">Work Email</label>
-                   <Input id="email" name="email" type="email" placeholder="john@school.edu" required className="bg-slate-50 border-slate-200" />
+                 {/* Phone */}
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 transition-colors border border-emerald-100/50">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                      <Phone className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Call Us</p>
+                      <a href="tel:+234800HANOLED" className="text-slate-500 font-medium hover:text-emerald-600 transition-colors">
+                        +234 (800) HANOLED
+                      </a>
+                    </div>
                  </div>
-
-                 <div className="space-y-2">
-                   <label htmlFor="school" className="text-sm font-medium text-slate-900">School / Institution Name</label>
-                   <Input id="school" name="school" placeholder="Harvard Academy" className="bg-slate-50 border-slate-200" />
+                 
+                 {/* Office */}
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-orange-50/50 hover:bg-orange-50 transition-colors border border-orange-100/50">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                      <MapPin className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Visit Us</p>
+                      <p className="text-slate-500 font-medium">
+                        12 Innovation Drive, Yaba, Lagos
+                      </p>
+                    </div>
                  </div>
-
-                 <div className="space-y-2">
-                   <label htmlFor="message" className="text-sm font-medium text-slate-900">How can we help?</label>
-                   <Textarea id="message" name="message" placeholder="Tell us about your needs..." required className="min-h-[120px] bg-slate-50 border-slate-200 resize-y" />
-                 </div>
-
-                 <Button type="submit" className="w-full bg-[#1447E6] hover:bg-[#0b33b3] text-white h-12 rounded-xl text-md font-semibold" disabled={isSubmitting}>
-                   {isSubmitting ? (
-                     "Sending..."
-                   ) : (
-                     <span className="flex items-center">
-                       Send Message <Send className="ml-2 h-4 w-4" />
-                     </span>
-                   )}
-                 </Button>
-               </form>
-             </div>
+               </div>
+            </div>
           </div>
-        </div>
+          
+          {/* Right Column - Form */}
+          <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 shadow-xl relative overflow-hidden" id="contact-quote">
+            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#f6c24e]/10 blur-3xl pointer-events-none" />
+            
+            <h3 className="text-2xl font-bold text-white mb-8 relative z-10">Send us a message</h3>
+            
+            <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="text-sm font-bold text-slate-300">
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    required
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                    placeholder="John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="text-sm font-bold text-slate-300">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    required
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-bold text-slate-300">
+                  Work Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  placeholder="john@school.edu.ng"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="school" className="text-sm font-bold text-slate-300">
+                  School Name
+                </label>
+                <input
+                  id="school"
+                  name="school"
+                  type="text"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  placeholder="Excellence Academy"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-bold text-slate-300">
+                  How can we help?
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  required
+                  rows={4}
+                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  placeholder="Tell us about your school's needs..."
+                />
+              </div>
+              <Button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-[#1447E6] hover:bg-[#0b33b3] h-14 text-white font-bold text-base shadow-lg shadow-[#1447E6]/20 transition-transform hover:-translate-y-1">
+                {isSubmitting ? "Sending..." : <><Send className="mr-2 h-5 w-5" /> Send Message</>}
+              </Button>
+            </form>
+          </div>
+        </section>
       </main>
-      
+
       <MarketingFooter />
     </div>
   );

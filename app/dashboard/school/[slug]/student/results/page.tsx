@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, API_URL } from "@/lib/api";
+import { apiFetch, HSMS_BASE } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,7 +98,7 @@ export default function StudentResultsPage() {
               size="sm"
               onClick={async () => {
                 try {
-                  const url = `${API_URL}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027`;
+                  const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027`;
                   const res = await fetch(url, { credentials: "include" });
                   if (!res.ok) throw new Error("Failed to download");
                   const blob = await res.blob();

@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+import { HSMS_BASE } from "@/lib/api"
+
+const API_BASE = HSMS_BASE
 const ADMIN_API = `${API_BASE}/admin`
 
 interface PaymentRecord {

@@ -7,6 +7,7 @@ import {
   Globe,
   Mail,
   UserPlus,
+  Rocket
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
@@ -22,25 +23,29 @@ const steps = [
     icon: Globe,
     title: "Branded Public Page",
     description:
-      "Your school gets its own admissions URL (e.g. hanoled.io/admissions/your-school). Share it on social media, your website, or via WhatsApp.",
+      "Your school gets its own admissions URL. Share it on social media, your website, or via WhatsApp.",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: UserPlus,
     title: "Online Applications",
     description:
-      "Parents fill in student details, upload passport photos, and select the desired class — all from their phone or computer.",
+      "Parents fill in student details, upload passport photos, and select the desired class online.",
+    color: "bg-[#f6c24e]/10 text-[#937400]",
   },
   {
     icon: ClipboardList,
     title: "Review & Approve",
     description:
-      "Applications appear in your dashboard. Review each one, then approve or reject with a single click. Approved students are automatically enrolled.",
+      "Applications appear in your dashboard. Review each one, then approve or reject with a single click.",
+    color: "bg-[#4cd988]/10 text-emerald-700",
   },
   {
     icon: Mail,
-    title: "Automated Notifications",
+    title: "Automated Updates",
     description:
-      "Parents receive SMS or email updates when their application status changes. No more phone calls asking 'has my child been admitted?'",
+      "Parents receive SMS or email updates when their application status changes.",
+    color: "bg-[#ff7b92]/10 text-rose-600",
   },
 ];
 
@@ -55,65 +60,95 @@ const benefits = [
 
 export default function AdmissionsPortalPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white">
       <MarketingHeader />
 
-      <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/40 via-slate-50/50 to-white px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white px-4 py-1.5 text-sm font-semibold text-[#1447E6] shadow-sm">
-              <UserPlus className="h-4 w-4" /> Admissions Portal
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        {/* HERO SECTION */}
+        <section className="relative overflow-hidden rounded-[3rem] bg-white px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center">
+          {/* Dot Grid Background */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
+          
+          <div className="pointer-events-none absolute left-10 top-20 text-slate-200">
+            <span className="text-3xl">+</span>
+          </div>
+          
+          <div className="absolute top-1/4 right-1/4 h-12 w-12 text-[#1447E6] opacity-30">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+            </svg>
+          </div>
+          
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 shadow-sm">
+              <span className="text-xl">✅</span>
+              <span className="text-sm font-bold text-emerald-700">Admissions Portal</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Online admissions,{" "}
-              <span className="text-[#1447E6]">zero paperwork</span>
+            
+            <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
+              Online admissions, <span className="text-[#1447E6]">zero paperwork</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-500">
+
+            <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
               Give parents a seamless online application experience while your
               admin team manages everything from a single dashboard.
             </p>
-            <div className="mt-8">
+
+            <div className="pt-4 flex justify-center">
               <Link
                 href="/#contact-quote"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/25 hover:shadow-xl"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1b2333] px-8 font-bold text-white transition-all hover:bg-[#2c3850] hover:-translate-y-1 hover:shadow-lg"
               >
-                Get Started <ArrowRight className="h-4 w-4" />
+                Get Started <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
           </div>
         </section>
 
         {/* How it works */}
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h2 className="text-3xl font-bold text-slate-900">
+        <section className="mt-16">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1447E6]/10 text-[#1447E6] px-3.5 py-1.5 text-xs font-bold mb-3">
+              Application Flow
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
               How admissions work
             </h2>
-            <p className="mt-3 text-slate-500">
+            <p className="mt-3 text-slate-500 font-semibold">
               Four simple steps from application to enrollment.
             </p>
           </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          
+          <div className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Wavy Connector Line (Hidden on mobile) */}
+            <div className="hidden lg:block absolute top-1/2 left-0 w-full h-8 -translate-y-1/2 pointer-events-none z-0">
+               <svg width="100%" height="100%" viewBox="0 0 1000 40" preserveAspectRatio="none" className="text-slate-200 stroke-current stroke-[3px]" fill="none" strokeDasharray="8 8">
+                  <path d="M0 20 Q 125 40, 250 20 T 500 20 T 750 20 T 1000 20" strokeLinecap="round" />
+               </svg>
+            </div>
+            
             {steps.map((step, i) => {
               const Icon = step.icon;
               return (
                 <div
                   key={step.title}
-                  className="relative rounded-2xl border border-slate-200 bg-white p-8 shadow-sm hover:border-[#1447E6]/30 transition-all"
+                  className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md overflow-hidden z-10"
                 >
-                  <span className="absolute right-6 top-6 text-5xl font-black text-[#1447E6]/10">
+                  <span className="absolute -right-4 -top-4 text-8xl font-black text-slate-100 group-hover:text-slate-200 transition-colors">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1447E6]">
-                    <Icon className="h-5 w-5" />
+                  
+                  <div className="relative z-10">
+                    <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${step.color}`}>
+                      <Icon className="h-7 w-7" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      {step.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-500 font-medium">
+                      {step.description}
+                    </p>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {step.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                    {step.description}
-                  </p>
                 </div>
               );
             })}
@@ -121,7 +156,7 @@ export default function AdmissionsPortalPage() {
         </section>
 
         {/* Benefits */}
-        <section className="bg-slate-50/60 px-4 py-16 sm:px-6 lg:px-8">
+        <section className="mt-16 bg-white rounded-[3rem] p-8 sm:p-12 shadow-sm border border-slate-100">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-3xl font-bold text-slate-900">
               Why schools love it
@@ -130,10 +165,12 @@ export default function AdmissionsPortalPage() {
               {benefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm border border-slate-100"
+                  className="flex items-center gap-4 rounded-[1.5rem] bg-[#f8f9fc] p-5 border border-slate-100 hover:-translate-y-0.5 transition-transform"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#1447E6]" />
-                  <span className="text-sm font-medium text-slate-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-700">
                     {benefit}
                   </span>
                 </div>
@@ -143,22 +180,29 @@ export default function AdmissionsPortalPage() {
         </section>
 
         {/* CTA */}
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-[#0B1220] px-8 py-16 text-center shadow-xl">
-            <h2 className="text-3xl font-bold text-white">
-              Start accepting applications online
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-slate-400">
-              Set up your admissions portal in minutes and let parents apply
-              from anywhere.
-            </p>
-            <div className="mt-8">
-              <Link
-                href="/#contact-quote"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/30"
-              >
-                Book a Demo <ArrowRight className="h-4 w-4" />
-              </Link>
+        <section className="mt-16">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#1b2333] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
+            <div className="absolute top-0 right-0 p-12">
+               <div className="h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+            </div>
+            
+            <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+              <h2 className="text-3xl font-extrabold text-white sm:text-5xl leading-tight">
+                Start accepting applications online
+              </h2>
+              <p className="text-lg text-slate-400 font-medium">
+                Set up your admissions portal in minutes and let parents apply
+                from anywhere.
+              </p>
+              
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link
+                  href="/#contact-quote"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1447E6] px-8 font-bold text-white transition-all hover:bg-[#0b33b3] hover:-translate-y-1 hover:shadow-lg shadow-[#1447E6]/30"
+                >
+                  Book a Demo <ArrowRight className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
           </div>
         </section>

@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Settings, ArrowRight, Sparkles, CheckCircle, Loader2, Eye, EyeOff, Mail, Lock, ArrowUpRight } from "lucide-react";
+import { GraduationCap, Settings, ArrowRight, CheckCircle, Loader2, Eye, EyeOff, Mail, Lock, ArrowUpRight } from "lucide-react";
 import { cbtApi } from "@/lib/api-cbt";
+import { HCBT_BASE } from "@/lib/api";
 import { toTitleCase } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
@@ -17,11 +18,7 @@ export default function Home() {
   const [loggingInRole, setLoggingInRole] = useState<"student" | "admin" | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
 
-  // Real login form state
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -37,39 +34,26 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier || !password) {
-      toast.error("Please enter your email/admission number and password");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await cbtApi.login(identifier, password);
-      setAuthStatus({ authenticated: true, user: res.user });
-      toast.success(`Welcome, ${toTitleCase(res.user.name || res.user.role)}!`);
+    setIsRedirecting(true);
+    // Route them through the unified sign-in, and have them drop into the welcome portal
+    router.push('/signin?callbackUrl=' + encodeURIComponent('/welcome'));
+  };
 
-      const slug = res.organization?.slug || "fiss";
-      if (res.memberRole && ["admin", "owner", "member"].includes(res.memberRole)) {
-        router.push(`/admin?orgSlug=${slug}`);
-      } else if (res.user.role === "student" || res.user.studentId) {
-        router.push(`/student?orgSlug=${slug}`);
-      } else if (res.memberRole === "parent") {
-        router.push(`/parent?orgSlug=${slug}`);
-      } else {
-        router.push(`/student?orgSlug=${slug}`);
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Login failed. Check your credentials.");
-    } finally {
-      setSubmitting(false);
+  const handleEnterDashboard = () => {
+    if (authStatus?.user?.role === 'student' || authStatus?.user?.role === 'STUDENT') {
+      router.push('/cbt/student');
+    } else {
+      router.push('/cbt/admin');
     }
   };
+
 
   const handleDevLogin = async (role: "admin" | "student") => {
     setLoggingInRole(role);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_CBT_API_URL || "http://localhost:4002/api"}/auth/dev/dev-login`, {
+      const res = await fetch(`${HCBT_BASE}/api/auth/dev/dev-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -86,7 +70,7 @@ export default function Home() {
 
   const handleDevLogout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_CBT_API_URL || "http://localhost:4002/api"}/auth/dev/dev-logout`, {
+      await fetch(`${HCBT_BASE}/api/auth/dev/dev-logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -101,8 +85,8 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative overflow-x-hidden p-4 sm:p-6 lg:p-8">
       <Toaster position="top-right" richColors />
       
-      {/* Outer Wrapper to match Hanoled landing page style (white rounded container inside grey body) */}
-      <div className="flex-1 w-full max-w-[1400px] mx-auto bg-white rounded-[3rem] shadow-sm border border-slate-200 overflow-hidden relative flex flex-col">
+      {/* Outer Wrapper to match Hanoled landing page style */}
+      <div className="flex-1 w-full max-w-[1400px] mx-auto bg-white rounded-sm shadow-sm border border-slate-200 overflow-hidden relative flex flex-col">
         
         {/* Subtle Dot Pattern Background */}
         <div 
@@ -121,8 +105,8 @@ export default function Home() {
           </div>
 
           <a
-            href={process.env.NEXT_PUBLIC_HANOLED_URL || "http://localhost:3000"}
-            className="text-sm font-semibold text-[#0B1220] hover:text-[#1447E6] transition-colors bg-white px-5 py-2.5 rounded-full border border-slate-200 shadow-sm hover:shadow-md hover:border-[#1447E6]/30 flex items-center space-x-2"
+            href="/"
+            className="text-sm font-semibold text-[#0B1220] hover:text-[#1447E6] transition-colors bg-white px-5 py-2.5 rounded-sm border border-slate-200 shadow-sm hover:shadow-md hover:border-[#1447E6]/30 flex items-center space-x-2"
           >
             <span>Back to Suite</span>
             <ArrowRight className="w-4 h-4 text-[#1447E6]" />
@@ -162,71 +146,21 @@ export default function Home() {
               </div>
 
               {/* Integrated Login Form */}
-              <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 relative overflow-hidden shadow-xl shadow-slate-200/50">
+              <div className="w-full max-w-md bg-white border border-slate-200 rounded-sm p-6 relative overflow-hidden shadow-xl shadow-slate-200/50">
                 <h3 className="text-base font-bold text-[#0B1220] mb-1">Get Started</h3>
                 <p className="text-xs text-slate-500 mb-6">Sign in with your Hanoled credentials</p>
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="Email or Admission No."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 text-sm text-[#0B1220] placeholder:text-slate-400 focus:outline-none focus:border-[#1447E6] focus:ring-2 focus:ring-[#1447E6]/20 transition-all"
-                        autoComplete="username"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-11 pr-11 text-sm text-[#0B1220] placeholder:text-slate-400 focus:outline-none focus:border-[#1447E6] focus:ring-2 focus:ring-[#1447E6]/20 transition-all"
-                        autoComplete="current-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-[#1447E6] hover:bg-[#1039B8] text-white font-bold text-sm py-3.5 rounded-xl shadow-md shadow-[#1447E6]/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mt-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Signing in...</span>
-                      </>
-                    ) : (
-                      <span>Sign In to Continue</span>
-                    )}
-                  </button>
-                </form>
-                
-                {/* Auth status indicator */}
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  {loading ? (
-                    <div className="flex items-center space-x-2 text-[10px] text-slate-500">
-                      <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />
-                      <span>Checking session...</span>
-                    </div>
-                  ) : authStatus?.authenticated ? (
-                    <div className="flex items-center justify-between">
+                {/* Auth status and Main Action */}
+                {!loading && authStatus?.authenticated ? (
+                  <div className="flex flex-col space-y-4">
+                    <button
+                      onClick={handleEnterDashboard}
+                      className="w-full bg-[#1447E6] hover:bg-[#1039B8] text-white font-bold text-sm py-3.5 rounded-sm shadow-md shadow-[#1447E6]/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
+                    >
+                      Enter CBT Dashboard
+                      <ArrowRight className="w-4 h-4 ml-2 opacity-80" />
+                    </button>
+                    
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                       <div className="flex items-center space-x-2 bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
                         <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
                         <span>Signed in as {authStatus.user?.role || "user"}</span>
@@ -235,20 +169,50 @@ export default function Home() {
                         Sign Out
                       </button>
                     </div>
-                  ) : (
-                    <div className="flex items-center space-x-2 bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit">
-                      <span>Not signed in</span>
+                  </div>
+                ) : (
+                  <>
+                    <form onSubmit={handleLogin} className="flex flex-col space-y-4">
+                      <button
+                        type="submit"
+                        className="w-full bg-[#1447E6] hover:bg-[#1039B8] text-white font-bold text-sm py-3.5 rounded-sm shadow-md shadow-[#1447E6]/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mt-2"
+                        disabled={isRedirecting || loading}
+                      >
+                        {isRedirecting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Redirecting to Secure Login...
+                          </>
+                        ) : (
+                          <>
+                            Sign In with Hanoled Suite
+                            <ArrowRight className="w-4 h-4 ml-2 opacity-80" />
+                          </>
+                        )}
+                      </button>
+                    </form>
+                    
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      {loading ? (
+                        <div className="flex items-center space-x-2 text-[10px] text-slate-500">
+                          <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />
+                          <span>Checking session...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit">
+                          <span>Not signed in</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
-
               {/* Info Cards Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4">
                 {/* Card 1 */}
-                <div className="bg-white border border-slate-200 rounded-[2rem] p-5 flex flex-col justify-between items-start shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col justify-between items-start shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center space-x-4 w-full">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden relative border border-slate-100 flex-shrink-0">
+                    <div className="w-14 h-14 rounded-sm overflow-hidden relative border border-slate-100 flex-shrink-0">
                       <Image 
                         src="/images/card_teacher_1782039206847.png" 
                         alt="Certified Teacher" 
@@ -271,8 +235,8 @@ export default function Home() {
                 </div>
 
                 {/* Card 2 */}
-                <div className="bg-white border border-slate-200 rounded-[2rem] p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                  <div className="w-full h-20 rounded-2xl overflow-hidden relative mb-4">
+                <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                  <div className="w-full h-20 rounded-sm overflow-hidden relative mb-4">
                     <Image 
                       src="/images/card_classroom_1782039218483.png" 
                       alt="Classroom" 
@@ -285,7 +249,7 @@ export default function Home() {
                       Transforming schools and students
                     </h4>
                     <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                      <Sparkles className="w-4 h-4" />
+                      <ArrowUpRight className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
@@ -294,7 +258,7 @@ export default function Home() {
             </div>
 
             {/* Right Column - Hero Graphic */}
-            <div className="relative h-full min-h-[500px] lg:min-h-[600px] w-full hidden lg:block rounded-[3rem] overflow-hidden border border-slate-200 shadow-xl group bg-slate-100">
+            <div className="relative h-full min-h-[500px] lg:min-h-[600px] w-full hidden lg:block rounded-sm overflow-hidden border border-slate-200 shadow-xl group bg-slate-100">
               {/* The Student Image */}
               <div className="absolute inset-0 z-10">
                 <Image 
@@ -319,8 +283,8 @@ export default function Home() {
               </svg>
 
               {/* Fake UI Overlay to match Hanoled style */}
-              <div className="absolute bottom-10 left-10 z-30 bg-green-500 text-white p-4 rounded-2xl shadow-lg flex items-center space-x-3 max-w-[250px]">
-                <div className="w-10 h-10 border border-white/20 rounded-xl flex items-center justify-center shrink-0">
+              <div className="absolute bottom-10 left-10 z-30 bg-green-500 text-white p-4 rounded-sm shadow-lg flex items-center space-x-3 max-w-[250px]">
+                <div className="w-10 h-10 border border-white/20 rounded-sm flex items-center justify-center shrink-0">
                   <CheckCircle className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -340,11 +304,11 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               <Link
-                href={authStatus?.authenticated ? `/student?orgSlug=hanoled-default` : "#"}
-                className="group bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md p-6 rounded-3xl transition-all flex items-center justify-between"
+                href={authStatus?.authenticated ? "/cbt/student" : "#"}
+                className="group bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md p-6 rounded-sm transition-all flex items-center justify-between"
               >
                 <div className="flex items-center space-x-5">
-                  <div className="bg-blue-50 border border-blue-100 p-3.5 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
+                  <div className="bg-blue-50 border border-blue-100 p-3.5 rounded-sm text-blue-600 group-hover:scale-110 transition-transform">
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
@@ -361,10 +325,10 @@ export default function Home() {
 
               <Link
                 href={authStatus?.authenticated ? `/admin?orgSlug=hanoled-default` : "#"}
-                className="group bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md p-6 rounded-3xl transition-all flex items-center justify-between"
+                className="group bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md p-6 rounded-sm transition-all flex items-center justify-between"
               >
                 <div className="flex items-center space-x-5">
-                  <div className="bg-indigo-50 border border-indigo-100 p-3.5 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform">
+                  <div className="bg-indigo-50 border border-indigo-100 p-3.5 rounded-sm text-indigo-600 group-hover:scale-110 transition-transform">
                     <Settings className="w-6 h-6" />
                   </div>
                   <div>
@@ -392,7 +356,7 @@ export default function Home() {
               </button>
               
               {showDevPanel && (
-                <div className="w-full bg-white border border-slate-200 rounded-3xl p-6 text-left relative overflow-hidden shadow-sm mt-4 max-w-2xl">
+                <div className="w-full bg-white border border-slate-200 rounded-sm p-6 text-left relative overflow-hidden shadow-sm mt-4 max-w-2xl">
                   <div className="space-y-1 mb-4">
                     <div className="flex items-center space-x-2">
                       <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
@@ -407,7 +371,7 @@ export default function Home() {
                     <button
                       onClick={() => handleDevLogin("student")}
                       disabled={loading || loggingInRole !== null}
-                      className="p-4 rounded-2xl border transition-all text-left flex flex-col justify-between h-[110px] group bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-sm cursor-pointer"
+                      className="p-4 rounded-sm border transition-all text-left flex flex-col justify-between h-[110px] group bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-sm cursor-pointer"
                     >
                       <div className="flex items-start justify-between w-full">
                         <div>
@@ -426,7 +390,7 @@ export default function Home() {
                     <button
                       onClick={() => handleDevLogin("admin")}
                       disabled={loading || loggingInRole !== null}
-                      className="p-4 rounded-2xl border transition-all text-left flex flex-col justify-between h-[110px] group bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-sm cursor-pointer"
+                      className="p-4 rounded-sm border transition-all text-left flex flex-col justify-between h-[110px] group bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-sm cursor-pointer"
                     >
                       <div className="flex items-start justify-between w-full">
                         <div>

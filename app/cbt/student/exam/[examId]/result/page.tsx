@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { ResultView } from "@/components/cbt/ResultView";
-import { Loader2, ArrowLeft, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, AlertCircle, TrendingUp } from "lucide-react";
 import { useExamStore } from "@/store/exam";
 import { Toaster } from "sonner";
 
@@ -56,8 +56,7 @@ export default function ExamResultPage() {
   }, [examId, practiceResult]);
 
   const handleGoBack = () => {
-
-    router.push(`/student?orgSlug=${orgSlug}`);
+    router.push(`/cbt/student?orgSlug=${orgSlug}`);
   };
 
   return (
@@ -69,14 +68,14 @@ export default function ExamResultPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <button
             onClick={handleGoBack}
-            className="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-slate-950 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+            className="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-slate-950 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-sm transition-all shadow-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Portal Home</span>
           </button>
 
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+            <TrendingUp className="w-4 h-4 text-blue-600 animate-pulse" />
             <span className="text-xs font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent uppercase tracking-wider">
               Performance Center
             </span>
@@ -93,7 +92,7 @@ export default function ExamResultPage() {
             <p className="text-[11px] text-slate-400">We are processing your answers and calculating explanations.</p>
           </div>
         ) : error ? (
-          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-2xl border border-rose-100 shadow-xl text-center">
+          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-rose-100 shadow-xl text-center">
             <div className="w-16 h-16 bg-rose-50 border border-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8" />
             </div>
@@ -104,7 +103,7 @@ export default function ExamResultPage() {
             <div className="space-y-3">
               <button
                 onClick={handleGoBack}
-                className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
+                className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-sm shadow-lg shadow-blue-500/20 transition-all"
               >
                 Return to Student Dashboard
               </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api } from '../../../services/api';
 import { Laptop, Smartphone, Trash2 } from 'lucide-react';
 
 export const Sessions: React.FC = () => {

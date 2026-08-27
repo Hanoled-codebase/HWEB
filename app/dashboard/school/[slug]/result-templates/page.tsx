@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, HSMS_BASE } from "@/lib/api";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -397,7 +397,7 @@ export default function ResultTemplatesPage() {
                     size="sm"
                     className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                     onClick={() => {
-                      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
+                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
                       window.open(url, "_blank");
                     }}
                   >
@@ -409,7 +409,7 @@ export default function ResultTemplatesPage() {
                     size="sm"
                     className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                     onClick={() => {
-                      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
+                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
                       window.open(url, "_blank");
                     }}
                   >
@@ -423,7 +423,7 @@ export default function ResultTemplatesPage() {
                 size="sm"
                 className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                 onClick={() => {
-                  const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
+                  const url = `${HSMS_BASE}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
                   window.open(url, "_blank");
                 }}
               >
@@ -435,7 +435,7 @@ export default function ResultTemplatesPage() {
                 size="sm"
                 className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                 onClick={() => {
-                  const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
+                  const url = `${HSMS_BASE}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
                   window.open(url, "_blank");
                 }}
               >

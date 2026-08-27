@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { registerAction } from '../../actions/auth';
 
-const HanoledLogo = () => (
-  <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-2xl mb-4">
-    H
-  </div>
-);
+import { HanoledLogo } from '@/components/ui/HanoledLogo';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,10 +29,16 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-700 p-6">
-      <div className="w-full max-w-xl p-10 bg-white rounded-3xl shadow-2xl">
-        <div className="flex justify-center">
-          <HanoledLogo />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 relative overflow-hidden">
+      {/* Decorative Background Elements */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none" />
+      <div className="absolute top-1/4 -right-20 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-2000" />
+      <div className="absolute -bottom-40 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-4000" />
+
+      <div className="w-full max-w-xl p-10 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white relative z-10">
+        <div className="flex justify-center mb-4">
+          <HanoledLogo size="lg" variant="blue" iconOnly />
         </div>
 
         <h2 className="text-2xl font-bold text-center text-slate-900 mb-1">
@@ -114,6 +116,38 @@ export default function RegisterPage() {
               placeholder="••••••••"
               required
             />
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <label className="text-sm font-semibold text-slate-700 block">Select Subscriptions (At least one required)</label>
+            
+            <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+              <input 
+                type="checkbox" 
+                name="platforms" 
+                value="HSMS" 
+                defaultChecked 
+                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" 
+              />
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-800 text-sm">Hanodel School Management (HSMS)</span>
+                <span className="text-xs text-slate-500">Admissions, payments, results, and administration</span>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+              <input 
+                type="checkbox" 
+                name="platforms" 
+                value="HCBT" 
+                defaultChecked 
+                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" 
+              />
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-800 text-sm">Computer-Based Testing (HCBT)</span>
+                <span className="text-xs text-slate-500">Secure exams, past questions, and offline testing</span>
+              </div>
+            </label>
           </div>
 
           <button

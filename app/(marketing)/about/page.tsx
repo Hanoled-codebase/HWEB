@@ -2,13 +2,11 @@ import { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  Award,
-  Building2,
-  CheckCircle2,
   Heart,
   School,
   Shield,
-  Users,
+  Star,
+  Users
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
@@ -25,147 +23,193 @@ const values = [
     title: "School-First Design",
     description:
       "We design every feature around the real operational realities of Nigerian schools — from power cuts to varying internet stability.",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Shield,
     title: "Uncompromising Integrity",
     description:
       "Student data, financial ledgers, and gradebooks are protected with bank-grade encryption and role-based permissions.",
+    color: "bg-[#4cd988]/10 text-emerald-700",
   },
   {
     icon: Heart,
     title: "Relentless Support",
     description:
       "We don't just sell software; we partner with your school. Our support team is always a call or WhatsApp message away.",
+    color: "bg-[#ff7b92]/10 text-rose-600",
   },
 ];
 
 const stats = [
-  { value: "100+", label: "Schools onboarded" },
-  { value: "50,000+", label: "Students managed" },
-  { value: "99.9%", label: "Uptime guarantee" },
-  { value: "24/7", label: "Customer support" },
+  { value: "100+", label: "Schools onboarded", text: "text-[#1447E6]" },
+  { value: "50,000+", label: "Students managed", text: "text-[#f6c24e]" },
+  { value: "99.9%", label: "Uptime guarantee", text: "text-emerald-500" },
+  { value: "24/7", label: "Customer support", text: "text-[#7b5fff]" },
 ];
+
+function BrandRibbon() {
+  return (
+    <div className="w-full overflow-hidden bg-[#7b5fff] py-3 shadow-md mt-6 rounded-[2rem] max-w-7xl mx-auto hidden sm:block">
+      <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
+        {Array.from({ length: 15 }).map((_, index) => (
+          <span key={index} className="whitespace-nowrap flex items-center gap-6">
+            Hanoled.io
+            <span className="h-1 w-1 rounded-full bg-white/50" />
+            Hanoled
+            <span className="h-1 w-1 rounded-full bg-white/50" />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AboutPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white">
       <MarketingHeader />
+      <BrandRibbon />
 
-      <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/40 via-slate-50/50 to-white px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white px-4 py-1.5 text-sm font-semibold text-[#1447E6] shadow-sm">
-              <School className="h-4 w-4" /> About Hanoled
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        {/* HERO SECTION */}
+        <section className="relative overflow-hidden rounded-[3rem] bg-white px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center">
+          {/* Dot Grid Background */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
+          
+          <div className="pointer-events-none absolute left-10 top-20 text-slate-200">
+            <span className="text-3xl">+</span>
+          </div>
+          
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 shadow-sm transform -rotate-2 hover:rotate-0 transition-transform cursor-default">
+              <Star className="h-4 w-4 text-[#1447E6]" />
+              <span className="text-sm font-bold text-[#1447E6]">About Hanoled</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Modernising school management{" "}
-              <span className="text-[#1447E6]">across Nigeria</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-500">
-              Hanoled was founded with a simple mission: give every Nigerian
-              school — from a 50-student primary school in Abeokuta to a
-              2,000-student secondary school in Lagos — the same powerful tools
+            
+            <div className="space-y-4">
+              <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
+                Modernising school management <br />
+                <span className="text-[#1447E6]">across West Africa</span>
+              </h1>
+              {/* Wavy accent line under title */}
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
+              Hanoled was founded with a simple mission: give every school the same powerful tools
               used by the best institutions in the world.
             </p>
           </div>
         </section>
 
-        {/* Stats */}
-        <section className="border-y border-slate-100 bg-slate-50/40 px-4 py-12 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-3xl font-black text-[#1447E6]">
+        {/* Stats Section */}
+        <section className="mt-16 bg-slate-900 rounded-[3rem] px-8 py-12 sm:px-16 sm:py-16 shadow-xl relative overflow-hidden">
+          <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#f6c24e]/10 blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 mx-auto grid max-w-5xl gap-8 sm:grid-cols-4">
+            {stats.map((stat, idx) => (
+              <div key={idx} className="text-center space-y-2">
+                <div className={`text-4xl sm:text-5xl font-black tracking-tight ${stat.text}`}>
                   {stat.value}
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                </div>
+                <div className="text-sm font-semibold text-slate-400 uppercase tracking-widest">
                   {stat.label}
-                </p>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Our Story */}
-        <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-slate-900">Our Story</h2>
-          <div className="mt-6 space-y-4 text-base leading-relaxed text-slate-600">
-            <p>
-              For years, Nigerian school administrators spent countless hours
-              manually compiling report cards, tracking down tuition debt on
-              paper registers, and manually typing out results for broadcast.
-            </p>
-            <p>
-              Hanoled was built to eliminate that burden. We spent months in
-              staffrooms, bursar offices, and principal desks listening to the exact
-              challenges school teams face every term. The result is an all-in-one
-              platform that automates grading, fee collections, attendance, parent
-              communications, and computer-based testing.
-            </p>
-            <p>
-              Today, Hanoled powers forward-thinking schools across Nigeria, saving
-              hundreds of administrative hours every academic session and providing
-              parents with transparent, real-time insights into their children&apos;s
-              education.
-            </p>
-          </div>
-        </section>
-
-        {/* Values */}
-        <section className="bg-slate-50/60 px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-12 text-center">
-              <h2 className="text-3xl font-bold text-slate-900">Our Values</h2>
+        {/* Our Story Section */}
+        <section className="mt-16 bg-white rounded-[3rem] px-8 py-16 sm:px-16 sm:py-20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+          <div className="max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-1.5 mb-6 text-sm font-bold text-orange-600">
+              Our Journey
             </div>
-            <div className="grid gap-8 sm:grid-cols-3">
-              {values.map((v) => {
-                const Icon = v.icon;
-                return (
-                  <div
-                    key={v.title}
-                    className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm hover:border-[#1447E6]/30 transition-all"
-                  >
-                    <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1447E6]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">
-                      {v.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {v.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-[#0B1220] px-8 py-16 text-center shadow-xl">
-            <h2 className="text-3xl font-bold text-white">
-              Join the Hanoled community
+            
+            <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl mb-8">
+              Why we started Hanoled
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-slate-400">
-              Be part of the movement to modernise education management in
-              Nigeria. Let&apos;s build the future of schooling together.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/#contact-quote"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/30"
-              >
-                Book a Demo <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-600 px-8 py-3 font-semibold text-slate-300 transition-colors hover:border-white hover:text-white"
-              >
-                Contact Us <ArrowRight className="h-4 w-4" />
-              </Link>
+            
+            <div className="space-y-6 text-lg leading-relaxed text-slate-500 font-medium">
+              <p>
+                For years, school administrators spent countless hours manually compiling report cards, tracking down tuition debt on paper registers, and manually typing out results for broadcast.
+              </p>
+              <div className="bg-[#f8f9fc] border-l-4 border-[#1447E6] p-6 rounded-r-2xl text-slate-700 italic my-8">
+                "We spent months in staffrooms, bursar offices, and principal desks listening to the exact challenges school teams face every term. The result is an all-in-one platform."
+              </div>
+              <p>
+                Today, Hanoled powers forward-thinking schools, saving hundreds of administrative hours every academic session and providing parents with transparent, real-time insights into their children's education.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Values Section */}
+        <section className="mt-16">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#7b5fff]/10 text-[#7b5fff] px-3.5 py-1.5 text-xs font-bold mb-3">
+              Core Principles
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
+              What drives us forward
+            </h2>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-3 max-w-6xl mx-auto">
+            {values.map((v) => {
+              const Icon = v.icon;
+              return (
+                <div
+                  key={v.title}
+                  className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className={`mb-6 inline-flex h-16 w-16 items-center justify-center rounded-[1.5rem] shadow-sm ${v.color}`}>
+                    <Icon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {v.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-500 font-medium">
+                    {v.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="mt-16">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#f6c24e] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-xl text-slate-900">
+            <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/20 blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+              <h2 className="text-3xl font-extrabold sm:text-5xl leading-tight">
+                Join the Hanoled community
+              </h2>
+              <p className="text-lg text-amber-900/80 font-bold">
+                Be part of the movement to modernise education management. Let&apos;s build the future of schooling together.
+              </p>
+              
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link
+                  href="/#contact-quote"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-slate-900 px-8 font-bold text-white transition-all hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg"
+                >
+                  Book a Demo <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link
+                  href="/contact"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border-2 border-slate-900 px-8 font-bold text-slate-900 transition-all hover:bg-slate-900/5"
+                >
+                  Contact Us
+                </Link>
+              </div>
             </div>
           </div>
         </section>

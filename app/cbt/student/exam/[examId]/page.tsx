@@ -4,6 +4,14 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { useExamStore } from "@/store/exam";
+import {
+  autoSaveAnswers,
+  recoverAnswers,
+  clearAutoSave,
+  enqueueAttempt,
+  isOnline,
+} from "@/lib/cbt-offline";
+import { startSyncWorker } from "@/lib/cbt-sync";
 import { ExamTimer } from "@/components/cbt/ExamTimer";
 import { QuestionCard } from "@/components/cbt/QuestionCard";
 import {
@@ -22,6 +30,15 @@ import { toast, Toaster } from "sonner";
 
 const MAX_TAB_SWITCHES = 3;
 const PROCTOR_WARNING_DURATION = 5;
+
+/** Strip null values from the answers record for offline storage */
+function compactAnswers(raw: Record<string, number | null>): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v !== null && v !== undefined) result[k] = v;
+  }
+  return result;
+}
 
 export default function ActiveExamPage() {
   const router = useRouter();
@@ -65,7 +82,7 @@ export default function ActiveExamPage() {
 
       if (res.maxReached || res.cheating) {
         clearSession();
-        router.push(`/student/exam/${examId}/result`);
+        router.push(`/cbt/student/exam/${examId}/result`);
         return;
       }
 
@@ -106,7 +123,7 @@ export default function ActiveExamPage() {
           initializedRef.current = true;
         } else {
           toast.error("Practice session expired. Please set up a new practice simulator.");
-          router.push("/student");
+          router.push("/cbt/student");
         }
         return;
       }
@@ -119,7 +136,7 @@ export default function ActiveExamPage() {
       } catch (err: any) {
         console.error("Failed to initialize/resume exam:", err);
         toast.error(err.message || "Failed to load exam session. Redirecting to student portal...");
-        setTimeout(() => router.push("/student"), 2000);
+        setTimeout(() => router.push("/cbt/student"), 2000);
       } finally {
         setLoading(false);
       }
@@ -150,11 +167,31 @@ export default function ActiveExamPage() {
     };
   }, [examId, session, handleTabSwitch]);
 
+  // Start the background sync worker and auto-recover saved answers
+  useEffect(() => {
+    const cleanup = startSyncWorker();
+    // Try to recover auto-saved answers on mount
+    if (examId && examId !== 'practice') {
+      const saved = recoverAnswers(examId);
+      if (saved && Object.keys(saved).length > 0) {
+        Object.entries(saved).forEach(([qId, optIdx]) => setAnswer(qId, optIdx));
+        toast.info('Recovered your previously saved answers.');
+      }
+    }
+    return cleanup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
   const handleSelectOption = (optionIndex: number) => {
     if (!session) return;
     const currentQuestion = session.questions[currentIdx];
     if (!currentQuestion) return;
     setAnswer(currentQuestion.id, optionIndex);
+    // Auto-save every answer change to localStorage
+    if (examId !== 'practice') {
+      const updatedAnswers = { ...compactAnswers(answers), [currentQuestion.id]: optionIndex };
+      autoSaveAnswers(examId, updatedAnswers);
+    }
   };
 
   const toggleFlagQuestion = () => {
@@ -207,7 +244,7 @@ export default function ActiveExamPage() {
 
         clearSession();
         toast.success("Practice assessment graded successfully!");
-        router.push("/student/exam/practice/result");
+        router.push("/cbt/student/exam/practice/result");
         return;
       }
 
@@ -215,20 +252,61 @@ export default function ActiveExamPage() {
       const payload: any = { answers: formatted };
       if (tabSwitchCount >= MAX_TAB_SWITCHES) payload.cheating = true;
 
-      const res: any = await cbtApi.submitExam(examId, payload);
-      clearSession();
+      if (isOnline()) {
+        // Online path — submit directly
+        const res: any = await cbtApi.submitExam(examId, payload);
+        clearSession();
+        clearAutoSave(examId);
 
-      if (res.cheating) {
-        toast.error("Exam auto-failed due to proctoring violations.");
-      } else if (isAuto) {
-        toast.success("Exam submitted automatically!");
+        if (res.cheating) {
+          toast.error("Exam auto-failed due to proctoring violations.");
+        } else if (isAuto) {
+          toast.success("Exam submitted automatically!");
+        } else {
+          toast.success("Exam submitted successfully!");
+        }
+
+        router.push(`/cbt/student/exam/${examId}/result`);
       } else {
-        toast.success("Exam submitted successfully!");
-      }
+        // Offline path — enqueue for background sync
+        await enqueueAttempt({
+          examId,
+          attemptId: (session as any).attemptId || examId,
+          leaseToken: (session as any).leaseToken || '',
+          answers: compactAnswers(answers),
+          cheating: tabSwitchCount >= MAX_TAB_SWITCHES,
+          submittedAt: new Date().toISOString(),
+        });
 
-      router.push(`/student/exam/${examId}/result`);
+        clearSession();
+        clearAutoSave(examId);
+        toast.success("You are offline. Your exam has been saved and will sync automatically when you reconnect.", { duration: 8000 });
+        router.push(`/cbt/student`);
+      }
     } catch (err: any) {
       console.error("Submission failed:", err);
+
+      // Last-resort offline fallback if the network call itself threw
+      if (!isOnline()) {
+        try {
+          await enqueueAttempt({
+            examId,
+            attemptId: (session as any).attemptId || examId,
+            leaseToken: (session as any).leaseToken || '',
+            answers: compactAnswers(answers),
+            cheating: tabSwitchCount >= MAX_TAB_SWITCHES,
+            submittedAt: new Date().toISOString(),
+          });
+          clearSession();
+          clearAutoSave(examId);
+          toast.success("Saved offline. Will sync when back online.", { duration: 8000 });
+          router.push(`/cbt/student`);
+          return;
+        } catch {
+          // IndexedDB itself failed — nothing more we can do
+        }
+      }
+
       toast.error(err.message || "Failed to submit exam. Please try again or contact your administrator.");
       setSubmitting(false);
     }
@@ -254,8 +332,8 @@ export default function ActiveExamPage() {
         <p className="font-semibold text-slate-300">No questions available</p>
         <p className="text-xs text-slate-500 mt-1">This exam has no questions yet. Please contact your teacher.</p>
         <button
-          onClick={() => router.push("/student")}
-          className="mt-6 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-6 py-3 rounded-xl transition-colors border border-slate-700"
+          onClick={() => router.push("/cbt/student")}
+          className="mt-6 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-6 py-3 rounded-sm transition-colors border border-slate-700"
         >
           Back to Dashboard
         </button>
@@ -274,7 +352,7 @@ export default function ActiveExamPage() {
       <header className="bg-slate-950/80 backdrop-blur border-b border-slate-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-lg text-white shrink-0">
+            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-sm text-white shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -300,12 +378,12 @@ export default function ActiveExamPage() {
               startedAt={session.startedAt}
               durationMinutes={session.exam.duration}
               onExpire={handleTimerExpire}
-              className="!bg-slate-900 !text-slate-100 !border-slate-800 !rounded-lg !py-1.5 !px-3 !text-xs"
+              className="!bg-slate-900 !text-slate-100 !border-slate-800 !rounded-sm !py-1.5 !px-3 !text-xs"
             />
             <button
               disabled={submitting}
               onClick={() => setIsSubmitModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-lg shadow-blue-500/10 active:scale-95"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-sm transition-all flex items-center space-x-1.5 shadow-lg shadow-blue-500/10 active:scale-95"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Submit Exam</span>
@@ -324,11 +402,11 @@ export default function ActiveExamPage() {
             totalQuestions={totalQuestions}
           />
 
-          <div className="flex items-center justify-between bg-slate-800/40 p-3 sm:p-4 rounded-xl border border-slate-700/50 gap-2">
+          <div className="flex items-center justify-between bg-slate-800/40 p-3 sm:p-4 rounded-sm border border-slate-700/50 gap-2">
             <button
               disabled={currentIdx === 0}
               onClick={() => setCurrentIdx((prev) => prev - 1)}
-              className={`flex items-center justify-center space-x-1.5 px-3 sm:px-4 h-10 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
+              className={`flex items-center justify-center space-x-1.5 px-3 sm:px-4 h-10 rounded-sm text-xs font-bold transition-colors whitespace-nowrap ${
                 currentIdx === 0
                   ? "bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800"
                   : "bg-slate-700 text-slate-200 hover:bg-slate-600 hover:text-white"
@@ -341,7 +419,7 @@ export default function ActiveExamPage() {
 
             <button
               onClick={toggleFlagQuestion}
-              className={`flex items-center justify-center space-x-1.5 px-3 sm:px-4 h-10 rounded-xl text-xs font-bold border transition-colors whitespace-nowrap ${
+              className={`flex items-center justify-center space-x-1.5 px-3 sm:px-4 h-10 rounded-sm text-xs font-bold border transition-colors whitespace-nowrap ${
                 flaggedQuestions[currentQuestion?.id ?? ""]
                   ? "bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30"
                   : "bg-slate-700/50 border-slate-600/30 text-slate-300 hover:bg-slate-600/50 hover:text-white"
@@ -355,7 +433,7 @@ export default function ActiveExamPage() {
             {currentIdx === totalQuestions - 1 ? (
               <button
                 onClick={() => setIsSubmitModalOpen(true)}
-                className="flex items-center justify-center space-x-1.5 px-4 sm:px-5 h-10 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/10 active:scale-95 whitespace-nowrap"
+                className="flex items-center justify-center space-x-1.5 px-4 sm:px-5 h-10 rounded-sm text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/10 active:scale-95 whitespace-nowrap"
               >
                 <span className="hidden sm:inline">Submit</span>
                 <span className="sm:hidden">Submit</span>
@@ -364,7 +442,7 @@ export default function ActiveExamPage() {
             ) : (
               <button
                 onClick={() => setCurrentIdx((prev) => prev + 1)}
-                className="flex items-center justify-center space-x-1.5 px-4 sm:px-5 h-10 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white transition-colors whitespace-nowrap"
+                className="flex items-center justify-center space-x-1.5 px-4 sm:px-5 h-10 rounded-sm text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white transition-colors whitespace-nowrap"
               >
                 <span className="hidden sm:inline">Next</span>
                 <span className="sm:hidden">Next</span>
@@ -375,25 +453,25 @@ export default function ActiveExamPage() {
         </div>
 
         <aside className="w-full lg:w-80 shrink-0 space-y-6">
-          <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 shadow-md">
+          <div className="bg-slate-800/40 p-5 rounded-sm border border-slate-700/50 shadow-md">
             <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-4">Exam Summary</h3>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+              <div className="bg-slate-800/60 p-2.5 rounded-sm">
                 <p className="text-base font-bold text-blue-400">{answeredCount}</p>
                 <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Answered</p>
               </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+              <div className="bg-slate-800/60 p-2.5 rounded-sm">
                 <p className="text-base font-bold text-amber-400">{flaggedCount}</p>
                 <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Flagged</p>
               </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+              <div className="bg-slate-800/60 p-2.5 rounded-sm">
                 <p className="text-base font-bold text-slate-300">{remainingCount}</p>
                 <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Unanswered</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-md flex flex-col">
+          <div className="bg-slate-950 p-6 rounded-sm border border-slate-800/80 shadow-md flex flex-col">
             <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-5">Question Navigator</h3>
             <div className="grid grid-cols-5 gap-2.5 max-h-[260px] overflow-y-auto p-1">
               {session.questions.map((q, idx) => {
@@ -406,7 +484,7 @@ export default function ActiveExamPage() {
                 if (isSelected) blockClass = "bg-blue-500 text-white border-blue-500 outline-2 outline-blue-500 outline-offset-1";
                 return (
                   <button key={q.id} onClick={() => setCurrentIdx(idx)}
-                    className={`h-10 text-xs font-bold rounded-lg border flex items-center justify-center transition-all ${blockClass}`}>
+                    className={`h-10 text-xs font-bold rounded-sm border flex items-center justify-center transition-all ${blockClass}`}>
                     {idx + 1}
                   </button>
                 );
@@ -441,13 +519,13 @@ export default function ActiveExamPage() {
       {/* Proctoring Warning Overlay */}
       {proctorWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl">
-          <div className="bg-slate-900 rounded-3xl max-w-md w-full border border-amber-500/30 shadow-2xl shadow-amber-500/5 p-8 text-center">
+          <div className="bg-slate-900 rounded-sm max-w-md w-full border border-amber-500/30 shadow-2xl shadow-amber-500/5 p-8 text-center">
             <div className="w-16 h-16 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-5">
               <EyeOff className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2">Tab Switch Detected</h3>
             <p className="text-sm text-slate-300 mb-6 leading-relaxed">{proctorMessage}</p>
-            <div className="bg-slate-950 rounded-2xl p-5 border border-slate-800 mb-4">
+            <div className="bg-slate-950 rounded-sm p-5 border border-slate-800 mb-4">
               <p className="text-3xl font-extrabold text-amber-400">{proctorTimer}</p>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Seconds to return</p>
             </div>
@@ -465,7 +543,7 @@ export default function ActiveExamPage() {
 
       {isSubmitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 rounded-2xl max-w-md w-full border border-slate-800 shadow-2xl p-6 sm:p-8 text-center relative">
+          <div className="bg-slate-900 rounded-sm max-w-md w-full border border-slate-800 shadow-2xl p-6 sm:p-8 text-center relative">
             <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-5">
               <AlertTriangle className="w-7 h-7" />
             </div>
@@ -473,7 +551,7 @@ export default function ActiveExamPage() {
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
               Are you ready to submit your exam paper? You will not be able to change your answers after submission.
             </p>
-            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 flex justify-around text-center mb-8">
+            <div className="bg-slate-950 rounded-sm p-4 border border-slate-800 flex justify-around text-center mb-8">
               <div>
                 <p className="text-xs font-bold text-slate-400">Answered</p>
                 <p className="text-base font-extrabold text-blue-400 mt-0.5">{answeredCount}</p>
@@ -485,7 +563,7 @@ export default function ActiveExamPage() {
               </div>
             </div>
             {tabSwitchCount > 0 && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-left mb-4 flex items-start space-x-2.5">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-sm p-3 text-left mb-4 flex items-start space-x-2.5">
                 <ShieldAlert className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-[10px] font-medium text-amber-400 leading-normal">
                   Proctoring: {tabSwitchCount} tab switch violation{tabSwitchCount > 1 ? "s" : ""} recorded.
@@ -493,7 +571,7 @@ export default function ActiveExamPage() {
               </div>
             )}
             {remainingCount > 0 && (
-              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 text-left mb-6 flex items-start space-x-2.5">
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-sm p-3.5 text-left mb-6 flex items-start space-x-2.5">
                 <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
                 <p className="text-[10px] font-medium text-rose-400 leading-normal">
                   Warning: You have {remainingCount} unanswered question{remainingCount > 1 ? "s" : ""}. These will be marked as zero.
@@ -503,13 +581,13 @@ export default function ActiveExamPage() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setIsSubmitModalOpen(false)}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-3 px-4 rounded-xl border border-slate-700 transition-colors"
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-3 px-4 rounded-sm border border-slate-700 transition-colors"
               >
                 Go Back
               </button>
               <button
                 onClick={() => executeSubmission(false)}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-3 px-4 rounded-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
               >
                 Yes, Submit Now
               </button>

@@ -35,7 +35,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+import { HSMS_BASE } from "@/lib/api";
+
+const API_BASE = HSMS_BASE;
 const ADMIN_API = `${API_BASE}/admin`;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";

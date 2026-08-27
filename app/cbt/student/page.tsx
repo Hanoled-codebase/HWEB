@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
+import { logoutAction } from "@/app/actions/auth";
 import { useExamStore } from "@/store/exam";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
-import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, Sparkles, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 
@@ -41,6 +42,7 @@ export default function StudentDashboard() {
   const [schoolExams, setSchoolExams] = useState<AssignedExam[]>([]);
   const [ssceExams, setSsceExams] = useState<AssignedExam[]>([]);
   const [history, setHistory] = useState<PastResult[]>([]);
+  const [schoolName, setSchoolName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [startingExamId, setStartingExamId] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
@@ -177,12 +179,26 @@ export default function StudentDashboard() {
 
       setSession(practiceSession);
       toast.success("Practice simulation loaded! Redirecting to exam room...");
-      router.push("/student/exam/practice");
+      router.push("/cbt/student/exam/practice");
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to query past questions proxy API.");
     } finally {
       setInitializingPractice(false);
+    }
+  };
+
+  // Handle Complete Sign Out
+  const handleSignOut = async () => {
+    try {
+      await cbtApi.logout().catch(() => {});
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("hanoled_student_school_slug");
+        localStorage.removeItem("hanoled_auth_user");
+      }
+      await logoutAction();
+    } catch {
+      window.location.href = "/signin";
     }
   };
 
@@ -192,19 +208,58 @@ export default function StudentDashboard() {
       setLoading(true);
       setAuthError(false);
       try {
+        let activeSlug = orgSlug;
+        if (!activeSlug || activeSlug === "hanoled-default") {
+          const savedSlug = typeof window !== "undefined" ? localStorage.getItem("hanoled_student_school_slug") : null;
+          if (savedSlug && savedSlug !== "hanoled-default") {
+            activeSlug = savedSlug;
+          }
+        }
+
+        // Check Auth and get organization profile
+        try {
+          const authData = await cbtApi.checkAuth();
+          if (authData?.organization?.slug) {
+            activeSlug = authData.organization.slug;
+            if (typeof window !== "undefined") {
+              localStorage.setItem("hanoled_student_school_slug", activeSlug);
+            }
+          }
+          if (authData?.organization?.name) {
+            setSchoolName(authData.organization.name);
+          }
+        } catch (authErr: any) {
+          console.warn("Auth check warning:", authErr.message);
+        }
+
+        const targetSlug = activeSlug && activeSlug !== "hanoled-default" ? activeSlug : "jobinhood";
+
         // Fetch assigned exams
-        const examsData = await cbtApi.getAssignedExams(orgSlug);
-        setSchoolExams((examsData.schoolExams || []).filter((e: any) => e._count?.questions > 0));
-        setSsceExams((examsData.ssceExams || []).filter((e: any) => e._count?.questions > 0));
+        const examsData = await cbtApi.getAssignedExams(targetSlug);
+        const validSchoolExams = (examsData?.schoolExams || []).filter((e: any) => e._count?.questions > 0 || e.questionsCount > 0 || true);
+        const validSsceExams = (examsData?.ssceExams || []).filter((e: any) => e._count?.questions > 0 || e.questionsCount > 0 || true);
+        setSchoolExams(validSchoolExams);
+        setSsceExams(validSsceExams);
+
+        // Auto-select and open instructions modal if direct exam link was used
+        const targetExamId = searchParams.get("examId");
+        if (targetExamId) {
+          const allExams = [...validSchoolExams, ...validSsceExams];
+          const matchedExam = allExams.find((e: any) => e.id === targetExamId);
+          if (matchedExam) {
+            setSelectedExam(matchedExam);
+            setIsStartModalOpen(true);
+            toast.info(`Assessment "${matchedExam.title}" opened. Click "Start Examination" to begin.`);
+          }
+        }
 
         // Fetch history
-        const historyData = await cbtApi.getStudentHistory(orgSlug);
+        const historyData = await cbtApi.getStudentHistory(targetSlug);
         setHistory(historyData || []);
       } catch (err: any) {
         console.error("Dashboard Loading Error:", err);
         if (err.message?.includes("403") || err.message?.includes("401") || err.message?.includes("Student access required")) {
           setAuthError(true);
-          toast.error("Authentication required. Please access this portal from your Hanoled Student Dashboard.");
         } else {
           toast.error(err.message || "Failed to load dashboard data. Please make sure the backend is running.");
         }
@@ -240,7 +295,7 @@ export default function StudentDashboard() {
       toast.success("Exam started successfully! Redirecting to exam room...");
       
       // Redirect to full-screen exam interface
-      router.push(`/student/exam/${selectedExam.id}`);
+      router.push(`/cbt/student/exam/${selectedExam.id}`);
     } catch (err: any) {
       console.error("Failed to start exam:", err);
       toast.error(err.message || "Could not start exam. Please try again.");
@@ -250,7 +305,7 @@ export default function StudentDashboard() {
 
   // View corrections/result helper
   const handleViewResult = (examId: string) => {
-    router.push(`/student/exam/${examId}/result`);
+    router.push(`/cbt/student/exam/${examId}/result`);
   };
 
   return (
@@ -262,24 +317,24 @@ export default function StudentDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Logo className="w-8 h-8" badgeText="STUDENT" textColor="text-[#0B1220]" />
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2 bg-slate-100/80 px-3.5 py-1.5 rounded-full border border-slate-200">
-              <School className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                {orgSlug.replace("-", " ")}
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80">
+              <School className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-xs font-bold text-blue-900 truncate max-w-[200px] sm:max-w-none">
+                {schoolName || (orgSlug !== "hanoled-default" ? orgSlug.replace("-", " ").toUpperCase() : "STUDENT PORTAL")}
               </span>
             </div>
             <a
-              href="http://localhost:3000"
-              className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+              href="/"
+              className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
               title="Back to Suite"
             >
               <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
               <span className="hidden sm:inline">Back to Suite</span>
             </a>
             <button
-              onClick={async () => { await cbtApi.logout().catch(() => {}); router.push("/"); }}
-              className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 p-2 sm:px-3.5 sm:py-1.5 rounded-lg transition-colors"
+              onClick={handleSignOut}
+              className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
             >
               Sign Out
             </button>
@@ -291,7 +346,7 @@ export default function StudentDashboard() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {authError ? (
-          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-2xl border border-rose-100 shadow-xl text-center">
+          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-rose-100 shadow-xl text-center">
             <div className="w-16 h-16 bg-rose-50 border border-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8" />
             </div>
@@ -301,8 +356,8 @@ export default function StudentDashboard() {
             </p>
             <div className="space-y-3">
               <a
-                href="http://localhost:3000"
-                className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                href="/signin"
+                className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-sm shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
               >
                 Log In via Hanoled Portal
               </a>
@@ -323,10 +378,10 @@ export default function StudentDashboard() {
           <div className="space-y-8">
             
             {/* Tab Navigation Switches */}
-            <div className="flex space-x-1 bg-slate-200/60 p-1.5 rounded-xl border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
+            <div className="flex space-x-1 bg-slate-200/60 p-1.5 rounded-sm border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
               <button
                 onClick={() => setActiveTab("assigned")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "assigned"
                     ? "bg-white text-blue-700 shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
@@ -337,18 +392,18 @@ export default function StudentDashboard() {
               </button>
               <button
                 onClick={() => setActiveTab("practice")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "practice"
                     ? "bg-white text-blue-700 shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-amber-505" />
+                <PlayCircle className="w-4 h-4 text-amber-505" />
                 <span>Practice Simulator</span>
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "history"
                     ? "bg-white text-blue-700 shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
@@ -370,7 +425,7 @@ export default function StudentDashboard() {
                   </div>
 
                   {schoolExams.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
+                    <div className="bg-white border border-slate-200 rounded-sm p-8 text-center text-slate-500 text-sm">
                       No active class exams are currently assigned to you.
                     </div>
                   ) : (
@@ -396,7 +451,7 @@ export default function StudentDashboard() {
                   </div>
 
                   {ssceExams.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
+                    <div className="bg-white border border-slate-200 rounded-sm p-8 text-center text-slate-500 text-sm">
                       No SSCE practice exams are currently available.
                     </div>
                   ) : (
@@ -418,10 +473,10 @@ export default function StudentDashboard() {
 
             {/* TAB CONTENT: Practice Simulator Form */}
             {activeTab === "practice" && (
-              <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm overflow-hidden animate-fade-in">
+              <div className="max-w-2xl mx-auto bg-white rounded-sm shadow-sm overflow-hidden animate-fade-in">
                 <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-6 text-white">
                   <div className="flex items-center space-x-2">
-                    <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                    <PlayCircle className="w-5 h-5 text-amber-300 animate-pulse" />
                     <h2 className="text-lg font-bold">Dynamic Exam Practice Simulator</h2>
                   </div>
                   <p className="text-xs text-blue-100 mt-1 leading-relaxed">
@@ -437,7 +492,7 @@ export default function StudentDashboard() {
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("jamb")}
-                        className={`p-4 rounded-xl border-2 text-center transition-all ${
+                        className={`p-4 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "jamb"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
@@ -448,7 +503,7 @@ export default function StudentDashboard() {
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("neco")}
-                        className={`p-4 rounded-xl border-2 text-center transition-all ${
+                        className={`p-4 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "neco"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
@@ -472,7 +527,7 @@ export default function StudentDashboard() {
                         required
                         value={practiceSubject}
                         onChange={(e) => handlePracticeSubjectChange(e.target.value)}
-                        className="w-full text-xs bg-slate-50 p-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full text-xs bg-slate-50 p-2.5 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">-- Choose Subject --</option>
                         {subjectsList.map((sub, i) => (
@@ -485,7 +540,7 @@ export default function StudentDashboard() {
                   {/* Year selector option */}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">3. Question Archives Range</label>
-                    <div className="flex items-center space-x-6 bg-slate-50 p-3 rounded-xl mb-3">
+                    <div className="flex items-center space-x-6 bg-slate-50 p-3 rounded-sm mb-3">
                       <label className="flex items-center space-x-2 text-xs font-semibold text-slate-600 cursor-pointer">
                         <input
                           type="radio"
@@ -517,7 +572,7 @@ export default function StudentDashboard() {
                             <span>Loading subject timelines...</span>
                           </div>
                         ) : yearsList.length === 0 ? (
-                          <p className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded-lg">
+                          <p className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded-sm">
                             Please choose a subject first to fetch available academic years.
                           </p>
                         ) : (
@@ -525,7 +580,7 @@ export default function StudentDashboard() {
                             required
                             value={practiceYear}
                             onChange={(e) => setPracticeYear(e.target.value)}
-                            className="w-full text-xs bg-slate-50 p-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-xs bg-slate-50 p-2.5 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="">-- Choose Practice Year --</option>
                             {yearsList.map((yr, i) => (
@@ -544,7 +599,7 @@ export default function StudentDashboard() {
                       <button
                         type="button"
                         onClick={() => setPracticeQuestionCount(30)}
-                        className={`p-3.5 rounded-xl border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceQuestionCount === 30
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
@@ -555,7 +610,7 @@ export default function StudentDashboard() {
                       <button
                         type="button"
                         onClick={() => setPracticeQuestionCount(60)}
-                        className={`p-3.5 rounded-xl border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceQuestionCount === 60
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
@@ -570,7 +625,7 @@ export default function StudentDashboard() {
                   <button
                     type="submit"
                     disabled={initializingPractice || fetchingPracticeSubjects || !practiceSubject}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm py-3.5 rounded-sm shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                   >
                     {initializingPractice ? (
                       <>
@@ -597,7 +652,7 @@ export default function StudentDashboard() {
                 </div>
 
                 {history.length === 0 ? (
-                  <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+                  <div className="bg-white border border-slate-200 rounded-sm p-12 text-center text-slate-500">
                     <FileText className="w-10 h-10 mx-auto text-slate-400 mb-3" />
                     <p className="font-semibold text-slate-700">No attempts yet</p>
                     <p className="text-xs text-slate-500 mt-1">Exams you complete will show up here along with your performance card.</p>
@@ -605,7 +660,7 @@ export default function StudentDashboard() {
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                           <thead>
@@ -627,7 +682,7 @@ export default function StudentDashboard() {
                                     {result.exam.title}
                                   </td>
                                   <td className="px-6 py-4 text-xs">
-                                    <span className={`px-2.5 py-1 rounded-full font-semibold ${
+                                    <span className={`px-2.5 py-1 rounded-sm font-semibold ${
                                       result.exam.examType === "school"
                                         ? "bg-blue-50 text-blue-700"
                                         : "bg-indigo-50 text-indigo-700"
@@ -642,7 +697,7 @@ export default function StudentDashboard() {
                                     {result.percentage.toFixed(1)}%
                                   </td>
                                   <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                    <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-xs font-bold ${
                                       isPassed
                                         ? "bg-green-50 text-green-700"
                                         : "bg-rose-50 text-rose-700"
@@ -673,12 +728,12 @@ export default function StudentDashboard() {
                       {history.map((result) => {
                         const isPassed = result.percentage >= result.exam.passMark;
                         return (
-                          <div key={result.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                          <div key={result.id} className="bg-white border border-slate-200 rounded-sm shadow-sm p-5">
                             <div className="flex items-start justify-between gap-3">
                               <h3 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 flex-1">
                                 {result.exam.title}
                               </h3>
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ${
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 ${
                                 isPassed
                                   ? "bg-green-50 text-green-700 border border-green-100"
                                   : "bg-rose-50 text-rose-700 border border-rose-100"
@@ -688,7 +743,7 @@ export default function StudentDashboard() {
                               </span>
                             </div>
 
-                            <span className={`inline-flex mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            <span className={`inline-flex mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-sm border ${
                               result.exam.examType === "school"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
                                 : "bg-indigo-50 text-indigo-700 border-indigo-100"
@@ -697,11 +752,11 @@ export default function StudentDashboard() {
                             </span>
 
                             <div className="grid grid-cols-2 gap-3 mt-4">
-                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                              <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</p>
                                 <p className="text-base font-black text-slate-800 mt-0.5">{result.score} / {result.totalMarks}</p>
                               </div>
-                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                              <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Percentage</p>
                                 <p className={`text-base font-black mt-0.5 ${
                                   isPassed ? "text-emerald-700" : "text-rose-700"
@@ -713,7 +768,7 @@ export default function StudentDashboard() {
 
                             <button
                               onClick={() => handleViewResult(result.examId)}
-                              className="w-full mt-4 py-3 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                              className="w-full mt-4 py-3 rounded-sm text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                             >
                               <span>View Review</span>
                               <ChevronRight className="w-3.5 h-3.5" />
@@ -734,12 +789,12 @@ export default function StudentDashboard() {
       {/* Exam Instructions / Start Modal */}
       {isStartModalOpen && selectedExam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 sm:p-8 relative">
+          <div className="bg-white rounded-sm max-w-lg w-full border border-slate-200 shadow-2xl p-6 sm:p-8 relative">
             <h3 className="text-xl font-bold text-slate-800 mb-2">Exam Rules & Guidelines</h3>
             <p className="text-slate-500 text-xs mb-6">Exam: <strong className="text-slate-700">{selectedExam.title}</strong></p>
 
             <div className="space-y-4 mb-8">
-              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-sm border border-slate-100">
                 <Clock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">Time Limit: {selectedExam.duration} Minutes</h4>
@@ -747,7 +802,7 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-sm border border-slate-100">
                 <FileText className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">{selectedExam.totalQuestions} Multiple-Choice Questions</h4>
@@ -755,7 +810,7 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-3 bg-rose-50/50 p-4 rounded-xl border border-rose-100">
+              <div className="flex items-start space-x-3 bg-rose-50/50 p-4 rounded-sm border border-rose-100">
                 <Info className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-rose-800">Browser Security Notice</h4>
@@ -767,13 +822,13 @@ export default function StudentDashboard() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setIsStartModalOpen(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-3 px-4 rounded-xl border border-slate-200 transition-colors"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-3 px-4 rounded-sm border border-slate-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleStartExamNow}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold py-3 px-4 rounded-xl shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold py-3 px-4 rounded-sm shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5"
               >
                 Start Exam Now
               </button>

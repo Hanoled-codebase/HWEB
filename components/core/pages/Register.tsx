@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { HanoledLogo } from '../components/HanoledLogo';
-import { api } from '../services/api';
+import { HanoledLogo } from '../../ui/HanoledLogo';
+import { api } from '../../../services/api';
 import { ArrowRight } from 'lucide-react';
 
 interface RegisterProps {
@@ -71,7 +71,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onNavigat
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
-          <HanoledLogo size={38} variant="stacked" />
+          <HanoledLogo size="lg" variant="blue" />
         </div>
 
         <h2 style={{ fontSize: '1.35rem', textAlign: 'center', marginBottom: '0.25rem' }}>

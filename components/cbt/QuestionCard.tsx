@@ -10,7 +10,9 @@ interface QuestionCardProps {
   totalQuestions: number;
 }
 
-const CBT_BACKEND_URL = process.env.NEXT_PUBLIC_CBT_API_URL?.replace(/\/api$/, "") || "http://localhost:4002";
+import { HCBT_BASE } from "@/lib/api";
+
+const CBT_BACKEND_URL = HCBT_BASE;
 
 export function QuestionCard({
   question,
@@ -22,7 +24,7 @@ export function QuestionCard({
   const labels = ["A", "B", "C", "D"];
 
   return (
-    <div className="bg-slate-800/80 p-7 rounded-3xl border border-slate-700/50 shadow-sm space-y-8">
+    <div className="bg-slate-800/80 p-7 rounded-sm border border-slate-700/50 shadow-sm space-y-8">
       {/* Question Progress + Mark Badge */}
       <div className="flex items-center justify-between">
         <span className="font-mono text-sm">
@@ -42,7 +44,7 @@ export function QuestionCard({
 
       {/* Reading Passage */}
       {question.passage && (
-        <div className="bg-amber-500/5 border border-amber-500/15 p-4 rounded-xl max-h-48 overflow-y-auto">
+        <div className="bg-amber-500/5 border border-amber-500/15 p-4 rounded-sm max-h-48 overflow-y-auto">
           <span className="text-[9px] font-extrabold text-amber-400 uppercase tracking-widest block mb-2">
             Reading Passage
           </span>
@@ -58,7 +60,7 @@ export function QuestionCard({
           <img
             src={`${CBT_BACKEND_URL}${question.imageUrl}`}
             alt="Question diagram"
-            className="max-h-56 object-contain rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-sm"
+            className="max-h-56 object-contain rounded-sm border border-slate-700 bg-slate-900 p-2 shadow-sm"
           />
         </div>
       )}
@@ -71,7 +73,7 @@ export function QuestionCard({
           return (
             <label
               key={optIdx}
-              className={`flex items-center gap-3 p-4 sm:p-5 rounded-2xl cursor-pointer transition-all border ${
+              className={`flex items-center gap-3 p-4 sm:p-5 rounded-sm cursor-pointer transition-all border ${
                  isSelected
                    ? "bg-blue-500/10 border-blue-500/40"
                    : "bg-slate-800/60 border-slate-600/30 hover:bg-slate-700/50 hover:border-slate-500/40"
@@ -92,7 +94,7 @@ export function QuestionCard({
               </span>
 
               {/* Letter badge */}
-              <span className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-extrabold shrink-0 ${
+              <span className={`w-7 h-7 rounded-sm flex items-center justify-center text-xs font-extrabold shrink-0 ${
                 isSelected
                   ? "bg-blue-500 text-white"
                   : "bg-slate-700 text-slate-300"

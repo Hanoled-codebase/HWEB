@@ -23,6 +23,8 @@ import {
   Info,
   Calendar,
   Layers,
+  Clock,
+  MoreHorizontal,
   ChevronRight,
   Loader2,
   X,
@@ -30,15 +32,19 @@ import {
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
+import EdgeAppliancesTab from "./EdgeAppliancesTab";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const orgSlug = searchParams.get("orgSlug") || "hanoled-default";
 
   // Navigation
-  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students" | "appliances">("overview");
 
   // Core Data States
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [orgSubjects, setOrgSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
+  const isAdmin = !!currentUser?.isAdmin;
   const [stats, setStats] = useState<any>({
     totalExams: 0,
     publishedExams: 0,
@@ -64,6 +70,7 @@ export default function AdminDashboard() {
     duration: 45,
     passMark: 50,
     examType: "school",
+    subjectId: "",
     ssceBoard: "waec",
     ssceYear: new Date().getFullYear() - 1,
     shuffleQuestions: true
@@ -258,6 +265,14 @@ export default function AdminDashboard() {
   const loadAdminData = async () => {
     setLoading(true);
     try {
+      // Resolve the current user's CBT roles first — the UI is role-driven
+      try {
+        const me = await cbtApi.checkAuth();
+        setCurrentUser(me?.user || null);
+      } catch (authErr) {
+        console.error("CBT auth check failed:", authErr);
+      }
+
       const statsData = await cbtApi.getAdminStats(orgSlug);
       setStats(statsData);
 
@@ -269,6 +284,14 @@ export default function AdminDashboard() {
 
       const classesData = await cbtApi.getClasses(orgSlug);
       setClasses(classesData);
+
+      // Subjects visible to this user (admins: all org subjects; teachers: assigned only)
+      try {
+        const subjectsData = await cbtApi.getOrgSubjects(orgSlug);
+        setOrgSubjects(Array.isArray(subjectsData) ? subjectsData : []);
+      } catch (err) {
+        console.error("Failed to load subjects:", err);
+      }
     } catch (err: any) {
       console.error("Admin Load Error:", err);
       toast.error(err.message || "Failed to load admin panel data. Make sure the database is migrated and backend is running.");
@@ -336,6 +359,10 @@ export default function AdminDashboard() {
       toast.error("Exam title is required");
       return;
     }
+    if (!isAdmin && !newExamData.subjectId) {
+      toast.error("Select your assigned subject for this assessment");
+      return;
+    }
 
     setCreatingExam(true);
     try {
@@ -345,6 +372,7 @@ export default function AdminDashboard() {
         duration: Number(newExamData.duration),
         passMark: Number(newExamData.passMark),
         examType: newExamData.examType,
+        subjectId: newExamData.subjectId || undefined,
         shuffleQuestions: newExamData.shuffleQuestions
       };
 
@@ -355,8 +383,8 @@ export default function AdminDashboard() {
 
       const created = await cbtApi.createExam(payload);
 
-      // Auto-assign if target selected
-      if (assignTarget !== "none") {
+      // Auto-assign if target selected (admins only — publishing/assignment is admin-gated)
+      if (isAdmin && assignTarget !== "none") {
         const assignPayload: any = {};
         if (assignTarget === "class") {
           assignPayload.classLevelId = targetClassId;
@@ -366,7 +394,7 @@ export default function AdminDashboard() {
         await cbtApi.assignExam(created.id, assignPayload);
         toast.success(`Exam created and assigned successfully!`);
       } else {
-        toast.success(`Exam "${newExamData.title}" created successfully!`);
+        toast.success(isAdmin ? `Exam "${newExamData.title}" created successfully!` : `Draft "${newExamData.title}" saved. An admin can review and publish it.`);
       }
       
       // Reset form and reload
@@ -377,6 +405,7 @@ export default function AdminDashboard() {
         duration: 45,
         passMark: 50,
         examType: "school",
+        subjectId: "",
         ssceBoard: "waec",
         ssceYear: new Date().getFullYear() - 1,
         shuffleQuestions: true
@@ -623,27 +652,26 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
       <Toaster position="top-right" richColors />
 
-      {/* Admin Header */}
-      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
           <Logo className="w-8 h-8" badgeText="ADMIN" textColor="text-[#0B1220]" />
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2 bg-[#1447E6]/5 px-3.5 py-1.5 rounded-full border border-[#1447E6]/20">
-              <span className="h-2 w-2 rounded-full bg-[#1447E6] animate-pulse"></span>
-              <span className="text-[10px] font-extrabold text-[#1447E6] uppercase tracking-widest">
-                ADMIN PRIVILEGES
+          <div className="flex items-center gap-6">
+            <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
+              <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-indigo-400"}`}></span>
+              <span className="text-[12px] font-semibold text-slate-500">
+                {isAdmin ? "Admin Privileges" : "Teacher Access"}
               </span>
             </div>
             <a
               href="http://localhost:3000"
-              className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 px-3.5 py-1.5 rounded-lg transition-all"
+              className="text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-4 py-2 rounded-[10px] transition-all shadow-sm"
             >
               Back to Suite
             </a>
             <button
               onClick={() => { cbtApi.logout(); window.location.assign("/"); }}
-              className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 px-3.5 py-1.5 rounded-lg transition-all"
+              className="text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-all"
             >
               Sign Out
             </button>
@@ -687,7 +715,7 @@ export default function AdminDashboard() {
                 }`}>
                   {designerExam.status?.toUpperCase() || "DRAFT"}
                 </span>
-                {designerExam.status !== "published" && (
+                {isAdmin && designerExam.status !== "published" && (
                   <button
                     onClick={() => {
                       const qCount = designerQuestions.length;
@@ -708,6 +736,12 @@ export default function AdminDashboard() {
                     <span>Publish</span>
                   </button>
                 )}
+                {designerExam.status !== "published" && !isAdmin && (
+                  <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                    Draft — awaiting admin approval
+                  </span>
+                )}
+                {isAdmin && (
                 <button
                   onClick={() => {
                     setAssignExamId(designerExam.id);
@@ -721,6 +755,7 @@ export default function AdminDashboard() {
                   <Users className="w-3.5 h-3.5" />
                   <span>Assign</span>
                 </button>
+                )}
                 <button
                   onClick={handleCloseDesigner}
                   className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm"
@@ -1311,6 +1346,14 @@ export default function AdminDashboard() {
                 >
                   Grade Auditor
                 </button>
+                <button
+                  onClick={() => setActiveTab("appliances")}
+                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                    activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Edge Appliances
+                </button>
               </div>
 
               <button
@@ -1410,68 +1453,62 @@ export default function AdminDashboard() {
                       <div
                         key={exam.id}
                         onClick={() => handleOpenResults(exam)}
-                        className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group relative"
+                        className="bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden p-6 flex flex-col justify-between"
+                        style={{ minHeight: "220px" }}
                       >
-                        {/* Published badge pill */}
-                        {exam.status === "published" && (
-                          <span className="absolute top-5 right-5 inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 z-10">
-                            Published
-                          </span>
-                        )}
-
-                        {/* Publish button — hidden until hover, only for drafts */}
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                          {exam.status === "draft" && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handlePublish(exam.id, exam._count?.questions); }}
-                              disabled={publishingId === exam.id}
-                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all disabled:opacity-50"
-                              title={exam._count?.questions < 5 ? "Need at least 5 questions" : "Publish"}
-                            >
-                              {publishingId === exam.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                        <div>
+                          {/* Top row: title & More icon */}
+                          <div className="flex justify-between items-start gap-4">
+                            <h4 className="text-[15px] font-bold text-slate-900 leading-snug">
+                              {exam.title}
+                            </h4>
+                            <button className="text-slate-300 hover:text-slate-500 flex-shrink-0">
+                              <MoreHorizontal className="w-5 h-5" />
                             </button>
-                          )}
+                          </div>
+                          
+                          <p className="text-[13px] italic text-slate-400 mt-3 line-clamp-2 pr-4">
+                            {exam.description || "no description"}
+                          </p>
+                          
+                          {/* Status Badge */}
+                          <div className="mt-4">
+                            {exam.status === "published" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Published
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                Draft
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="p-5">
-                          {/* Top row: title */}
-                          <div className="flex justify-between items-start mb-1">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-slate-900 leading-snug truncate">
-                                {exam.title}
-                              </h4>
-                              <p className="text-sm italic text-slate-400 mt-0.5 truncate">
-                                {exam.description || "no description"}
-                              </p>
-                            </div>
+                        {/* Bottom row: meta left + edit right */}
+                        <div className="flex items-center justify-between mt-6">
+                          <div className="flex items-center gap-4 text-[12px] font-medium text-slate-400">
+                            <span className="flex items-center gap-1.5">
+                              <Layers className="w-4 h-4" />
+                              {exam._count?.questions || 0} Q
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-4 h-4" />
+                              {exam.duration} min
+                            </span>
                           </div>
 
-                          {/* Bottom row: meta left + edit right */}
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="flex items-center gap-4 text-sm font-medium text-slate-700">
-                              <span className="inline-flex items-center gap-1.5">
-                                <Layers className="w-4 h-4 text-slate-400" />
-                                {exam._count?.questions || 0} Que..
-                              </span>
-                              <span className="inline-flex items-center gap-1.5">
-                                <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10"/>
-                                  <polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                                {exam.duration} min
-                              </span>
-                            </div>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDesigner(exam);
-                              }}
-                              className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-4 py-2 rounded-lg transition-colors"
-                            >
-                              Edit Test
-                            </button>
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDesigner(exam);
+                            }}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[12px] px-4 py-2 rounded-[10px] transition-colors"
+                          >
+                            Edit Test
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1591,6 +1628,11 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* EDGE APPLIANCES TAB */}
+            {activeTab === "appliances" && (
+              <EdgeAppliancesTab orgSlug={orgSlug} exams={exams} />
+            )}
+
           </div>
         )}
       </main>
@@ -1647,6 +1689,32 @@ export default function AdminDashboard() {
                   <option value="school">School Assessment</option>
                   <option value="ssce">SSCE Board Practice Assessment</option>
                 </select>
+              </div>
+
+              {/* Subject selector — teachers are scoped to their assigned subjects */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Subject {!isAdmin && <span className="text-rose-500">*</span>}
+                </label>
+                <select
+                  value={newExamData.subjectId}
+                  onChange={(e) => setNewExamData((prev) => ({ ...prev, subjectId: e.target.value }))}
+                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                >
+                  <option value="">
+                    {orgSubjects.length === 0 ? "No subjects available" : isAdmin ? "Select subject (optional)" : "Select your subject"}
+                  </option>
+                  {orgSubjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{s.code ? ` (${s.code})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {!isAdmin && orgSubjects.length === 0 && (
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    No subjects are assigned to you yet. Ask an admin to assign subjects via HCORE.
+                  </p>
+                )}
               </div>
 
               {/* Conditionally render SSCE parameters */}
@@ -1714,7 +1782,8 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              {/* Assignment Target Selector */}
+              {/* Assignment Target Selector (admins only) */}
+              {isAdmin && (
               <div className="border-t border-slate-100 pt-4 mt-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Auto-Assign After Creation (Optional)</label>
                 <div className="flex space-x-2 mb-3">
@@ -1804,12 +1873,13 @@ export default function AdminDashboard() {
                           </select>
                         )}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                     )}
+                   </div>
+                 )}
+               </div>
+               )}
 
-              <div className="flex items-center space-x-3 pt-4">
+               <div className="flex items-center space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}

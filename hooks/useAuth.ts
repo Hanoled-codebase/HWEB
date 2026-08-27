@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { apiFetch } from "@/lib/api";
+import { request, HCORE_BASE } from "@/lib/api";
 import { useOrganization } from "@/hooks/useOrganization";
 
 export interface User {
@@ -42,7 +42,7 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     try {
       set({ isLoading: true, error: null });
-      const rawUser = await apiFetch<any>("/me");
+      const rawUser = await request<any>(HCORE_BASE, "/v1/me");
       const user = {
         ...rawUser,
         name: rawUser.displayName,
@@ -81,7 +81,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ isLoading: true, isInitialized: true });
     try {
-      await apiFetch("/auth/logout", { method: "POST" });
+      await request(HCORE_BASE, "/v1/auth/logout", { method: "POST" });
     } catch (e) {
       console.error("Logout failed", e);
     } finally {

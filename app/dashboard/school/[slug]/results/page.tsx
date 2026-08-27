@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, HSMS_BASE } from "@/lib/api";
 import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
@@ -355,8 +355,7 @@ export default function ResultsPage() {
 
     try {
       setIsDownloadingBatch(true);
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+      const baseUrl = HSMS_BASE;
       const token = localStorage.getItem("accessToken") || "";
       const res = await fetch(
         `${baseUrl}/export/${currentOrg.slug}/report-card-bundle/${targetClassId}?term=${encodeURIComponent(
@@ -881,9 +880,7 @@ export default function ResultsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                const url = `${
-                                  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
-                                }/export/${currentOrg.slug}/report-card/${group.student.id}?term=${encodeURIComponent(exportTerm)}&academicYear=${encodeURIComponent(exportYear)}`;
+                                const url = `${HSMS_BASE}/export/${currentOrg.slug}/report-card/${group.student.id}?term=${encodeURIComponent(exportTerm)}&academicYear=${encodeURIComponent(exportYear)}`;
                                 window.open(url, "_blank");
                               }}
                               className="rounded-md p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"

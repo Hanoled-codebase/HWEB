@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, request, HCORE_BASE } from "@/lib/api";
 
 export interface Organization {
   id: string;
@@ -122,7 +122,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
   fetchOrgs: async () => {
     try {
       set({ isLoading: true, error: null });
-      const res = await apiFetch<any>("/me/contexts");
+      const res = await request<any>(HCORE_BASE, "/v1/me/contexts");
       const orgs = res.organizations || [];
       set({
         organizations: orgs.map(normalizeOrganization),
@@ -143,24 +143,37 @@ export const useOrganization = create<OrgState>((set, get) => ({
     try {
       set({ isLoading: true, error: null, isStudent: false, currentMember: null, currentStudent: null });
       // Determine the org
-      const orgs = get().organizations;
-      let org = orgs.find((o) => o.slug === slug);
-      if (!org && orgs.length === 0) {
-        // Fetch orgs if we haven't yet
-        const res = await apiFetch<any>("/me/contexts");
-        const fetchOrgs = res.organizations || [];
-        const normalizedOrgs = fetchOrgs.map(normalizeOrganization);
-        set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
-        org = normalizedOrgs.find((o) => o.slug === slug);
+      let org = get().organizations.find((o) => o.slug === slug);
+      if (!org) {
+        // Fetch latest contexts from HCORE
+        try {
+          const res = await request<any>(HCORE_BASE, "/v1/me/contexts");
+          const fetchOrgs = res.organizations || [];
+          const normalizedOrgs = fetchOrgs.map(normalizeOrganization);
+          set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
+          org = normalizedOrgs.find((o: Organization) => o.slug === slug);
+        } catch (e) {
+          console.warn("Context fetch in setCurrentOrg failed:", e);
+        }
       }
 
       if (!org) {
-        throw new Error("Organization not found");
+        // Build fallback org structure so UI doesn't get stuck in an infinite redirect loop
+        const formattedName = slug
+          .split("-")
+          .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+          .join(" ");
+        org = {
+          id: slug,
+          name: formattedName,
+          slug: slug,
+          counts: { students: 0, teachers: 0, parents: 0 },
+        };
       }
 
       // First try member profile (for admin/teacher/parent users)
       try {
-        const member = await apiFetch<Member>(`/organizations/${slug}/member-profile`, { showErrorToast: false });
+        const member = await request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false });
         const rawAssignments = member.teachingAssignments || (member as any).memberAssignments || [];
         const normalizedAssignments = rawAssignments.map((a: any) => ({
           classLevel: a.classLevel || (a.classLevelId ? { id: a.classLevelId, name: a.classLevelName } : null),
@@ -183,7 +196,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
 
       // Try student profile (for students)
       try {
-        const profile = await apiFetch<StudentProfile>(`/organizations/${slug}/student-profile`, { showErrorToast: false });
+        const profile = await request<StudentProfile>(HCORE_BASE, `/v1/directory/organizations/${slug}/student-profile`, { showErrorToast: false });
         set({
           currentOrg: profile.org ? normalizeOrganization(profile.org as any) : org,
           currentStudent: profile.student,
@@ -196,7 +209,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
         console.warn("Member endpoints missing, using generic fallback for HCORE", err);
         set({
            currentOrg: org,
-           currentMember: { id: "temp", user: null, organization: org, role: "owner", assignedClasses: [] },
+           currentMember: { id: "temp", user: null, organization: org, role: "owner", assignedClasses: [], assignedStudents: [] },
            isStudent: false,
            isLoading: false,
         });
@@ -209,7 +222,6 @@ export const useOrganization = create<OrgState>((set, get) => ({
             ? error.message
             : "Failed to load organization",
         isLoading: false,
-        // Don't null out currentOrg — prevents infinite re-render loop in layout init
       });
     }
   },

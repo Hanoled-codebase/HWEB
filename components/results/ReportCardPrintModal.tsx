@@ -3,7 +3,7 @@
 import React, { useRef } from "react";
 import { Printer, Download, X, Award, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { API_URL } from "@/lib/api";
+import { HSMS_BASE } from "@/lib/api";
 
 export interface ReportCardStudent {
   id: string;
@@ -82,7 +82,7 @@ export default function ReportCardPrintModal({
               ?.split("=")[1]
           : null;
 
-      const url = `${API_URL}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
+      const url = `${HSMS_BASE}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
         term
       )}&academicYear=${encodeURIComponent(academicYear)}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
 
@@ -105,7 +105,7 @@ export default function ReportCardPrintModal({
       a.remove();
       URL.revokeObjectURL(blobUrl);
     } catch {
-      const fallbackUrl = `${API_URL}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
+      const fallbackUrl = `${HSMS_BASE}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
         term
       )}&academicYear=${encodeURIComponent(academicYear)}`;
       window.open(fallbackUrl, "_blank");

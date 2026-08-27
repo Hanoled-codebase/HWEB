@@ -32,11 +32,22 @@ export default function DashboardPage() {
     if (!user || authLoading || isLoading || !hasFetchedOrganizations) return;
 
     if (organizations.length > 0) {
-      router.replace(`/dashboard/school/${organizations[0].slug}`);
+      const primaryOrg = organizations[0];
+      const subscribed = (primaryOrg as any).subscribed || [];
+      const hasHsms = subscribed.length === 0 || subscribed.includes("HSMS");
+      const hasHcbt = subscribed.includes("HCBT");
+
+      if (!hasHsms && hasHcbt) {
+        router.replace("/cbt/admin");
+      } else if (hasHsms) {
+        router.replace(`/dashboard/school/${primaryOrg.slug}`);
+      } else {
+        router.replace("/welcome");
+      }
     } else if (!error) {
       router.replace("/onboarding");
     }
-  }, [authLoading, error, hasFetchedOrganizations, isLoading, organizations, user]);
+  }, [authLoading, error, hasFetchedOrganizations, isLoading, organizations, user, router]);
 
   if (error && hasFetchedOrganizations && !isLoading && user) {
     return (

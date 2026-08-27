@@ -3,7 +3,47 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const API_BASE = process.env.NEXT_PUBLIC_HCORE_API_URL || 'http://localhost:4000';
+const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
+const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
+
+/**
+ * After a successful HCORE login, exchange the HCORE identity for a HCBT product session.
+ * This sets the hcbt_session cookie so CBT pages are immediately authenticated.
+ */
+async function exchangeHcbtSession(
+  token: string,
+  principalId?: string,
+  email?: string,
+  extra?: { roles?: string[]; orgSlug?: string; studentId?: string; learnerId?: string }
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${HCBT_BASE}/api/auth/callback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        principalId,
+        email,
+        roles: extra?.roles,
+        orgSlug: extra?.orgSlug,
+        studentId: extra?.studentId,
+        learnerId: extra?.learnerId,
+      }),
+    });
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => ({}));
+    if (body.token) return body.token;
+    // Extract set-cookie from the HCBT response
+    const setCookie = res.headers.get('set-cookie');
+    if (setCookie) {
+      const match = setCookie.match(/hcbt_session=([^;]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function loginAction(prevState: any, formData: FormData) {
   const identifierType = formData.get('identifierType') as string;
@@ -11,8 +51,10 @@ export async function loginAction(prevState: any, formData: FormData) {
   const password = formData.get('password') as string;
   const organizationSlugOrId = formData.get('organizationSlugOrId') as string;
 
+  const callbackUrl = formData.get('callbackUrl') as string | null;
+
   try {
-    const res = await fetch(`${API_BASE}/v1/auth/login`, {
+    const res = await fetch(`${HCORE_BASE}/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -32,14 +74,102 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     if (data.token) {
       const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      // Set HCORE session cookie
       cookieStore.set('hcore_session', data.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
-        maxAge: 3600, // 1 hour
+        maxAge: 3600 * 24 * 7,
         path: '/',
       });
-      return { success: true, redirectUrl: '/dashboard' }; // or /cbt/student based on roles
+
+      // Exchange for HCBT session with full role and student context
+      const hcbtToken = await exchangeHcbtSession(
+        data.token,
+        data.principal?.id || data.user?.id || data.principalId,
+        data.principal?.email || identifier,
+        {
+          roles: data.roles,
+          orgSlug: organizationSlugOrId || data.activeOrganization?.slug,
+          studentId: data.studentId,
+          learnerId: data.learnerId,
+        }
+      );
+      if (hcbtToken) {
+        cookieStore.set('hcbt_session', hcbtToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 3600 * 24 * 7,
+          path: '/',
+        });
+      }
+
+      // Query HCORE for real-time active user context & subscriptions
+      let allowedPlatforms: string[] = []; 
+      try {
+        const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
+          headers: { 'Authorization': `Bearer ${data.token}` },
+          cache: 'no-store',
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          const primaryOrg = meData.organizations?.[0];
+          if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
+            allowedPlatforms = primaryOrg.subscribed;
+          }
+        }
+      } catch (e) {
+        console.error('Context fetch error in loginAction:', e);
+      }
+
+      // If still empty, check existing cookie
+      if (allowedPlatforms.length === 0) {
+        const existingCookie = cookieStore.get('hweb_allowed_platforms')?.value;
+        if (existingCookie) {
+          allowedPlatforms = existingCookie.split(',').filter(Boolean);
+        } else {
+          allowedPlatforms = ['HSMS', 'HCBT'];
+        }
+      }
+
+      // Set cookie for strict frontend route enforcement
+      cookieStore.set('hweb_allowed_platforms', allowedPlatforms.join(','), {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 3600 * 24 * 7,
+        path: '/',
+      });
+
+      if (!allowedPlatforms.includes('HCBT')) {
+        // Clear any old HCBT session if org doesn't have CBT entitlement
+        cookieStore.delete('hcbt_session');
+      }
+
+      // Track user identity type for routing
+      const isStudent = identifierType === 'ADMISSION_NUMBER';
+      cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : 'STAFF', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 3600 * 24 * 7,
+        path: '/',
+      });
+
+      let redirectUrl = callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/welcome';
+
+      if (isStudent) {
+        // Students ALWAYS land directly in their Student Examination Room!
+        const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
+        redirectUrl = `/cbt/student${orgParam}`;
+      } else if (redirectUrl === '/dashboard' || redirectUrl === '/') {
+        redirectUrl = '/welcome';
+      }
+
+      return { success: true, redirectUrl };
     }
 
     return { error: 'No token received' };
@@ -54,9 +184,14 @@ export async function registerAction(prevState: any, formData: FormData) {
   const password = formData.get('password') as string;
   const organizationName = formData.get('organizationName') as string;
   const organizationSlug = formData.get('organizationSlug') as string;
+  
+  const platforms = formData.getAll('platforms') as string[];
+  if (!platforms || platforms.length === 0) {
+    return { error: 'Please select at least one platform subscription.' };
+  }
 
   try {
-    const res = await fetch(`${API_BASE}/v1/auth/register`, {
+    const res = await fetch(`${HCORE_BASE}/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,18 +211,72 @@ export async function registerAction(prevState: any, formData: FormData) {
 
     if (data.token) {
       const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === 'production';
+      
       cookieStore.set('hcore_session', data.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
         maxAge: 3600,
         path: '/',
       });
-      return { success: true, redirectUrl: '/dashboard' };
+
+      // Cancel any unselected subscriptions automatically provisioned by HCORE
+      const allPlatforms = ['HSMS', 'HCBT'];
+      const orgId = data.organization?.id;
+      
+      if (orgId) {
+        for (const platform of allPlatforms) {
+          if (!platforms.includes(platform)) {
+            // Unselected, so cancel it in HCORE
+            await fetch(`${HCORE_BASE}/v1/organizations/${orgId}/subscriptions/${platform}/cancel`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${data.token}`,
+              },
+            }).catch(console.error); // Best-effort cancel
+          }
+        }
+      }
+
+      // Set frontend enforcement cookie
+      cookieStore.set('hweb_allowed_platforms', platforms.join(','), {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 3600,
+        path: '/',
+      });
+
+      if (platforms.includes('HCBT')) {
+        const hcbtToken = await exchangeHcbtSession(
+          data.token,
+          data.principal?.id,
+          data.principal?.email,
+        );
+        if (hcbtToken) {
+          cookieStore.set('hcbt_session', hcbtToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'lax',
+            maxAge: 3600,
+            path: '/',
+          });
+        }
+      }
+
+      console.log('Registration Platforms Selected:', platforms);
+
+      // Always route to welcome screen post-registration for a playful onboarding experience
+      const redirectUrl = '/welcome';
+      console.log('Redirecting to:', redirectUrl);
+      return { success: true, redirectUrl };
     }
 
     return { error: 'No token received' };
   } catch (err: any) {
+    console.error('Registration Error:', err);
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }
 }
@@ -95,5 +284,9 @@ export async function registerAction(prevState: any, formData: FormData) {
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete('hcore_session');
+  cookieStore.delete('hcbt_session');
+  cookieStore.delete('hweb_allowed_platforms');
+  cookieStore.delete('hweb_user_role');
+  cookieStore.delete('accessToken');
   redirect('/signin');
 }

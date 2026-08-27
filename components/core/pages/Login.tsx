@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { HanoledLogo } from '../components/HanoledLogo';
-import { api } from '../services/api';
+import { HanoledLogo } from '../../ui/HanoledLogo';
+import { api } from '../../../services/api';
 import { Mail, Hash, ArrowRight } from 'lucide-react';
 
 interface LoginProps {
@@ -60,7 +60,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onNavigateRegister
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <HanoledLogo size={42} variant="stacked" />
+          <HanoledLogo size="lg" variant="blue" />
         </div>
 
         <h2 style={{ fontSize: '1.35rem', textAlign: 'center', marginBottom: '0.25rem' }}>

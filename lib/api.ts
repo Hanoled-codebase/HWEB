@@ -1,45 +1,31 @@
 import { toast } from "sonner";
 
-function getApiUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      return "https://hanoled-backend.vercel.app/api";
-    }
-  }
-  return "http://localhost:3001/api";
-}
+export const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
+export const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
+export const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
 
-export const API_URL = getApiUrl();
-
-type RequestOptions = RequestInit & {
+export type RequestOptions = RequestInit & {
   params?: Record<string, string | number | boolean | undefined>;
-  showErrorToast?: boolean; // Option to disable auto-toast for specific calls
+  showErrorToast?: boolean;
 };
 
 export interface ApiErrorResponse {
   error: string;
   message?: string;
+  code?: string;
+  issues?: unknown[];
 }
 
 export type ApiFetchError = Error & {
   status?: number;
   details?: ApiErrorResponse | unknown;
+  code?: string;
 };
 
 function buildHeaders(headers: HeadersInit | undefined, isFormData: boolean) {
   const mergedHeaders = new Headers();
-
-  if (!isFormData) {
-    mergedHeaders.set("Content-Type", "application/json");
-  }
-
-  if (!headers) {
-    return mergedHeaders;
-  }
+  if (!isFormData) mergedHeaders.set("Content-Type", "application/json");
+  if (!headers) return mergedHeaders;
 
   const appendHeader = (key: string, value: string | undefined | null) => {
     if (value == null) return;
@@ -50,27 +36,21 @@ function buildHeaders(headers: HeadersInit | undefined, isFormData: boolean) {
     headers.forEach((value, key) => appendHeader(key, value));
     return mergedHeaders;
   }
-
   if (Array.isArray(headers)) {
     headers.forEach(([key, value]) => appendHeader(key, value));
     return mergedHeaders;
   }
-
   Object.entries(headers).forEach(([key, value]) =>
-    appendHeader(key, value as string | undefined | null),
+    appendHeader(key, value as string | undefined | null)
   );
 
   return mergedHeaders;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestOptions = {},
-  retry = true,
-): Promise<T> {
+export async function request<T>(baseUrl: string, endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, showErrorToast = true, ...rest } = options;
 
-  let url = `${API_URL}${path}`;
+  let url = `${baseUrl}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -90,62 +70,61 @@ export async function apiFetch<T>(
       ...rest,
     });
 
-    // Handle 401 Unauthorized - Attempt refresh
-    const isAuthPath = ["/auth/login", "/auth/signup", "/auth/refresh", "/auth/profile", "/auth/logout"].some((p) =>
-      path.includes(p)
+    // Automatic session refresh attempt for HCORE
+    const isAuthPath = ["/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh", "/auth/logout"].some((p) =>
+      endpoint.includes(p)
     );
 
-    if (response.status === 401 && retry && !isAuthPath) {
-      try {
-        const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
-
-        if (refreshRes.ok) {
-          return apiFetch<T>(path, options, false);
-        }
-      } catch (e) {
-        console.error("Token refresh failed:", e);
-      }
-
-      // Redirect to login if refresh fails and not already on auth pages
-      if (typeof window !== "undefined") {
-        const currentPath = window.location.pathname;
-        const authRoutes = ["/signin", "/signup", "/forgot-password", "/reset-password", "/verify", "/accept-invite"];
-        if (!authRoutes.some((route) => currentPath.startsWith(route))) {
-          window.location.href = "/signin";
-        }
-      }
-    }
-
-    const data = await response.json().catch(() => ({}));
-
     if (!response.ok) {
-      const errMsg =
-        typeof data.error === "string"
-          ? data.error
-          : data.error?.message || data.message || response.statusText;
-      const error: ApiFetchError = new Error(errMsg);
+      if (response.status === 401 && !isAuthPath) {
+        try {
+          const refreshRes = await fetch(`${HCORE_BASE}/v1/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+          });
+
+          if (refreshRes.ok) {
+            return request<T>(baseUrl, endpoint, options); // Retry original request
+          }
+        } catch (e) {
+          console.error("Token refresh failed:", e);
+        }
+
+        // Redirect to login if refresh fails
+        if (typeof window !== "undefined") {
+          const currentPath = window.location.pathname;
+          const publicRoutes = ["/signin", "/signup", "/forgot-password", "/reset-password", "/verify", "/accept-invite"];
+          if (!publicRoutes.some((route) => currentPath.startsWith(route))) {
+            window.location.href = "/signin";
+          }
+        }
+      }
+
+      // Handle standard error schema
+      const data = await response.json().catch(() => ({}));
+      const errMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || response.statusText;
+      const error = new Error(errMsg) as ApiFetchError;
       error.status = response.status;
-      error.details = data.details || data;
-      
-      // Auto-toast error for non-401 errors (401 is handled by auth redirects)
+      error.code = data.code;
+      error.details = data.issues || data.details || data;
+
       if (showErrorToast && response.status !== 401) {
         toast.error(error.message || "An unexpected error occurred");
       }
-      
       throw error;
     }
 
-    return data as T;
+    return await response.json().catch(() => ({})) as T;
   } catch (error: unknown) {
     const apiError = error as ApiFetchError;
-    // Only toast for genuine network errors (no status means no HTTP response was received).
-    // HTTP errors (4xx/5xx) are already toasted in the !response.ok block above.
     if (showErrorToast && !apiError.status && !(error instanceof Error && apiError.status === 401)) {
-       toast.error(apiError.message || "Connection failed. Please check your internet.");
+      toast.error(apiError.message || "Connection failed. Please check your internet.");
     }
     throw error;
   }
+}
+
+// Backward compatibility helper for HSMS-focused legacy components
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return request<T>(HSMS_BASE, path, options);
 }

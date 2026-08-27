@@ -41,7 +41,7 @@ export function ExamCard({
     : null;
 
   return (
-    <div className={`group relative rounded-2xl border border-slate-200/70 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden ${
+    <div className={`group relative rounded-sm border border-slate-200/70 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden ${
       isSubmitted ? "bg-green-50/20" : "bg-white"
     }`}>
       <div className="p-5 flex flex-col flex-1">
@@ -83,7 +83,7 @@ export function ExamCard({
 
         {/* Score display for completed exams */}
         {isSubmitted && exam.myResult && (
-          <div className="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-2.5">
+          <div className="mt-3 flex items-center gap-3 rounded-sm px-3.5 py-2.5">
             <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
               <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#d1d5db" strokeWidth="3" />
@@ -134,7 +134,7 @@ export function ExamCard({
           {isSubmitted ? (
             <button
               onClick={() => onViewResult(exam.id)}
-              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition-colors sm:w-auto min-h-[44px]"
+              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-sm transition-colors sm:w-auto min-h-[44px]"
             >
               <span>View Score</span>
               <ArrowRight className="w-3 h-3" />
@@ -143,7 +143,7 @@ export function ExamCard({
             <button
               disabled={isStarting}
               onClick={() => onInitiateStart(exam)}
-              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all duration-200 w-full sm:w-auto ${
+              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm shadow-sm transition-all duration-200 w-full sm:w-auto ${
                 isStarting
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                   : isStarted

@@ -2,13 +2,14 @@ import { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
   Clock,
   FileText,
   Monitor,
   ShieldCheck,
   Shuffle,
   Zap,
+  CheckCircle2,
+  Rocket
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
@@ -24,81 +25,113 @@ const capabilities = [
     icon: FileText,
     title: "Question Bank",
     description:
-      "Build a rich question bank organised by subject, topic, and difficulty level. Import questions from spreadsheets or create them directly in the editor.",
+      "Build a rich question bank organised by subject, topic, and difficulty level. Import questions from spreadsheets or create them directly.",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Shuffle,
     title: "Randomised Papers",
     description:
       "Automatically shuffle questions and answer options for every student so no two papers are the same. Minimise cheating effortlessly.",
+    color: "bg-[#f6c24e]/10 text-[#937400]",
   },
   {
     icon: Clock,
     title: "Timed Exams",
     description:
       "Set per-exam or per-question time limits. The countdown timer is always visible to students, and the exam auto-submits when time runs out.",
+    color: "bg-[#ff7b92]/10 text-rose-600",
   },
   {
     icon: Zap,
     title: "Instant Grading",
     description:
       "Objective questions are graded the moment a student submits. Results are available to teachers immediately — no manual marking needed.",
+    color: "bg-[#4cd988]/10 text-emerald-700",
   },
   {
     icon: Monitor,
     title: "Any Device",
     description:
       "Students can take exams on phones, tablets, laptops, or desktops. The interface adapts to every screen size for a seamless experience.",
+    color: "bg-[#9fb0ff]/20 text-indigo-700",
   },
   {
     icon: ShieldCheck,
     title: "Anti-Cheat Measures",
     description:
       "Full-screen mode, tab-switch detection, and copy-paste blocking help maintain exam integrity in both supervised and remote settings.",
+    color: "bg-emerald-500/10 text-emerald-700",
   },
 ];
 
 export default function HcbtPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white">
       <MarketingHeader />
 
-      <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/40 via-slate-50/50 to-white px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white px-4 py-1.5 text-sm font-semibold text-[#1447E6] shadow-sm">
-              <Monitor className="h-4 w-4" /> Exam Engine
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        {/* HERO SECTION */}
+        <section className="relative overflow-hidden rounded-[3rem] bg-slate-900 px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center text-white">
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#5e41ff]/30 blur-3xl" />
+          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#f6c24e]/20 blur-3xl" />
+          
+          <div className="absolute top-20 right-10 rotate-12 hidden md:block">
+             <div className="bg-red-500/20 text-red-400 font-bold px-4 py-2 rounded-2xl border border-red-500/50 shadow-xl flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                Anti-Cheat Active
+             </div>
+          </div>
+          
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-4 py-1.5 shadow-sm transform -rotate-2 hover:rotate-0 transition-transform cursor-default">
+              <Rocket className="h-4 w-4 text-[#f0c34b]" />
+              <span className="text-sm font-bold text-[#f0c34b]">Exam Engine</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              HCBT — Computer-Based Testing,{" "}
-              <span className="text-[#1447E6]">made simple</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-500">
+            
+            <div className="space-y-4">
+              <h1 className="text-[2rem] font-bold leading-[1.15] text-white sm:text-5xl md:text-6xl">
+                HCBT — Computer-Based Testing, <br />
+                <span className="text-[#f0c34b]">made simple</span>
+              </h1>
+              {/* Wavy accent line under title */}
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#1447E6] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <p className="text-lg leading-relaxed text-slate-300 max-w-2xl mx-auto font-medium">
               Create, administer, and grade exams digitally. Save hours of
               manual marking, eliminate paper costs, and give students a modern
               exam experience.
             </p>
-            <div className="mt-8">
+
+            <div className="pt-4 flex justify-center">
               <Link
                 href="/#contact-quote"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/25 hover:shadow-xl"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1447E6] px-8 font-bold text-white transition-all hover:bg-[#0b33b3] hover:-translate-y-1 hover:shadow-lg shadow-[#1447E6]/30"
               >
-                Request a Demo <ArrowRight className="h-4 w-4" />
+                Request a Demo <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
           </div>
         </section>
 
         {/* How it works */}
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h2 className="text-3xl font-bold text-slate-900">How it works</h2>
-            <p className="mt-3 text-slate-500">
-              Three steps from question bank to graded results.
+        <section className="mt-16">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1447E6]/10 text-[#1447E6] px-3.5 py-1.5 text-xs font-bold mb-3">
+              Workflow
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
+              How it works
+            </h2>
+            <p className="mt-3 text-slate-500 font-semibold">
+              Three simple steps from question bank to graded results.
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3">
+          
+          <div className="grid gap-6 md:grid-cols-3">
             {[
               {
                 step: "01",
@@ -118,71 +151,86 @@ export default function HcbtPage() {
             ].map((item) => (
               <div
                 key={item.step}
-                className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm relative overflow-hidden"
+                className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md overflow-hidden"
               >
-                <span className="text-4xl font-black text-[#1447E6]/15">
+                <span className="absolute -right-4 -top-4 text-8xl font-black text-[#1447E6]/5 group-hover:text-[#1447E6]/10 transition-colors">
                   {item.step}
                 </span>
-                <h3 className="mt-4 text-lg font-bold text-slate-900">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                  {item.desc}
-                </p>
+                <div className="relative z-10">
+                  <span className="text-3xl font-black text-[#1447E6] mb-4 block">
+                    {item.step}
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900 mt-4">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-500 font-medium">
+                    {item.desc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
         {/* Capabilities Grid */}
-        <section className="bg-slate-50/60 px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-12 text-center">
-              <h2 className="text-3xl font-bold text-slate-900">
-                Key Capabilities
-              </h2>
+        <section className="mt-16">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#f6c24e]/10 text-[#937400] px-3.5 py-1.5 text-xs font-bold mb-3">
+              Features
             </div>
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {capabilities.map((cap) => {
-                const Icon = cap.icon;
-                return (
-                  <div
-                    key={cap.title}
-                    className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm hover:border-[#1447E6]/30 transition-all"
-                  >
-                    <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1447E6]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">
-                      {cap.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {cap.description}
-                    </p>
+            <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
+              Key Capabilities
+            </h2>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {capabilities.map((cap) => {
+              const Icon = cap.icon;
+              return (
+                <div
+                  key={cap.title}
+                  className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${cap.color}`}>
+                    <Icon className="h-7 w-7" />
                   </div>
-                );
-              })}
-            </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {cap.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-500 font-medium">
+                    {cap.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
         {/* CTA */}
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-[#0B1220] px-8 py-16 text-center shadow-xl">
-            <h2 className="text-3xl font-bold text-white">
-              Ditch the paper. Go digital.
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-slate-400">
-              Start running computer-based exams in your school today with
-              Hanoled&apos;s HCBT engine.
-            </p>
-            <div className="mt-8">
-              <Link
-                href="/#contact-quote"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/30"
-              >
-                Book a Demo <ArrowRight className="h-4 w-4" />
-              </Link>
+        <section className="mt-16">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#6e4ef6] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
+            <svg className="absolute top-0 right-0 w-full h-full text-white/5 opacity-50" viewBox="0 0 400 400" fill="none">
+               <circle cx="350" cy="50" r="150" stroke="currentColor" strokeWidth="40" />
+               <circle cx="350" cy="50" r="250" stroke="currentColor" strokeWidth="20" strokeDasharray="20 20" />
+            </svg>
+            
+            <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+              <h2 className="text-3xl font-extrabold text-white sm:text-5xl leading-tight">
+                Ditch the paper. Go digital.
+              </h2>
+              <p className="text-lg text-white/80 font-medium">
+                Start running computer-based exams in your school today with
+                Hanoled&apos;s HCBT engine.
+              </p>
+              
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link
+                  href="/#contact-quote"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 font-bold text-[#6e4ef6] transition-all hover:bg-slate-100 hover:-translate-y-1 hover:shadow-lg"
+                >
+                  Book a Demo <ArrowRight className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
           </div>
         </section>

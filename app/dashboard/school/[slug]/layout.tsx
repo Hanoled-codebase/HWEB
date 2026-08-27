@@ -156,6 +156,8 @@ export default function DashboardLayout({
     logout,
   } = useAuth();
   const [isInitializing, setIsInitializing] = useState(true);
+  const lastLoadedSlug = useRef<string | null>(null);
+
   useEffect(() => {
     if (!isInitialized && !authLoading) {
       void checkAuth();
@@ -177,7 +179,8 @@ export default function DashboardLayout({
         return;
       }
 
-      if (slug) {
+      if (slug && lastLoadedSlug.current !== slug) {
+        lastLoadedSlug.current = slug;
         try {
           if (!currentOrg || currentOrg.slug !== slug) {
             await setCurrentOrg(slug);
@@ -269,12 +272,29 @@ export default function DashboardLayout({
         <AppSidebar />
         <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative overflow-x-hidden">
           {/* Desktop Header */}
-          <header className={`sticky top-0 z-10 hidden md:flex h-14 shrink-0 items-center border-b bg-white/80 backdrop-blur-md px-6`}>
+          <header className="sticky top-0 z-10 hidden md:flex h-14 shrink-0 items-center border-b border-slate-100 bg-white/85 backdrop-blur-md px-6">
             <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
+                <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span>School Operations Dashboard</span>
+                </div>
               </div>
               <div className="flex items-center gap-3">
+                <a
+                  href="/cbt/admin"
+                  className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+                  CBT Console
+                </a>
+                <a
+                  href="/welcome"
+                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-all"
+                >
+                  Suite Hub
+                </a>
                 <NotificationSheet />
               </div>
             </div>
