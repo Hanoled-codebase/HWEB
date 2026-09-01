@@ -97,6 +97,8 @@ export function useSchoolNavItems() {
     const isLibrarian = safeAssignments.some((a) => a.type === "LIBRARIAN");
     const isHOD = safeAssignments.some((a) => a.type === "HOD");
     const isSubjectTeacher = safeAssignments.some((a) => a.type === "SUBJECT_TEACHER");
+    const isClassTeacher = safeAssignments.some((a) => a.type === "CLASS_TEACHER");
+    const isTeacher = isSubjectTeacher || isClassTeacher || isHOD;
     const userRole = role || "member";
 
     const parentHasBusStudent = (currentMember.assignedStudents || []).some(
@@ -107,23 +109,23 @@ export function useSchoolNavItems() {
       { key: "overview", title: "Overview", url: baseUrl, icon: LayoutDashboard, show: true, section: "OVERVIEW" },
       { key: "students", title: "Students", url: `${baseUrl}/students`, icon: GraduationCap, show: isPrivileged || can("students.view") || userRole === "parent", section: "ACADEMICS" },
       { key: "results", title: "Results", url: `${baseUrl}/results`, icon: FileText, show: isPrivileged || userRole === "parent" || can("results.view_own_child") || can("results.view_self"), section: "ACADEMICS" },
-      { key: "classes", title: "Classes", url: `${baseUrl}/classes`, icon: Building2, show: isPrivileged || isSubjectTeacher || isHOD, section: "ACADEMICS" },
-      { key: "subjects", title: "Subjects", url: `${baseUrl}/subjects`, icon: BookOpen, show: isPrivileged || isSubjectTeacher || isHOD, section: "ACADEMICS" },
-      { key: "spreadsheets", title: "Spreadsheets", url: `${baseUrl}/spreadsheets`, icon: TableProperties, show: isPrivileged || isSubjectTeacher || isHOD, section: "ACADEMICS" },
-      { key: "timetable", title: "Timetable", url: `${baseUrl}/timetable`, icon: CalendarDays, show: (isPrivileged || can("timetable.view")) && userRole !== "parent", section: "ACADEMICS" },
-      { key: "attendance", title: "Attendance", url: `${baseUrl}/attendance`, icon: ClipboardCheck, show: (isPrivileged || can("attendance.view")) && userRole !== "parent", section: "ACADEMICS" },
+      { key: "classes", title: "Classes", url: `${baseUrl}/classes`, icon: Building2, show: isPrivileged || isTeacher, section: "ACADEMICS" },
+      { key: "subjects", title: "Subjects", url: `${baseUrl}/subjects`, icon: BookOpen, show: isPrivileged || isTeacher, section: "ACADEMICS" },
+      { key: "spreadsheets", title: "Spreadsheets", url: `${baseUrl}/spreadsheets`, icon: TableProperties, show: isPrivileged || isTeacher, section: "ACADEMICS" },
+      { key: "timetable", title: "Timetable", url: `${baseUrl}/timetable`, icon: CalendarDays, show: isPrivileged || can("timetable.view"), section: "ACADEMICS" },
+      { key: "attendance", title: "Attendance", url: `${baseUrl}/attendance`, icon: ClipboardCheck, show: isPrivileged || can("attendance.view"), section: "ACADEMICS" },
       { key: "affective", title: "Affective", url: `${baseUrl}/affective`, icon: Heart, show: isPrivileged, section: "ACADEMICS" },
-      { key: "scheme-of-work", title: "Scheme of Work", url: `${baseUrl}/scheme-of-work`, icon: BookText, show: isPrivileged || isSubjectTeacher || isHOD, section: "ACADEMICS" },
-      { key: "lesson-notes", title: "Lesson Notes", url: `${baseUrl}/lesson-notes`, icon: FileText, show: isPrivileged || isSubjectTeacher || isHOD, section: "ACADEMICS" },
+      { key: "scheme-of-work", title: "Scheme of Work", url: `${baseUrl}/scheme-of-work`, icon: BookText, show: isPrivileged || isTeacher, section: "ACADEMICS" },
+      { key: "lesson-notes", title: "Lesson Notes", url: `${baseUrl}/lesson-notes`, icon: FileText, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "question-bank", title: "Question Bank", url: `${baseUrl}/question-bank`, icon: HelpCircle, show: isPrivileged || can("cbt.manage"), section: "ACADEMICS" },
       { key: "result-templates", title: "Result Templates", url: `${baseUrl}/result-templates`, icon: ClipboardList, show: isPrivileged, section: "ACADEMICS" },
       { key: "admissions", title: "Admissions", url: `${baseUrl}/admissions`, icon: UserPlus, show: isPrivileged, section: "ACADEMICS" },
       { key: "homework", title: "Homework", url: `${baseUrl}/homework`, icon: BookOpen, show: isPrivileged || can("homework.manage") || userRole === "parent", section: "ACADEMICS" },
       { key: "teachers", title: "Teachers", url: `${baseUrl}/teachers`, icon: Users, show: isPrivileged, section: "PEOPLE" },
-      { key: "parents", title: "Parents", url: `${baseUrl}/parents`, icon: Users2, show: isPrivileged, section: "PEOPLE" },
+      { key: "parents", title: "Parents", url: `${baseUrl}/parents`, icon: Users2, show: isPrivileged || isHOD || can("parents.manage"), section: "PEOPLE" },
       { key: "hr", title: "HR", url: `${baseUrl}/hr`, icon: Users2, show: isPrivileged || isHOD, section: "PEOPLE" },
       { key: "invites", title: "Pending Invites", url: `${baseUrl}/invites`, icon: UserPlus, show: isPrivileged, section: "PEOPLE" },
-      { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: (isPrivileged || can("messaging.send")) && userRole !== "parent", section: "PEOPLE" },
+      { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged || can("messaging.send"), section: "PEOPLE" },
       { key: "payments", title: "Payments", url: `${baseUrl}/payments`, icon: CreditCard, show: (isPrivileged || isAccountant || can("payments.record")) && userRole !== "parent", section: "FINANCE" },
       { key: "billing", title: "Billing", url: `${baseUrl}/billing`, icon: CreditCard, show: isPrivileged || isAccountant, section: "FINANCE" },
       { key: "fee-structure", title: "Fee Structure", url: `${baseUrl}/fee-structure`, icon: DollarSign, show: isPrivileged || isAccountant || can("fee_structure.edit"), section: "FINANCE" },
@@ -134,8 +136,8 @@ export function useSchoolNavItems() {
       { key: "bus-tracking", title: "Bus Routes", url: `${baseUrl}/bus-tracking`, icon: Bus, show: isPrivileged || (userRole === "parent" && parentHasBusStudent), section: "OPERATIONS" },
       { key: "library", title: "Library", url: `${baseUrl}/library`, icon: Library, show: isPrivileged || can("library.manage") || userRole === "parent", section: "OPERATIONS" },
       { key: "clinic", title: "Clinic Log", url: `${baseUrl}/clinic`, icon: Stethoscope, show: isPrivileged, section: "OPERATIONS" },
-      { key: "staff-attendance", title: "Staff Attendance", url: `${baseUrl}/staff-attendance`, icon: Clock, show: isPrivileged || isHOD, section: "OPERATIONS" },
-      { key: "payroll", title: "Payroll", url: `${baseUrl}/payroll`, icon: Banknote, show: isPrivileged, section: "FINANCE" },
+      { key: "staff-attendance", title: "Staff Attendance", url: `${baseUrl}/staff-attendance`, icon: Clock, show: isPrivileged || isHOD || isAccountant, section: "OPERATIONS" },
+      { key: "payroll", title: "Payroll", url: `${baseUrl}/payroll`, icon: Banknote, show: isPrivileged || isAccountant, section: "FINANCE" },
       { key: "support", title: "Support", url: `${baseUrl}/support`, icon: MessageSquare, show: true, section: "OPERATIONS" },
       { key: "settings", title: "Settings", url: `${baseUrl}/settings`, icon: Settings, show: isPrivileged, section: "SYSTEM" },
       { key: "features", title: "Features", url: `${baseUrl}/settings/features`, icon: Settings2, show: isPrivileged, section: "SYSTEM" },

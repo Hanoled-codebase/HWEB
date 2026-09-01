@@ -43,7 +43,7 @@ const PERMISSION_MATRIX: Record<string, Capability[]> = {
     "org.create", "org.settings", "members.manage", "members.grant_admin",
     "students.create", "students.manage", "parents.manage", "assignments.assign",
     "students.view", "results.enter", "results.approve",
-    "fee_structure.edit", "payments.record", "fee_status.view",
+    "fee_structure.edit", "payments.record", "fee_status.view", "reports.view_financial",
     "messaging.send", "library.manage",
     "timetable.view", "timetable.edit",
     "attendance.mark", "attendance.view",
@@ -55,7 +55,7 @@ const PERMISSION_MATRIX: Record<string, Capability[]> = {
     "org.settings", "members.manage",
     "students.create", "students.manage", "parents.manage", "assignments.assign",
     "students.view", "results.enter", "results.approve",
-    "fee_structure.edit", "payments.record", "fee_status.view",
+    "fee_structure.edit", "payments.record", "fee_status.view", "reports.view_financial",
     "messaging.send", "messaging.receive",
     "timetable.view", "timetable.edit",
     "attendance.mark", "attendance.view",
@@ -63,7 +63,7 @@ const PERMISSION_MATRIX: Record<string, Capability[]> = {
     "cbt.manage", "homework.manage",
     "hostel.manage", "bus.manage", "admissions.manage",
   ],
-  member: [],
+  member: ["timetable.view", "messaging.send", "attendance.view", "students.view"],
   parent: [
     "results.view_own_child", "fee_status.view_own", "payments.make",
     "messaging.send",
@@ -83,7 +83,10 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
     switch (a.type) {
       case "HOD":
         caps.add("students.view");
+        caps.add("students.manage");
+        caps.add("parents.manage");
         caps.add("results.enter");
+        caps.add("results.approve");
         caps.add("reports.view");
         caps.add("cbt.manage");
         caps.add("homework.manage");
@@ -92,6 +95,7 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("messaging.send");
         caps.add("timetable.view");
         caps.add("timetable.edit");
+        caps.add("assignments.assign");
         break;
       case "CLASS_TEACHER":
         caps.add("students.view");
@@ -100,12 +104,15 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("timetable.view");
         caps.add("messaging.send");
         caps.add("results.view_self");
+        caps.add("students.manage");
+        caps.add("parents.manage");
         break;
       case "SUBJECT_TEACHER":
         caps.add("results.enter");
         caps.add("cbt.manage");
         caps.add("homework.manage");
         caps.add("attendance.mark");
+        caps.add("attendance.view");
         caps.add("timetable.view");
         caps.add("messaging.send");
         caps.add("students.view");
@@ -115,10 +122,14 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("payments.record");
         caps.add("fee_status.view");
         caps.add("reports.view_financial");
+        caps.add("students.view");
+        caps.add("messaging.send");
+        caps.add("attendance.view");
         break;
       case "LIBRARIAN":
         caps.add("library.manage");
         caps.add("students.view");
+        caps.add("timetable.view");
         break;
     }
   }
@@ -140,6 +151,12 @@ export function usePermissions() {
 
     const allCaps = [...new Set([...baseCaps, ...scopedCaps])];
 
+    const isAccountant = activeAssignments.some((a) => a.type === "ACCOUNTANT")
+    const isHOD = activeAssignments.some((a) => a.type === "HOD")
+    const isLibrarian = activeAssignments.some((a) => a.type === "LIBRARIAN")
+    const isClassTeacher = activeAssignments.some((a) => a.type === "CLASS_TEACHER")
+    const isSubjectTeacher = activeAssignments.some((a) => a.type === "SUBJECT_TEACHER")
+
     return {
       capabilities: allCaps,
       can: (capability: Capability) => allCaps.includes(capability),
@@ -149,6 +166,12 @@ export function usePermissions() {
       isMember: role === "member",
       isParent: role === "parent",
       isPrivileged: role === "owner" || role === "admin",
+      isAccountant,
+      isHOD,
+      isLibrarian,
+      isClassTeacher,
+      isSubjectTeacher,
+      isTeacher: isClassTeacher || isSubjectTeacher || isHOD,
       assignments: activeAssignments,
     };
   }, [currentMember]);
