@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -57,6 +58,8 @@ function todayString() {
 
 export default function StaffAttendancePage() {
   const { currentOrg } = useOrganization();
+  const { can, isPrivileged } = usePermissions();
+  const canManageStaffAttendance = can("attendance.mark") || isPrivileged;
   const [dateStr, setDateStr] = useState(todayString());
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +217,7 @@ export default function StaffAttendancePage() {
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white ml-auto"
               onClick={handleBulkSave}
-              disabled={saving || members.length === 0}
+              disabled={saving || members.length === 0 || !canManageStaffAttendance}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Attendance
@@ -269,6 +272,7 @@ export default function StaffAttendancePage() {
                     </div>
                     <Select
                       value={statusMap[m.id] || "present"}
+                      disabled={!canManageStaffAttendance}
                       onValueChange={(val) => {
                           const next: Record<string, string> = Object.assign({}, statusMap) as Record<string, string>;
                           next[m.id] = String(val);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -195,10 +196,7 @@ export default function HomeworkPage() {
   const [matClass, setMatClass] = useState("");
   const [isUploadingMat, setIsUploadingMat] = useState(false);
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
-  const isTeacher = currentMember?.role === "member";
-  const isParent = currentMember?.role === "parent";
+  const { isPrivileged, isTeacher, isParent } = usePermissions();
 
   useEffect(() => {
     async function fetchFilters() {

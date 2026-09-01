@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,8 @@ const TIME_PRESETS = [
 ];
 
 export default function TimetablePage() {
-  const { currentOrg, currentMember } = useOrganization();
+  const { currentOrg } = useOrganization();
+  const { can } = usePermissions();
   const orgSlug = currentOrg?.slug;
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -103,7 +105,7 @@ export default function TimetablePage() {
   const [slotRoom, setSlotRoom] = useState("");
   const [savingSlot, setSavingSlot] = useState(false);
 
-  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
+  const isPrivileged = can("timetable.edit");
 
   const loadSchedules = useCallback(async () => {
     if (!orgSlug) return;

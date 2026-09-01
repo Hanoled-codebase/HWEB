@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -83,7 +84,7 @@ export default function ClinicPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
+  const { isPrivileged } = usePermissions();
 
   const fetchLogs = useCallback(async () => {
     if (!currentOrg) return;

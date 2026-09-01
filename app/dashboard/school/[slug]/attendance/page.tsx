@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -128,7 +129,8 @@ function getStudentName(student: { firstName: string; lastName: string }): strin
 }
 
 export default function AttendancePage() {
-  const { currentOrg, currentMember } = useOrganization();
+  const { currentOrg } = useOrganization();
+  const { can, isTeacher } = usePermissions();
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
@@ -139,10 +141,7 @@ export default function AttendancePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const canMark =
-    currentMember?.role === "owner" ||
-    currentMember?.role === "admin" ||
-    currentMember?.role === "member";
+  const canMark = can("attendance.mark") || isTeacher;
 
   useEffect(() => {
     async function fetchClasses() {

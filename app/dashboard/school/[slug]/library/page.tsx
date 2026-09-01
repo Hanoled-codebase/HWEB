@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -79,8 +80,9 @@ type LoanReservation = {
 };
 
 export default function LibraryPage() {
-  const { currentOrg, currentMember } = useOrganization();
-  const isStaff = currentMember && ["owner", "admin", "member"].includes(currentMember.role);
+  const { currentOrg } = useOrganization();
+  const { isPrivileged, isLibrarian } = usePermissions();
+  const isStaff = isPrivileged || isLibrarian;
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loans, setLoans] = useState<LoanReservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);

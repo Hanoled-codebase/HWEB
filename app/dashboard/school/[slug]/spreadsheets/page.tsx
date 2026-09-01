@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { getSpreadsheetLabel } from "@/lib/spreadsheets";
 import { toTitleCase } from "@/lib/utils";
@@ -220,10 +221,8 @@ export default function SpreadsheetsPage() {
   const prefilledSubjectId = searchParams.get("subjectId") || "";
   const prefilledClassId = searchParams.get("classLevelId") || "";
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
-  const hasAssignments = ((currentMember?.teachingAssignments?.length || 0) > 0) || (((currentMember as any)?.memberAssignments?.length || 0) > 0);
-  const canCreate = isPrivileged || (currentMember?.role === "member" && hasAssignments);
+  const { isPrivileged, isSubjectTeacher, isHOD, isAccountant } = usePermissions();
+  const canCreate = isPrivileged || isSubjectTeacher || isHOD;
 
   const form = useForm<z.infer<typeof createSpreadsheetSchema>>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,6 +259,9 @@ export default function SpreadsheetsPage() {
     if (isPrivileged) {
       return classes;
     }
+    if (isAccountant) {
+      return [];
+    }
     return classes.filter((classOption) =>
       teacherAssignments.some(
         (assignment) =>
@@ -267,11 +269,14 @@ export default function SpreadsheetsPage() {
           (!selectedSubjectId || assignment.subject?.id === selectedSubjectId),
       ),
     );
-  }, [classes, isPrivileged, selectedSubjectId, teacherAssignments]);
+  }, [classes, isPrivileged, isAccountant, selectedSubjectId, teacherAssignments]);
 
   const availableSubjects = useMemo(() => {
     if (isPrivileged) {
       return subjects;
+    }
+    if (isAccountant) {
+      return [];
     }
     return subjects.filter((subjectOption) =>
       teacherAssignments.some(
@@ -280,7 +285,7 @@ export default function SpreadsheetsPage() {
           (!selectedClassId || assignment.classLevel?.id === selectedClassId),
       ),
     );
-  }, [isPrivileged, selectedClassId, subjects, teacherAssignments]);
+  }, [isPrivileged, isAccountant, selectedClassId, subjects, teacherAssignments]);
 
   useEffect(() => {
     async function fetchData() {
