@@ -79,9 +79,14 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
     return true;
   });
   const caps = new Set<Capability>();
+  // Hierarchy: HOD > Class Teacher > Subject Teacher; Accountant/Librarian are vertical (finance/library)
+  const hasHOD = activeAssignments.some((a) => a.type === "HOD");
+  const hasClassTeacher = activeAssignments.some((a) => a.type === "CLASS_TEACHER");
+  const hasSubjectTeacher = activeAssignments.some((a) => a.type === "SUBJECT_TEACHER");
   for (const a of activeAssignments) {
     switch (a.type) {
       case "HOD":
+        // HOD inherits Class + Subject caps plus department management (row: own department)
         caps.add("students.view");
         caps.add("students.manage");
         caps.add("parents.manage");
@@ -96,18 +101,22 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("timetable.view");
         caps.add("timetable.edit");
         caps.add("assignments.assign");
+        caps.add("members.manage");
         break;
       case "CLASS_TEACHER":
+        // Row: own class only (40 students) — tightly coupled via classLevelId
         caps.add("students.view");
+        caps.add("students.manage");
+        caps.add("parents.manage");
         caps.add("attendance.mark");
         caps.add("attendance.view");
         caps.add("timetable.view");
         caps.add("messaging.send");
         caps.add("results.view_self");
-        caps.add("students.manage");
-        caps.add("parents.manage");
+        caps.add("homework.manage");
         break;
       case "SUBJECT_TEACHER":
+        // Row: own subject + assigned classes only
         caps.add("results.enter");
         caps.add("cbt.manage");
         caps.add("homework.manage");
@@ -118,19 +127,29 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("students.view");
         break;
       case "ACCOUNTANT":
+        // Vertical: finance only (row: school-wide fee ledger, field: fee-status, not academic marks)
         caps.add("fee_structure.edit");
         caps.add("payments.record");
         caps.add("fee_status.view");
         caps.add("reports.view_financial");
         caps.add("students.view");
         caps.add("messaging.send");
-        caps.add("attendance.view");
         break;
       case "LIBRARIAN":
         caps.add("library.manage");
         caps.add("students.view");
         caps.add("timetable.view");
         break;
+    }
+  }
+  // Hierarchy inheritance: HOD gets Class + Subject capabilities (department scope)
+  if (hasHOD) {
+    if (!hasClassTeacher) {
+      caps.add("students.view"); caps.add("students.manage"); caps.add("parents.manage");
+      caps.add("attendance.mark"); caps.add("attendance.view"); caps.add("results.view_self");
+    }
+    if (!hasSubjectTeacher) {
+      caps.add("results.enter"); caps.add("cbt.manage"); caps.add("homework.manage");
     }
   }
   return Array.from(caps);
