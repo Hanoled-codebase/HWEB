@@ -6,15 +6,17 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { registerAction } from '../../actions/auth';
 
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
+import { setAuthTokens } from '@/lib/auth-tokens';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [orgSlug, setOrgSlug] = useState('');
-  
+
   const [state, formAction, pending] = useActionState(registerAction, null);
 
   useEffect(() => {
     if (state?.success && state?.redirectUrl) {
+      setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
       router.push(state.redirectUrl);
     }
   }, [state, router]);

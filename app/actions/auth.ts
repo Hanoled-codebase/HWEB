@@ -169,7 +169,7 @@ export async function loginAction(prevState: any, formData: FormData) {
         redirectUrl = '/welcome';
       }
 
-      return { success: true, redirectUrl };
+      return { success: true, redirectUrl, hcoreToken: data.token, hcbtToken };
     }
 
     return { error: 'No token received' };
@@ -249,8 +249,9 @@ export async function registerAction(prevState: any, formData: FormData) {
         path: '/',
       });
 
+      let hcbtToken: string | null = null;
       if (platforms.includes('HCBT')) {
-        const hcbtToken = await exchangeHcbtSession(
+        hcbtToken = await exchangeHcbtSession(
           data.token,
           data.principal?.id,
           data.principal?.email,
@@ -271,7 +272,7 @@ export async function registerAction(prevState: any, formData: FormData) {
       // Always route to welcome screen post-registration for a playful onboarding experience
       const redirectUrl = '/welcome';
       console.log('Redirecting to:', redirectUrl);
-      return { success: true, redirectUrl };
+      return { success: true, redirectUrl, hcoreToken: data.token, hcbtToken };
     }
 
     return { error: 'No token received' };

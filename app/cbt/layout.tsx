@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { logoutAction } from "@/app/actions/auth";
+import { SignOutForm } from "@/components/auth/SignOutForm";
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 
@@ -97,14 +97,14 @@ export default async function CBTLayout({
             >
               Back to Welcome Hub
             </Link>
-            <form action={logoutAction}>
-              <button 
+            <SignOutForm>
+              <button
                 type="submit"
                 className="w-full py-2.5 px-4 text-xs text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 Sign Out / Use Different Account
               </button>
-            </form>
+            </SignOutForm>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { logoutAction } from "@/app/actions/auth";
+import { clearAuthTokens } from "@/lib/auth-tokens";
 import { useExamStore } from "@/store/exam";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
 import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History } from "lucide-react";
@@ -196,6 +197,7 @@ export default function StudentDashboard() {
         localStorage.removeItem("hanoled_student_school_slug");
         localStorage.removeItem("hanoled_auth_user");
       }
+      clearAuthTokens();
       await logoutAction();
     } catch {
       window.location.href = "/signin";

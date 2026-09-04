@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, HSMS_BASE } from "@/lib/api";
+import { getHcoreToken } from "@/lib/auth-tokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -99,7 +100,11 @@ export default function StudentResultsPage() {
               onClick={async () => {
                 try {
                   const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027`;
-                  const res = await fetch(url, { credentials: "include" });
+                  const token = getHcoreToken();
+                  const res = await fetch(url, {
+                    credentials: "include",
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                  });
                   if (!res.ok) throw new Error("Failed to download");
                   const blob = await res.blob();
                   const blobUrl = URL.createObjectURL(blob);

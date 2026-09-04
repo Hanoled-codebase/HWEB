@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { getHcoreToken, getHcbtToken } from "./auth-tokens";
 
 export const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 export const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
@@ -62,6 +63,14 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
 
   const isFormData = rest.body instanceof FormData;
   const requestHeaders = buildHeaders(headers, isFormData);
+
+  // HCORE/HSMS/HCBT live on *.hanoled.com, a different registrable domain
+  // than the Hweb frontend, so session cookies can't cross that boundary.
+  // Attach the bearer token explicitly instead (backends accept both).
+  if (!requestHeaders.has("Authorization")) {
+    const token = baseUrl === HCBT_BASE ? getHcbtToken() : getHcoreToken();
+    if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
+  }
 
   try {
     const response = await fetch(url, {
