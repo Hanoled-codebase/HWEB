@@ -40,6 +40,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch, HSMS_BASE } from "@/lib/api";
+import { getHcoreToken } from "@/lib/auth-tokens";
 import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
@@ -356,7 +357,7 @@ export default function ResultsPage() {
     try {
       setIsDownloadingBatch(true);
       const baseUrl = HSMS_BASE;
-      const token = localStorage.getItem("accessToken") || "";
+      const token = getHcoreToken() || "";
       const res = await fetch(
         `${baseUrl}/export/${currentOrg.slug}/report-card-bundle/${targetClassId}?term=${encodeURIComponent(
           exportTerm

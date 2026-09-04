@@ -6,6 +6,7 @@ import { Mail, Hash, ArrowRight, Loader2, School, Search, ChevronDown, Check, Bu
 import { loginAction } from '../../actions/auth';
 import { api } from '@/services/api';
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
+import { setAuthTokens } from '@/lib/auth-tokens';
 
 function LoginForm() {
   const router = useRouter();
@@ -73,6 +74,7 @@ function LoginForm() {
 
   useEffect(() => {
     if (state?.success && state?.redirectUrl) {
+      setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
       router.push(state.redirectUrl);
     }
   }, [state, router]);

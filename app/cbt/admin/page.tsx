@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
+import { HCBT_BASE } from "@/lib/api";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
   const [selectedExamResult, setSelectedExamResult] = useState<any>(null);
   const [viewingQuestions, setViewingQuestions] = useState(false);
 
-  const CBT_BACKEND_URL = process.env.NEXT_PUBLIC_CBT_API_URL?.replace(/\/api$/, "") || "http://localhost:4002";
+  const CBT_BACKEND_URL = process.env.NEXT_PUBLIC_CBT_API_URL?.replace(/\/api$/, "") || HCBT_BASE;
 
   // Upload Image Handler
   const handleImageUpload = async (file: File) => {

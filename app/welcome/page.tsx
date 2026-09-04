@@ -3,7 +3,7 @@ import Link from "next/link";
 import { HanoledLogo } from "@/components/ui/HanoledLogo";
 import { ArrowRight, LayoutGrid, Monitor, Rocket } from "lucide-react";
 import { redirect } from "next/navigation";
-import { logoutAction } from "@/app/actions/auth";
+import { SignOutForm } from "@/components/auth/SignOutForm";
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || "http://localhost:4000";
 
@@ -193,14 +193,14 @@ export default async function WelcomePortal() {
 
         {/* Discreet Sign Out */}
         <div className="mt-10 text-center">
-          <form action={logoutAction}>
+          <SignOutForm>
             <button
               type="submit"
               className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             >
               Sign out / Use a different account
             </button>
-          </form>
+          </SignOutForm>
         </div>
 
       </div>
