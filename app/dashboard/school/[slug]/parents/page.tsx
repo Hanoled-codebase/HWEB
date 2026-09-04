@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -75,8 +76,8 @@ export default function ParentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const { can, isHOD } = usePermissions();
+  const isPrivileged = can("parents.manage") || isHOD;
 
   const form = useForm<z.infer<typeof inviteFormSchema>>({
     resolver: zodResolver(inviteFormSchema),
@@ -88,10 +89,8 @@ export default function ParentsPage() {
       if (!currentOrg) return;
       try {
         setIsLoading(true);
-        const privileged = currentMember?.role === "owner" || currentMember?.role === "admin";
-
         const [parentData, studentData] = await Promise.all([
-          privileged
+          isPrivileged
             ? apiFetch<ParentMember[]>(`/organizations/${currentOrg.slug}/members?role=parent`)
             : Promise.resolve<ParentMember[]>([]),
           apiFetch<StudentOption[]>(`/students/${currentOrg.slug}`),
@@ -105,7 +104,7 @@ export default function ParentsPage() {
       }
     }
     fetchPageData();
-  }, [currentOrg, currentMember?.role]);
+  }, [currentOrg, isPrivileged]);
 
   const filteredParents = parents.filter(
     (p) =>

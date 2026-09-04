@@ -287,6 +287,7 @@ export default function LandingPage() {
                   alt="Hanoled Student"
                   fill
                   priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 450px"
                   className="object-cover rounded-[3rem] shadow-2xl z-10"
                   style={{ objectPosition: "center top" }}
                 />

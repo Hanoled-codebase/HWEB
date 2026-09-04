@@ -144,16 +144,28 @@ export const useOrganization = create<OrgState>((set, get) => ({
       set({ isLoading: true, error: null, isStudent: false, currentMember: null, currentStudent: null });
       // Determine the org
       let org = get().organizations.find((o) => o.slug === slug);
-      if (!org) {
-        // Fetch latest contexts from HCORE
-        try {
-          const res = await request<any>(HCORE_BASE, "/v1/me/contexts");
-          const fetchOrgs = res.organizations || [];
+      const needsContextFetch = !org;
+
+      // The context fetch (only needed when org isn't already known locally)
+      // and the member-profile fetch don't depend on each other's result —
+      // both only need `slug`, which is already known — so run them
+      // concurrently instead of paying two round trips back-to-back on every
+      // cold dashboard load. See fast-rendering skill, Rule 2.
+      const [contextResult, memberResult] = await Promise.allSettled([
+        needsContextFetch
+          ? request<any>(HCORE_BASE, "/v1/me/contexts")
+          : Promise.resolve(null),
+        request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
+      ]);
+
+      if (needsContextFetch) {
+        if (contextResult.status === "fulfilled" && contextResult.value) {
+          const fetchOrgs = contextResult.value.organizations || [];
           const normalizedOrgs = fetchOrgs.map(normalizeOrganization);
           set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
           org = normalizedOrgs.find((o: Organization) => o.slug === slug);
-        } catch (e) {
-          console.warn("Context fetch in setCurrentOrg failed:", e);
+        } else if (contextResult.status === "rejected") {
+          console.warn("Context fetch in setCurrentOrg failed:", contextResult.reason);
         }
       }
 
@@ -172,8 +184,8 @@ export const useOrganization = create<OrgState>((set, get) => ({
       }
 
       // First try member profile (for admin/teacher/parent users)
-      try {
-        const member = await request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false });
+      if (memberResult.status === "fulfilled") {
+        const member = memberResult.value;
         const rawAssignments = member.teachingAssignments || (member as any).memberAssignments || [];
         const normalizedAssignments = rawAssignments.map((a: any) => ({
           classLevel: a.classLevel || (a.classLevelId ? { id: a.classLevelId, name: a.classLevelName } : null),
@@ -190,9 +202,8 @@ export const useOrganization = create<OrgState>((set, get) => ({
           isLoading: false,
         });
         return;
-      } catch {
-        // Member profile failed — try student profile
       }
+      // Member profile failed — try student profile
 
       // Try student profile (for students)
       try {

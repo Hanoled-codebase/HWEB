@@ -2,25 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  GraduationCap,
-  BookOpen,
-  MessageSquare,
-  MoreHorizontal,
-} from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
+import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 
 export function MobileBottomNav({ slug }: { slug: string }) {
   const pathname = usePathname();
   const base = `/dashboard/school/${slug}`;
+  const { visibleNavItems } = useSchoolNavItems();
 
-  const navItems = [
-    { label: "Home", href: base, exact: true, icon: Home },
-    { label: "Students", href: `${base}/students`, exact: false, icon: GraduationCap },
-    { label: "Classes", href: `${base}/classes`, exact: false, icon: BookOpen },
-    { label: "Messages", href: `${base}/messaging`, exact: false, icon: MessageSquare },
-    { label: "More", href: `${base}/teachers`, exact: false, icon: MoreHorizontal },
-  ];
+  // Dynamic per HCORE assignments — HCORE is source, local projection allows offline
+  const primary = visibleNavItems.slice(0, 4).map((item) => ({
+    label: item.title,
+    href: item.url,
+    exact: item.url === base,
+    icon: item.icon,
+  }));
+  const navItems = [...primary, { label: "More", href: `${base}/teachers`, exact: false, icon: MoreHorizontal }].slice(0, 5);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-100 bg-white/95 backdrop-blur-md md:hidden">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -117,9 +118,7 @@ export default function ClassesPage() {
   const [editingClass, setEditingClass] = useState<ClassRecord | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
-  const isTeacher = currentMember?.role === "member";
+  const { isPrivileged, isTeacher } = usePermissions();
 
   // Build a set of class IDs the teacher is assigned to (only relevant for members)
   const assignedClassIds = useMemo(() => {
@@ -162,15 +161,10 @@ export default function ClassesPage() {
       if (!currentOrg) return;
       try {
         setIsLoading(true);
-        const role = currentMember?.role;
-        const privileged = role === "owner" || role === "admin";
-
-        // Only admins/owners can call the members endpoint.
-        // Teachers (role "member") get a 403 from it, which would
-        // cause the entire fetch to fail. Resolve to [] for them instead.
+        // Only privileged (HCORE: members.manage or owner/admin) can call the members endpoint.
         const [classesData, teachersData] = await Promise.all([
           apiFetch<ClassRecord[]>(`/classes/${currentOrg.slug}`),
-          privileged
+          isPrivileged
             ? apiFetch<TeacherOption[]>(
                 `/organizations/${currentOrg.slug}/members?role=member`,
               )
@@ -185,7 +179,7 @@ export default function ClassesPage() {
       }
     }
     fetchData();
-  }, [currentOrg, currentMember?.role]);
+  }, [currentOrg, isPrivileged]);
 
   const filteredClasses = classes.filter((cls) => {
     // Teachers only see classes they have at least one subject assigned to

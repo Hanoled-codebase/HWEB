@@ -33,6 +33,7 @@ export function AppSidebar() {
   const { currentOrg, currentMember, organizations } = useOrganization();
   const { user, logout } = useAuth();
   const { visibleNavItems, role: userRole } = useSchoolNavItems();
+  const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher } = usePermissions();
 
   if (!currentOrg || !currentMember || !user) return null;
 
@@ -44,7 +45,7 @@ export function AppSidebar() {
       .toUpperCase()
       .substring(0, 2);
 
-  const safeRole = userRole || "member";
+  const safeRole = isAccountant ? "Accountant" : isHOD ? "HOD" : isLibrarian ? "Librarian" : isClassTeacher ? "Class Teacher" : isSubjectTeacher ? "Subject Teacher" : (userRole || "member");
 
   return (
     <Sidebar variant="inset">

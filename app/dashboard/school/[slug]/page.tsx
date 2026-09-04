@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Card,
   CardContent,
@@ -113,7 +114,8 @@ export default function DashboardOverviewPage() {
   }, [currentOrg?.slug]);
 
   const role = currentMember?.role;
-  const isPrivileged = role === "owner" || role === "admin";
+  const { isPrivileged: permPrivileged, isAccountant, isHOD, isLibrarian, isTeacher } = usePermissions();
+  const isPrivileged = permPrivileged || role === "owner" || role === "admin";
 
   const teachingAssignments = useMemo(
     () =>
@@ -575,7 +577,53 @@ export default function DashboardOverviewPage() {
     );
   }
 
-  if (role === "member") {
+  if (isAccountant) {
+    return (
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Finance Dashboard — HCORE Accountant</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
+          <p className="mt-2 text-sm text-slate-600">Your HCORE ACCOUNTANT assignment is synced locally — manage fee structure, payments, debt and payroll independently, with HCORE as source when reachable.</p>
+          <div className="mt-4 flex gap-2">
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700"><Link href={`/dashboard/school/${currentOrg.slug}/payments`}>Payments</Link></Button>
+            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/billing`}>Billing</Link></Button>
+            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/payroll`}>Payroll</Link></Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isHOD) {
+    return (
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600">HOD Dashboard — HCORE HOD</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
+          <p className="mt-2 text-sm text-slate-600">Department overview from HCORE teaching assignments — scoped locally for independent operation.</p>
+          <div className="mt-4 flex gap-2">
+            <Button asChild><Link href={`/dashboard/school/${currentOrg.slug}/teachers`}>Department Teachers</Link></Button>
+            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/students`}>Department Students</Link></Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLibrarian) {
+    return (
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+        <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600">Library Dashboard — HCORE Librarian</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
+          <p className="mt-2 text-sm text-slate-600">Library management from HCORE assignment — works offline from local projection.</p>
+          <Button asChild className="mt-4"><Link href={`/dashboard/school/${currentOrg.slug}/library`}>Library</Link></Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "member" && isTeacher) {
     const readySheetsCount = memberSheets.length;
 
     return (
