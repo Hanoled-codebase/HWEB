@@ -237,7 +237,7 @@ export default function TimetablePage() {
       };
 
       if (editingSlot) {
-        await apiFetch(`/timetable/slots/${editingSlot.id}`, {
+        await apiFetch(`/timetable/${orgSlug}/slots/${editingSlot.id}`, {
           method: "PATCH",
           body: JSON.stringify(body),
           headers: { "Content-Type": "application/json" },
@@ -263,7 +263,7 @@ export default function TimetablePage() {
   const handleDeleteSlot = async (slotId: string) => {
     if (!orgSlug || !confirm("Delete this slot?")) return;
     try {
-      await apiFetch(`/timetable/slots/${slotId}`, { method: "DELETE" });
+      await apiFetch(`/timetable/${orgSlug}/slots/${slotId}`, { method: "DELETE" });
       toast.success("Slot deleted");
       await loadSlots();
     } catch {
