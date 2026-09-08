@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { HSMS_BASE } from "@/lib/api"
 
 const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/admin`
+const ADMIN_API = `${API_BASE}/api/admin`
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")

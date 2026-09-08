@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAdmin } from "../layout";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -38,7 +37,7 @@ import {
 import { HSMS_BASE } from "@/lib/api";
 
 const API_BASE = HSMS_BASE;
-const ADMIN_API = `${API_BASE}/admin`;
+const ADMIN_API = `${API_BASE}/api/admin`;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 type TicketPriority = "low" | "medium" | "high" | "urgent";
@@ -97,7 +96,10 @@ async function adminFetch<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 export default function AdminSupportPage() {
-  const { admin } = useAdmin();
+  // Fetched directly (not via the layout's AdminContext) because this page's
+  // Turbopack chunk gets its own copy of that context module, so useAdmin()
+  // here reads a default { admin: null } instead of the layout's real state.
+  const [admin, setAdmin] = useState<{ id: string; name: string; email: string; role?: string } | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -113,6 +115,13 @@ export default function AdminSupportPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    fetch(`${ADMIN_API}/auth/me`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setAdmin(data?.admin ?? null))
+      .catch(() => setAdmin(null));
+  }, []);
 
   const fetchTickets = useCallback(async () => {
     try {

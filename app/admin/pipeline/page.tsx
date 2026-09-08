@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { HSMS_BASE } from "@/lib/api"
 
 const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/admin`
+const ADMIN_API = `${API_BASE}/api/admin`
 
 const STAGES = [
   { key: "prospect", label: "Prospect", color: "bg-slate-100 text-slate-700" },

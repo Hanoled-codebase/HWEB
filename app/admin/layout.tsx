@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar"
 import { HSMS_BASE } from "@/lib/api"
 
 const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/admin`
+const ADMIN_API = `${API_BASE}/api/admin`
 
 interface AdminUser {
   id: string; email: string; name: string; role: string
