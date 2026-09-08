@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select"
 import { HSMS_BASE } from "@/lib/api"
 
 const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/admin`
+const ADMIN_API = `${API_BASE}/api/admin`
 
 interface School {
   id: string; name: string; slug: string; city: string; state: string

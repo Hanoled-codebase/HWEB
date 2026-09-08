@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { HSMS_BASE } from "@/lib/api"
 
 const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/admin`
+const ADMIN_API = `${API_BASE}/api/admin`
 
 interface HostedConfig {
   id: string; organizationId: string; subdomain: string | null
@@ -21,12 +21,22 @@ interface HostedConfig {
 }
 
 export default function HostedPage() {
+  // Backend restricts POST /admin/hosted to SUPER_ADMIN — hide the create
+  // action for OPS_ADMIN instead of letting them fill the form and hit a 403.
+  // Fetched directly (not via the layout's AdminContext) because this page's
+  // Turbopack chunk gets its own copy of that context module, so useAdmin()
+  // here reads a default { admin: null } instead of the layout's real state.
+  const [canManageHosted, setCanManageHosted] = useState(false)
   const [configs, setConfigs] = useState<HostedConfig[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ organizationId: "", subdomain: "", hostingTier: "planned", dbInstance: "", infraCostMonthly: "", notes: "" })
 
   useEffect(() => {
     fetch(`${ADMIN_API}/hosted`, { credentials: "include" }).then(r => r.json()).then(setConfigs)
+    fetch(`${ADMIN_API}/auth/me`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setCanManageHosted(data?.admin?.role === "SUPER_ADMIN"))
+      .catch(() => setCanManageHosted(false))
   }, [])
 
   const tierBadge = (tier: string) => {
@@ -64,6 +74,7 @@ export default function HostedPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Hosted Schools Manager</h1>
+        {canManageHosted && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button>Add Hosted School</Button></DialogTrigger>
           <DialogContent>
@@ -83,6 +94,7 @@ export default function HostedPage() {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <Card>
