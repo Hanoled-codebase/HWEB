@@ -424,7 +424,7 @@ export default function ReportCardPrintModal({
                                     : calculatedGrade === "B"
                                     ? "bg-[#1447E6]/15 text-[#1447E6]"
                                     : calculatedGrade === "C"
-                                    ? "bg-[#F5A623]/20 text-[#D97706]"
+                                    ? "bg-[#F5A623]/20 text-[#0B1220]"
                                     : calculatedGrade === "D"
                                     ? "bg-amber-100 text-amber-900"
                                     : "bg-[#F04438]/15 text-[#F04438]"

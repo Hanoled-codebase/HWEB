@@ -51,7 +51,7 @@ const navItems = [
 
 function BrandRibbon() {
   return (
-    <div className="w-full overflow-hidden bg-[#7b5fff] py-3 shadow-md">
+    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md">
       <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
         {Array.from({ length: 15 }).map((_, index) => (
           <span key={index} className="whitespace-nowrap flex items-center gap-6">
@@ -104,7 +104,7 @@ export default function LandingPage() {
       icon: School,
       title: "School Administration",
       headline: "Every record, one place",
-      color: "border-[#1447E6] text-[#1447E6] bg-blue-50/50",
+      color: "border-blue-600 text-blue-600 bg-blue-50/50",
       desc: "Student profiles, staff records with TRCN tracking, class & subject setup, role-based access, multi-site support for schools with more than one branch.",
     },
     {
@@ -112,7 +112,7 @@ export default function LandingPage() {
       icon: BookOpen,
       title: "Academic Management",
       headline: "Grading that computes itself",
-      color: "border-[#f6c24e] text-[#937400] bg-amber-50/50",
+      color: "border-amber-500 text-amber-700 bg-amber-50/50",
       desc: "Digital gradebook with configurable CA/exam weightings, scheme of work & lesson notes, homework assignment and digital submission, one-click result publishing to parents.",
     },
     {
@@ -120,7 +120,7 @@ export default function LandingPage() {
       icon: Wallet,
       title: "Financial Management",
       headline: "Fees, invoicing & collections in one flow",
-      color: "border-[#4cd988] text-emerald-700 bg-emerald-50/50",
+      color: "border-blue-700 text-blue-700 bg-blue-50/50",
       desc: "Configurable fee structures by category, auto-generated invoicing, Paystack/Monnify online payment collection, a live debt dashboard with top-debtor tracking, scratch-card result checking.",
     },
     {
@@ -128,7 +128,7 @@ export default function LandingPage() {
       icon: MessageSquare,
       title: "Communication Portal",
       headline: "Parents never find out late",
-      color: "border-[#ff7b92] text-rose-600 bg-rose-50/50",
+      color: "border-blue-400 text-blue-600 bg-blue-50/50",
       desc: "WhatsApp, Email, and SMS messaging with templates; automatic alerts the moment a student scores below 60% on any assessment.",
     },
     {
@@ -136,7 +136,7 @@ export default function LandingPage() {
       icon: Users,
       title: "Student Welfare & Operations",
       headline: "Beyond academics",
-      color: "border-[#fcb3e2] text-pink-600 bg-pink-50/50",
+      color: "border-blue-300 text-blue-700 bg-blue-50/50",
       desc: "Daily attendance tracking, timetabling, library loan management, hostel room allocation, and school bus route tracking with GPS stop coordinates.",
     },
     {
@@ -144,7 +144,7 @@ export default function LandingPage() {
       icon: Calendar,
       title: "Admissions Portal",
       headline: "From application to enrollment",
-      color: "border-[#9fb0ff] text-indigo-700 bg-indigo-50/50",
+      color: "border-blue-500 text-blue-700 bg-blue-100/50",
       desc: "Public application forms with online fee payment, entrance exam scheduling tied directly into HCBT, and a full pending ➔ enrolled status workflow with automatic admission numbers.",
     },
   ];
@@ -180,7 +180,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white">
+    <div className="min-h-screen bg-[#FFFFFF] font-sans selection:bg-[#1447E6] selection:text-white">
       {/* Top Navbar */}
       <MarketingHeader />
 
@@ -213,7 +213,7 @@ export default function LandingPage() {
                 </h1>
                 
                 {/* Wavy accent line under title */}
-                <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px]">
+                <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px]">
                   <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
                 </svg>
 
@@ -225,7 +225,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-6">
                 <Button
                   asChild
-                  className="h-14 rounded-full bg-[#1b2333] px-8 text-base font-bold text-white transition-all hover:bg-[#2c3850] hover:shadow-lg hover:-translate-y-1"
+                  className="h-14 rounded-full bg-[#0B1220] px-8 text-base font-bold text-white transition-all hover:bg-[#1447E6] hover:shadow-lg hover:-translate-y-1"
                 >
                   <Link href="#contact-quote">
                     Book a Custom Demo
@@ -236,10 +236,10 @@ export default function LandingPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-3">
                     {[
-                      { bg: "bg-[#7b5fff]", initials: "TC" },
-                      { bg: "bg-[#f6c24e]", initials: "PA" },
-                      { bg: "bg-[#4ecb71]", initials: "AD" },
-                      { bg: "bg-[#ff7b92]", initials: "ST" },
+                      { bg: "bg-blue-600", initials: "TC" },
+                      { bg: "bg-amber-500", initials: "PA" },
+                      { bg: "bg-blue-400", initials: "AD" },
+                      { bg: "bg-blue-800", initials: "ST" },
                     ].map((user, i) => (
                       <div
                         key={i}
@@ -248,7 +248,7 @@ export default function LandingPage() {
                         {user.initials}
                       </div>
                     ))}
-                    <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#1b2333] text-[10px] font-bold text-white shadow-sm">
+                    <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#0B1220] text-[10px] font-bold text-white shadow-sm">
                       +1200
                     </div>
                   </div>
@@ -259,7 +259,7 @@ export default function LandingPage() {
 
             {/* Right Box (African Student Hero Portrait) */}
             <div className="relative flex justify-center lg:justify-end">
-              <div className="absolute -left-6 top-1/4 h-8 w-8 text-[#f6c24e]">
+              <div className="absolute -left-6 top-1/4 h-8 w-8 text-[#F5A623]">
                 <Award className="h-full w-full fill-current" />
               </div>
               <div className="absolute -right-4 top-10 h-10 w-10 text-[#1447E6]">
@@ -269,7 +269,7 @@ export default function LandingPage() {
               </div>
 
               {/* Green Floating Badge */}
-              <div className="absolute bottom-4 left-4 sm:bottom-10 sm:-left-6 z-20 flex items-center gap-3 rounded-[1.5rem] bg-[#4cd988] px-5 py-4 text-white shadow-xl shadow-[#4cd988]/30">
+              <div className="absolute bottom-4 left-4 sm:bottom-10 sm:-left-6 z-20 flex items-center gap-3 rounded-[1.5rem] bg-[#1447E6] px-5 py-4 text-white shadow-xl shadow-[#1447E6]/30">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                   <Building2 className="h-5 w-5" />
                 </div>
@@ -281,7 +281,7 @@ export default function LandingPage() {
 
               {/* Main Image Container */}
               <div className="relative h-[350px] sm:h-[450px] lg:h-[550px] w-full max-w-[450px]">
-                <div className="absolute inset-x-8 bottom-0 h-20 rounded-[50%] bg-[#5e41ff]/20 blur-2xl" />
+                <div className="absolute inset-x-8 bottom-0 h-20 rounded-[50%] bg-[#1447E6]/20 blur-2xl" />
                 <Image
                   src="/landing-student-hero.png"
                   alt="Hanoled Student"
@@ -298,13 +298,13 @@ export default function LandingPage() {
 
         {/* SECTION 2.1: HCBT ENGINE (Dedicated Section) */}
         <section className="mt-16 rounded-[3rem] bg-slate-900 text-white p-8 sm:p-12 lg:p-16 relative overflow-hidden shadow-2xl">
-          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#5e41ff]/20 blur-3xl" />
-          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#1447E6]/20 blur-3xl" />
+          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#1447E6]/10 blur-3xl" />
           
           <div className="relative z-10 grid gap-12 lg:grid-cols-2 lg:items-center">
             {/* Description */}
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 border border-slate-700 px-4 py-1.5 text-xs font-bold text-[#f0c34b] shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 border border-slate-700 px-4 py-1.5 text-xs font-bold text-[#F5A623] shadow-sm">
                 <Rocket className="h-4 w-4" />
                 Industry First Feature
               </div>
@@ -323,7 +323,7 @@ export default function LandingPage() {
                   "Built-in proctoring checks including tab-switch locks with a 3-strike policy and auto-submit behavior."
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-[#f0c34b] shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-6 w-6 text-[#F5A623] shrink-0 mt-0.5" />
                     <span className="text-slate-300 text-sm sm:text-base font-semibold">{item}</span>
                   </li>
                 ))}
@@ -342,7 +342,7 @@ export default function LandingPage() {
               </div>
               
               <div className="flex justify-between items-center bg-slate-900 rounded-xl p-3 border border-slate-800 mb-4">
-                <div className="text-xs sm:text-sm font-bold text-[#f0c34b]">BIOLOGY SSCE EXAM</div>
+                <div className="text-xs sm:text-sm font-bold text-[#F5A623]">BIOLOGY SSCE EXAM</div>
                 <div className="flex items-center gap-2 font-mono text-sm text-red-400 font-bold bg-slate-950 px-3 py-1.5 rounded-lg border border-red-950">
                   <RefreshCw className="h-3.5 w-3.5 animate-spin text-red-500" />
                   <span>Time Left: 42:15</span>
@@ -373,12 +373,12 @@ export default function LandingPage() {
                       key={opt.key}
                       className={`flex items-center gap-3 border rounded-xl p-3 text-xs transition-colors cursor-pointer ${
                         opt.checked 
-                          ? "border-[#5e41ff] bg-[#5e41ff]/10 text-white" 
+                          ? "border-[#1447E6] bg-[#1447E6]/10 text-white" 
                           : "border-slate-800 bg-slate-900/40 text-slate-300 hover:border-slate-700"
                       }`}
                     >
                       <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        opt.checked ? "bg-[#5e41ff] text-white" : "bg-slate-800 text-slate-400"
+                        opt.checked ? "bg-[#1447E6] text-white" : "bg-slate-800 text-slate-400"
                       }`}>{opt.key}</span>
                       <span>{opt.val}</span>
                     </div>
@@ -394,7 +394,7 @@ export default function LandingPage() {
                         key={num}
                         className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
                           num === "14" 
-                            ? "bg-[#5e41ff] text-white font-extrabold ring-2 ring-[#7b5fff]/50"
+                            ? "bg-[#1447E6] text-white font-extrabold ring-2 ring-[#1447E6]/50"
                             : typeof num === 'string'
                               ? "bg-slate-800 text-slate-400"
                               : num < 14 
@@ -420,7 +420,7 @@ export default function LandingPage() {
         {/* MIDDLE SECTION: Admin & Lists Grid */}
         <section className="mt-16 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           {/* Admin Blue Card */}
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#9fb0ff] p-8 pb-0 text-slate-900 shadow-sm transition-transform hover:-translate-y-1">
+          <div className="relative overflow-hidden rounded-[3rem] bg-blue-300 p-8 pb-0 text-slate-900 shadow-sm transition-transform hover:-translate-y-1">
             <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
             
             <div className="relative z-10 space-y-4">
@@ -435,7 +435,7 @@ export default function LandingPage() {
 
               {/* Admin Portrait Replacement (Nigerian Principal Image) */}
               <div className="relative mt-8 flex justify-center">
-                <div className="h-48 w-48 overflow-hidden rounded-t-[2rem] bg-slate-900 border-[6px] border-[#8e9ff4]">
+                <div className="h-48 w-48 overflow-hidden rounded-t-[2rem] bg-slate-900 border-[6px] border-blue-400">
                   <Image
                     src="/landing-admin-portrait.png"
                     alt="School Admin"
@@ -445,9 +445,9 @@ export default function LandingPage() {
                   />
                 </div>
                 {/* Black Badge overlapping */}
-                <div className="absolute -left-4 bottom-10 rounded-2xl bg-[#1b2333] px-4 py-3 text-center text-xs font-bold text-white shadow-xl shadow-[#1b2333]/40 transform -rotate-6">
+                <div className="absolute -left-4 bottom-10 rounded-2xl bg-[#0B1220] px-4 py-3 text-center text-xs font-bold text-white shadow-xl shadow-[#0B1220]/40 transform -rotate-6">
                   <p>Overseeing</p>
-                  <p className="text-[#a4b4ff]">entire school</p>
+                  <p className="text-blue-300">entire school</p>
                   <p>records</p>
                 </div>
               </div>
@@ -461,10 +461,10 @@ export default function LandingPage() {
              </div>
 
              {[
-               { icon: Users, title: "Staff & records", color: "bg-[#ffb09c] text-[#a53b21]", bg: "bg-white", desc: "Manage personnel easily" },
-               { icon: FileSpreadsheet, title: "Teacher gradebooks", color: "bg-[#fce588] text-[#937400]", bg: "bg-white", desc: "Dynamic assessments" },
-               { icon: BellRing, title: "Parent result access", color: "bg-[#a6baf5] text-[#1b3687]", bg: "bg-white", desc: "Real-time ward monitoring" },
-               { icon: Shield, title: "Student data & security", color: "bg-[#fcb3e2] text-[#902a6b]", bg: "bg-white", desc: "Role-based controls" },
+               { icon: Users, title: "Staff & records", color: "bg-blue-100 text-blue-800", bg: "bg-white", desc: "Manage personnel easily" },
+               { icon: FileSpreadsheet, title: "Teacher gradebooks", color: "bg-amber-100 text-amber-800", bg: "bg-white", desc: "Dynamic assessments" },
+               { icon: BellRing, title: "Parent result access", color: "bg-blue-200 text-blue-900", bg: "bg-white", desc: "Real-time ward monitoring" },
+               { icon: Shield, title: "Student data & security", color: "bg-blue-50 text-blue-700", bg: "bg-white", desc: "Role-based controls" },
              ].map((item, idx) => (
                 <div key={idx} className="group relative flex items-center justify-between rounded-[2rem] bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md border border-slate-100">
                   <div className="flex flex-1 items-center gap-4 pl-2">
@@ -476,7 +476,7 @@ export default function LandingPage() {
                       <p className="text-xs font-semibold text-slate-400 mt-0.5">{item.desc}</p>
                     </div>
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[#1b2333] text-white transition-colors group-hover:bg-[#1447E6]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[#0B1220] text-white transition-colors group-hover:bg-[#1447E6]">
                      <ArrowUpRight className="h-5 w-5" />
                   </div>
                 </div>
@@ -510,11 +510,11 @@ export default function LandingPage() {
                     onClick={() => setActiveTab(m.id)}
                     className={`flex items-center gap-3 w-full text-left p-3.5 rounded-[1.5rem] transition-all text-sm font-bold ${
                       isSelected
-                        ? "bg-[#1b2333] text-white shadow-md"
+                        ? "bg-[#0B1220] text-white shadow-md"
                         : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <IconComponent className={`h-5 w-5 shrink-0 ${isSelected ? "text-[#f0c34b]" : "text-[#7b5fff]"}`} />
+                    <IconComponent className={`h-5 w-5 shrink-0 ${isSelected ? "text-[#F5A623]" : "text-[#1447E6]"}`} />
                     <span className="truncate">{m.title}</span>
                   </button>
                 );
@@ -533,7 +533,7 @@ export default function LandingPage() {
                         <IconComponent className="h-7 w-7" />
                       </div>
                       <div>
-                        <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-[#7b5fff]">Module Spotlight</h4>
+                        <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-[#1447E6]">Module Spotlight</h4>
                         <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{m.title}</h3>
                       </div>
                     </div>
@@ -590,7 +590,7 @@ export default function LandingPage() {
             </div>
 
             {/* Payment Trust Bar + Graphic */}
-            <div className="bg-[#f8f9fc] rounded-[2.5rem] border border-slate-200/60 p-8 flex flex-col justify-center items-center gap-6 text-center">
+            <div className="bg-[#FFFFFF] rounded-[2.5rem] border border-slate-200/60 p-8 flex flex-col justify-center items-center gap-6 text-center">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Secure Payment Integrations</div>
               <p className="text-sm font-semibold text-slate-500 ">
                 Direct fee collections and termly billings run through secure partners, giving parents confidence.
@@ -607,7 +607,7 @@ export default function LandingPage() {
                   monnify
                 </div>
               </div>
-              <div className="text-[10px] font-bold text-[#4cd988] bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
+              <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
                 🔒 256-bit SSL secure gateway
               </div>
             </div>
@@ -617,7 +617,7 @@ export default function LandingPage() {
         {/* SECTION 2.4: ONBOARDING STEPS */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-12">
-            <Badge className="bg-[#f0c34b]/10 text-[#937400] border-0 hover:bg-[#f0c34b]/20 px-3.5 py-1.5 text-xs font-bold mb-3">
+            <Badge className="bg-[#F5A623]/10 text-[#0B1220] border-0 hover:bg-[#F5A623]/20 px-3.5 py-1.5 text-xs font-bold mb-3">
               Implementation Pathway
             </Badge>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
@@ -641,7 +641,7 @@ export default function LandingPage() {
         {/* SECTION 2.7: FAQ SECTION */}
         <section className="mt-16 max-w-4xl mx-auto">
           <div className="flex flex-col items-center text-center mb-10">
-            <Badge className="bg-[#7b5fff]/10 text-[#1447E6] border-0 hover:bg-[#7b5fff]/20 px-3.5 py-1.5 text-xs font-bold mb-3">
+            <Badge className="bg-[#1447E6]/10 text-[#1447E6] border-0 hover:bg-[#1447E6]/20 px-3.5 py-1.5 text-xs font-bold mb-3">
               Frequently Asked Questions
             </Badge>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
@@ -678,10 +678,10 @@ export default function LandingPage() {
         {/* SECTION 1.1: BOOK A DEMO / CUSTOM QUOTE FORM */}
         <section id="contact-quote" className="mt-16 max-w-3xl mx-auto">
           <div className="relative overflow-hidden rounded-[3rem] bg-white p-8 sm:p-12 border border-slate-100 shadow-xl">
-            <div className="absolute -right-16 -bottom-16 h-48 w-48 rounded-full bg-[#5e41ff]/5 blur-2xl" />
+            <div className="absolute -right-16 -bottom-16 h-48 w-48 rounded-full bg-[#1447E6]/5 blur-2xl" />
             
             <div className="relative z-10 text-center mb-8">
-              <Badge className="bg-[#7b5fff]/10 text-[#1447E6] border-0 px-3 py-1.5 text-xs font-bold mb-3">
+              <Badge className="bg-[#1447E6]/10 text-[#1447E6] border-0 px-3 py-1.5 text-xs font-bold mb-3">
                 Get Started
               </Badge>
               <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
@@ -715,7 +715,7 @@ export default function LandingPage() {
                       placeholder="e.g. Hanoled College"
                       value={formData.schoolName}
                       onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#f8f9fc] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#FFFFFF] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -725,7 +725,7 @@ export default function LandingPage() {
                       placeholder="e.g. 350"
                       value={formData.studentCount}
                       onChange={(e) => setFormData({ ...formData, studentCount: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#f8f9fc] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#FFFFFF] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -739,7 +739,7 @@ export default function LandingPage() {
                       placeholder="e.g. admin@school.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#f8f9fc] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#FFFFFF] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -750,7 +750,7 @@ export default function LandingPage() {
                       placeholder="e.g. +234 803 123 4567"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#f8f9fc] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-[#FFFFFF] px-4 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1447E6] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -773,12 +773,12 @@ export default function LandingPage() {
 
         {/* BOTTOM CALL TO ACTIONS (Purple & Yellow) */}
         <section id="contact" className="mt-16 grid gap-6 lg:grid-cols-[1.3fr_0.7fr] relative">
-          <div className="absolute -left-5 top-14 z-20 flex hidden lg:flex items-center justify-center w-8 py-6 bg-[#1b2333] text-white text-xs font-bold rounded-l-md rounded-r-none tracking-widest [writing-mode:vertical-lr] transform rotate-180 shadow-lg cursor-default h-40">
+          <div className="absolute -left-5 top-14 z-20 flex hidden lg:flex items-center justify-center w-8 py-6 bg-[#0B1220] text-white text-xs font-bold rounded-l-md rounded-r-none tracking-widest [writing-mode:vertical-lr] transform rotate-180 shadow-lg cursor-default h-40">
              SECURE
           </div>
 
-          {/* Left Purple Box */}
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#6e4ef6] p-8 sm:p-10 lg:p-12 text-white shadow-xl shadow-[#6e4ef6]/20">
+          {/* Left Brand Box */}
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#1447E6] p-8 sm:p-10 lg:p-12 text-white shadow-xl shadow-[#1447E6]/20">
              <svg className="absolute top-0 right-0 w-full h-full text-white/5 opacity-50" viewBox="0 0 400 400" fill="none">
                <circle cx="350" cy="50" r="150" stroke="currentColor" strokeWidth="40" />
                <circle cx="350" cy="50" r="250" stroke="currentColor" strokeWidth="20" strokeDasharray="20 20" />
@@ -806,13 +806,13 @@ export default function LandingPage() {
 
                 {/* Illustration Asset */}
                 <div className="hidden lg:flex relative h-56 w-56 items-center justify-center">
-                   <div className="relative h-48 w-48 rounded-[2rem] border-4 border-[#8e76fb] bg-[#5c3cd6] shadow-2xl flex flex-col items-center justify-center rotate-3">
-                      <div className="absolute top-4 w-1/2 h-3 rounded-full bg-[#8e76fb]" />
+                   <div className="relative h-48 w-48 rounded-[2rem] border-4 border-blue-400 bg-[#0B2E99] shadow-2xl flex flex-col items-center justify-center rotate-3">
+                      <div className="absolute top-4 w-1/2 h-3 rounded-full bg-blue-400" />
                       <FileSpreadsheet className="h-16 w-16 text-white mb-2" />
                       <div className="flex gap-2">
-                         <div className="h-6 w-6 rounded-full bg-[#f6c24e]" />
-                         <div className="h-6 w-6 rounded-full bg-[#ff7b92]" />
-                         <div className="h-6 w-6 rounded-full bg-[#4cd988]" />
+                         <div className="h-6 w-6 rounded-full bg-amber-500" />
+                         <div className="h-6 w-6 rounded-full bg-blue-300" />
+                         <div className="h-6 w-6 rounded-full bg-white" />
                       </div>
                    </div>
                 </div>
@@ -820,13 +820,13 @@ export default function LandingPage() {
           </div>
 
           {/* Right Yellow Box */}
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#f0c34b] p-8 sm:p-10 shadow-xl shadow-[#f0c34b]/20 flex flex-col justify-between">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#F5A623] p-8 sm:p-10 shadow-xl shadow-[#F5A623]/20 flex flex-col justify-between">
              <div className="absolute -right-10 -bottom-10 text-white/20">
                <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
              </div>
 
              <div className="relative z-10 space-y-4">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1b2333] text-white mb-2 shadow-md">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0B1220] text-white mb-2 shadow-md">
                   <BellRing className="h-6 w-6" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 leading-tight sm:text-3xl">
@@ -837,13 +837,13 @@ export default function LandingPage() {
                 </p>
              </div>
 
-             <div className="relative z-10 mt-8 flex w-full max-w-sm rounded-[1.5rem] bg-white p-1.5 shadow-sm border border-slate-100 focus-within:ring-2 focus-within:ring-[#5e41ff]/50">
-               <input 
-                 type="email" 
+             <div className="relative z-10 mt-8 flex w-full max-w-sm rounded-[1.5rem] bg-white p-1.5 shadow-sm border border-slate-100 focus-within:ring-2 focus-within:ring-[#1447E6]/50">
+               <input
+                 type="email"
                  placeholder="Enter your email address..."
                  className="w-full bg-transparent px-4 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
                />
-               <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] bg-[#f0c34b] text-slate-900 shadow-sm transition-transform hover:scale-105 hover:bg-[#eab733]">
+               <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] bg-[#F5A623] text-slate-900 shadow-sm transition-transform hover:scale-105 hover:bg-[#DB9114]">
                  <ArrowRight className="h-5 w-5" />
                </button>
              </div>
@@ -869,19 +869,19 @@ export default function LandingPage() {
            <div className="relative flex justify-center w-full max-w-[280px]">
               <div className="relative h-64 w-full rounded-[2rem] border-[12px] border-slate-900 bg-white shadow-2xl overflow-hidden flex flex-col transform rotate-3 z-10">
                  {/* Mock UI inside phone */}
-                 <div className="h-12 w-full bg-[#f8f9fc] border-b flex items-center justify-between px-3">
+                 <div className="h-12 w-full bg-white border-b flex items-center justify-between px-3">
                    <School className="h-5 w-5 text-[#1447E6]" />
                    <div className="h-2 w-16 bg-slate-200 rounded-full" />
                    <div className="h-6 w-6 rounded-full bg-slate-200" />
                  </div>
                  <div className="flex-1 p-4 space-y-3">
-                   <div className="h-16 w-full rounded-xl bg-gradient-to-r from-[#e7e1ff] to-[#f4f2ff]" />
+                   <div className="h-16 w-full rounded-xl bg-gradient-to-r from-blue-100 to-blue-50" />
                    <div className="h-12 w-full rounded-xl bg-slate-100" />
                    <div className="h-12 w-full rounded-xl bg-slate-100" />
                  </div>
               </div>
               
-              <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#f0c34b]/20 blur-3xl" />
+              <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#F5A623]/20 blur-3xl" />
            </div>
         </section>
 

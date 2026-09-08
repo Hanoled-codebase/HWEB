@@ -187,9 +187,9 @@ export default function LibraryPage() {
     const map: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-800",
       approved: "bg-blue-100 text-blue-800",
-      borrowed: "bg-purple-100 text-purple-800",
+      borrowed: "bg-slate-800 text-white",
       returned: "bg-green-100 text-green-800",
-      cancelled: "bg-gray-100 text-gray-800",
+      cancelled: "bg-red-100 text-red-800",
     };
     return map[status] || "bg-gray-100 text-gray-800";
   };
@@ -362,7 +362,7 @@ export default function LibraryPage() {
                         </>
                       )}
                       {loan.status === "approved" && (
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => updateLoanStatus(loan.id, "borrowed")}>
+                        <Button size="sm" className="bg-slate-800 hover:bg-slate-900" onClick={() => updateLoanStatus(loan.id, "borrowed")}>
                           <BookOpen className="h-4 w-4 mr-1" /> Mark Borrowed
                         </Button>
                       )}

@@ -31,21 +31,21 @@ const steps = [
     title: "Online Applications",
     description:
       "Parents fill in student details, upload passport photos, and select the desired class online.",
-    color: "bg-[#f6c24e]/10 text-[#937400]",
+    color: "bg-[#F5A623]/10 text-[#0B1220]",
   },
   {
     icon: ClipboardList,
     title: "Review & Approve",
     description:
       "Applications appear in your dashboard. Review each one, then approve or reject with a single click.",
-    color: "bg-[#4cd988]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-emerald-700",
   },
   {
     icon: Mail,
     title: "Automated Updates",
     description:
       "Parents receive SMS or email updates when their application status changes.",
-    color: "bg-[#ff7b92]/10 text-rose-600",
+    color: "bg-[#F04438]/10 text-rose-600",
   },
 ];
 
@@ -97,7 +97,7 @@ export default function AdmissionsPortalPage() {
             <div className="pt-4 flex justify-center">
               <Link
                 href="/#contact-quote"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1b2333] px-8 font-bold text-white transition-all hover:bg-[#2c3850] hover:-translate-y-1 hover:shadow-lg"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#0B1220] px-8 font-bold text-white transition-all hover:bg-[#1447E6] hover:-translate-y-1 hover:shadow-lg"
               >
                 Get Started <ArrowRight className="h-5 w-5" />
               </Link>
@@ -181,7 +181,7 @@ export default function AdmissionsPortalPage() {
 
         {/* CTA */}
         <section className="mt-16">
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#1b2333] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#0B1220] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
             <div className="absolute top-0 right-0 p-12">
                <div className="h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
             </div>

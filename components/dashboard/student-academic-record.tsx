@@ -73,15 +73,15 @@ function getScoreColors(pct: number | null): ScoreColors {
     return { arc: "#cbd5e1", track: "#f1f5f9", bar: "bg-slate-200" };
   }
   if (pct >= 75) {
-    return { arc: "#10b981", track: "#d1fae5", bar: "bg-emerald-500" };
+    return { arc: "#12B76A", track: "#d1fae5", bar: "bg-emerald-500" };
   }
   if (pct >= 50) {
-    return { arc: "#f59e0b", track: "#fef3c7", bar: "bg-amber-400" };
+    return { arc: "#F5A623", track: "#fef3c7", bar: "bg-amber-400" };
   }
   if (pct >= 25) {
-    return { arc: "#f97316", track: "#ffedd5", bar: "bg-orange-500" };
+    return { arc: "#F04438", track: "#ffe4e6", bar: "bg-rose-400" };
   }
-  return { arc: "#f43f5e", track: "#ffe4e6", bar: "bg-rose-500" };
+  return { arc: "#F04438", track: "#ffe4e6", bar: "bg-rose-500" };
 }
 
 function getGradeBadgeClass(label: string): string {

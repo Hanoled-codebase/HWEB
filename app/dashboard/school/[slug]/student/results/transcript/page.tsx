@@ -63,7 +63,7 @@ export default function TranscriptPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#5B5EF4]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1447E6]" />
         <p className="text-sm text-slate-500 mt-3">Compiling academic records...</p>
       </div>
     );

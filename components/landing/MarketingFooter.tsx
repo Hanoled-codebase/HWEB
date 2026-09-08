@@ -41,11 +41,11 @@ export function MarketingFooter() {
           <div>
             <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Product</h3>
             <ul className="space-y-2 text-xs font-semibold">
-              <li><Link href="/features" className="hover:text-[#F5A623] transition-colors">Features</Link></li>
-              <li><Link href="/hcbt" className="hover:text-[#F5A623] transition-colors">HCBT / Exam Engine</Link></li>
-              <li><Link href="/admissions-portal" className="hover:text-[#F5A623] transition-colors">Admissions Portal</Link></li>
-              <li><Link href="/security" className="hover:text-[#F5A623] transition-colors">Security</Link></li>
-              <li><Link href="/#contact-quote" className="hover:text-[#F5A623] transition-colors">Book a Demo</Link></li>
+              <li><Link href="/features" className="hover:text-[#1447E6] transition-colors">Features</Link></li>
+              <li><Link href="/hcbt" className="hover:text-[#1447E6] transition-colors">HCBT / Exam Engine</Link></li>
+              <li><Link href="/admissions-portal" className="hover:text-[#1447E6] transition-colors">Admissions Portal</Link></li>
+              <li><Link href="/security" className="hover:text-[#1447E6] transition-colors">Security</Link></li>
+              <li><Link href="/#contact-quote" className="hover:text-[#1447E6] transition-colors">Book a Demo</Link></li>
             </ul>
           </div>
 
@@ -53,8 +53,8 @@ export function MarketingFooter() {
           <div>
             <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Company</h3>
             <ul className="space-y-2 text-xs font-semibold">
-              <li><Link href="/about" className="hover:text-[#F5A623] transition-colors">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-[#F5A623] transition-colors">Contact Us</Link></li>
+              <li><Link href="/about" className="hover:text-[#1447E6] transition-colors">About Us</Link></li>
+              <li><Link href="/contact" className="hover:text-[#1447E6] transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
@@ -62,9 +62,9 @@ export function MarketingFooter() {
           <div>
             <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Support</h3>
             <ul className="space-y-2 text-xs font-semibold">
-              <li><Link href="/help" className="hover:text-[#F5A623] transition-colors">Help Center</Link></li>
-              <li><Link href="/support" className="hover:text-[#F5A623] transition-colors">Submit a Support Ticket</Link></li>
-              <li><Link href="/faqs" className="hover:text-[#F5A623] transition-colors">FAQs</Link></li>
+              <li><Link href="/help" className="hover:text-[#1447E6] transition-colors">Help Center</Link></li>
+              <li><Link href="/support" className="hover:text-[#1447E6] transition-colors">Submit a Support Ticket</Link></li>
+              <li><Link href="/faqs" className="hover:text-[#1447E6] transition-colors">FAQs</Link></li>
             </ul>
           </div>
 
@@ -72,18 +72,18 @@ export function MarketingFooter() {
           <div>
             <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Legal</h3>
             <ul className="space-y-2 text-xs font-semibold">
-              <li><Link href="/privacy" className="hover:text-[#F5A623] transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-[#F5A623] transition-colors">Terms of Service</Link></li>
-              <li><Link href="/data-protection" className="hover:text-[#F5A623] transition-colors">Data Protection Policy</Link></li>
+              <li><Link href="/privacy" className="hover:text-[#1447E6] transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-[#1447E6] transition-colors">Terms of Service</Link></li>
+              <li><Link href="/data-protection" className="hover:text-[#1447E6] transition-colors">Data Protection Policy</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="flex flex-col items-center justify-between gap-6 pt-8 text-xs font-semibold sm:flex-row text-slate-400">
           <div className="flex flex-wrap justify-center sm:justify-start gap-4">
-            <span className="flex items-center gap-1.5"><Mail className="h-4 w-4 text-[#F5A623]" /> info@hanoled.com</span>
-            <span className="flex items-center gap-1.5"><Phone className="h-4 w-4 text-[#F5A623]" /> +234 704 739 6999</span>
-            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-[#F5A623]" /> Abeokuta, Nigeria</span>
+            <span className="flex items-center gap-1.5"><Mail className="h-4 w-4 text-[#1447E6]" /> info@hanoled.com</span>
+            <span className="flex items-center gap-1.5"><Phone className="h-4 w-4 text-[#1447E6]" /> +234 704 739 6999</span>
+            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-[#1447E6]" /> Abeokuta, Nigeria</span>
           </div>
           <div>
             © {new Date().getFullYear()} Hanoled School Platform. All rights reserved.

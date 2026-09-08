@@ -98,15 +98,19 @@ export default function AdmissionsAdminPage() {
   }[s] || s);
 
   const statusBadge = (s: string) => {
+    // Note: colors are limited to the brand's blue/gold/green/red families, so
+    // adjacent workflow stages within the same family are told apart with a
+    // lightness ramp (per brand guide's "vary lightness, don't add new hues" rule)
+    // rather than distinct hues.
     const colors: Record<string, string> = {
       pending: "border-amber-200 bg-amber-50 text-amber-700",
-      reviewed: "border-blue-200 bg-blue-50 text-blue-700",
+      reviewed: "border-blue-200 bg-blue-50 text-blue-600",
       accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      scheduled_for_exam: "border-orange-200 bg-orange-50 text-orange-700",
-      taken_exam: "border-cyan-200 bg-cyan-50 text-cyan-700",
-      passed_exam: "border-teal-200 bg-teal-50 text-teal-700",
+      scheduled_for_exam: "border-blue-300 bg-blue-100 text-blue-700",
+      taken_exam: "border-blue-400 bg-blue-200 text-blue-800",
+      passed_exam: "border-emerald-300 bg-emerald-100 text-emerald-800",
       rejected: "border-rose-200 bg-rose-50 text-rose-700",
-      enrolled: "border-purple-200 bg-purple-50 text-purple-700",
+      enrolled: "border-emerald-600 bg-emerald-600 text-white",
     };
     return <Badge variant="outline" className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", colors[s] || "")}>{statusLabel(s)}</Badge>;
   };
@@ -223,7 +227,7 @@ export default function AdmissionsAdminPage() {
                       </Button>
                     )}
                     {(a.status === "passed_exam" || a.status === "accepted") && (
-                      <Button variant="outline" size="sm" className="h-8 text-xs px-3 text-purple-700 border-purple-300 hover:bg-purple-50" onClick={() => updateStatus(a.id, "enrolled")} disabled={processing === a.id}>Enroll</Button>
+                      <Button variant="outline" size="sm" className="h-8 text-xs px-3 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => updateStatus(a.id, "enrolled")} disabled={processing === a.id}>Enroll</Button>
                     )}
                     {["pending", "reviewed", "accepted", "scheduled_for_exam", "taken_exam"].includes(a.status) && (
                       <Button variant="outline" size="sm" className="h-8 text-xs px-3 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => updateStatus(a.id, "rejected")} disabled={processing === a.id}>Reject</Button>

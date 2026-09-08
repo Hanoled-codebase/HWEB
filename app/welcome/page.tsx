@@ -109,12 +109,12 @@ export default async function WelcomePortal() {
 
         {/* Pill Badge */}
         <div className="inline-flex items-center gap-2 bg-[#edf3ff] border border-[#d8e5ff] text-[#1447e6] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase mb-5 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623]"></span>
           <span>WELCOME HUB</span>
         </div>
 
         {/* Main Title */}
-        <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-black tracking-tight text-[#0b1329] leading-[1.12] mb-4">
+        <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-black tracking-tight text-[#0B1220] leading-[1.12] mb-4">
           Welcome to the full<br />
           <span className="text-[#1447e6]">Hanoled suite</span>
         </h1>
@@ -133,7 +133,7 @@ export default async function WelcomePortal() {
               <div className="w-12 h-12 rounded-xl bg-[#edf3ff] text-[#1447e6] flex items-center justify-center mb-6">
                 <LayoutGrid className="w-5 h-5 text-[#1447e6]" />
               </div>
-              <h2 className="text-lg font-bold text-[#0b1329] mb-2">School management</h2>
+              <h2 className="text-lg font-bold text-[#0B1220] mb-2">School management</h2>
               <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-8">
                 Complete administrative control. Manage students, process payments, and automate grading in one place.
               </p>
@@ -164,7 +164,7 @@ export default async function WelcomePortal() {
               <div className="w-12 h-12 rounded-xl bg-[#edf3ff] text-[#1447e6] flex items-center justify-center mb-6">
                 <Monitor className="w-5 h-5 text-[#1447e6]" />
               </div>
-              <h2 className="text-lg font-bold text-[#0b1329] mb-2">Computer-based testing</h2>
+              <h2 className="text-lg font-bold text-[#0B1220] mb-2">Computer-based testing</h2>
               <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-8">
                 High-integrity digital exams. Build question banks and deliver tests with instant grading.
               </p>

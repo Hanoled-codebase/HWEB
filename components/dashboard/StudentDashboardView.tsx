@@ -257,7 +257,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             <Button
               variant="ghost"
               size="sm"
-              className="text-[#1447E6] hover:text-[#4B4EE4] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
+              className="text-[#1447E6] hover:text-[#1447E6] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
             >
               Full Timetable
               <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
@@ -314,7 +314,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-[#1447E6] hover:text-[#4B4EE4] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
+                className="text-[#1447E6] hover:text-[#1447E6] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
               >
                 View All
                 <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
@@ -342,7 +342,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
                   >
                     <Button
                       size="sm"
-                      className="bg-[#1447E6] hover:bg-[#4B4EE4] text-white font-bold text-xs px-4 py-2 rounded-xl h-9 cursor-pointer shadow-sm"
+                      className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-bold text-xs px-4 py-2 rounded-xl h-9 cursor-pointer shadow-sm"
                     >
                       Start
                     </Button>

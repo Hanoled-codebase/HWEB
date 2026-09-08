@@ -26,7 +26,7 @@ export default function PricingPage() {
                 Simple, transparent pricing
               </h1>
               {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#4cd988] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#1447E6] fill-none stroke-current stroke-[4px] mx-auto mt-2">
                 <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
               </svg>
             </div>
@@ -66,13 +66,13 @@ export default function PricingPage() {
             </div>
 
             {/* Pro Plan */}
-            <div className="flex flex-col p-10 bg-[#6e4ef6] rounded-[3rem] shadow-xl transform md:-translate-y-6 relative overflow-hidden">
+            <div className="flex flex-col p-10 bg-[#1447E6] rounded-[3rem] shadow-xl transform md:-translate-y-6 relative overflow-hidden">
               <svg className="absolute top-0 right-0 w-full h-full text-white/5 opacity-50 pointer-events-none" viewBox="0 0 400 400" fill="none">
                  <circle cx="350" cy="50" r="150" stroke="currentColor" strokeWidth="40" />
                  <circle cx="350" cy="50" r="250" stroke="currentColor" strokeWidth="20" strokeDasharray="20 20" />
               </svg>
 
-              <div className="absolute -top-3 -right-3 transform rotate-12 py-2 px-6 bg-[#f6c24e] text-slate-900 text-[10px] font-black tracking-widest uppercase rounded-2xl shadow-lg border-2 border-white z-20">
+              <div className="absolute -top-3 -right-3 transform rotate-12 py-2 px-6 bg-[#F5A623] text-slate-900 text-[10px] font-black tracking-widest uppercase rounded-2xl shadow-lg border-2 border-white z-20">
                 Most Popular
               </div>
               <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
@@ -88,7 +88,7 @@ export default function PricingPage() {
               <ul className="space-y-4 mb-8 flex-1 relative z-10">
                 {['Unlimited Students', 'Unlimited Teachers', 'Bulk Student Upload', 'Live Parent Notifications', 'Priority WAT Support', 'Full System Analytics'].map((feature, i) => (
                   <li key={i} className="flex items-center gap-3 text-white font-semibold text-sm">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f6c24e] text-amber-900">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-amber-900">
                       <Check className="h-4 w-4" />
                     </div>
                     <span>{feature}</span>
@@ -131,7 +131,7 @@ export default function PricingPage() {
         {/* FAQs Section */}
         <section className="mt-20 text-center space-y-6">
            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-100 px-4 py-1.5 shadow-sm">
-             <span className="text-sm font-bold text-[#7b5fff]">Got Questions?</span>
+             <span className="text-sm font-bold text-[#1447E6]">Got Questions?</span>
            </div>
            <h2 className="text-3xl font-extrabold text-slate-900">Frequently Asked Questions</h2>
            

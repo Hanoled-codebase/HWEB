@@ -351,7 +351,7 @@ export default function TeachersPage() {
 
                 {primaryClass && (
                   <div className="pt-1">
-                    <span className="inline-flex items-center rounded-full bg-[#EEF0FF] px-3 py-0.5 text-[11px] font-semibold text-[#5B5EF4]">
+                    <span className="inline-flex items-center rounded-full bg-[#EEF0FF] px-3 py-0.5 text-[11px] font-semibold text-[#1447E6]">
                       {primaryClass}
                     </span>
                   </div>
@@ -367,7 +367,7 @@ export default function TeachersPage() {
         <div className="fixed bottom-16 inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
           <Button
             onClick={() => setIsDialogOpen(true)}
-            className="w-full h-12 bg-[#5B5EF4] hover:bg-[#4b4ee4] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+            className="w-full h-12 bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
             Invite Teacher

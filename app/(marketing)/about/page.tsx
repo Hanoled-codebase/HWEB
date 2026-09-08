@@ -30,27 +30,27 @@ const values = [
     title: "Uncompromising Integrity",
     description:
       "Student data, financial ledgers, and gradebooks are protected with bank-grade encryption and role-based permissions.",
-    color: "bg-[#4cd988]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-emerald-700",
   },
   {
     icon: Heart,
     title: "Relentless Support",
     description:
       "We don't just sell software; we partner with your school. Our support team is always a call or WhatsApp message away.",
-    color: "bg-[#ff7b92]/10 text-rose-600",
+    color: "bg-[#F04438]/10 text-rose-600",
   },
 ];
 
 const stats = [
   { value: "100+", label: "Schools onboarded", text: "text-[#1447E6]" },
-  { value: "50,000+", label: "Students managed", text: "text-[#f6c24e]" },
+  { value: "50,000+", label: "Students managed", text: "text-[#F5A623]" },
   { value: "99.9%", label: "Uptime guarantee", text: "text-emerald-500" },
-  { value: "24/7", label: "Customer support", text: "text-[#7b5fff]" },
+  { value: "24/7", label: "Customer support", text: "text-[#1447E6]" },
 ];
 
 function BrandRibbon() {
   return (
-    <div className="w-full overflow-hidden bg-[#7b5fff] py-3 shadow-md mt-6 rounded-[2rem] max-w-7xl mx-auto hidden sm:block">
+    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md mt-6 rounded-[2rem] max-w-7xl mx-auto hidden sm:block">
       <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
         {Array.from({ length: 15 }).map((_, index) => (
           <span key={index} className="whitespace-nowrap flex items-center gap-6">
@@ -93,7 +93,7 @@ export default function AboutPage() {
                 <span className="text-[#1447E6]">across West Africa</span>
               </h1>
               {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
                 <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
               </svg>
             </div>
@@ -108,7 +108,7 @@ export default function AboutPage() {
         {/* Stats Section */}
         <section className="mt-16 bg-slate-900 rounded-[3rem] px-8 py-12 sm:px-16 sm:py-16 shadow-xl relative overflow-hidden">
           <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#f6c24e]/10 blur-3xl pointer-events-none" />
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#F5A623]/10 blur-3xl pointer-events-none" />
           
           <div className="relative z-10 mx-auto grid max-w-5xl gap-8 sm:grid-cols-4">
             {stats.map((stat, idx) => (
@@ -152,7 +152,7 @@ export default function AboutPage() {
         {/* Values Section */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#7b5fff]/10 text-[#7b5fff] px-3.5 py-1.5 text-xs font-bold mb-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1447E6]/10 text-[#1447E6] px-3.5 py-1.5 text-xs font-bold mb-3">
               Core Principles
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
@@ -185,7 +185,7 @@ export default function AboutPage() {
 
         {/* CTA Section */}
         <section className="mt-16">
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#f6c24e] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-xl text-slate-900">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#F5A623] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-xl text-slate-900">
             <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/20 blur-3xl pointer-events-none" />
             
             <div className="relative z-10 max-w-2xl mx-auto space-y-8">

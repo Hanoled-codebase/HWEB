@@ -35,35 +35,35 @@ const features = [
     title: "Academic Management",
     description:
       "Digital gradebook with configurable CA/exam weightings, scheme of work, homework assignments, and one-click result publishing to parents.",
-    color: "bg-[#f6c24e]/10 text-[#937400]",
+    color: "bg-[#F5A623]/10 text-[#0B1220]",
   },
   {
     icon: Wallet,
     title: "Financial Management",
     description:
       "Fee structures by category, auto-generated invoices, online payment collection (Paystack & Monnify), debt dashboard with top-debtor tracking.",
-    color: "bg-[#4cd988]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: MessageSquare,
     title: "Communication Portal",
     description:
       "WhatsApp, Email, and SMS messaging with custom templates. Automatic performance drop alerts sent to parents instantly.",
-    color: "bg-[#ff7b92]/10 text-rose-600",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Users,
     title: "Operations & Welfare",
     description:
       "Daily attendance tracking, timetabling, library loans, hostel allocations, and bus route tracking with GPS stop coordinates.",
-    color: "bg-[#fcb3e2]/10 text-pink-600",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Calendar,
     title: "Admissions Portal",
     description:
       "Public application forms with online fee payment, entrance exam scheduling tied to HCBT, and pending-to-enrolled status workflow.",
-    color: "bg-[#9fb0ff]/20 text-indigo-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: FileSpreadsheet,
@@ -77,14 +77,14 @@ const features = [
     title: "Custom Dashboards",
     description:
       "Create a branded public admissions page. Parents apply online, you review, approve or reject — all from your dashboard.",
-    color: "bg-[#f6c24e]/10 text-[#937400]",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Shield,
     title: "Security & Roles",
     description:
       "Role-based access control ensures teachers see only what they need. Data is encrypted at rest and in transit. Regular automated backups protect your records.",
-    color: "bg-emerald-500/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
 ];
 
@@ -119,7 +119,7 @@ export default function FeaturesPage() {
                 <span className="text-[#1447E6]">in one platform</span>
               </h1>
               {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
                 <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
               </svg>
             </div>
@@ -133,10 +133,10 @@ export default function FeaturesPage() {
             <div className="flex items-center justify-center gap-3 pt-4">
               <div className="flex -space-x-3">
                 {[
-                  { bg: "bg-[#7b5fff]", initials: "TC" },
-                  { bg: "bg-[#f6c24e]", initials: "PA" },
-                  { bg: "bg-[#4ecb71]", initials: "AD" },
-                  { bg: "bg-[#ff7b92]", initials: "ST" },
+                  { bg: "bg-[#1447E6]", initials: "TC" },
+                  { bg: "bg-[#F5A623]", initials: "PA" },
+                  { bg: "bg-[#1447E6]", initials: "AD" },
+                  { bg: "bg-[#F04438]", initials: "ST" },
                 ].map((user, i) => (
                   <div
                     key={i}
@@ -145,7 +145,7 @@ export default function FeaturesPage() {
                     {user.initials}
                   </div>
                 ))}
-                <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#1b2333] text-[10px] font-bold text-white shadow-sm">
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#0B1220] text-[10px] font-bold text-white shadow-sm">
                   +1200
                 </div>
               </div>
@@ -193,8 +193,8 @@ export default function FeaturesPage() {
         {/* CTA */}
         <section className="mt-16">
           <div className="relative overflow-hidden rounded-[3rem] bg-[#0B1220] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
-            <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#5e41ff]/20 blur-3xl" />
-            <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#1447E6]/20 blur-3xl" />
+            <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#1447E6]/10 blur-3xl" />
             
             <div className="relative z-10 max-w-2xl mx-auto space-y-8">
               <h2 className="text-3xl font-extrabold text-white sm:text-5xl leading-tight">

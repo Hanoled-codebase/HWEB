@@ -39,7 +39,7 @@ const articleData = {
     title: "Centralized Directory: The Future of School Management",
     date: "March 25, 2026",
     time: "4 min read",
-    gradient: "from-[#efdaff] to-[#dfb8ff]",
+    gradient: "from-blue-50 to-blue-200",
     icon: School,
     heroText: "Centralized",
     iconColor: "text-black/10",
@@ -64,7 +64,7 @@ const articleData = {
         <p>
           The system intelligently maps out hierarchies, ensuring that the <i>School Manager</i> retains top-level oversight, while teachers seamlessly gain control of their specific modular gradebooks.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#f6c24e] bg-[#fbf9f4] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#F5A623] bg-amber-50 p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;Before Hanoled, finding a parent&apos;s updated phone number took hunting through three different files. Now, it&apos;s searchable from the dashboard in seconds.&rdquo;
           </p>
@@ -82,10 +82,10 @@ const articleData = {
     title: "Dynamic Gradebooks: Real-Time Assessment and Clarity",
     date: "April 2, 2026",
     time: "5 min read",
-    gradient: "from-[#d2eaff] to-[#a3d4ff]",
+    gradient: "from-blue-100 to-blue-300",
     icon: FileSpreadsheet,
     heroText: "Perform",
-    iconColor: "text-[#1b3687]/10",
+    iconColor: "text-[#0B2E99]/10",
     content: (
       <>
         <p className="mb-6 text-lg font-medium leading-relaxed text-slate-800 sm:mb-8 sm:text-xl">
@@ -104,7 +104,7 @@ const articleData = {
         <p>
           What happens when scores are fully compiled? Typically, a messy printout. With Hanoled, compiled dynamic gradebooks instantly generate secure PDF broadsheets and individual report cards that parents see immediately depending on the admin&apos;s release date.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#4cd988] bg-[#f0fcf4] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#1447E6] bg-[#EEF0FF] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;I used to take grade sheets home every weekend leading up to exam release. Now I calculate everything within the app and the system generates the broadsheets instantly!&rdquo;
           </p>
@@ -119,10 +119,10 @@ const articleData = {
     title: "Role-Based Access: Securing Educational Data Ecosystems",
     date: "April 10, 2026",
     time: "3 min read",
-    gradient: "from-[#ffe8cd] to-[#ffcb90]",
+    gradient: "from-amber-50 to-amber-200",
     icon: Shield,
     heroText: "Secure",
-    iconColor: "text-[#937400]/10",
+    iconColor: "text-[#0B1220]/10",
     content: (
       <>
         <p className="mb-6 text-lg font-medium leading-relaxed text-slate-800 sm:mb-8 sm:text-xl">
@@ -141,7 +141,7 @@ const articleData = {
         <p>
           Knowing that the right eyes are looking at the right data builds enormous trust. Admins have detailed audit logs showing score edits, and parents feel secure knowing that other people don&apos;t have access to their child&apos;s transcript.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#7b5fff] bg-[#f5f3ff] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#1447E6] bg-[#EEF0FF] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;Distributing report cards used to be a chaos of paper limits and privacy envelopes. Today, when we hit release, parents unlock only their child&apos;s dashboard via digital authentication.&rdquo;
           </p>
@@ -163,7 +163,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const Icon = article.icon;
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] pb-12 font-sans selection:bg-[#7b5fff] selection:text-white">
+    <div className="min-h-screen bg-[#f8f9fc] pb-12 font-sans selection:bg-[#1447E6] selection:text-white">
       {/* Top Navbar */}
       <MarketingHeader />
 
@@ -232,7 +232,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             
             {/* Bottom Author block */}
             <div className="mt-12 flex items-center gap-4 border-t border-slate-100 pt-6 sm:mt-16 sm:pt-8">
-               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1b2333] text-base font-bold text-white shadow-md sm:h-14 sm:w-14 sm:text-lg">
+               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0B1220] text-base font-bold text-white shadow-md sm:h-14 sm:w-14 sm:text-lg">
                   HA
                </div>
                <div>
@@ -246,8 +246,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <BrandRibbon />
 
       {/* Footer */}
-      <footer className="bg-[#7b5fff] pt-1 mt-8">
-        <div className="bg-[#1b2333] px-6 py-8 text-center sm:text-left">
+      <footer className="bg-[#1447E6] pt-1 mt-8">
+        <div className="bg-[#0B1220] px-6 py-8 text-center sm:text-left">
           <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 text-sm font-medium text-slate-400 sm:flex-row">
             <p className="flex items-center gap-2">
                Access from everywhere! <MonitorSmartphone className="h-4 w-4" />

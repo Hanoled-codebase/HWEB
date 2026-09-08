@@ -749,7 +749,7 @@ export default function HRPage() {
               {memberAssignments.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-[#EEF0FF] text-[#5B5EF4] text-xs font-medium px-3 py-1.5 rounded-xl block"
+                  className="bg-[#EEF0FF] text-[#1447E6] text-xs font-medium px-3 py-1.5 rounded-xl block"
                 >
                   {ASSIGNMENT_LABELS[a.type]}
                   {a.department && ` – ${a.department.name}`}
@@ -761,7 +761,7 @@ export default function HRPage() {
                 teachingAssignments.map((a, i) => (
                   <div
                     key={i}
-                    className="bg-[#EEF0FF] text-[#5B5EF4] text-xs font-medium px-3 py-1.5 rounded-xl block"
+                    className="bg-[#EEF0FF] text-[#1447E6] text-xs font-medium px-3 py-1.5 rounded-xl block"
                   >
                     Teacher – {a.subject?.name || "Subject"} – {a.classLevel?.name || "Class"}
                   </div>
@@ -840,7 +840,7 @@ export default function HRPage() {
           {isPrivileged && (
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full h-12 bg-[#5B5EF4] hover:bg-[#4c4fe4] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                <Button className="w-full h-12 bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
                   <Plus className="h-4 w-4" />
                   Create Profile
                 </Button>

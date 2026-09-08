@@ -77,7 +77,7 @@ export default function ContactPage() {
                 Let&apos;s talk about <span className="text-[#1447E6]">your school</span>
               </h1>
               {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#f6c24e] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
                 <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
               </svg>
             </div>
@@ -99,9 +99,9 @@ export default function ContactPage() {
                   <div className="flex items-center gap-3 pt-2">
                     <div className="flex -space-x-3">
                       {[
-                        { bg: "bg-[#7b5fff]", initials: "CS" },
-                        { bg: "bg-[#f6c24e]", initials: "TJ" },
-                        { bg: "bg-[#4ecb71]", initials: "KO" },
+                        { bg: "bg-[#1447E6]", initials: "CS" },
+                        { bg: "bg-[#F5A623]", initials: "TJ" },
+                        { bg: "bg-[#1447E6]", initials: "KO" },
                       ].map((user, i) => (
                         <div
                           key={i}
@@ -161,7 +161,7 @@ export default function ContactPage() {
           {/* Right Column - Form */}
           <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 shadow-xl relative overflow-hidden" id="contact-quote">
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#f6c24e]/10 blur-3xl pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#F5A623]/10 blur-3xl pointer-events-none" />
             
             <h3 className="text-2xl font-bold text-white mb-8 relative z-10">Send us a message</h3>
             

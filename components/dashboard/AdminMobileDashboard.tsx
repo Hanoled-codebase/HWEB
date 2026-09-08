@@ -235,7 +235,7 @@ export function AdminMobileDashboard({
                 <Link
                   key={stat.label}
                   href={stat.href || base}
-                  className="group flex items-center gap-3 rounded-xl bg-[#181B2E] p-3 shadow-sm"
+                  className="group flex items-center gap-3 rounded-xl bg-[#0B1220] p-3 shadow-sm"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
                     <Icon className="h-5 w-5 text-white" />
