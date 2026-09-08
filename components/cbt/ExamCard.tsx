@@ -88,7 +88,7 @@ export function ExamCard({
               <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#d1d5db" strokeWidth="3" />
                 <circle cx="18" cy="18" r="15.5" fill="none"
-                  stroke={exam.myResult.percentage >= 50 ? "#22c55e" : "#ef4444"}
+                  stroke={exam.myResult.percentage >= 50 ? "#12B76A" : "#F04438"}
                   strokeWidth="3"
                   strokeDasharray={`${(exam.myResult.percentage / 100) * 97.4} 97.4`}
                   strokeLinecap="round"

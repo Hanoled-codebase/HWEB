@@ -191,18 +191,18 @@ function getScoreTone(percentage: number | null) {
   }
 
   if (percentage >= 75) {
-    return { stroke: "#047857", text: "text-emerald-700" };
+    return { stroke: "#12B76A", text: "text-emerald-700" };
   }
 
   if (percentage >= 60) {
-    return { stroke: "#10b981", text: "text-emerald-600" };
+    return { stroke: "#12B76A", text: "text-emerald-600" };
   }
 
   if (percentage >= 50) {
-    return { stroke: "#2563eb", text: "text-blue-700" };
+    return { stroke: "#1447E6", text: "text-blue-700" };
   }
 
-  return { stroke: "#dc2626", text: "text-red-600" };
+  return { stroke: "#F04438", text: "text-red-600" };
 }
 
 function MobileScoreRing({ percentage }: { percentage: number | null }) {

@@ -34,9 +34,9 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 relative overflow-hidden">
       {/* Decorative Background Elements */}
       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none" />
-      <div className="absolute top-1/4 -right-20 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-2000" />
-      <div className="absolute -bottom-40 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-4000" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none" />
+      <div className="absolute top-1/4 -right-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-2000" />
+      <div className="absolute -bottom-40 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-4000" />
 
       <div className="w-full max-w-xl p-10 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white relative z-10">
         <div className="flex justify-center mb-4">

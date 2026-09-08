@@ -216,7 +216,7 @@ export default function MessagingPage() {
                   </div>
 
                   <div className="pt-2 hidden md:block">
-                    <Button onClick={sendSingle} disabled={sending} className="w-full rounded-2xl bg-[#5B5EF4] hover:bg-[#4c4fe4] h-12 font-semibold text-white sm:w-auto shadow-sm">
+                    <Button onClick={sendSingle} disabled={sending} className="w-full rounded-2xl bg-[#1447E6] hover:bg-[#0f36b8] h-12 font-semibold text-white sm:w-auto shadow-sm">
                       {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                       Send Message
                     </Button>
@@ -248,7 +248,7 @@ export default function MessagingPage() {
                     </div>
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                       <span className="font-bold text-slate-900 text-sm">Estimated Total</span>
-                      <span className="text-base font-bold text-[#5B5EF4]">
+                      <span className="text-base font-bold text-[#1447E6]">
                         {composeChannel === "sms" ? "₦4.00" : composeChannel === "whatsapp" ? "₦6.50" : "₦0.00"}
                       </span>
                     </div>
@@ -303,7 +303,7 @@ export default function MessagingPage() {
                   <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)}
                     className="min-h-[100px] rounded-2xl" placeholder="e.g. Dear {{studentName}}, ..." />
                 </div>
-                <Button onClick={sendBulk} disabled={bulking || !bulkClass} className="w-full h-12 rounded-2xl bg-[#5B5EF4] hover:bg-[#4c4fe4] text-white font-semibold">
+                <Button onClick={sendBulk} disabled={bulking || !bulkClass} className="w-full h-12 rounded-2xl bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold">
                   {bulking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
                   Broadcast to Class
                 </Button>
@@ -368,7 +368,7 @@ export default function MessagingPage() {
             <Button
               onClick={sendSingle}
               disabled={sending}
-              className="w-full h-12 bg-[#5B5EF4] hover:bg-[#4c4fe4] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+              className="w-full h-12 bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Send Message

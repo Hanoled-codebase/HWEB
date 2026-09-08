@@ -237,7 +237,7 @@ export default function TimetablePage() {
       };
 
       if (editingSlot) {
-        await apiFetch(`/timetable/slots/${editingSlot.id}`, {
+        await apiFetch(`/timetable/${orgSlug}/slots/${editingSlot.id}`, {
           method: "PATCH",
           body: JSON.stringify(body),
           headers: { "Content-Type": "application/json" },
@@ -263,7 +263,7 @@ export default function TimetablePage() {
   const handleDeleteSlot = async (slotId: string) => {
     if (!orgSlug || !confirm("Delete this slot?")) return;
     try {
-      await apiFetch(`/timetable/slots/${slotId}`, { method: "DELETE" });
+      await apiFetch(`/timetable/${orgSlug}/slots/${slotId}`, { method: "DELETE" });
       toast.success("Slot deleted");
       await loadSlots();
     } catch {
@@ -372,11 +372,11 @@ export default function TimetablePage() {
                   onClick={() => setSelectedSchedule(s)}
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                     isSelected
-                      ? "bg-[#EEF0FF] text-[#5B5EF4] border border-indigo-100"
+                      ? "bg-[#EEF0FF] text-[#1447E6] border border-indigo-100"
                       : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[#5B5EF4]" />}
+                  {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[#1447E6]" />}
                   <span>{s.classLevel.name}</span>
                 </button>
               );
@@ -445,7 +445,7 @@ export default function TimetablePage() {
                     {isPrivileged && (
                       <button
                         onClick={() => openAddSlot(day.dayIndex)}
-                        className="text-[#5B5EF4] hover:text-indigo-700 text-xs font-semibold flex items-center gap-1"
+                        className="text-[#1447E6] hover:text-indigo-700 text-xs font-semibold flex items-center gap-1"
                       >
                         + Add
                       </button>

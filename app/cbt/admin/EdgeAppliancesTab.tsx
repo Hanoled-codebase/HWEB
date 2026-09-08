@@ -78,7 +78,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
           <h2 className="text-xl font-black text-slate-800">Edge Appliances</h2>
           <p className="text-sm text-slate-500 font-medium">Manage local offline servers and generate exam packages.</p>
         </div>
-        <div className="bg-[#eef2ff] text-[#4f46e5] px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+        <div className="bg-[#eef2ff] text-[#1447E6] px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
           <Info className="w-4 h-4" />
           Offline exams must be exported here
         </div>

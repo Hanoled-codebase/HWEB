@@ -33,28 +33,28 @@ const capabilities = [
     title: "Randomised Papers",
     description:
       "Automatically shuffle questions and answer options for every student so no two papers are the same. Minimise cheating effortlessly.",
-    color: "bg-[#f6c24e]/10 text-[#937400]",
+    color: "bg-[#F5A623]/10 text-[#0B1220]",
   },
   {
     icon: Clock,
     title: "Timed Exams",
     description:
       "Set per-exam or per-question time limits. The countdown timer is always visible to students, and the exam auto-submits when time runs out.",
-    color: "bg-[#ff7b92]/10 text-rose-600",
+    color: "bg-[#F04438]/10 text-rose-600",
   },
   {
     icon: Zap,
     title: "Instant Grading",
     description:
       "Objective questions are graded the moment a student submits. Results are available to teachers immediately — no manual marking needed.",
-    color: "bg-[#4cd988]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-emerald-700",
   },
   {
     icon: Monitor,
     title: "Any Device",
     description:
       "Students can take exams on phones, tablets, laptops, or desktops. The interface adapts to every screen size for a seamless experience.",
-    color: "bg-[#9fb0ff]/20 text-indigo-700",
+    color: "bg-[#AFC3F5]/20 text-indigo-700",
   },
   {
     icon: ShieldCheck,
@@ -73,8 +73,8 @@ export default function HcbtPage() {
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         {/* HERO SECTION */}
         <section className="relative overflow-hidden rounded-[3rem] bg-slate-900 px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center text-white">
-          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#5e41ff]/30 blur-3xl" />
-          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#f6c24e]/20 blur-3xl" />
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#1447E6]/30 blur-3xl" />
+          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#F5A623]/20 blur-3xl" />
           
           <div className="absolute top-20 right-10 rotate-12 hidden md:block">
              <div className="bg-red-500/20 text-red-400 font-bold px-4 py-2 rounded-2xl border border-red-500/50 shadow-xl flex items-center gap-2">
@@ -85,14 +85,14 @@ export default function HcbtPage() {
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-4 py-1.5 shadow-sm transform -rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <Rocket className="h-4 w-4 text-[#f0c34b]" />
-              <span className="text-sm font-bold text-[#f0c34b]">Exam Engine</span>
+              <Rocket className="h-4 w-4 text-[#F5A623]" />
+              <span className="text-sm font-bold text-[#F5A623]">Exam Engine</span>
             </div>
             
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-white sm:text-5xl md:text-6xl">
                 HCBT — Computer-Based Testing, <br />
-                <span className="text-[#f0c34b]">made simple</span>
+                <span className="text-[#F5A623]">made simple</span>
               </h1>
               {/* Wavy accent line under title */}
               <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#1447E6] fill-none stroke-current stroke-[4px] mx-auto mt-2">
@@ -175,7 +175,7 @@ export default function HcbtPage() {
         {/* Capabilities Grid */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#f6c24e]/10 text-[#937400] px-3.5 py-1.5 text-xs font-bold mb-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#F5A623]/10 text-[#0B1220] px-3.5 py-1.5 text-xs font-bold mb-3">
               Features
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
@@ -208,7 +208,7 @@ export default function HcbtPage() {
 
         {/* CTA */}
         <section className="mt-16">
-          <div className="relative overflow-hidden rounded-[3rem] bg-[#6e4ef6] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
+          <div className="relative overflow-hidden rounded-[3rem] bg-[#1447E6] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
             <svg className="absolute top-0 right-0 w-full h-full text-white/5 opacity-50" viewBox="0 0 400 400" fill="none">
                <circle cx="350" cy="50" r="150" stroke="currentColor" strokeWidth="40" />
                <circle cx="350" cy="50" r="250" stroke="currentColor" strokeWidth="20" strokeDasharray="20 20" />
@@ -226,7 +226,7 @@ export default function HcbtPage() {
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Link
                   href="/#contact-quote"
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 font-bold text-[#6e4ef6] transition-all hover:bg-slate-100 hover:-translate-y-1 hover:shadow-lg"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 font-bold text-[#1447E6] transition-all hover:bg-slate-100 hover:-translate-y-1 hover:shadow-lg"
                 >
                   Book a Demo <ArrowRight className="h-5 w-5" />
                 </Link>

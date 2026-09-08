@@ -192,7 +192,7 @@ export function DiscussionBoard({
               size="icon"
               onClick={handlePostComment}
               disabled={submitting || !newComment.trim()}
-              className="bg-[#1447E6] hover:bg-[#474AD3] rounded-xl shrink-0 h-11 w-11"
+              className="bg-[#1447E6] hover:bg-[#1447E6]/90 rounded-xl shrink-0 h-11 w-11"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
