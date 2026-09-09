@@ -1380,14 +1380,16 @@ export default function AdminDashboard() {
                 >
                   Grade Auditor
                 </button>
-                <button
-                  onClick={() => setActiveTab("appliances")}
-                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Edge Appliances
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab("appliances")}
+                    className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                      activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Edge Appliances
+                  </button>
+                )}
               </div>
 
               <button
@@ -1662,8 +1664,8 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* EDGE APPLIANCES TAB */}
-            {activeTab === "appliances" && (
+            {/* EDGE APPLIANCES TAB — admin only */}
+            {isAdmin && activeTab === "appliances" && (
               <EdgeAppliancesTab orgSlug={orgSlug} exams={exams} />
             )}
 

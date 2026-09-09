@@ -1,6 +1,7 @@
 // Hanoled CBT Frontend API Client
 
 import { request, HCBT_BASE, type RequestOptions } from './api';
+import { getHcbtToken } from './auth-tokens';
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 interface ApiOptions extends RequestOptions {
@@ -27,6 +28,21 @@ export const cbtApi = {
   getEdgeNodes: () => fetchCbt<any[]>(`/edge-nodes`),
   revokeEdgeNode: (id: string) => fetchCbt(`/edge-nodes/${id}/revoke`, { method: "POST" }),
   exportExamPackage: (examId: string, data: any) => fetchCbt(`/api/edge/packages/${examId}/export`, { method: "POST", body: JSON.stringify(data) }),
+  // Which platform builds actually exist on the server (e.g. { mac: true, win: true }).
+  getEdgeAppliancePlatforms: () => fetchCbt<Record<string, boolean>>(`/edge-nodes/download/platforms`),
+  // Binary download — bypasses fetchCbt's JSON parsing, returns a Blob.
+  downloadEdgeAppliance: async (platform: "mac" | "win" = "mac"): Promise<Blob> => {
+    const token = getHcbtToken();
+    const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || data.error || "Failed to download the Edge Appliance executable");
+    }
+    return res.blob();
+  },
 
   // ── Exams (Admin CRUD) ──────────────────────────────────────────────
   createExam: (data: ExamData) => fetchCbt("/exams", { method: "POST", body: JSON.stringify(data) }),

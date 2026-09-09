@@ -8,7 +8,10 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
   const [nodes, setNodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
-  
+  const [downloading, setDownloading] = useState(false);
+  const [platforms, setPlatforms] = useState<Record<string, boolean>>({});
+  const [platform, setPlatform] = useState<"mac" | "win">("mac");
+
   // Export modal state
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
@@ -29,6 +32,17 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
 
   useEffect(() => {
     fetchNodes();
+    cbtApi.getEdgeAppliancePlatforms()
+      .then((data) => {
+        setPlatforms(data);
+        // Prefer whichever build the visitor's own OS would use, falling
+        // back to whatever's actually available on the server.
+        const detected = navigator.userAgent.includes("Windows") ? "win" : "mac";
+        if (data[detected]) setPlatform(detected as "mac" | "win");
+        else if (data.mac) setPlatform("mac");
+        else if (data.win) setPlatform("win");
+      })
+      .catch(() => {});
   }, []);
 
   const handleRevoke = async (id: string) => {
@@ -69,6 +83,27 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
     }
   };
 
+  const handleDownloadAppliance = async () => {
+    setDownloading(true);
+    try {
+      const blob = await cbtApi.downloadEdgeAppliance(platform);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = platform === "win" ? "hcbt-edge.exe" : "hcbt-edge";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || "Failed to download the Edge Appliance executable");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const availablePlatformCount = Object.values(platforms).filter(Boolean).length;
+
   const publishedExams = exams.filter(e => e.status === "published");
 
   return (
@@ -78,9 +113,29 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
           <h2 className="text-xl font-black text-slate-800">Edge Appliances</h2>
           <p className="text-sm text-slate-500 font-medium">Manage local offline servers and generate exam packages.</p>
         </div>
-        <div className="bg-[#eef2ff] text-[#1447E6] px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <Info className="w-4 h-4" />
-          Offline exams must be exported here
+        <div className="flex items-center gap-2">
+          <div className="bg-[#eef2ff] text-[#1447E6] px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <Info className="w-4 h-4" />
+            Offline exams must be exported here
+          </div>
+          {availablePlatformCount > 1 && (
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value as "mac" | "win")}
+              className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            >
+              {platforms.mac && <option value="mac">macOS</option>}
+              {platforms.win && <option value="win">Windows</option>}
+            </select>
+          )}
+          <button
+            onClick={handleDownloadAppliance}
+            disabled={downloading || availablePlatformCount === 0}
+            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${platform === "win" ? "Windows" : "macOS"})` : ""}`}
+          </button>
         </div>
       </div>
 
@@ -95,7 +150,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
           </div>
           <h3 className="text-lg font-bold text-slate-800 mb-2">No Appliances Paired</h3>
           <p className="text-[13px] text-slate-500 max-w-sm mx-auto leading-relaxed mb-6">
-            To use offline exams, download the Edge Appliance executable on your local server and pair it using this school's slug:
+            To use offline exams, click <strong>Download Appliance</strong> above, run it on your local server, and pair it using this school's slug:
           </p>
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 group">
             <span className="text-sm font-bold text-slate-800 flex-1 truncate text-left">{orgSlug}</span>
