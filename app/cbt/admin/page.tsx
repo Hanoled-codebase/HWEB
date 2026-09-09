@@ -31,7 +31,10 @@ import {
   X,
   Upload,
   Hourglass,
-  Send
+  Send,
+  Key,
+  Copy,
+  RefreshCw
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
@@ -121,6 +124,18 @@ export default function AdminDashboard() {
   } | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
   const [releasingResults, setReleasingResults] = useState(false);
+
+  // Passkey Modal State
+  const [passkeyModal, setPasskeyModal] = useState<{
+    examId: string;
+    examTitle: string;
+    passkeyRequired: boolean;
+    passkeyMode: "shared" | "unique" | null;
+    passkey: string | null;
+    students: { studentId: string; firstName: string; lastName: string; admissionNumber: string; code: string | null }[];
+  } | null>(null);
+  const [loadingPasskey, setLoadingPasskey] = useState(false);
+  const [generatingPasskey, setGeneratingPasskey] = useState(false);
 
   // Student Detail Modal State
   const [studentDetail, setStudentDetail] = useState<any>(null);
@@ -257,6 +272,76 @@ export default function AdminDashboard() {
     } finally {
       setReleasingResults(false);
     }
+  };
+
+  // Open Passkey Modal
+  const handleOpenPasskey = async (exam: any) => {
+    setLoadingPasskey(true);
+    setPasskeyModal({
+      examId: exam.id,
+      examTitle: exam.title,
+      passkeyRequired: false,
+      passkeyMode: null,
+      passkey: null,
+      students: [],
+    });
+    try {
+      const data: any = await cbtApi.getExamPasskey(exam.id);
+      setPasskeyModal({ examId: exam.id, examTitle: exam.title, ...data });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load passkey settings");
+      setPasskeyModal(null);
+    } finally {
+      setLoadingPasskey(false);
+    }
+  };
+
+  // Keeps the designer header badge and the exam grid in sync with the
+  // passkey modal, which only mutates its own local state otherwise.
+  const syncExamPasskeyRequired = (examId: string, passkeyRequired: boolean) => {
+    setDesignerExam((prev: any) => (prev && prev.id === examId ? { ...prev, passkeyRequired } : prev));
+    setExams((prev) => prev.map((e: any) => (e.id === examId ? { ...e, passkeyRequired } : e)));
+  };
+
+  // Generate (or regenerate) the passkey for the exam currently open in passkeyModal
+  const handleGeneratePasskey = async (mode: "shared" | "unique") => {
+    if (!passkeyModal || generatingPasskey) return;
+    setGeneratingPasskey(true);
+    try {
+      const data: any = await cbtApi.generateExamPasskey(passkeyModal.examId, mode);
+      setPasskeyModal((prev) => prev && { ...prev, ...data });
+      syncExamPasskeyRequired(passkeyModal.examId, true);
+      toast.success(
+        mode === "shared"
+          ? "Shared passkey generated — share it with the class."
+          : "Unique passkeys generated for every assigned student."
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate passkey");
+    } finally {
+      setGeneratingPasskey(false);
+    }
+  };
+
+  const handleDisablePasskey = async () => {
+    if (!passkeyModal || generatingPasskey) return;
+    setGeneratingPasskey(true);
+    try {
+      const data: any = await cbtApi.disableExamPasskey(passkeyModal.examId);
+      setPasskeyModal((prev) => prev && { ...prev, ...data });
+      syncExamPasskeyRequired(passkeyModal.examId, false);
+      toast.success("Passkey requirement turned off — students can start this exam freely.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disable passkey");
+    } finally {
+      setGeneratingPasskey(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard?.writeText(text)
+      .then(() => toast.success(`${label} copied to clipboard`))
+      .catch(() => toast.error("Could not copy to clipboard"));
   };
 
   // Open Student Detail Modal
@@ -790,6 +875,17 @@ export default function AdminDashboard() {
                   <span>Assign</span>
                 </button>
                 )}
+                <button
+                  onClick={() => handleOpenPasskey(designerExam)}
+                  className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 border ${
+                    designerExam.passkeyRequired
+                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-[#8a5c10] hover:bg-[#F5A623]/20"
+                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>{designerExam.passkeyRequired ? "Passkey On" : "Passkey"}</span>
+                </button>
                 <button
                   onClick={handleCloseDesigner}
                   className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm"
@@ -2181,6 +2277,140 @@ export default function AdminDashboard() {
             <div className="mt-6">
               <button
                 onClick={() => setResultsModal(null)}
+                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PASSKEY MODAL */}
+      {passkeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] shadow-xl p-6 relative overflow-y-auto">
+            <button
+              onClick={() => setPasskeyModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-extrabold text-[#0B1220] mb-1 flex items-center gap-2">
+              <Key className="w-4 h-4 text-[#1447E6]" />
+              {passkeyModal.examTitle}
+            </h3>
+            <p className="text-xs text-slate-500 mb-5">
+              Students must enter this passkey before they can start the exam.
+            </p>
+
+            {loadingPasskey ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-[#1447E6] animate-spin" /></div>
+            ) : (
+              <>
+                <div className={`flex items-center justify-between gap-3 mb-5 p-3.5 rounded-xl border ${
+                  passkeyModal.passkeyRequired
+                    ? "bg-[#F5A623]/10 border-[#F5A623]/30"
+                    : "bg-slate-50 border-slate-200"
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Key className={`w-4 h-4 shrink-0 ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-400"}`} />
+                    <p className={`text-xs font-semibold leading-snug ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-600"}`}>
+                      {passkeyModal.passkeyRequired
+                        ? `Passkey required — ${passkeyModal.passkeyMode === "shared" ? "one shared code for the class" : "a unique code per student"}.`
+                        : "No passkey required — any assigned student can start this exam directly."}
+                    </p>
+                  </div>
+                  {passkeyModal.passkeyRequired && (
+                    <button
+                      onClick={handleDisablePasskey}
+                      disabled={generatingPasskey}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Turn Off
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    onClick={() => handleGeneratePasskey("shared")}
+                    disabled={generatingPasskey}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#1139c2] px-3.5 py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {generatingPasskey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : passkeyModal.passkeyMode === "shared" ? <RefreshCw className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
+                    <span>{passkeyModal.passkeyMode === "shared" ? "Regenerate Shared Code" : "Generate Shared Code"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleGeneratePasskey("unique")}
+                    disabled={generatingPasskey}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[#1447E6] bg-[#1447E6]/10 hover:bg-[#1447E6]/20 px-3.5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {generatingPasskey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : passkeyModal.passkeyMode === "unique" ? <RefreshCw className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                    <span>{passkeyModal.passkeyMode === "unique" ? "Regenerate Unique Codes" : "Generate Unique Codes"}</span>
+                  </button>
+                </div>
+
+                {passkeyModal.passkeyMode === "shared" && passkeyModal.passkey && (
+                  <div className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4 mb-2">
+                    <span className="font-mono text-2xl font-black tracking-[0.3em] text-[#0B1220]">
+                      {passkeyModal.passkey}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(passkeyModal.passkey!, "Passkey")}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                )}
+
+                {passkeyModal.passkeyMode === "unique" && passkeyModal.students.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        {passkeyModal.students.length} Student Codes
+                      </p>
+                      <button
+                        onClick={() => copyToClipboard(
+                          passkeyModal.students.map((s) => `${s.lastName} ${s.firstName} (${s.admissionNumber}): ${s.code}`).join("\n"),
+                          "Student code list"
+                        )}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#1447E6] hover:text-[#1139c2]"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Copy All</span>
+                      </button>
+                    </div>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                      {passkeyModal.students.map((s) => (
+                        <div key={s.studentId} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{s.lastName} {s.firstName}</p>
+                            <p className="text-[10px] text-slate-400">{s.admissionNumber}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono text-sm font-bold text-[#0B1220] tracking-widest">{s.code}</span>
+                            <button
+                              onClick={() => s.code && copyToClipboard(s.code, `${s.firstName}'s passkey`)}
+                              className="p-1.5 text-slate-400 hover:text-[#1447E6] hover:bg-[#1447E6]/10 rounded-lg transition-colors"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="mt-6">
+              <button
+                onClick={() => setPasskeyModal(null)}
                 className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
               >
                 Close

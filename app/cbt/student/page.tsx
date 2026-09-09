@@ -7,7 +7,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { clearAuthTokens } from "@/lib/auth-tokens";
 import { useExamStore } from "@/store/exam";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
-import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History, Key } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 
@@ -52,6 +52,8 @@ export default function StudentDashboard() {
   // Selected Exam for Start Modal
   const [selectedExam, setSelectedExam] = useState<AssignedExam | null>(null);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
+  const [passkeyInput, setPasskeyInput] = useState("");
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
   // Practice Simulator Parameters States
   const [practiceBoard, setPracticeBoard] = useState<string>("jamb");
@@ -277,31 +279,42 @@ export default function StudentDashboard() {
   // Open Instructions Modal
   const handleInitiateStart = (exam: AssignedExam) => {
     setSelectedExam(exam);
+    setPasskeyInput("");
+    setPasskeyError(null);
     setIsStartModalOpen(true);
   };
 
   // Trigger Start Exam
   const handleStartExamNow = async () => {
     if (!selectedExam) return;
+    if (selectedExam.passkeyRequired && !passkeyInput.trim()) {
+      setPasskeyError("Enter the exam passkey to continue.");
+      return;
+    }
+    setPasskeyError(null);
 
     setStartingExamId(selectedExam.id);
-    setIsStartModalOpen(false);
     toast.info(`Initializing "${selectedExam.title}"... Please do not close this window.`);
 
     try {
       // Call startExam API (sets status to 'started' and generates questions)
-      const session = await cbtApi.startExam(selectedExam.id);
-      
+      const session = await cbtApi.startExam(selectedExam.id, passkeyInput.trim() || undefined);
+
       // Store session in our persisted Zustand store
       setSession(session);
+      setIsStartModalOpen(false);
 
       toast.success("Exam started successfully! Redirecting to exam room...");
-      
+
       // Redirect to full-screen exam interface
       router.push(`/cbt/student/exam/${selectedExam.id}`);
     } catch (err: any) {
       console.error("Failed to start exam:", err);
-      toast.error(err.message || "Could not start exam. Please try again.");
+      if (err.code === "INVALID_PASSKEY" || err.code === "PASSKEY_NOT_ASSIGNED") {
+        setPasskeyError(err.message || "Incorrect passkey.");
+      } else {
+        toast.error(err.message || "Could not start exam. Please try again.");
+      }
       setStartingExamId(null);
     }
   };
@@ -842,6 +855,31 @@ export default function StudentDashboard() {
               </div>
             </div>
 
+            {selectedExam.passkeyRequired && (
+              <div className="mb-6">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
+                  <Key className="w-3.5 h-3.5 text-[#8a5c10]" />
+                  Exam Passkey
+                </label>
+                <input
+                  type="text"
+                  value={passkeyInput}
+                  onChange={(e) => {
+                    setPasskeyInput(e.target.value);
+                    if (passkeyError) setPasskeyError(null);
+                  }}
+                  placeholder="Ask your teacher or admin for this code"
+                  autoComplete="off"
+                  className={`w-full font-mono tracking-[0.2em] text-center text-lg font-bold px-4 py-3 rounded-sm border bg-[#F5A623]/5 text-[#0B1220] placeholder:font-sans placeholder:tracking-normal placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1447E6]/30 ${
+                    passkeyError ? "border-[#F04438]" : "border-[#F5A623]/40"
+                  }`}
+                />
+                {passkeyError && (
+                  <p className="text-[11px] font-semibold text-[#F04438] mt-1.5">{passkeyError}</p>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setIsStartModalOpen(false)}
@@ -851,9 +889,11 @@ export default function StudentDashboard() {
               </button>
               <button
                 onClick={handleStartExamNow}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold py-3 px-4 rounded-sm shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                disabled={startingExamId === selectedExam.id}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold py-3 px-4 rounded-sm shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0 inline-flex items-center justify-center gap-1.5"
               >
-                Start Exam Now
+                {startingExamId === selectedExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{startingExamId === selectedExam.id ? "Starting..." : "Start Exam Now"}</span>
               </button>
             </div>
           </div>

@@ -67,7 +67,8 @@ export const cbtApi = {
 
   // ── Student (Legacy compat) ─────────────────────────────────────────
   getAssignedExams: (orgSlug: string) => fetchCbt(`/student/assigned?orgSlug=${orgSlug}`),
-  startExam: (examId: string) => fetchCbt(`/student/${examId}/start`, { method: "POST" }),
+  startExam: (examId: string, passkey?: string) =>
+    fetchCbt(`/student/${examId}/start`, { method: "POST", body: JSON.stringify(passkey ? { passkey } : {}) }),
   reportTabSwitch: (examId: string) => fetchCbt(`/student/${examId}/report-tab-switch`, { method: "POST" }),
   submitExam: (examId: string, data: SubmitData & { cheating?: boolean }) => fetchCbt(`/student/${examId}/submit`, { method: "POST", body: JSON.stringify(data) }),
   getExamResult: (examId: string, options?: ApiOptions) => fetchCbt(`/student/${examId}/result`, options),
@@ -104,6 +105,10 @@ export const cbtApi = {
   getStudentHistoryDetail: (studentId: string, orgSlug: string) => fetchCbt(`/admin/students/${studentId}/history?orgSlug=${orgSlug}`),
   releaseExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "POST" }),
   withdrawExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "DELETE" }),
+  getExamPasskey: (examId: string) => fetchCbt(`/exams/${examId}/passkey`),
+  generateExamPasskey: (examId: string, mode: "shared" | "unique") =>
+    fetchCbt(`/exams/${examId}/passkey`, { method: "POST", body: JSON.stringify({ mode }) }),
+  disableExamPasskey: (examId: string) => fetchCbt(`/exams/${examId}/passkey`, { method: "DELETE" }),
 
   // ── File Upload ─────────────────────────────────────────────────────
   uploadFile: (file: File) => {

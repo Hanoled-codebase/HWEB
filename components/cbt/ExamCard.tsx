@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, FileText, PlayCircle, ArrowRight, Loader2, CheckCircle2, Target, Hourglass } from "lucide-react";
+import { Clock, FileText, PlayCircle, ArrowRight, Loader2, CheckCircle2, Target, Hourglass, Key } from "lucide-react";
 
 export interface AssignedExam {
   id: string;
@@ -12,6 +12,7 @@ export interface AssignedExam {
   endDate?: string | null;
   ssceBoard?: string | null;
   ssceYear?: number | null;
+  passkeyRequired?: boolean;
   myResult: {
     examId: string;
     status: string;
@@ -148,6 +149,12 @@ export function ExamCard({
               <span className="inline-flex items-center gap-1" title={`Pass mark: ${exam.passMark}%`}>
                 <Target className="w-3.5 h-3.5 text-slate-400" />
                 {exam.passMark}%
+              </span>
+            )}
+            {exam.passkeyRequired && !isSubmitted && (
+              <span className="inline-flex items-center gap-1 text-[#8a5c10]" title="Ask your teacher for the passkey to start this exam">
+                <Key className="w-3.5 h-3.5" />
+                Passkey required
               </span>
             )}
           </div>
