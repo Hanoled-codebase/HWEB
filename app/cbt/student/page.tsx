@@ -15,13 +15,14 @@ interface PastResult {
   id: string;
   studentId: string;
   examId: string;
-  score: number;
+  score: number | null;
   totalMarks: number;
-  percentage: number;
+  percentage: number | null;
   status: string;
   startedAt: string;
   submittedAt: string | null;
   timeTaken: number | null;
+  resultsReleased?: boolean;
   exam: {
     title: string;
     examType: string;
@@ -327,7 +328,7 @@ export default function StudentDashboard() {
               </span>
             </div>
             <a
-              href="/"
+              href="/welcome"
               className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
               title="Back to Suite"
             >
@@ -677,7 +678,8 @@ export default function StudentDashboard() {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {history.map((result) => {
-                              const isPassed = result.percentage >= result.exam.passMark;
+                              const isPending = result.resultsReleased === false;
+                              const isPassed = !isPending && result.percentage !== null && result.percentage >= result.exam.passMark;
                               return (
                                 <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="px-6 py-4 font-semibold text-slate-800 text-sm">
@@ -693,27 +695,33 @@ export default function StudentDashboard() {
                                     </span>
                                   </td>
                                   <td className="px-6 py-4 text-sm font-semibold text-slate-700 text-center">
-                                    {result.score} / {result.totalMarks}
+                                    {isPending ? "—" : `${result.score} / ${result.totalMarks}`}
                                   </td>
                                   <td className="px-6 py-4 text-sm font-bold text-slate-800 text-center">
-                                    {result.percentage.toFixed(1)}%
+                                    {isPending ? "—" : `${result.percentage!.toFixed(1)}%`}
                                   </td>
                                   <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-xs font-bold ${
-                                      isPassed
-                                        ? "bg-green-50 text-green-700"
-                                        : "bg-rose-50 text-rose-700"
-                                    }`}>
-                                      <CheckCircle2 className={`w-3.5 h-3.5 ${isPassed ? "text-green-600" : "text-rose-600"}`} />
-                                      <span>{isPassed ? `PASSED` : `FAILED`}</span>
-                                    </span>
+                                    {isPending ? (
+                                      <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-xs font-bold bg-amber-50 text-amber-700">
+                                        <span>PENDING</span>
+                                      </span>
+                                    ) : (
+                                      <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-xs font-bold ${
+                                        isPassed
+                                          ? "bg-green-50 text-green-700"
+                                          : "bg-rose-50 text-rose-700"
+                                      }`}>
+                                        <CheckCircle2 className={`w-3.5 h-3.5 ${isPassed ? "text-green-600" : "text-rose-600"}`} />
+                                        <span>{isPassed ? `PASSED` : `FAILED`}</span>
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="px-6 py-4 text-right">
                                     <button
                                       onClick={() => handleViewResult(result.examId)}
                                       className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center space-x-1 ml-auto"
                                     >
-                                      <span>View Review</span>
+                                      <span>{isPending ? "View Status" : "View Review"}</span>
                                       <ChevronRight className="w-3.5 h-3.5" />
                                     </button>
                                   </td>
@@ -728,21 +736,28 @@ export default function StudentDashboard() {
                     {/* Mobile cards */}
                     <div className="grid grid-cols-1 gap-4 md:hidden">
                       {history.map((result) => {
-                        const isPassed = result.percentage >= result.exam.passMark;
+                        const isPending = result.resultsReleased === false;
+                        const isPassed = !isPending && result.percentage !== null && result.percentage >= result.exam.passMark;
                         return (
                           <div key={result.id} className="bg-white border border-slate-200 rounded-sm shadow-sm p-5">
                             <div className="flex items-start justify-between gap-3">
                               <h3 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 flex-1">
                                 {result.exam.title}
                               </h3>
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 ${
-                                isPassed
-                                  ? "bg-green-50 text-green-700 border border-green-100"
-                                  : "bg-rose-50 text-rose-700 border border-rose-100"
-                              }`}>
-                                <CheckCircle2 className={`w-3 h-3 ${isPassed ? "text-green-600" : "text-rose-600"}`} />
-                                <span>{isPassed ? "PASSED" : "FAILED"}</span>
-                              </span>
+                              {isPending ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 bg-amber-50 text-amber-700 border border-amber-100">
+                                  <span>PENDING</span>
+                                </span>
+                              ) : (
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 ${
+                                  isPassed
+                                    ? "bg-green-50 text-green-700 border border-green-100"
+                                    : "bg-rose-50 text-rose-700 border border-rose-100"
+                                }`}>
+                                  <CheckCircle2 className={`w-3 h-3 ${isPassed ? "text-green-600" : "text-rose-600"}`} />
+                                  <span>{isPassed ? "PASSED" : "FAILED"}</span>
+                                </span>
+                              )}
                             </div>
 
                             <span className={`inline-flex mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-sm border ${
@@ -753,26 +768,32 @@ export default function StudentDashboard() {
                               {result.exam.examType === "school" ? "School" : "SSCE Practice"}
                             </span>
 
-                            <div className="grid grid-cols-2 gap-3 mt-4">
-                              <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</p>
-                                <p className="text-base font-black text-slate-800 mt-0.5">{result.score} / {result.totalMarks}</p>
+                            {isPending ? (
+                              <div className="mt-4 bg-amber-50/60 rounded-sm p-3 border border-amber-100 text-[11px] font-semibold text-amber-800 leading-snug">
+                                Submitted — your teacher hasn't released the results yet.
                               </div>
-                              <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Percentage</p>
-                                <p className={`text-base font-black mt-0.5 ${
-                                  isPassed ? "text-emerald-700" : "text-rose-700"
-                                }`}>
-                                  {result.percentage.toFixed(1)}%
-                                </p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-3 mt-4">
+                                <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</p>
+                                  <p className="text-base font-black text-slate-800 mt-0.5">{result.score} / {result.totalMarks}</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Percentage</p>
+                                  <p className={`text-base font-black mt-0.5 ${
+                                    isPassed ? "text-emerald-700" : "text-rose-700"
+                                  }`}>
+                                    {result.percentage!.toFixed(1)}%
+                                  </p>
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             <button
                               onClick={() => handleViewResult(result.examId)}
                               className="w-full mt-4 py-3 rounded-sm text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                             >
-                              <span>View Review</span>
+                              <span>{isPending ? "View Status" : "View Review"}</span>
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>

@@ -260,6 +260,8 @@ export default function ActiveExamPage() {
 
         if (res.cheating) {
           toast.error("Exam auto-failed due to proctoring violations.");
+        } else if (res.resultsReleased === false) {
+          toast.success("Exam submitted! Your teacher will release your score once results are published.", { duration: 6000 });
         } else if (isAuto) {
           toast.success("Exam submitted automatically!");
         } else {

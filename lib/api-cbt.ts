@@ -54,7 +54,7 @@ export const cbtApi = {
   startExam: (examId: string) => fetchCbt(`/student/${examId}/start`, { method: "POST" }),
   reportTabSwitch: (examId: string) => fetchCbt(`/student/${examId}/report-tab-switch`, { method: "POST" }),
   submitExam: (examId: string, data: SubmitData & { cheating?: boolean }) => fetchCbt(`/student/${examId}/submit`, { method: "POST", body: JSON.stringify(data) }),
-  getExamResult: (examId: string) => fetchCbt(`/student/${examId}/result`),
+  getExamResult: (examId: string, options?: ApiOptions) => fetchCbt(`/student/${examId}/result`, options),
   getStudentHistory: (orgSlug: string) => fetchCbt(`/student/history?orgSlug=${orgSlug}`),
 
   // ── Past Questions Proxy ────────────────────────────────────────────
@@ -86,6 +86,8 @@ export const cbtApi = {
   getTeacherStudents: (orgSlug: string, classLevelId: string) => fetchCbt(`/admin/teacher-students?orgSlug=${orgSlug}&classLevelId=${classLevelId}`),
   assignExam: (examId: string, data: AssignData) => fetchCbt(`/exams/${examId}/assign`, { method: "POST", body: JSON.stringify(data) }),
   getStudentHistoryDetail: (studentId: string, orgSlug: string) => fetchCbt(`/admin/students/${studentId}/history?orgSlug=${orgSlug}`),
+  releaseExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "POST" }),
+  withdrawExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "DELETE" }),
 
   // ── File Upload ─────────────────────────────────────────────────────
   uploadFile: (file: File) => {

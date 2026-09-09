@@ -29,7 +29,9 @@ import {
   ChevronRight,
   Loader2,
   X,
-  Upload
+  Upload,
+  Hourglass,
+  Send
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
@@ -110,6 +112,7 @@ export default function AdminDashboard() {
 
   // Results Modal State
   const [resultsModal, setResultsModal] = useState<{
+    examId: string;
     exam: any;
     results: any[];
     totalSubmissions: number;
@@ -117,6 +120,7 @@ export default function AdminDashboard() {
     passCount: number;
   } | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [releasingResults, setReleasingResults] = useState(false);
 
   // Student Detail Modal State
   const [studentDetail, setStudentDetail] = useState<any>(null);
@@ -217,12 +221,41 @@ export default function AdminDashboard() {
   const handleOpenResults = async (exam: any) => {
     setLoadingResults(true);
     try {
-      const data = await cbtApi.getAdminExamResultsOverview(exam.id, orgSlug);
-      setResultsModal(data);
+      const data: any = await cbtApi.getAdminExamResultsOverview(exam.id, orgSlug);
+      setResultsModal({ ...data, examId: exam.id });
     } catch (err: any) {
       toast.error("Failed to load results: " + err.message);
     } finally {
       setLoadingResults(false);
+    }
+  };
+
+  // Release / withdraw results to students for the exam currently open in resultsModal
+  const handleReleaseResults = async () => {
+    if (!resultsModal?.exam || releasingResults) return;
+    setReleasingResults(true);
+    try {
+      await cbtApi.releaseExamResults(resultsModal.examId);
+      toast.success("Results released — students can now see their scores.");
+      setResultsModal((prev: any) => prev && { ...prev, exam: { ...prev.exam, resultsReleased: true, resultsReleasedAt: new Date().toISOString() } });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to release results");
+    } finally {
+      setReleasingResults(false);
+    }
+  };
+
+  const handleWithdrawResults = async () => {
+    if (!resultsModal?.exam || releasingResults) return;
+    setReleasingResults(true);
+    try {
+      await cbtApi.withdrawExamResults(resultsModal.examId);
+      toast.success("Results withdrawn — students can no longer see their scores.");
+      setResultsModal((prev: any) => prev && { ...prev, exam: { ...prev.exam, resultsReleased: false, resultsReleasedAt: null } });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to withdraw results");
+    } finally {
+      setReleasingResults(false);
     }
   };
 
@@ -2042,6 +2075,46 @@ export default function AdminDashboard() {
 
             <h3 className="text-lg font-extrabold text-slate-800 mb-1">{resultsModal.exam?.title || "Exam Results"}</h3>
             <p className="text-xs text-slate-500 mb-5">Student submissions and performance overview</p>
+
+            {!loadingResults && resultsModal.exam?.examType === "school" && (
+              <div className={`flex items-center justify-between gap-3 mb-5 p-3.5 rounded-xl border ${
+                resultsModal.exam.resultsReleased
+                  ? "bg-emerald-50 border-emerald-100"
+                  : "bg-amber-50 border-amber-100"
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {resultsModal.exam.resultsReleased ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Hourglass className="w-4 h-4 text-amber-600 shrink-0" />
+                  )}
+                  <p className={`text-xs font-semibold leading-snug ${resultsModal.exam.resultsReleased ? "text-emerald-800" : "text-amber-800"}`}>
+                    {resultsModal.exam.resultsReleased
+                      ? "Results are visible to students."
+                      : "Results are hidden from students until you release them."}
+                  </p>
+                </div>
+                {resultsModal.exam.resultsReleased ? (
+                  <button
+                    onClick={handleWithdrawResults}
+                    disabled={releasingResults}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 hover:bg-emerald-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {releasingResults ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    <span>Withdraw</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleReleaseResults}
+                    disabled={releasingResults}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {releasingResults ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    <span>Release Results</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {loadingResults ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-indigo-600 animate-spin" /></div>
