@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
-import { HCBT_BASE } from "@/lib/api";
+import { HCBT_BASE, isForbiddenError } from "@/lib/api";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
@@ -29,7 +29,13 @@ import {
   ChevronRight,
   Loader2,
   X,
-  Upload
+  Upload,
+  ShieldAlert,
+  Hourglass,
+  Send,
+  Key,
+  Copy,
+  RefreshCw
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
@@ -44,6 +50,13 @@ export default function AdminDashboard() {
 
   // Core Data States
   const [currentUser, setCurrentUser] = useState<any>(null);
+  // The real org slug, resolved from the authenticated session — used only
+  // for the Edge Appliance pairing display below. `orgSlug` above falls back
+  // to the placeholder "hanoled-default" whenever this page is opened
+  // without an explicit ?orgSlug= query param (e.g. via "Launch CBT engine"
+  // from the welcome hub), which would have shown admins the wrong pairing
+  // slug to hand to their physical Edge Appliance.
+  const [resolvedOrgSlug, setResolvedOrgSlug] = useState(orgSlug);
   const [orgSubjects, setOrgSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
   const isAdmin = !!currentUser?.isAdmin;
   const [stats, setStats] = useState<any>({
@@ -56,6 +69,7 @@ export default function AdminDashboard() {
   const [exams, setExams] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // Active Exam Detail State (For Question Designer View)
   const [designerExam, setDesignerExam] = useState<any | null>(null);
@@ -110,6 +124,7 @@ export default function AdminDashboard() {
 
   // Results Modal State
   const [resultsModal, setResultsModal] = useState<{
+    examId: string;
     exam: any;
     results: any[];
     totalSubmissions: number;
@@ -117,6 +132,19 @@ export default function AdminDashboard() {
     passCount: number;
   } | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [releasingResults, setReleasingResults] = useState(false);
+
+  // Passkey Modal State
+  const [passkeyModal, setPasskeyModal] = useState<{
+    examId: string;
+    examTitle: string;
+    passkeyRequired: boolean;
+    passkeyMode: "shared" | "unique" | null;
+    passkey: string | null;
+    students: { studentId: string; firstName: string; lastName: string; admissionNumber: string; code: string | null }[];
+  } | null>(null);
+  const [loadingPasskey, setLoadingPasskey] = useState(false);
+  const [generatingPasskey, setGeneratingPasskey] = useState(false);
 
   // Student Detail Modal State
   const [studentDetail, setStudentDetail] = useState<any>(null);
@@ -217,13 +245,112 @@ export default function AdminDashboard() {
   const handleOpenResults = async (exam: any) => {
     setLoadingResults(true);
     try {
-      const data = await cbtApi.getAdminExamResultsOverview(exam.id, orgSlug);
-      setResultsModal(data);
+      const data: any = await cbtApi.getAdminExamResultsOverview(exam.id, orgSlug);
+      setResultsModal({ ...data, examId: exam.id });
     } catch (err: any) {
       toast.error("Failed to load results: " + err.message);
     } finally {
       setLoadingResults(false);
     }
+  };
+
+  // Release / withdraw results to students for the exam currently open in resultsModal
+  const handleReleaseResults = async () => {
+    if (!resultsModal?.exam || releasingResults) return;
+    setReleasingResults(true);
+    try {
+      await cbtApi.releaseExamResults(resultsModal.examId);
+      toast.success("Results released — students can now see their scores.");
+      setResultsModal((prev: any) => prev && { ...prev, exam: { ...prev.exam, resultsReleased: true, resultsReleasedAt: new Date().toISOString() } });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to release results");
+    } finally {
+      setReleasingResults(false);
+    }
+  };
+
+  const handleWithdrawResults = async () => {
+    if (!resultsModal?.exam || releasingResults) return;
+    setReleasingResults(true);
+    try {
+      await cbtApi.withdrawExamResults(resultsModal.examId);
+      toast.success("Results withdrawn — students can no longer see their scores.");
+      setResultsModal((prev: any) => prev && { ...prev, exam: { ...prev.exam, resultsReleased: false, resultsReleasedAt: null } });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to withdraw results");
+    } finally {
+      setReleasingResults(false);
+    }
+  };
+
+  // Open Passkey Modal
+  const handleOpenPasskey = async (exam: any) => {
+    setLoadingPasskey(true);
+    setPasskeyModal({
+      examId: exam.id,
+      examTitle: exam.title,
+      passkeyRequired: false,
+      passkeyMode: null,
+      passkey: null,
+      students: [],
+    });
+    try {
+      const data: any = await cbtApi.getExamPasskey(exam.id);
+      setPasskeyModal({ examId: exam.id, examTitle: exam.title, ...data });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load passkey settings");
+      setPasskeyModal(null);
+    } finally {
+      setLoadingPasskey(false);
+    }
+  };
+
+  // Keeps the designer header badge and the exam grid in sync with the
+  // passkey modal, which only mutates its own local state otherwise.
+  const syncExamPasskeyRequired = (examId: string, passkeyRequired: boolean) => {
+    setDesignerExam((prev: any) => (prev && prev.id === examId ? { ...prev, passkeyRequired } : prev));
+    setExams((prev) => prev.map((e: any) => (e.id === examId ? { ...e, passkeyRequired } : e)));
+  };
+
+  // Generate (or regenerate) the passkey for the exam currently open in passkeyModal
+  const handleGeneratePasskey = async (mode: "shared" | "unique") => {
+    if (!passkeyModal || generatingPasskey) return;
+    setGeneratingPasskey(true);
+    try {
+      const data: any = await cbtApi.generateExamPasskey(passkeyModal.examId, mode);
+      setPasskeyModal((prev) => prev && { ...prev, ...data });
+      syncExamPasskeyRequired(passkeyModal.examId, true);
+      toast.success(
+        mode === "shared"
+          ? "Shared passkey generated — share it with the class."
+          : "Unique passkeys generated for every assigned student."
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate passkey");
+    } finally {
+      setGeneratingPasskey(false);
+    }
+  };
+
+  const handleDisablePasskey = async () => {
+    if (!passkeyModal || generatingPasskey) return;
+    setGeneratingPasskey(true);
+    try {
+      const data: any = await cbtApi.disableExamPasskey(passkeyModal.examId);
+      setPasskeyModal((prev) => prev && { ...prev, ...data });
+      syncExamPasskeyRequired(passkeyModal.examId, false);
+      toast.success("Passkey requirement turned off — students can start this exam freely.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disable passkey");
+    } finally {
+      setGeneratingPasskey(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard?.writeText(text)
+      .then(() => toast.success(`${label} copied to clipboard`))
+      .catch(() => toast.error("Could not copy to clipboard"));
   };
 
   // Open Student Detail Modal
@@ -267,9 +394,11 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       // Resolve the current user's CBT roles first — the UI is role-driven
+      let me: any = null;
       try {
-        const me = await cbtApi.checkAuth();
+        me = await cbtApi.checkAuth();
         setCurrentUser(me?.user || null);
+        if (me?.organization?.slug) setResolvedOrgSlug(me.organization.slug);
       } catch (authErr) {
         console.error("CBT auth check failed:", authErr);
       }
@@ -280,8 +409,12 @@ export default function AdminDashboard() {
       const examsData = await cbtApi.getAdminExams(orgSlug);
       setExams(examsData);
 
-      const studentsData = await cbtApi.getAdminStudents(orgSlug);
-      setStudents(studentsData);
+      // Grade Auditor's raw org-wide table is admin-only on the backend now —
+      // don't even fetch it for teachers (avoids a guaranteed 403).
+      if (me?.user?.isAdmin) {
+        const studentsData = await cbtApi.getAdminStudents(orgSlug);
+        setStudents(studentsData);
+      }
 
       const classesData = await cbtApi.getClasses(orgSlug);
       setClasses(classesData);
@@ -295,7 +428,11 @@ export default function AdminDashboard() {
       }
     } catch (err: any) {
       console.error("Admin Load Error:", err);
-      toast.error(err.message || "Failed to load admin panel data. Make sure the database is migrated and backend is running.");
+      if (isForbiddenError(err)) {
+        setAccessDenied(true);
+      } else {
+        toast.error(err.message || "Failed to load admin panel data. Make sure the database is migrated and backend is running.");
+      }
     } finally {
       setLoading(false);
     }
@@ -654,10 +791,10 @@ export default function AdminDashboard() {
       <Toaster position="top-right" richColors />
 
       <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
-          <Logo className="w-8 h-8" badgeText="ADMIN" textColor="text-[#0B1220]" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-2">
+          <Logo className="w-8 h-8 shrink-0" badgeText={isAdmin ? "ADMIN" : "TEACHER"} textColor="text-[#0B1220]" />
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
             <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
               <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-indigo-400"}`}></span>
               <span className="text-[12px] font-semibold text-slate-500">
@@ -665,14 +802,15 @@ export default function AdminDashboard() {
               </span>
             </div>
             <a
-              href="/"
-              className="text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-4 py-2 rounded-[10px] transition-all shadow-sm"
+              href="/welcome"
+              className="whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 py-2 sm:px-4 rounded-[10px] transition-all shadow-sm"
             >
-              Back to Suite
+              <span className="sm:hidden">Suite</span>
+              <span className="hidden sm:inline">Back to Suite</span>
             </a>
             <button
               onClick={() => { cbtApi.logout(); window.location.assign("/"); }}
-              className="text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-all"
+              className="whitespace-nowrap text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-all"
             >
               Sign Out
             </button>
@@ -683,7 +821,23 @@ export default function AdminDashboard() {
       {/* Main Admin Wrapper */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {designerExam ? (
+        {accessDenied ? (
+          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-2xl border border-rose-100 shadow-xl text-center">
+            <div className="w-16 h-16 bg-rose-50 border border-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Staff Access Required</h2>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+              This CBT console is only available to teachers and administrators. Your account doesn&apos;t have examiner-level access for this organization.
+            </p>
+            <a
+              href="/welcome"
+              className="w-full inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+            >
+              Back to Suite
+            </a>
+          </div>
+        ) : designerExam ? (
           /* QUESTION DESIGNER PANEL (Selected Exam details and questions) */
           <div className="space-y-6 animate-fade-in">
             {/* Header Actions */}
@@ -708,7 +862,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                   designerExam.status === "published"
                     ? "bg-green-50 text-green-700 border border-green-150"
@@ -755,6 +909,19 @@ export default function AdminDashboard() {
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Assign</span>
+                </button>
+                )}
+                {isAdmin && (
+                <button
+                  onClick={() => handleOpenPasskey(designerExam)}
+                  className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 border ${
+                    designerExam.passkeyRequired
+                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-[#8a5c10] hover:bg-[#F5A623]/20"
+                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>{designerExam.passkeyRequired ? "Passkey On" : "Passkey"}</span>
                 </button>
                 )}
                 <button
@@ -1278,43 +1445,43 @@ export default function AdminDashboard() {
             {/* Metric cards: fluid responsive grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600 w-fit lg:order-2">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="lg:order-1">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Assessment Templates</p>
                   <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.totalExams}</p>
                 </div>
-                <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600">
-                  <FileText className="w-6 h-6" />
-                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600 w-fit lg:order-2">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div className="lg:order-1">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Published Active Exams</p>
                   <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.publishedExams}</p>
                 </div>
-                <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-violet-50 p-3 rounded-xl text-violet-600 w-fit lg:order-2">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <div className="lg:order-1">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Graded Answer Sheets</p>
                   <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.totalSubmissions}</p>
                 </div>
-                <div className="bg-violet-50 p-3 rounded-xl text-violet-600">
-                  <Layers className="w-6 h-6" />
-                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-amber-50 p-3 rounded-xl text-amber-600 w-fit lg:order-2">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div className="lg:order-1">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Scoring Ratio</p>
                   <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.avgScore}%</p>
-                </div>
-                <div className="bg-amber-50 p-3 rounded-xl text-amber-600">
-                  <TrendingUp className="w-6 h-6" />
                 </div>
               </div>
 
@@ -1339,6 +1506,7 @@ export default function AdminDashboard() {
                 >
                   Assessment Templates
                 </button>
+                {isAdmin && (
                 <button
                   onClick={() => setActiveTab("students")}
                   className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
@@ -1347,14 +1515,17 @@ export default function AdminDashboard() {
                 >
                   Grade Auditor
                 </button>
-                <button
-                  onClick={() => setActiveTab("appliances")}
-                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Edge Appliances
-                </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab("appliances")}
+                    className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                      activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Edge Appliances
+                  </button>
+                )}
               </div>
 
               <button
@@ -1382,7 +1553,12 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* High level candidates auditor mini-list */}
+                  {/* High level candidates auditor mini-list — backs onto the
+                      admin-only Grade Auditor tab, so hide it for teachers
+                      rather than showing a "View All" that goes nowhere and
+                      a falsely-empty list (their data for this is never
+                      fetched). */}
+                  {isAdmin && (
                   <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Performance Rankings Preview</h3>
@@ -1421,6 +1597,7 @@ export default function AdminDashboard() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
 
                 {/* Right column placeholder — removed Platform Actions per consolidation */}
@@ -1519,7 +1696,7 @@ export default function AdminDashboard() {
             )}
 
             {/* TAB 3: CANDIDATE GRADES AUDITOR */}
-            {activeTab === "students" && (
+            {isAdmin && activeTab === "students" && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
@@ -1558,7 +1735,7 @@ export default function AdminDashboard() {
                                     {student.info ? `${toTitleCase(student.info.lastName)} ${toTitleCase(student.info.firstName)}` : "Candidate ID: " + student.studentId.slice(0,8)}
                                   </td>
                                   <td className="px-6 py-5 text-sm text-slate-600">
-                                    {student.info?.classLevelId || "Unassigned"}
+                                    {student.info?.className || "Unassigned"}
                                   </td>
                                   <td className="px-6 py-5 text-sm font-semibold text-slate-700 text-center">
                                     {student.totalExams}
@@ -1603,7 +1780,7 @@ export default function AdminDashboard() {
                                   {student.info ? `${toTitleCase(student.info.lastName)} ${toTitleCase(student.info.firstName)}` : "Candidate ID: " + student.studentId.slice(0,8)}
                                 </h4>
                                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                                  {student.info?.classLevelId || "Unassigned"}
+                                  {student.info?.className || "Unassigned"}
                                 </p>
                               </div>
                               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
@@ -1629,9 +1806,9 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* EDGE APPLIANCES TAB */}
-            {activeTab === "appliances" && (
-              <EdgeAppliancesTab orgSlug={orgSlug} exams={exams} />
+            {/* EDGE APPLIANCES TAB — admin only */}
+            {isAdmin && activeTab === "appliances" && (
+              <EdgeAppliancesTab orgSlug={resolvedOrgSlug} exams={exams} />
             )}
 
           </div>
@@ -2043,6 +2220,46 @@ export default function AdminDashboard() {
             <h3 className="text-lg font-extrabold text-slate-800 mb-1">{resultsModal.exam?.title || "Exam Results"}</h3>
             <p className="text-xs text-slate-500 mb-5">Student submissions and performance overview</p>
 
+            {!loadingResults && resultsModal.exam?.examType === "school" && (
+              <div className={`flex items-center justify-between gap-3 mb-5 p-3.5 rounded-xl border ${
+                resultsModal.exam.resultsReleased
+                  ? "bg-emerald-50 border-emerald-100"
+                  : "bg-amber-50 border-amber-100"
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {resultsModal.exam.resultsReleased ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Hourglass className="w-4 h-4 text-amber-600 shrink-0" />
+                  )}
+                  <p className={`text-xs font-semibold leading-snug ${resultsModal.exam.resultsReleased ? "text-emerald-800" : "text-amber-800"}`}>
+                    {resultsModal.exam.resultsReleased
+                      ? "Results are visible to students."
+                      : "Results are hidden from students until you release them."}
+                  </p>
+                </div>
+                {resultsModal.exam.resultsReleased ? (
+                  <button
+                    onClick={handleWithdrawResults}
+                    disabled={releasingResults}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 hover:bg-emerald-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {releasingResults ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    <span>Withdraw</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleReleaseResults}
+                    disabled={releasingResults}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {releasingResults ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    <span>Release Results</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {loadingResults ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-indigo-600 animate-spin" /></div>
             ) : (
@@ -2106,6 +2323,140 @@ export default function AdminDashboard() {
             <div className="mt-6">
               <button
                 onClick={() => setResultsModal(null)}
+                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PASSKEY MODAL */}
+      {passkeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] shadow-xl p-6 relative overflow-y-auto">
+            <button
+              onClick={() => setPasskeyModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-extrabold text-[#0B1220] mb-1 flex items-center gap-2">
+              <Key className="w-4 h-4 text-[#1447E6]" />
+              {passkeyModal.examTitle}
+            </h3>
+            <p className="text-xs text-slate-500 mb-5">
+              Students must enter this passkey before they can start the exam.
+            </p>
+
+            {loadingPasskey ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-[#1447E6] animate-spin" /></div>
+            ) : (
+              <>
+                <div className={`flex items-center justify-between gap-3 mb-5 p-3.5 rounded-xl border ${
+                  passkeyModal.passkeyRequired
+                    ? "bg-[#F5A623]/10 border-[#F5A623]/30"
+                    : "bg-slate-50 border-slate-200"
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Key className={`w-4 h-4 shrink-0 ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-400"}`} />
+                    <p className={`text-xs font-semibold leading-snug ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-600"}`}>
+                      {passkeyModal.passkeyRequired
+                        ? `Passkey required — ${passkeyModal.passkeyMode === "shared" ? "one shared code for the class" : "a unique code per student"}.`
+                        : "No passkey required — any assigned student can start this exam directly."}
+                    </p>
+                  </div>
+                  {passkeyModal.passkeyRequired && (
+                    <button
+                      onClick={handleDisablePasskey}
+                      disabled={generatingPasskey}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Turn Off
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    onClick={() => handleGeneratePasskey("shared")}
+                    disabled={generatingPasskey}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#1139c2] px-3.5 py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {generatingPasskey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : passkeyModal.passkeyMode === "shared" ? <RefreshCw className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
+                    <span>{passkeyModal.passkeyMode === "shared" ? "Regenerate Shared Code" : "Generate Shared Code"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleGeneratePasskey("unique")}
+                    disabled={generatingPasskey}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[#1447E6] bg-[#1447E6]/10 hover:bg-[#1447E6]/20 px-3.5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {generatingPasskey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : passkeyModal.passkeyMode === "unique" ? <RefreshCw className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                    <span>{passkeyModal.passkeyMode === "unique" ? "Regenerate Unique Codes" : "Generate Unique Codes"}</span>
+                  </button>
+                </div>
+
+                {passkeyModal.passkeyMode === "shared" && passkeyModal.passkey && (
+                  <div className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4 mb-2">
+                    <span className="font-mono text-2xl font-black tracking-[0.3em] text-[#0B1220]">
+                      {passkeyModal.passkey}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(passkeyModal.passkey!, "Passkey")}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                )}
+
+                {passkeyModal.passkeyMode === "unique" && passkeyModal.students.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        {passkeyModal.students.length} Student Codes
+                      </p>
+                      <button
+                        onClick={() => copyToClipboard(
+                          passkeyModal.students.map((s) => `${s.lastName} ${s.firstName} (${s.admissionNumber}): ${s.code}`).join("\n"),
+                          "Student code list"
+                        )}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#1447E6] hover:text-[#1139c2]"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Copy All</span>
+                      </button>
+                    </div>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                      {passkeyModal.students.map((s) => (
+                        <div key={s.studentId} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{s.lastName} {s.firstName}</p>
+                            <p className="text-[10px] text-slate-400">{s.admissionNumber}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono text-sm font-bold text-[#0B1220] tracking-widest">{s.code}</span>
+                            <button
+                              onClick={() => s.code && copyToClipboard(s.code, `${s.firstName}'s passkey`)}
+                              className="p-1.5 text-slate-400 hover:text-[#1447E6] hover:bg-[#1447E6]/10 rounded-lg transition-colors"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="mt-6">
+              <button
+                onClick={() => setPasskeyModal(null)}
                 className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
               >
                 Close
@@ -2189,7 +2540,7 @@ export default function AdminDashboard() {
                 </h3>
                 <p className="text-xs text-slate-500 mb-2">
                   {studentDetail.student?.admissionNumber || ""}
-                  {studentDetail.student?.classLevelId ? ` · Class: ${studentDetail.student.classLevelId}` : ""}
+                  {studentDetail.student?.className ? ` · Class: ${studentDetail.student.className}` : ""}
                 </p>
 
                 {/* Performance summary */}

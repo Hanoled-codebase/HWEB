@@ -30,7 +30,11 @@ export default async function DashboardRootLayout({
         const meData = await meRes.json();
         const primaryOrg = meData.organizations?.[0];
         if (primaryOrg?.subscribed?.length > 0) {
-          allowedPlatforms = primaryOrg.subscribed.join(",");
+          // Org-level subscription alone isn't enough — require an actual
+          // role in the product for this user.
+          allowedPlatforms = primaryOrg.subscribed
+            .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
+            .join(",");
         }
       }
     } catch (e) {

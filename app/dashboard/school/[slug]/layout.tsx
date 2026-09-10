@@ -4,25 +4,14 @@ import { useRef, useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { StudentSidebar } from "@/components/dashboard/StudentSidebar";
-import { GraduationCap, Loader2, ChevronLeft, Menu } from "lucide-react";
+import { GraduationCap, Loader2, ChevronLeft } from "lucide-react";
 import { HanoledLoader } from "@/components/ui/hanoled-loader";
 
-function MobileMenuButton() {
-  const { setOpenMobile } = useSidebar();
-  return (
-    <button
-      onClick={() => setOpenMobile(true)}
-      className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm cursor-pointer"
-      aria-label="Open menu"
-    >
-      <Menu className="h-5 w-5" />
-    </button>
-  );
-}
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -120,19 +109,27 @@ function getPageTitle(pathname: string, slug: string) {
 }
 
 /**
- * Prevents the shadcn Sidebar Sheet from opening on mobile when the user
- * is on the dashboard homepage — AdminMobileDashboard and MemberMobileDashboard
- * provide their own navigation drawers on that route.
+ * Prevents the shadcn Sidebar Sheet from opening on mobile when the user is
+ * on the dashboard homepage for admin/owner or a teacher-in-Hweb "member" —
+ * AdminMobileDashboard and MemberMobileDashboard provide their own
+ * navigation drawers (separate local state) on that route, so the shared
+ * Sheet would just sit uselessly open behind them.
+ *
+ * Parents have no such alternate drawer on their home page — their
+ * hamburger button and bottom-nav "More" tab both open this same shared
+ * Sheet — so this guard must not fight them there, or both become dead
+ * buttons on the one screen where they're the only way to reach the rest
+ * of the nav (Timetable, Homework, Library, Invoices, Support, ...).
  */
-function MobileSidebarGuard({ slug, pathname }: { slug: string; pathname: string }) {
+function MobileSidebarGuard({ slug, pathname, hasOwnDrawer }: { slug: string; pathname: string; hasOwnDrawer: boolean }) {
   const { setOpenMobile, openMobile, isMobile } = useSidebar();
   const isDashboardHome = pathname === `/dashboard/school/${slug}`;
 
   useEffect(() => {
-    if (isMobile && isDashboardHome && openMobile) {
+    if (isMobile && isDashboardHome && hasOwnDrawer && openMobile) {
       setOpenMobile(false);
     }
-  }, [isMobile, isDashboardHome, openMobile, setOpenMobile]);
+  }, [isMobile, isDashboardHome, hasOwnDrawer, openMobile, setOpenMobile]);
 
   return null;
 }
@@ -148,6 +145,15 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { currentOrg, currentMember, currentStudent, isStudent, setCurrentOrg, isLoading, error } =
     useOrganization();
+  const { isPrivileged, isAccountant, isHOD, isLibrarian, isTeacher } = usePermissions();
+  // Mirrors page.tsx's branch order: only the admin fallback and the
+  // member+teacher branch render their own mobile dashboard with local
+  // drawer state (AdminMobileDashboard / MemberMobileDashboard). Every other
+  // role's home view relies on the shared sidebar Sheet, so this guard must
+  // not force-close it for them.
+  const hasOwnMobileDrawer =
+    isPrivileged ||
+    (currentMember?.role === "member" && !isAccountant && !isHOD && !isLibrarian && isTeacher);
   const {
     user,
     checkAuth,
@@ -268,7 +274,7 @@ export default function DashboardLayout({
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <MobileSidebarGuard slug={slug} pathname={pathname} />
+        <MobileSidebarGuard slug={slug} pathname={pathname} hasOwnDrawer={Boolean(hasOwnMobileDrawer)} />
         <AppSidebar />
         <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative overflow-x-hidden">
           {/* Desktop Header */}
@@ -282,13 +288,15 @@ export default function DashboardLayout({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <a
-                  href="/cbt/admin"
-                  className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
-                  CBT Console
-                </a>
+                {currentMember?.role !== "parent" && (
+                  <a
+                    href="/cbt/admin"
+                    className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+                    CBT Console
+                  </a>
+                )}
                 <a
                   href="/welcome"
                   className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-all"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -93,7 +94,8 @@ type SowItem = {
 };
 
 export default function SchemeOfWorkPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isStaff = !!currentMember && currentMember.role !== "parent";
   const [items, setItems] = useState<SowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [classLevels, setClassLevels] = useState<ClassLevel[]>([]);
@@ -245,6 +247,20 @@ export default function SchemeOfWorkPage() {
   }
 
   if (!currentOrg) return null;
+
+  if (!isStaff) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Scheme of work isn&apos;t available to your role"
+            description="This is a staff tool for teachers and admins."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">

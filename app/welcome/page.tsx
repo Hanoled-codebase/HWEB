@@ -43,7 +43,12 @@ export default async function WelcomePortal() {
       }
 
       if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-        allowedPlatforms = primaryOrg.subscribed.join(",");
+        // Org-level subscription isn't enough — only offer a product this
+        // user actually has a role in (a Parent shouldn't see "Launch CBT
+        // engine" just because the school also subscribes to HCBT).
+        allowedPlatforms = primaryOrg.subscribed
+          .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
+          .join(",");
       }
     }
   } catch (e) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -92,8 +92,8 @@ export default function ClinicPage() {
     try {
       const data = await apiFetch<ApiResponse<HealthLog[]>>(`/clinic/${currentOrg.slug}`);
       if (data.success) setLogs(data.data);
-    } catch {
-      toast.error("Failed to load clinic logs");
+    } catch (error) {
+      toast.error(isForbiddenError(error) ? "You don't have access to clinic logs here" : "Failed to load clinic logs");
     } finally {
       setLoading(false);
     }

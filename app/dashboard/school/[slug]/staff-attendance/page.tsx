@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -88,8 +88,8 @@ export default function StaffAttendancePage() {
         });
         setStatusMap(initialStatus);
       }
-    } catch {
-      toast.error("Failed to load staff list");
+    } catch (error) {
+      toast.error(isForbiddenError(error) ? "You don't have access to staff attendance here" : "Failed to load staff list");
     } finally {
       setLoading(false);
     }
@@ -101,8 +101,8 @@ export default function StaffAttendancePage() {
     try {
       const data = await apiFetch<ApiResponse<StaffRecord[]>>(`/staff-attendance/${currentOrg.slug}`);
       if (data.success) setHistory(data.data);
-    } catch {
-      toast.error("Failed to load history");
+    } catch (error) {
+      toast.error(isForbiddenError(error) ? "You don't have access to attendance history here" : "Failed to load history");
     } finally {
       setHistoryLoading(false);
     }
@@ -259,7 +259,7 @@ export default function StaffAttendancePage() {
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors"
+                    className="flex items-center gap-2 sm:gap-4 p-3 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors"
                   >
                     <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-sm font-semibold text-blue-700">
@@ -279,7 +279,7 @@ export default function StaffAttendancePage() {
                           setStatusMap(next);
                         }}
                     >
-                      <SelectTrigger className={`w-36 h-8 text-xs font-medium ${cfg.bg} ${cfg.color} border-0 rounded-lg`}>
+                      <SelectTrigger className={`w-28 sm:w-36 h-8 text-xs font-medium ${cfg.bg} ${cfg.color} border-0 rounded-lg`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

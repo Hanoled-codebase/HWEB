@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -34,7 +35,8 @@ type Admission = {
 };
 
 export default function AdmissionsAdminPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("");
@@ -116,6 +118,20 @@ export default function AdmissionsAdminPage() {
   };
 
   if (!currentOrg) return null;
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Admissions isn&apos;t available to your role"
+            description="This is managed by the school&apos;s admin team."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">

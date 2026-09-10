@@ -18,8 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 import {
   StudentPerformanceResponse,
@@ -74,6 +75,7 @@ export default function StudentDetailPage() {
   const [performance, setPerformance] =
     useState<StudentPerformanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [performanceForbidden, setPerformanceForbidden] = useState(false);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [guardians, setGuardians] = useState<StudentGuardian[]>([]);
@@ -113,6 +115,7 @@ export default function StudentDetailPage() {
 
     try {
       setIsLoading(true);
+      setPerformanceForbidden(false);
       const [perfData, attData, profData, guardData] = await Promise.all([
         apiFetch<StudentPerformanceResponse>(
           `/students/${currentOrg.slug}/${studentId}/results`,
@@ -136,6 +139,8 @@ export default function StudentDetailPage() {
       const isAdminUser = currentMember?.role === "owner" || currentMember?.role === "admin";
       if (err.status === 402 && !isAdminUser) {
         setShowGatingModal(true);
+      } else if (isForbiddenError(error)) {
+        setPerformanceForbidden(true);
       } else {
         toast.error(
           error instanceof Error
@@ -304,15 +309,18 @@ export default function StudentDetailPage() {
               )
             }
           />
+        ) : performanceForbidden ? (
+          <DataStateCard
+            variant="forbidden"
+            title="You don't have access to this student's record"
+            description="This student isn't in a class or subject assigned to you."
+          />
         ) : (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-              Student record unavailable
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500 sm:text-base">
-              We could not load the academic record for this student right now.
-            </p>
-          </div>
+          <DataStateCard
+            variant="error"
+            title="Student record unavailable"
+            description="We could not load the academic record for this student right now."
+          />
         )}
       </div>
 

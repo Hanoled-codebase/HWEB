@@ -1,6 +1,7 @@
 // Hanoled CBT Frontend API Client
 
 import { request, HCBT_BASE, type RequestOptions } from './api';
+import { getHcbtToken } from './auth-tokens';
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 interface ApiOptions extends RequestOptions {
@@ -27,6 +28,21 @@ export const cbtApi = {
   getEdgeNodes: () => fetchCbt<any[]>(`/edge-nodes`),
   revokeEdgeNode: (id: string) => fetchCbt(`/edge-nodes/${id}/revoke`, { method: "POST" }),
   exportExamPackage: (examId: string, data: any) => fetchCbt(`/api/edge/packages/${examId}/export`, { method: "POST", body: JSON.stringify(data) }),
+  // Which platform builds actually exist on the server (e.g. { mac: true, win: true }).
+  getEdgeAppliancePlatforms: () => fetchCbt<Record<string, boolean>>(`/edge-nodes/download/platforms`),
+  // Binary download — bypasses fetchCbt's JSON parsing, returns a Blob.
+  downloadEdgeAppliance: async (platform: "mac" | "win" = "mac"): Promise<Blob> => {
+    const token = getHcbtToken();
+    const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || data.error || "Failed to download the Edge Appliance executable");
+    }
+    return res.blob();
+  },
 
   // ── Exams (Admin CRUD) ──────────────────────────────────────────────
   createExam: (data: ExamData) => fetchCbt("/exams", { method: "POST", body: JSON.stringify(data) }),
@@ -51,10 +67,11 @@ export const cbtApi = {
 
   // ── Student (Legacy compat) ─────────────────────────────────────────
   getAssignedExams: (orgSlug: string) => fetchCbt(`/student/assigned?orgSlug=${orgSlug}`),
-  startExam: (examId: string) => fetchCbt(`/student/${examId}/start`, { method: "POST" }),
+  startExam: (examId: string, passkey?: string) =>
+    fetchCbt(`/student/${examId}/start`, { method: "POST", body: JSON.stringify(passkey ? { passkey } : {}) }),
   reportTabSwitch: (examId: string) => fetchCbt(`/student/${examId}/report-tab-switch`, { method: "POST" }),
   submitExam: (examId: string, data: SubmitData & { cheating?: boolean }) => fetchCbt(`/student/${examId}/submit`, { method: "POST", body: JSON.stringify(data) }),
-  getExamResult: (examId: string) => fetchCbt(`/student/${examId}/result`),
+  getExamResult: (examId: string, options?: ApiOptions) => fetchCbt(`/student/${examId}/result`, options),
   getStudentHistory: (orgSlug: string) => fetchCbt(`/student/history?orgSlug=${orgSlug}`),
 
   // ── Past Questions Proxy ────────────────────────────────────────────
@@ -86,6 +103,12 @@ export const cbtApi = {
   getTeacherStudents: (orgSlug: string, classLevelId: string) => fetchCbt(`/admin/teacher-students?orgSlug=${orgSlug}&classLevelId=${classLevelId}`),
   assignExam: (examId: string, data: AssignData) => fetchCbt(`/exams/${examId}/assign`, { method: "POST", body: JSON.stringify(data) }),
   getStudentHistoryDetail: (studentId: string, orgSlug: string) => fetchCbt(`/admin/students/${studentId}/history?orgSlug=${orgSlug}`),
+  releaseExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "POST" }),
+  withdrawExamResults: (examId: string) => fetchCbt(`/exams/${examId}/release-results`, { method: "DELETE" }),
+  getExamPasskey: (examId: string) => fetchCbt(`/exams/${examId}/passkey`),
+  generateExamPasskey: (examId: string, mode: "shared" | "unique") =>
+    fetchCbt(`/exams/${examId}/passkey`, { method: "POST", body: JSON.stringify({ mode }) }),
+  disableExamPasskey: (examId: string) => fetchCbt(`/exams/${examId}/passkey`, { method: "DELETE" }),
 
   // ── File Upload ─────────────────────────────────────────────────────
   uploadFile: (file: File) => {

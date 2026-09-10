@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +50,8 @@ type TransferRequest = {
 export default function TransfersPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
 
   const [students, setStudents] = useState<Student[]>([]);
   const [incoming, setIncoming] = useState<TransferRequest[]>([]);
@@ -141,6 +143,20 @@ export default function TransfersPage() {
     } finally {
       setProcessingId(null);
     }
+  }
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Student transfers aren&apos;t available to your role"
+            description="Moving a student to another school is an admin-only action."
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

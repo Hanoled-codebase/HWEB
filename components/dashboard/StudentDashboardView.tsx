@@ -154,6 +154,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
 
   const firstName = user?.name?.split(" ")[0] || data.student.firstName;
   const stats = data.stats;
+  const todayTimetable = data.todayTimetable || [];
+  const pendingExams = data.pendingExams || [];
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -221,7 +223,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-slate-950">
-              {stats.pendingExams}
+              {stats.pendingExams ?? 0}
             </div>
             <p className="text-xs text-slate-500 mt-1">Awaiting you</p>
           </CardContent>
@@ -265,9 +267,9 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
           </Link>
         </CardHeader>
         <CardContent>
-          {data.todayTimetable.length > 0 ? (
+          {todayTimetable.length > 0 ? (
             <div className="space-y-2">
-              {data.todayTimetable.map((slot) => (
+              {todayTimetable.map((slot) => (
                 <div
                   key={slot.id}
                   className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3"
@@ -301,13 +303,13 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
       </Card>
 
       {/* Pending Exams */}
-      {data.pendingExams.length > 0 && (
+      {pendingExams.length > 0 && (
         <Card className="shadow-sm border border-slate-100/80 rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-base font-bold text-slate-900">Pending Exams</CardTitle>
               <CardDescription className="text-xs text-slate-400 font-medium mt-0.5">
-                {data.pendingExams.length} exam{data.pendingExams.length !== 1 ? "s" : ""} waiting for you
+                {pendingExams.length} exam{pendingExams.length !== 1 ? "s" : ""} waiting for you
               </CardDescription>
             </div>
             <Link href={`/dashboard/school/${orgSlug}/student/pending`}>
@@ -323,7 +325,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.pendingExams.slice(0, 3).map((exam) => (
+              {pendingExams.slice(0, 3).map((exam) => (
                 <div
                   key={exam.id}
                   className="flex items-center justify-between rounded-xl bg-slate-50/70 border border-slate-100 p-4"

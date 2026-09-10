@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -47,7 +48,9 @@ const grantSchema = z.object({
 });
 
 export default function FeaturesPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isOwner = currentMember?.role === "owner";
+  const isPrivileged = isOwner || currentMember?.role === "admin";
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -130,6 +133,20 @@ export default function FeaturesPage() {
 
   if (!currentOrg) return null;
 
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-3xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Feature flags aren&apos;t available to your role"
+            description="This is managed by the school's admin team."
+          />
+        </div>
+      </div>
+    );
+  }
+
   const adminMembers = members.filter((m) => m.role === "admin");
 
   return (
@@ -178,7 +195,8 @@ export default function FeaturesPage() {
           </Card>
         )}
 
-        {/* Admin Role Grant & Revoke */}
+        {/* Admin Role Grant & Revoke — only the owner can mint/remove admins */}
+        {isOwner && (
         <Card className="border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -258,6 +276,7 @@ export default function FeaturesPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );

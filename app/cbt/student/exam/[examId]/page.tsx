@@ -128,6 +128,16 @@ export default function ActiveExamPage() {
         return;
       }
 
+      // Trust a session the dashboard already established for this exam
+      // (e.g. it just passed a passkey to start it) instead of re-calling
+      // start — a passkey-gated exam has no code to resubmit here, and a
+      // second start call is redundant even when one isn't required.
+      if (session && session.exam.id === examId) {
+        setLoading(false);
+        initializedRef.current = true;
+        return;
+      }
+
       setLoading(true);
       try {
         const res = await cbtApi.startExam(examId);
@@ -260,6 +270,8 @@ export default function ActiveExamPage() {
 
         if (res.cheating) {
           toast.error("Exam auto-failed due to proctoring violations.");
+        } else if (res.resultsReleased === false) {
+          toast.success("Exam submitted! Your teacher will release your score once results are published.", { duration: 6000 });
         } else if (isAuto) {
           toast.success("Exam submitted automatically!");
         } else {

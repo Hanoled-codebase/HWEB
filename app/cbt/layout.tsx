@@ -51,7 +51,11 @@ export default async function CBTLayout({
         const meData = await meRes.json();
         const primaryOrg = meData.organizations?.[0];
         if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-          allowedPlatforms = primaryOrg.subscribed.join(",");
+          // Org-level subscription alone isn't enough to grant CBT access —
+          // require an actual role in the product for this user.
+          allowedPlatforms = primaryOrg.subscribed
+            .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
+            .join(",");
         }
       }
     } catch (e) {
@@ -80,7 +84,7 @@ export default async function CBTLayout({
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
           <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-            Your school organization does not have an active subscription to <strong>Hanoled Computer-Based Testing (HCBT)</strong>.
+            Your account doesn&apos;t have a role in <strong>Hanoled Computer-Based Testing (HCBT)</strong> for this organization, or your school doesn&apos;t have an active subscription to it.
           </p>
           <div className="flex flex-col gap-3">
             {hasHsms && (

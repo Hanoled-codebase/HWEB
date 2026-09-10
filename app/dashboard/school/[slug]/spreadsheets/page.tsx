@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { getSpreadsheetLabel } from "@/lib/spreadsheets";
@@ -161,6 +162,7 @@ export default function SpreadsheetsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentOrg, currentMember } = useOrganization();
+  const isStaff = !!currentMember && currentMember.role !== "parent";
   const [spreadsheets, setSpreadsheets] = useState<SpreadsheetSummary[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -446,6 +448,18 @@ export default function SpreadsheetsPage() {
   }
 
   const greetingName = getDisplayName(currentMember?.user?.name);
+
+  if (!isStaff) {
+    return (
+      <div className="mx-auto max-w-5xl p-6">
+        <DataStateCard
+          variant="forbidden"
+          title="Grade spreadsheets aren't available to your role"
+          description="This is a staff tool for teachers and admins."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)]">

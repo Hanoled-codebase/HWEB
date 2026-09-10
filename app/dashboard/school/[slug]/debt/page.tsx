@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -32,7 +33,8 @@ type InvoiceRow = {
 };
 
 export default function DebtPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,20 @@ export default function DebtPage() {
   }
 
   if (!currentOrg) return null;
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Debt & compliance isn&apos;t available to your role"
+            description="This is managed by the school&apos;s admin team."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">

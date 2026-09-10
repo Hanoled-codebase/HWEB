@@ -8,6 +8,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -215,7 +216,8 @@ type StudentFormProps = {
 
 export function StudentForm({ initialData, studentId }: StudentFormProps) {
   const router = useRouter();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [isLoading, setIsLoading] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [picFile, setPicFile] = useState<File | null>(null);
@@ -360,6 +362,18 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (!isPrivileged) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <DataStateCard
+          variant="forbidden"
+          title={`${isEditing ? "Editing" : "Adding"} students isn't available to your role`}
+          description="This is an admin-only action."
+        />
+      </div>
+    );
   }
 
   return (

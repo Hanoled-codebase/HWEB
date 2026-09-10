@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 import {
   StudentPerformanceResponse,
@@ -31,6 +32,7 @@ export default function StudentSubjectAssessmentsPage() {
   const [performance, setPerformance] =
     useState<StudentPerformanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   const fetchPerformance = useCallback(async () => {
     if (!currentOrg || !studentId) {
@@ -39,16 +41,21 @@ export default function StudentSubjectAssessmentsPage() {
 
     try {
       setIsLoading(true);
+      setForbidden(false);
       const data = await apiFetch<StudentPerformanceResponse>(
         `/students/${currentOrg.slug}/${studentId}/results`,
       );
       setPerformance(data);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load subject assessments",
-      );
+      if (isForbiddenError(error)) {
+        setForbidden(true);
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load subject assessments",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -146,6 +153,12 @@ export default function StudentSubjectAssessmentsPage() {
             Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-24 rounded-xl" />
             ))
+          ) : forbidden ? (
+            <DataStateCard
+              variant="forbidden"
+              title="You don't have access to this student's record"
+              description="This student isn't in a class or subject assigned to you."
+            />
           ) : !performance || !subject ? (
             <div className="rounded-xl border border-dashed border-blue-200 bg-white/95 p-8 text-center shadow-[0_12px_35px_rgba(37,99,235,0.05)]">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-blue-50">

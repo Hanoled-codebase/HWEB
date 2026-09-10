@@ -105,7 +105,7 @@ export default function Home() {
           </div>
 
           <a
-            href="/"
+            href="/welcome"
             className="text-sm font-semibold text-[#0B1220] hover:text-[#1447E6] transition-colors bg-white px-5 py-2.5 rounded-sm border border-slate-200 shadow-sm hover:shadow-md hover:border-[#1447E6]/30 flex items-center space-x-2"
           >
             <span>Back to Suite</span>

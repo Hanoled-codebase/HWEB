@@ -86,7 +86,9 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
   for (const a of activeAssignments) {
     switch (a.type) {
       case "HOD":
-        // HOD inherits Class + Subject caps plus department management (row: own department)
+        // HOD inherits Class + Subject caps plus department management (row: own department).
+        // Attendance-marking is deliberately excluded — that's the Class
+        // Teacher's job specifically, not implied by department oversight.
         caps.add("students.view");
         caps.add("students.manage");
         caps.add("parents.manage");
@@ -96,7 +98,6 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("cbt.manage");
         caps.add("homework.manage");
         caps.add("attendance.view");
-        caps.add("attendance.mark");
         caps.add("messaging.send");
         caps.add("timetable.view");
         caps.add("timetable.edit");
@@ -116,11 +117,12 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
         caps.add("homework.manage");
         break;
       case "SUBJECT_TEACHER":
-        // Row: own subject + assigned classes only
+        // Row: own subject + assigned classes only. No attendance.mark —
+        // taking the class register is the Class Teacher's job, not the
+        // subject teacher's, even for a class they teach into.
         caps.add("results.enter");
         caps.add("cbt.manage");
         caps.add("homework.manage");
-        caps.add("attendance.mark");
         caps.add("attendance.view");
         caps.add("timetable.view");
         caps.add("messaging.send");
@@ -145,8 +147,9 @@ function getScopedCapabilities(assignments: Member["memberAssignments"]): Capabi
   // Hierarchy inheritance: HOD gets Class + Subject capabilities (department scope)
   if (hasHOD) {
     if (!hasClassTeacher) {
+      // Deliberately no attendance.mark here — see the HOD case above.
       caps.add("students.view"); caps.add("students.manage"); caps.add("parents.manage");
-      caps.add("attendance.mark"); caps.add("attendance.view"); caps.add("results.view_self");
+      caps.add("attendance.view"); caps.add("results.view_self");
     }
     if (!hasSubjectTeacher) {
       caps.add("results.enter"); caps.add("cbt.manage"); caps.add("homework.manage");

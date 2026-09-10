@@ -267,6 +267,91 @@ export default function ParentsPage() {
         placeholder="Search parents..."
       />
 
+      {/* Mobile Card View */}
+      <div className="space-y-3 block md:hidden">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+          ))
+        ) : filteredParents.length === 0 ? (
+          <div className="bg-white p-8 text-center rounded-2xl border border-slate-100">
+            <p className="text-sm text-slate-500">
+              {searchQuery ? "No parents match your search." : "No parents found in this organization."}
+            </p>
+          </div>
+        ) : (
+          filteredParents.map((parent) => (
+            <div
+              key={parent.id}
+              className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Avatar className="h-11 w-11 border border-slate-100 shrink-0">
+                    <AvatarFallback className="bg-amber-50 text-amber-700 font-medium text-xs">
+                      {getInitials(parent.user?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-bold text-slate-900 text-sm capitalize truncate">
+                      {parent.user?.name}
+                    </span>
+                    <span className="text-xs text-slate-400 capitalize">
+                      {parent.role}
+                    </span>
+                  </div>
+                </div>
+
+                {isPrivileged && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
+                    onClick={() => handleRemove(parent.id)}
+                    title="Remove parent"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {parent.user?.email && (
+                <div className="flex items-center text-xs text-slate-500 pl-1 min-w-0">
+                  <Mail className="h-3.5 w-3.5 mr-2 text-slate-400 shrink-0" />
+                  <span className="truncate">{parent.user.email}</span>
+                </div>
+              )}
+
+              {parent.assignedStudents && parent.assignedStudents.length > 0 ? (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {parent.assignedStudents.map((stu) => (
+                    <span
+                      key={stu.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-[#EEF0FF] px-3 py-0.5 text-[11px] font-semibold text-[#1447E6] capitalize"
+                    >
+                      <GraduationCap className="h-3 w-3" />
+                      {stu.firstName} {stu.lastName}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="block pl-1 text-xs text-slate-400">No linked students</span>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block">
       <TableContainer>
         <Table className="min-w-[760px]">
           <TableHeader className="bg-slate-50">
@@ -364,6 +449,7 @@ export default function ParentsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      </div>
     </div>
   );
 }

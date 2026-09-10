@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,8 +118,8 @@ export default function LibraryPage() {
         `/${currentOrg!.slug}/library${qs ? `?${qs}` : ""}`,
       );
       setBooks(data);
-    } catch {
-      toast.error("Failed to load books");
+    } catch (error) {
+      toast.error(isForbiddenError(error) ? "You don't have access to the library here" : "Failed to load books");
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +202,9 @@ export default function LibraryPage() {
             <Library className="h-6 w-6 text-blue-600" />
             Library
           </h1>
-          <p className="text-sm text-muted-foreground">Browse catalog and manage loan requests</p>
+          <p className="text-sm text-muted-foreground">
+            {isStaff ? "Browse catalog and manage loan requests" : "Browse the school's book catalog"}
+          </p>
         </div>
         {isStaff && (
           <Dialog open={showAddBook} onOpenChange={setShowAddBook}>
@@ -251,7 +253,7 @@ export default function LibraryPage() {
         </TabsList>
 
         <TabsContent value="catalog" className="space-y-4 mt-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -262,16 +264,18 @@ export default function LibraryPage() {
                 onKeyDown={e => e.key === "Enter" && loadBooks()}
               />
             </div>
-            <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v as string); }}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {categories.map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={loadBooks}><Search className="h-4 w-4" /></Button>
+            <div className="flex gap-2">
+              <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v as string); }}>
+                <SelectTrigger className="flex-1 sm:w-40">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {categories.map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={loadBooks}><Search className="h-4 w-4" /></Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -281,7 +285,7 @@ export default function LibraryPage() {
               ))}
             </div>
           ) : books.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">No books found. Add your first book to the catalog.</CardContent></Card>
+            <Card><CardContent className="p-8 text-center text-muted-foreground">{isStaff ? "No books found. Add your first book to the catalog." : "No books found in the catalog yet."}</CardContent></Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {books.map(book => (

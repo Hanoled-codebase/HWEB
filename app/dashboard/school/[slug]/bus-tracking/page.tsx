@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,8 @@ type BusRoute = {
 };
 
 export default function BusTrackingPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [routes, setRoutes] = useState<BusRoute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddRoute, setShowAddRoute] = useState(false);
@@ -171,6 +173,20 @@ export default function BusTrackingPage() {
 
   function removeStopField(index: number) {
     setStopEditor(prev => prev.filter((_, i) => i !== index));
+  }
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Bus tracking isn&apos;t available to your role"
+            description="This is managed by the school&apos;s admin team."
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

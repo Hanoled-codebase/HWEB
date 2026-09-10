@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { DataStateCard } from "@/components/dashboard/shared";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 
 type ClassDetail = {
@@ -68,6 +69,7 @@ export default function ClassDetailPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   const fetchClassData = useCallback(async () => {
     if (!currentOrg || !classId) {
@@ -76,6 +78,7 @@ export default function ClassDetailPage() {
 
     try {
       setIsLoading(true);
+      setForbidden(false);
       const [classData, studentData] = await Promise.all([
         apiFetch<ClassDetail>(`/classes/${currentOrg.slug}/${classId}`),
         apiFetch<StudentRecord[]>(`/students/${currentOrg.slug}`, {
@@ -86,9 +89,13 @@ export default function ClassDetailPage() {
       setClassDetail(classData);
       setStudents(studentData);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load class details",
-      );
+      if (isForbiddenError(error)) {
+        setForbidden(true);
+      } else {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load class details",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +120,28 @@ export default function ClassDetailPage() {
       ].some((value) => value.toLowerCase().includes(normalizedQuery));
     });
   }, [searchQuery, students]);
+
+  if (!isLoading && forbidden) {
+    return (
+      <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 shrink-0 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            onClick={() => router.push(`/dashboard/school/${currentOrg?.slug}/classes`)}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <DataStateCard
+            variant="forbidden"
+            title="You don't have access to this class"
+            description="You're not assigned to teach this class or any of its subjects."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">

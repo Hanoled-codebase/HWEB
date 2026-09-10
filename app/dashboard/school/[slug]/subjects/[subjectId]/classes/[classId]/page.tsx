@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { formatScore, getInitials, parseRouteParam } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
@@ -189,22 +189,28 @@ export default function SubjectClassResultsPage() {
   const classId = parseRouteParam(params.classId);
   const [data, setData] = useState<SubjectClassResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   const fetchResults = useCallback(async () => {
     if (!currentOrg || !subjectId || !classId) return;
 
     try {
       setIsLoading(true);
+      setForbidden(false);
       const response = await apiFetch<SubjectClassResult>(
         `/subjects/${currentOrg.slug}/${subjectId}/classes/${classId}/results`,
       );
       setData(response);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load subject results",
-      );
+      if (isForbiddenError(error)) {
+        setForbidden(true);
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load subject results",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -311,6 +317,13 @@ export default function SubjectClassResultsPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          ) : forbidden ? (
+            <div className="text-center">
+              <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
+              <h1 className="mt-4 text-xl font-bold text-slate-900">
+                You don&apos;t have access to this class&apos;s results
+              </h1>
             </div>
           ) : (
             <div className="text-center">

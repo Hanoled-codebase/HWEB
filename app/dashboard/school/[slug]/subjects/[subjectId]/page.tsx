@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { DataStateCard } from "@/components/dashboard/shared";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 
 type Member = {
@@ -71,6 +72,7 @@ export default function SubjectDetailPage() {
   const subjectId = parseRouteParam(params.subjectId);
   const [data, setData] = useState<SubjectDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
@@ -83,14 +85,19 @@ export default function SubjectDetailPage() {
     if (!currentOrg || !subjectId) return;
     try {
       setIsLoading(true);
+      setForbidden(false);
       const response = await apiFetch<SubjectDetailResponse>(
         `/subjects/${currentOrg.slug}/${subjectId}`,
       );
       setData(response);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load subject",
-      );
+      if (isForbiddenError(error)) {
+        setForbidden(true);
+      } else {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load subject",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -427,6 +434,8 @@ export default function SubjectDetailPage() {
               </div>
             </section>
           </>
+        ) : forbidden ? (
+          <DataStateCard variant="forbidden" title="You don't have access to this subject" />
         ) : (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
             <h2 className="text-xl font-bold text-slate-900">

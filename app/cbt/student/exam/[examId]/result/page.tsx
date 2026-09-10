@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { ResultView } from "@/components/cbt/ResultView";
-import { Loader2, ArrowLeft, RefreshCw, AlertCircle, TrendingUp } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, AlertCircle, TrendingUp, Hourglass } from "lucide-react";
 import { useExamStore } from "@/store/exam";
 import { Toaster } from "sonner";
 
@@ -19,6 +19,7 @@ export default function ExamResultPage() {
   const [resultData, setResultData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
 
   const practiceResult = useExamStore((state) => state.practiceResult);
@@ -38,15 +39,20 @@ export default function ExamResultPage() {
 
       setLoading(true);
       setError(null);
+      setPending(false);
       try {
-        const data = await cbtApi.getExamResult(examId);
+        const data = await cbtApi.getExamResult(examId, { showErrorToast: false });
         setResultData(data);
       } catch (err: any) {
-        console.error("Failed to load result:", err);
-        setError(
-          err.message ||
-          "Failed to fetch your corrections. Please make sure you have submitted the exam."
-        );
+        if (err.code === "RESULTS_NOT_RELEASED") {
+          setPending(true);
+        } else {
+          console.error("Failed to load result:", err);
+          setError(
+            err.message ||
+            "Failed to fetch your corrections. Please make sure you have submitted the exam."
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -90,6 +96,22 @@ export default function ExamResultPage() {
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
             <p className="text-slate-500 text-sm font-semibold">Generating your correction sheets...</p>
             <p className="text-[11px] text-slate-400">We are processing your answers and calculating explanations.</p>
+          </div>
+        ) : pending ? (
+          <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-amber-100 shadow-xl text-center">
+            <div className="w-16 h-16 bg-amber-50 border border-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Hourglass className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Results Pending</h2>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+              Your exam was submitted successfully. Your teacher hasn't released the results yet — check back once they've published your class's scores.
+            </p>
+            <button
+              onClick={handleGoBack}
+              className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-sm shadow-lg shadow-blue-500/20 transition-all"
+            >
+              Return to Student Dashboard
+            </button>
           </div>
         ) : error ? (
           <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-rose-100 shadow-xl text-center">

@@ -118,7 +118,13 @@ export async function loginAction(prevState: any, formData: FormData) {
           const meData = await meRes.json();
           const primaryOrg = meData.organizations?.[0];
           if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-            allowedPlatforms = primaryOrg.subscribed;
+            // `subscribed` is org-level (does the school pay for this product at all).
+            // Only surface a product to this user if they also hold an actual
+            // role in it — otherwise e.g. a Parent at a school that also buys
+            // HCBT would be routed into the CBT product with no role there.
+            allowedPlatforms = primaryOrg.subscribed.filter(
+              (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
+            );
           }
         }
       } catch (e) {

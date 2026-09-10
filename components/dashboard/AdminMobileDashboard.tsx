@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
+import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
 import { HanoledLogo } from "@/components/ui/HanoledLogo";
@@ -82,6 +83,7 @@ export function AdminMobileDashboard({
   const router = useRouter();
   const { currentOrg, organizations, setCurrentOrg } = useOrganization();
   const { user } = useAuth();
+  const { visibleNavItems, role: navRole } = useSchoolNavItems();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const base = `/dashboard/school/${slug}`;
@@ -94,9 +96,20 @@ export function AdminMobileDashboard({
     .toUpperCase() || "AD";
 
   const firstName = user?.name?.split(" ")[0] || "Admin";
-  const role = (currentOrg as any)?.currentMember?.role || "Owner";
+  const roleLabel = navRole ? navRole.charAt(0).toUpperCase() + navRole.slice(1) : "Owner";
 
-  const navSections: NavSection[] = [
+  // This dashboard is also shown (as a fallback) to any "member" who isn't a
+  // recognized teacher/accountant/HOD/librarian, so its nav must be filtered
+  // by real permissions same as the desktop sidebar — not hardcoded as if
+  // every viewer were an admin.
+  const visibleKeys = useMemo(() => new Set(visibleNavItems.map((i) => i.key)), [visibleNavItems]);
+
+  // `stats` is built by the caller assuming a full admin (e.g. it always
+  // includes a Teachers count and a Classes shortcut) — drop any tile this
+  // viewer's own nav wouldn't otherwise let them reach.
+  const visibleStats = stats.filter((stat) => visibleKeys.has(stat.label.toLowerCase()));
+
+  const allNavSections: NavSection[] = [
     {
       title: "OVERVIEW",
       items: [
@@ -163,22 +176,39 @@ export function AdminMobileDashboard({
     },
   ];
 
-  const quickLinks = [
-    { label: "Grades", icon: ClipboardList, href: `${base}/spreadsheets` },
-    { label: "Classes", icon: Building2, href: `${base}/classes` },
-    { label: "Attendance", icon: ClipboardCheck, href: `${base}/attendance` },
-    { label: "Fees", icon: Wallet, href: `${base}/payments` },
-    { label: "Messages", icon: MessageSquare, href: `${base}/messaging` },
-    { label: "More", icon: MoreHorizontal, href: `${base}/settings` },
+  const navSections = allNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.key === "overview" || visibleKeys.has(item.key)),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  type QuickLink = { key: string; label: string; icon: React.ElementType; href: string | null; action?: () => void };
+  const allQuickLinks: QuickLink[] = [
+    { key: "spreadsheets", label: "Grades", icon: ClipboardList, href: `${base}/spreadsheets` },
+    { key: "classes", label: "Classes", icon: Building2, href: `${base}/classes` },
+    { key: "attendance", label: "Attendance", icon: ClipboardCheck, href: `${base}/attendance` },
+    { key: "payments", label: "Fees", icon: Wallet, href: `${base}/payments` },
+    { key: "messaging", label: "Messages", icon: MessageSquare, href: `${base}/messaging` },
+  ];
+  const quickLinks: QuickLink[] = [
+    ...allQuickLinks.filter((link) => visibleKeys.has(link.key)).slice(0, 5),
+    // Always opens the same permission-filtered drawer below, never a
+    // hardcoded page — matches what "More" means everywhere else.
+    { key: "more", label: "More", icon: MoreHorizontal, href: null, action: () => setDrawerOpen(true) },
   ];
 
-  const bottomTabs = [
+  type BottomTab = { key: string; label: string; icon: React.ElementType; href: string | null; exact: boolean; action?: () => void };
+  const allBottomTabs: BottomTab[] = [
     { key: "home", label: "Home", icon: Home, href: base, exact: true },
     { key: "students", label: "Students", icon: GraduationCap, href: `${base}/students`, exact: false },
     { key: "classes", label: "Classes", icon: Building2, href: `${base}/classes`, exact: false },
     { key: "messages", label: "Messages", icon: MessageSquare, href: `${base}/messaging`, exact: false },
-    { key: "more", label: "More", icon: MoreHorizontal, href: null, exact: false, action: () => setDrawerOpen(true) },
   ];
+  const bottomTabs: BottomTab[] = [
+    ...allBottomTabs.filter((tab) => tab.key === "home" || visibleKeys.has(tab.key === "messages" ? "messaging" : tab.key)),
+    { key: "more", label: "More", icon: MoreHorizontal, href: null, exact: false, action: () => setDrawerOpen(true) },
+  ].slice(0, 5);
 
   return (
     <div className="relative min-h-screen bg-[#f5f5f7] pb-24">
@@ -228,7 +258,7 @@ export function AdminMobileDashboard({
 
        
         <div className="grid grid-cols-2 gap-3">
-          {stats.map((stat) => {
+          {visibleStats.map((stat) => {
             const Icon = stat.icon;
             if (stat.dark) {
               return (
@@ -271,16 +301,26 @@ export function AdminMobileDashboard({
           <div className="grid grid-cols-3 gap-3">
             {quickLinks.map((link) => {
               const Icon = link.icon;
-              return (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white py-2.5 shadow-sm hover:bg-slate-50 transition-colors"
-                >
+              const content = (
+                <>
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
                     <Icon className="h-4 w-4 text-slate-500" />
                   </div>
                   <span className="text-[10px] font-medium text-slate-600">{link.label}</span>
+                </>
+              );
+              const className = "flex flex-col items-center gap-1.5 rounded-xl bg-white py-2.5 shadow-sm hover:bg-slate-50 transition-colors";
+
+              if (link.action) {
+                return (
+                  <button key={link.key} type="button" onClick={link.action} className={className}>
+                    {content}
+                  </button>
+                );
+              }
+              return (
+                <Link key={link.key} href={link.href!} className={className}>
+                  {content}
                 </Link>
               );
             })}
@@ -349,7 +389,7 @@ export function AdminMobileDashboard({
                       <span className="text-[15px] font-bold text-slate-900 truncate capitalize">{firstName}</span>
                       <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                     </div>
-                    <p className="text-[12px] text-slate-400 truncate capitalize">{firstName} Owner</p>
+                    <p className="text-[12px] text-slate-400 truncate capitalize">{roleLabel}</p>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[240px] z-[60]">

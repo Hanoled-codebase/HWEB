@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,12 @@ import {
   Fingerprint,
   ShoppingBag,
 } from "lucide-react";
+
+type StudentAttendanceSummary = {
+  student: { id: string; firstName: string; lastName: string; admissionNumber?: string; classLevel?: { id: string; name?: string | null } | null };
+  stats: { total: number; present: number; absent: number; excused: number; late: number; attendanceRate: number };
+  records: Array<{ id: string; date: string; status: Status; notes?: string | null }>;
+};
 
 type Status = "present" | "absent" | "late" | "excused";
 
@@ -129,8 +135,10 @@ function getStudentName(student: { firstName: string; lastName: string }): strin
 }
 
 export default function AttendancePage() {
-  const { currentOrg } = useOrganization();
-  const { can, isTeacher } = usePermissions();
+  const { currentOrg, currentMember } = useOrganization();
+  const { can, isTeacher, isParent, isPrivileged } = usePermissions();
+  const [childAttendance, setChildAttendance] = useState<StudentAttendanceSummary[]>([]);
+  const [isLoadingChildAttendance, setIsLoadingChildAttendance] = useState(true);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceRecord>>(new Map());
@@ -143,21 +151,46 @@ export default function AttendancePage() {
 
   const canMark = can("attendance.mark") || isTeacher;
 
+  // Parents don't mark or browse class rosters — they only see their own
+  // linked children's attendance history, via the per-student endpoint.
   useEffect(() => {
+    if (!isParent || !currentOrg) return;
+    const orgSlug = currentOrg.slug;
+    async function fetchChildAttendance() {
+      setIsLoadingChildAttendance(true);
+      try {
+        const studentIds = (currentMember?.assignedStudents || [])
+          .map((s) => s.id)
+          .filter((id): id is string => Boolean(id));
+        const results = await Promise.all(
+          studentIds.map((id) =>
+            apiFetch<StudentAttendanceSummary>(`/attendance/${orgSlug}/student/${id}`).catch(() => null)
+          )
+        );
+        setChildAttendance(results.filter((r): r is StudentAttendanceSummary => r !== null));
+      } finally {
+        setIsLoadingChildAttendance(false);
+      }
+    }
+    fetchChildAttendance();
+  }, [isParent, currentOrg, currentMember]);
+
+  useEffect(() => {
+    if (isParent) return;
     async function fetchClasses() {
       if (!currentOrg) return;
       try {
         setIsLoadingClasses(true);
         const data = await apiFetch<ClassOption[]>(`/classes/${currentOrg.slug}`);
         setClasses(data);
-      } catch {
-        toast.error("Failed to load classes");
+      } catch (error) {
+        toast.error(isForbiddenError(error) ? "You don't have access to any classes here" : "Failed to load classes");
       } finally {
         setIsLoadingClasses(false);
       }
     }
     fetchClasses();
-  }, [currentOrg]);
+  }, [currentOrg, isParent]);
 
   useEffect(() => {
     const org = currentOrg;
@@ -188,8 +221,8 @@ export default function AttendancePage() {
           map.set(r.studentId, r);
         });
         setAttendanceMap(map);
-      } catch {
-        toast.error("Failed to load attendance data");
+      } catch (error) {
+        toast.error(isForbiddenError(error) ? "You don't have access to this class" : "Failed to load attendance data");
       } finally {
         setIsLoadingStudents(false);
         setHasLoaded(true);
@@ -274,6 +307,76 @@ export default function AttendancePage() {
     late: students.filter((s) => getStudentStatus(s.id) === "late").length,
     excused: students.filter((s) => getStudentStatus(s.id) === "excused").length,
   };
+
+  if (isParent) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            Attendance
+          </h1>
+          <p className="text-slate-500">
+            View your linked children&apos;s attendance history.
+          </p>
+        </div>
+
+        {isLoadingChildAttendance ? (
+          <div className="space-y-3">
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </div>
+        ) : childAttendance.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-white p-10 text-center">
+            <CalendarDays className="h-10 w-10 text-slate-400" />
+            <span className="text-base font-semibold text-slate-700">
+              No attendance records yet
+            </span>
+            <span className="text-sm text-slate-400">
+              Attendance for your child will appear here once the school records it.
+            </span>
+          </div>
+        ) : (
+          childAttendance.map((entry) => (
+            <Card key={entry.student.id} className="border-slate-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {getStudentName(entry.student)}
+                </CardTitle>
+                <CardDescription>
+                  {entry.student.classLevel?.name || "—"} · {entry.student.admissionNumber}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant="outline" className="gap-1 px-2.5 py-1 border-slate-200">
+                    Attendance rate: {entry.stats.attendanceRate.toFixed(0)}%
+                  </Badge>
+                  {STATUS_OPTIONS.map((opt) => {
+                    const count = entry.stats[opt.value];
+                    if (!count) return null;
+                    const Icon = opt.icon;
+                    return (
+                      <Badge key={opt.value} variant="outline" className={cn("gap-1 px-2.5 py-1", opt.bgColor)}>
+                        <Icon className="h-3.5 w-3.5" />
+                        {opt.label}: {count}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 space-y-1.5">
+                  {entry.records.slice(0, 10).map((r) => (
+                    <div key={r.id} className="flex items-center justify-between text-sm text-slate-600 border-b border-slate-100 py-1.5 last:border-0">
+                      <span>{new Date(r.date).toLocaleDateString()}</span>
+                      <span className="capitalize font-medium">{r.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -516,7 +619,8 @@ export default function AttendancePage() {
         </>
       )}
 
-      {/* ── Biometric attendance upsell ───────────────────────────── */}
+      {/* ── Biometric attendance upsell (purchasing decision — owner/admin only) ── */}
+      {isPrivileged && (
       <Card className="border-blue-100/60 bg-gradient-to-br from-blue-50/40 to-white shadow-sm">
         <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-100">
@@ -561,6 +665,7 @@ export default function AttendancePage() {
           </Button>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

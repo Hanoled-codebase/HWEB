@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -53,7 +54,8 @@ type LessonNote = {
 };
 
 export default function LessonNotesPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isStaff = !!currentMember && currentMember.role !== "parent";
   const [notes, setNotes] = useState<LessonNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [classLevels, setClassLevels] = useState<ClassLevel[]>([]);
@@ -123,6 +125,20 @@ export default function LessonNotesPage() {
   }
 
   if (!currentOrg) return null;
+
+  if (!isStaff) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Lesson notes isn&apos;t available to your role"
+            description="This is a staff tool for teachers and admins."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
