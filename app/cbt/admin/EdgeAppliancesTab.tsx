@@ -108,34 +108,36 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-800">Edge Appliances</h2>
           <p className="text-sm text-slate-500 font-medium">Manage local offline servers and generate exam packages.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="bg-[#eef2ff] text-[#1447E6] px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
-            <Info className="w-4 h-4" />
+            <Info className="w-4 h-4 shrink-0" />
             Offline exams must be exported here
           </div>
-          {availablePlatformCount > 1 && (
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value as "mac" | "win")}
-              className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          <div className="flex items-center gap-2">
+            {availablePlatformCount > 1 && (
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as "mac" | "win")}
+                className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300 shrink-0"
+              >
+                {platforms.mac && <option value="mac">macOS</option>}
+                {platforms.win && <option value="win">Windows</option>}
+              </select>
+            )}
+            <button
+              onClick={handleDownloadAppliance}
+              disabled={downloading || availablePlatformCount === 0}
+              className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap"
             >
-              {platforms.mac && <option value="mac">macOS</option>}
-              {platforms.win && <option value="win">Windows</option>}
-            </select>
-          )}
-          <button
-            onClick={handleDownloadAppliance}
-            disabled={downloading || availablePlatformCount === 0}
-            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${platform === "win" ? "Windows" : "macOS"})` : ""}`}
-          </button>
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${platform === "win" ? "Windows" : "macOS"})` : ""}`}
+            </button>
+          </div>
         </div>
       </div>
 

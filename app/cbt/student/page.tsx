@@ -328,32 +328,49 @@ export default function StudentDashboard() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
       <Toaster position="top-right" richColors />
 
-      {/* Header with Canonical Logo */}
+      {/* Header with Canonical Logo — brand + actions stay on one row on
+          every viewport (never pushed off-screen); the school-name pill
+          gets its own full-width row below on mobile, where it has enough
+          room to show the whole name instead of clipping mid-word. */}
       <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Logo className="w-8 h-8" badgeText="STUDENT" textColor="text-[#0B1220]" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-14 sm:h-16 flex items-center justify-between gap-2">
+            <Logo className="w-7 h-7 sm:w-8 sm:h-8" size="sm" badgeText="STUDENT" textColor="text-[#0B1220]" />
 
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80">
+            <div className="hidden sm:flex items-center min-w-0">
+              <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80 min-w-0">
+                <School className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="text-xs font-bold text-blue-900 truncate">
+                  {schoolName || (orgSlug !== "hanoled-default" ? orgSlug.replace("-", " ").toUpperCase() : "STUDENT PORTAL")}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0">
+              <a
+                href="/welcome"
+                className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
+                title="Back to Suite"
+              >
+                <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Back to Suite</span>
+              </a>
+              <button
+                onClick={handleSignOut}
+                className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+
+          <div className="sm:hidden pb-2.5">
+            <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80 w-fit max-w-full">
               <School className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="text-xs font-bold text-blue-900 truncate max-w-[200px] sm:max-w-none">
+              <span className="text-xs font-bold text-blue-900 truncate">
                 {schoolName || (orgSlug !== "hanoled-default" ? orgSlug.replace("-", " ").toUpperCase() : "STUDENT PORTAL")}
               </span>
             </div>
-            <a
-              href="/welcome"
-              className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
-              title="Back to Suite"
-            >
-              <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Back to Suite</span>
-            </a>
-            <button
-              onClick={handleSignOut}
-              className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
-            >
-              Sign Out
-            </button>
           </div>
         </div>
       </header>

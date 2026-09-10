@@ -1489,10 +1489,13 @@ export default function AdminDashboard() {
 
             {/* Navigation Tabs and Main Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-              <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
+              {/* Admins see 4 tabs, which don't fit a phone-width screen —
+                  scroll horizontally instead of silently clipping "Edge
+                  Appliances" off the edge with no way to reach it. */}
+              <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
                 <button
                   onClick={() => setActiveTab("overview")}
-                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                     activeTab === "overview" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1500,7 +1503,7 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   onClick={() => setActiveTab("exams")}
-                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                     activeTab === "exams" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1509,7 +1512,7 @@ export default function AdminDashboard() {
                 {isAdmin && (
                 <button
                   onClick={() => setActiveTab("students")}
-                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                     activeTab === "students" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1519,7 +1522,7 @@ export default function AdminDashboard() {
                 {isAdmin && (
                   <button
                     onClick={() => setActiveTab("appliances")}
-                    className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                    className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                       activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
