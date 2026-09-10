@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -138,8 +138,8 @@ export default function AffectivePage() {
         setIsLoadingStudents(true);
         const data = await apiFetch<Student[]>(`/students/${orgSlug}`);
         setStudents(data);
-      } catch {
-        toast.error("Failed to load students");
+      } catch (error) {
+        toast.error(isForbiddenError(error) ? "You don't have access to student records here" : "Failed to load students");
       } finally {
         setIsLoadingStudents(false);
       }

@@ -113,6 +113,76 @@ export default function InvitesPage() {
         subtitle="Manage outgoing invitations for new teachers and parents."
       />
 
+      {/* Mobile Card View */}
+      <div className="space-y-3 block md:hidden">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+              <Skeleton className="h-5 w-[200px]" />
+              <Skeleton className="h-5 w-[100px] rounded-full" />
+            </div>
+          ))
+        ) : invites.length === 0 ? (
+          <div className="bg-white p-8 text-center rounded-2xl border border-slate-100">
+            <div className="flex flex-col items-center justify-center text-slate-500">
+              <MailOpen className="h-10 w-10 mb-4 text-slate-300" />
+              <p>No pending invitations.</p>
+              <p className="text-sm">
+                Invitations you send from the Teachers or Parents page will
+                appear here.
+              </p>
+            </div>
+          </div>
+        ) : (
+          invites.map((invite) => {
+            const status = getInviteStatus(invite);
+            return (
+              <div key={invite.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 truncate">{invite.email}</p>
+                    <p className="text-xs text-slate-500 capitalize mt-0.5">{invite.role}</p>
+                  </div>
+                  {status === "pending" ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-50 text-amber-700 border-amber-200 flex w-fit items-center shrink-0"
+                    >
+                      <Clock className="mr-1 h-3 w-3" />
+                      Pending
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0"
+                    >
+                      {status}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    Sent {format(new Date(invite.createdAt || Date.now()), "MMM d, yyyy")}
+                  </span>
+                  {status === "pending" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8"
+                      onClick={() => handleRevoke(invite.id)}
+                    >
+                      Revoke
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block">
       <TableContainer>
         <Table className="min-w-[760px]">
           <TableHeader className="bg-slate-50">
@@ -213,6 +283,7 @@ export default function InvitesPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      </div>
     </div>
   );
 }

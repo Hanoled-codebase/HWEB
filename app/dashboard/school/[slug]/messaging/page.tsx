@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -37,7 +38,7 @@ type Student = { id: string; firstName: string; lastName: string };
 type ClassLevel = { id: string; name: string };
 
 export default function MessagingPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
@@ -55,7 +56,16 @@ export default function MessagingPage() {
   const [bulkTpl, setBulkTpl] = useState("");
   const [bulking, setBulking] = useState(false);
 
-  useEffect(() => { if (!currentOrg) return; fetchTemplates(); fetchQueue(); fetchClassLevels(); }, [currentOrg]);
+  // The compose/bulk/queue console below maps to backend routes that only
+  // owner/admin can actually use (routes/messaging.js: POST /enqueue and
+  // GET /queue both require isAdmin) — every other role would just get a
+  // 403 on send, so don't even fetch templates/queue/class data for them.
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
+
+  useEffect(() => {
+    if (!currentOrg || !isPrivileged) return;
+    fetchTemplates(); fetchQueue(); fetchClassLevels();
+  }, [currentOrg, isPrivileged]);
 
   async function fetchClassLevels() {
     if (!currentOrg) return;
@@ -146,6 +156,20 @@ export default function MessagingPage() {
   );
 
   if (!currentOrg) return null;
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-28 md:pb-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 p-0 md:p-6 lg:p-8">
+          <DataStateCard
+            variant="forbidden"
+            title="Messaging isn't available to your role"
+            description="Bulk and template messaging is managed by the school's admin team."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-28 md:pb-10">

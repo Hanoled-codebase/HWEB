@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { apiFetch, request, HCORE_BASE } from "@/lib/api";
+import { apiFetch, request, HCORE_BASE, HSMS_BASE } from "@/lib/api";
 
 export interface Organization {
   id: string;
@@ -151,11 +151,21 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // both only need `slug`, which is already known — so run them
       // concurrently instead of paying two round trips back-to-back on every
       // cold dashboard load. See fast-rendering skill, Rule 2.
-      const [contextResult, memberResult] = await Promise.allSettled([
+      //
+      // Also fetch Hanoled (HSMS)'s own member-profile in the same batch.
+      // HOD/Accountant/Librarian assignments are granted through the HR
+      // admin page, which writes only to Hanoled's local MemberAssignment
+      // table — that write never reaches HCORE, so HCORE's member-profile
+      // alone won't reflect a role granted that way. This fetch is
+      // best-effort (a user with no Hanoled Member row yet, e.g. brand new
+      // to the org, is expected to reject here) and merged in below rather
+      // than trusted as a replacement for HCORE's role/identity data.
+      const [contextResult, memberResult, hsmsMemberResult] = await Promise.allSettled([
         needsContextFetch
           ? request<any>(HCORE_BASE, "/v1/me/contexts")
           : Promise.resolve(null),
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
+        request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
       ]);
 
       if (needsContextFetch) {
@@ -186,7 +196,19 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // First try member profile (for admin/teacher/parent users)
       if (memberResult.status === "fulfilled") {
         const member = memberResult.value;
-        const rawAssignments = member.teachingAssignments || (member as any).memberAssignments || [];
+        const hsmsMember = hsmsMemberResult.status === "fulfilled" ? hsmsMemberResult.value : null;
+
+        // Union HCORE's assignments with Hanoled's — same assignment synced
+        // from HCORE can appear in both, so de-dupe by id.
+        const mergedAssignments: any[] = [];
+        const seenAssignmentIds = new Set<string>();
+        for (const a of [...(member.memberAssignments || []), ...(hsmsMember?.memberAssignments || [])]) {
+          if (a?.id && seenAssignmentIds.has(a.id)) continue;
+          if (a?.id) seenAssignmentIds.add(a.id);
+          mergedAssignments.push(a);
+        }
+
+        const rawAssignments = member.teachingAssignments || mergedAssignments;
         const normalizedAssignments = rawAssignments.map((a: any) => ({
           classLevel: a.classLevel || (a.classLevelId ? { id: a.classLevelId, name: a.classLevelName } : null),
           subject: a.subject || (a.subjectId ? { id: a.subjectId, name: a.subjectName, code: a.subjectCode } : null),
@@ -196,6 +218,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
           currentOrg: org,
           currentMember: {
             ...member,
+            memberAssignments: mergedAssignments,
             teachingAssignments: normalizedAssignments,
           },
           isStudent: false,
@@ -205,9 +228,13 @@ export const useOrganization = create<OrgState>((set, get) => ({
       }
       // Member profile failed — try student profile
 
-      // Try student profile (for students)
+      // Try student profile (for students) — this lives on the Hanoled
+      // (HSMS) backend as /organizations/:slug/student-profile, not on
+      // HCORE, which has no such route (that fallback fetch 404'd here
+      // unconditionally, so a real student never actually reached this
+      // branch — see [slug]/page.tsx's `isStudent` check that depends on it).
       try {
-        const profile = await request<StudentProfile>(HCORE_BASE, `/v1/directory/organizations/${slug}/student-profile`, { showErrorToast: false });
+        const profile = await request<StudentProfile>(HSMS_BASE, `/organizations/${slug}/student-profile`, { showErrorToast: false });
         set({
           currentOrg: profile.org ? normalizeOrganization(profile.org as any) : org,
           currentStudent: profile.student,

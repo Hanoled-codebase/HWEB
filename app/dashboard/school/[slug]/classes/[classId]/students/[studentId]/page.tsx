@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 import { StudentPerformanceResponse } from "@/lib/student-performance";
 
@@ -24,6 +25,7 @@ export default function ClassStudentSubjectsPage() {
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   const fetchPerformance = useCallback(async () => {
     if (!currentOrg || !studentId) {
@@ -32,16 +34,21 @@ export default function ClassStudentSubjectsPage() {
 
     try {
       setIsLoading(true);
+      setForbidden(false);
       const data = await apiFetch<StudentPerformanceResponse>(
         `/students/${currentOrg.slug}/${studentId}/results`,
       );
       setPerformance(data);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load student record",
-      );
+      if (isForbiddenError(error)) {
+        setForbidden(true);
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load student record",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -95,15 +102,18 @@ export default function ClassStudentSubjectsPage() {
               )
             }
           />
+        ) : forbidden ? (
+          <DataStateCard
+            variant="forbidden"
+            title="You don't have access to this student's record"
+            description="This student isn't in a class or subject assigned to you."
+          />
         ) : (
-          <div className="rounded-[30px] border border-dashed border-slate-300 bg-white/80 p-10 text-center shadow-[0_18px_50px_rgba(148,163,184,0.16)]">
-            <h2 className="text-2xl font-bold text-slate-900">
-              Student record unavailable
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500 sm:text-base">
-              We could not load the academic record for this student right now.
-            </p>
-          </div>
+          <DataStateCard
+            variant="error"
+            title="Student record unavailable"
+            description="We could not load the academic record for this student right now."
+          />
         )}
       </div>
     </div>

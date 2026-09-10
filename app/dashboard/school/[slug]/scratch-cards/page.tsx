@@ -290,6 +290,16 @@ export default function ScratchCardsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
+          {!isLoading && batches.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-slate-500 py-12 px-4 text-center">
+              <CreditCard className="h-10 w-10 mb-4 text-slate-300" />
+              <p>No batches created yet.</p>
+              <p className="text-sm">
+                Use the form above to generate your first batch of scratch
+                cards.
+              </p>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <Table className="min-w-[640px]">
               <TableHeader className="bg-slate-50">
@@ -314,19 +324,6 @@ export default function ScratchCardsPage() {
                       <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
                     </TableRow>
                   ))
-                ) : batches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center">
-                      <div className="flex flex-col items-center justify-center text-slate-500">
-                        <CreditCard className="h-10 w-10 mb-4 text-slate-300" />
-                        <p>No batches created yet.</p>
-                        <p className="text-sm">
-                          Use the form above to generate your first batch of scratch
-                          cards.
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
                 ) : (
                   batches.map((batch) => (
                     <Fragment key={batch.id}>
@@ -433,6 +430,7 @@ export default function ScratchCardsPage() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
 

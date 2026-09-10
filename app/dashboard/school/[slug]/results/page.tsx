@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
-import { apiFetch, HSMS_BASE } from "@/lib/api";
+import { DataStateCard } from "@/components/dashboard/shared";
+import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
 import { getHcoreToken } from "@/lib/auth-tokens";
 import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
@@ -180,6 +181,10 @@ function getMobileBadgeClass(label: string) {
 
   if (normalized === "grading in progress") {
     return "bg-blue-100 text-blue-700";
+  }
+
+  if (normalized === "waiting for score") {
+    return "bg-slate-100 text-slate-600";
   }
 
   return "bg-rose-100 text-rose-700";
@@ -337,6 +342,7 @@ export default function ResultsPage() {
   const [showAllMobileSubjects, setShowAllMobileSubjects] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   const [exportTerm, setExportTerm] = useState("Term 1");
   const [exportYear, setExportYear] = useState("2026/2027");
   const [printModalGroup, setPrintModalGroup] = useState<StudentResultGroup | null>(null);
@@ -438,6 +444,7 @@ export default function ResultsPage() {
         } else {
           setIsLoading(true);
         }
+        setForbidden(false);
 
         const [resultsData, notificationsData] = await Promise.all([
           apiFetch<StudentResultGroup[]>(
@@ -455,7 +462,11 @@ export default function ResultsPage() {
           toast.success("Results refreshed");
         }
       } catch (error) {
-        toast.error(getErrorMessage(error, "Failed to load results"));
+        if (isForbiddenError(error)) {
+          setForbidden(true);
+        } else {
+          toast.error(getErrorMessage(error, "Failed to load results"));
+        }
       } finally {
         if (refresh) {
           setIsRefreshing(false);
@@ -545,7 +556,7 @@ export default function ResultsPage() {
                 className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
                 placeholder="Year"
               />
-              {currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") && (
+              {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") && (
                 <Button
                   type="button"
                   onClick={handleBatchExport}
@@ -593,6 +604,12 @@ export default function ResultsPage() {
               </div>
             </div>
           </div>
+        ) : forbidden ? (
+          <DataStateCard
+            variant="forbidden"
+            title="You don't have access to these results"
+            description="Ask the school to check that your account is linked to the right student."
+          />
         ) : resultGroups.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
             <h2 className="text-base sm:text-xl font-bold text-slate-800">
@@ -735,43 +752,47 @@ export default function ResultsPage() {
                         type="button"
                         onClick={() => setSelectedSubject(subject)}
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-3xl border bg-white p-4 text-left shadow-sm",
+                          "flex w-full flex-col gap-3 rounded-3xl border bg-white p-4 text-left shadow-sm",
                           inProgress
                             ? "border-dashed border-slate-400 bg-blue-50/40"
                             : "border-slate-200",
                         )}
                       >
-                        {inProgress ? (
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-700">
-                            <BookOpen className="h-6 w-6" />
-                          </div>
-                        ) : (
-                          <MobileScoreRing percentage={summary.percentage} />
-                        )}
+                        <div className="flex w-full items-center gap-3">
+                          {inProgress ? (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-700">
+                              <BookOpen className="h-6 w-6" />
+                            </div>
+                          ) : (
+                            <MobileScoreRing percentage={summary.percentage} />
+                          )}
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-base font-bold text-slate-950">
+                          <p className="min-w-0 flex-1 truncate text-base font-bold text-slate-950">
                             {getSubjectName(subject)}
                           </p>
-                          <p className="mt-1 truncate text-sm font-medium text-slate-500">
+
+                          <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pl-[68px]">
+                          <p className="min-w-0 truncate text-sm font-medium text-slate-500">
                             {inProgress
                               ? "Grading in progress..."
                               : `${summary.enteredCount} of ${summary.totalCount} assessments`}
                           </p>
-                        </div>
 
-                        {inProgress ? (
-                          <div className="h-2 w-28 overflow-hidden rounded-full bg-white">
-                            <div className="h-full w-1/3 rounded-full bg-blue-200" />
-                          </div>
-                        ) : (
-                          <span
-                            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${getMobileBadgeClass(label)}`}
-                          >
-                            {label}
-                          </span>
-                        )}
-                        <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" />
+                          {inProgress ? (
+                            <div className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-white">
+                              <div className="h-full w-1/3 rounded-full bg-blue-200" />
+                            </div>
+                          ) : (
+                            <span
+                              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${getMobileBadgeClass(label)}`}
+                            >
+                              {label}
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
                   })}

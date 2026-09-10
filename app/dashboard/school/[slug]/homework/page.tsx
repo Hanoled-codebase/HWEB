@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -229,8 +229,8 @@ export default function HomeworkPage() {
           `/${currentOrg.slug}/homework${qs ? `?${qs}` : ""}`,
         );
         setHomeworkList(data);
-      } catch {
-        toast.error("Failed to load assignments");
+      } catch (error) {
+        toast.error(isForbiddenError(error) ? "You don't have access to assignments here" : "Failed to load assignments");
       } finally {
         setIsLoadingHomework(false);
       }
@@ -251,8 +251,8 @@ export default function HomeworkPage() {
           `/${currentOrg.slug}/study-materials${qs ? `?${qs}` : ""}`,
         );
         setMaterials(data);
-      } catch {
-        toast.error("Failed to load study materials");
+      } catch (error) {
+        toast.error(isForbiddenError(error) ? "You don't have access to study materials here" : "Failed to load study materials");
       } finally {
         setIsLoadingMaterials(false);
       }
@@ -415,7 +415,7 @@ export default function HomeworkPage() {
           Homework & Study Materials
         </h1>
         <p className="text-slate-500">
-          Manage assignments, submissions, and learning resources.
+          {canManage ? "Manage assignments, submissions, and learning resources." : "View assignments and learning resources."}
         </p>
       </div>
 

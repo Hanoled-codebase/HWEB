@@ -114,7 +114,7 @@ export default function DashboardOverviewPage() {
   }, [currentOrg?.slug]);
 
   const role = currentMember?.role;
-  const { isPrivileged: permPrivileged, isAccountant, isHOD, isLibrarian, isTeacher } = usePermissions();
+  const { isPrivileged: permPrivileged, isAccountant, isHOD, isLibrarian, isTeacher, can } = usePermissions();
   const isPrivileged = permPrivileged || role === "owner" || role === "admin";
 
   const teachingAssignments = useMemo(
@@ -343,7 +343,7 @@ export default function DashboardOverviewPage() {
                               key={r.id}
                               className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
                             >
-                              {r.subject.name}: {r.values[0]}
+                              {r.subject.name}: {r.values[0] || "—"}
                             </span>
                           ))}
                         </div>
@@ -437,8 +437,8 @@ export default function DashboardOverviewPage() {
                     <MessageSquare className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">Messages</p>
-                    <p className="text-xs text-slate-400 mt-0.5">School announcements & alerts</p>
+                    <p className="text-sm font-bold text-slate-900">Support</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Get help or contact the school</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-300" />
@@ -511,7 +511,7 @@ export default function DashboardOverviewPage() {
                                     key={r.id}
                                     className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm"
                                   >
-                                    {r.subject.name}: {r.values[0]}
+                                    {r.subject.name}: {r.values[0] || "—"}
                                   </span>
                                 ))}
                               </div>
@@ -579,7 +579,18 @@ export default function DashboardOverviewPage() {
 
   if (isAccountant) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
+        {/* This role has no dedicated mobile dashboard component (unlike
+            admin/member/parent), so the hamburger + bell that open the
+            shared, permission-filtered sidebar must be provided here —
+            otherwise there is no way to navigate off this screen on mobile. */}
+        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
+          <MobileSidebarMenuButton />
+          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
+            HANOLED
+          </span>
+          <NotificationSheet />
+        </div>
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Finance Dashboard — HCORE Accountant</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
@@ -596,7 +607,14 @@ export default function DashboardOverviewPage() {
 
   if (isHOD) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
+        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
+          <MobileSidebarMenuButton />
+          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
+            HANOLED
+          </span>
+          <NotificationSheet />
+        </div>
         <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600">HOD Dashboard — HCORE HOD</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
@@ -612,7 +630,14 @@ export default function DashboardOverviewPage() {
 
   if (isLibrarian) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0">
+      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
+        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
+          <MobileSidebarMenuButton />
+          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
+            HANOLED
+          </span>
+          <NotificationSheet />
+        </div>
         <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600">Library Dashboard — HCORE Librarian</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
@@ -841,43 +866,63 @@ export default function DashboardOverviewPage() {
     );
   }
 
-  const desktopStats = [
+  // This is the fallback view for admin/owner AND any "member" who isn't a
+  // recognized teacher/accountant/HOD/librarian in this org's own records —
+  // so these tiles must respect that viewer's real permissions, not assume
+  // admin. Reuses the exact same page-level gates as the sidebar/nav.
+  const desktopStatsAll = [
     {
+      key: "students",
       title: "Students",
       value: liveCounts?.students ?? currentOrg.counts.students ?? 0,
       icon: GraduationCap,
       color: "text-blue-600",
       bg: "bg-blue-100",
+      show: isPrivileged || can("students.view"),
     },
     {
+      key: "teachers",
       title: "Teachers",
       value: liveCounts?.teachers ?? currentOrg.counts.teachers ?? 0,
       icon: Users,
       color: "text-emerald-600",
       bg: "bg-emerald-100",
+      show: isPrivileged,
     },
     {
+      key: "parents",
       title: "Parents",
       value: liveCounts?.parents ?? currentOrg.counts.parents ?? 0,
       icon: Users,
       color: "text-amber-600",
       bg: "bg-amber-100",
+      show: isPrivileged || isHOD || can("parents.manage"),
     },
     {
+      key: "classes",
       title: "Classes",
       value: "Manage",
       icon: School,
       color: "text-blue-600",
       bg: "bg-blue-100",
+      show: isPrivileged || isTeacher,
     },
   ];
+  const desktopStats = desktopStatsAll.filter((s) => s.show);
 
-  const mobileStats = [
-    { label: "Students", value: liveCounts?.students ?? currentOrg.counts.students ?? 0, icon: GraduationCap },
-    { label: "Teachers", value: liveCounts?.teachers ?? currentOrg.counts.teachers ?? 0, icon: Users },
-    { label: "Parents", value: liveCounts?.parents ?? currentOrg.counts.parents ?? 0, icon: Users },
-    { label: "Classes", value: "Manage", icon: School, dark: true, href: `/dashboard/school/${currentOrg.slug}/classes` },
+  const mobileStatsAll = [
+    { key: "students", label: "Students", value: liveCounts?.students ?? currentOrg.counts.students ?? 0, icon: GraduationCap },
+    { key: "teachers", label: "Teachers", value: liveCounts?.teachers ?? currentOrg.counts.teachers ?? 0, icon: Users },
+    { key: "parents", label: "Parents", value: liveCounts?.parents ?? currentOrg.counts.parents ?? 0, icon: Users },
+    { key: "classes", label: "Classes", value: "Manage", icon: School, dark: true, href: `/dashboard/school/${currentOrg.slug}/classes` },
   ];
+  const mobileStatsShow: Record<string, boolean> = {
+    students: Boolean(isPrivileged || can("students.view")),
+    teachers: Boolean(isPrivileged),
+    parents: Boolean(isPrivileged || isHOD || can("parents.manage")),
+    classes: Boolean(isPrivileged || isTeacher),
+  };
+  const mobileStats = mobileStatsAll.filter((s) => mobileStatsShow[s.key]);
 
   return (
     <>

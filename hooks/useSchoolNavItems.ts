@@ -125,7 +125,10 @@ export function useSchoolNavItems() {
       { key: "parents", title: "Parents", url: `${baseUrl}/parents`, icon: Users2, show: isPrivileged || isHOD || can("parents.manage"), section: "PEOPLE" },
       { key: "hr", title: "HR", url: `${baseUrl}/hr`, icon: Users2, show: isPrivileged || isHOD, section: "PEOPLE" },
       { key: "invites", title: "Pending Invites", url: `${baseUrl}/invites`, icon: UserPlus, show: isPrivileged, section: "PEOPLE" },
-      { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged || can("messaging.send"), section: "PEOPLE" },
+      // Only owner/admin can actually send (backend routes/messaging.js gates
+      // /enqueue and /queue with isAdmin) — everyone else would just hit a
+      // "not available to your role" wall, so don't show the link at all.
+      { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged, section: "PEOPLE" },
       { key: "payments", title: "Payments", url: `${baseUrl}/payments`, icon: CreditCard, show: (isPrivileged || isAccountant || can("payments.record")) && userRole !== "parent", section: "FINANCE" },
       { key: "billing", title: "Billing", url: `${baseUrl}/billing`, icon: CreditCard, show: isPrivileged || isAccountant, section: "FINANCE" },
       { key: "fee-structure", title: "Fee Structure", url: `${baseUrl}/fee-structure`, icon: DollarSign, show: isPrivileged || isAccountant || can("fee_structure.edit"), section: "FINANCE" },

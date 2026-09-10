@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, HSMS_BASE } from "@/lib/api";
+import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { getHcoreToken } from "@/lib/auth-tokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,15 +37,20 @@ export default function StudentResultsPage() {
   const slug = params.slug as string;
   const [data, setData] = useState<ResultsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   useEffect(() => {
     async function loadResults() {
       try {
-        const res = await apiFetch<ResultsData>(`/spreadsheets/student/my-results`);
+        setForbidden(false);
+        // Resolves the caller's own student record server-side from the JWT
+        // (requireStudentAccess) — the org slug in the path is still required
+        // to scope which organization's result data is being requested.
+        const res = await apiFetch<ResultsData>(`/student/${slug}/results`);
         setData(res);
-      } catch {
-        // Handle error silently
+      } catch (error) {
+        if (isForbiddenError(error)) setForbidden(true);
       } finally {
         setLoading(false);
       }

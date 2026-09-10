@@ -124,7 +124,10 @@ export default function TimetablePage() {
   }, [orgSlug, selectedSchedule]);
 
   const loadReferences = useCallback(async () => {
-    if (!orgSlug) return;
+    // /classes and /subjects are member/admin-only on the backend and only
+    // feed the Add/Edit Period modal, which read-only viewers (e.g. parents)
+    // never open — skip the fetch for them instead of surfacing their 403s.
+    if (!orgSlug || !isPrivileged) return;
     try {
       const [cls, subs] = await Promise.all([
         apiFetch<any[]>(`/classes/${orgSlug}`),
@@ -137,7 +140,7 @@ export default function TimetablePage() {
       const mems = await apiFetch<Teacher[]>(`/organizations/${orgSlug}/members?role=member`, { showErrorToast: false });
       setTeachers(mems);
     } catch { }
-  }, [orgSlug]);
+  }, [orgSlug, isPrivileged]);
 
   const loadSlots = useCallback(async () => {
     if (!orgSlug || !selectedSchedule) return;
@@ -289,8 +292,10 @@ export default function TimetablePage() {
   return (
     <div className="space-y-4 pb-28 md:pb-0">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold text-slate-900">Timetable Management</h1>
-        <p className="text-xs text-slate-400 font-medium">Create and manage class schedules.</p>
+        <h1 className="text-xl font-bold text-slate-900">{isPrivileged ? "Timetable Management" : "Timetable"}</h1>
+        <p className="text-xs text-slate-400 font-medium">
+          {isPrivileged ? "Create and manage class schedules." : "View class schedules."}
+        </p>
       </div>
 
       {isPrivileged && (
@@ -358,7 +363,9 @@ export default function TimetablePage() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <CalendarDays className="h-10 w-10 text-slate-300 mb-3" />
             <p className="font-semibold text-slate-700">No schedules yet</p>
-            <p className="text-sm text-slate-500 mt-1">Create a schedule to start building timetables.</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {isPrivileged ? "Create a schedule to start building timetables." : "Check back once the school publishes a timetable."}
+            </p>
           </CardContent>
         </Card>
       ) : (

@@ -23,6 +23,15 @@ export type ApiFetchError = Error & {
   code?: string;
 };
 
+// A 403 means the viewer is authenticated but not allowed to see this
+// resource — a permission boundary working as intended, not a bug. Pages
+// should show that distinctly from a genuine failure (500, network error),
+// since the same generic "couldn't load" card for both makes a correct
+// access check look like broken functionality.
+export function isForbiddenError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as ApiFetchError).status === 403;
+}
+
 function buildHeaders(headers: HeadersInit | undefined, isFormData: boolean) {
   const mergedHeaders = new Headers();
   if (!isFormData) mergedHeaders.set("Content-Type", "application/json");
@@ -99,12 +108,18 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
           console.error("Token refresh failed:", e);
         }
 
-        // Redirect to login if refresh fails
+        // Refresh failed — this session cookie is unverifiable (key rotation,
+        // a revoked tokenVersion/credentialVersion, etc). Route through
+        // /api/logout so it's actually cleared server-side instead of just
+        // navigating to /signin: proxy.ts treats a present-but-unverifiable
+        // cookie as "logged in" and bounces /signin -> /welcome -> (another
+        // 401) -> /signin forever, which otherwise leaves no way back to the
+        // login form.
         if (typeof window !== "undefined") {
           const currentPath = window.location.pathname;
           const publicRoutes = ["/signin", "/signup", "/forgot-password", "/reset-password", "/verify", "/accept-invite"];
           if (!publicRoutes.some((route) => currentPath.startsWith(route))) {
-            window.location.href = "/signin";
+            window.location.href = "/api/logout";
           }
         }
       }

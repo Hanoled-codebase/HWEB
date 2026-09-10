@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -66,7 +67,8 @@ type Transaction = {
 };
 
 export default function PaymentsPage() {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
+  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [gateway, setGateway] = useState<GatewayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +138,20 @@ export default function PaymentsPage() {
   }
 
   if (!currentOrg) return null;
+
+  if (!isPrivileged) {
+    return (
+      <div className="min-h-full bg-slate-50/60 pb-10">
+        <div className="mx-auto max-w-5xl p-6">
+          <DataStateCard
+            variant="forbidden"
+            title="Payment gateway settings isn&apos;t available to your role"
+            description="This is managed by the school&apos;s admin team."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
