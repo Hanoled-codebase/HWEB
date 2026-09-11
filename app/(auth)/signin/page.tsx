@@ -304,10 +304,10 @@ function LoginForm() {
           New school or organization?{' '}
           <button
             type="button"
-            onClick={() => router.push('/signup')}
+            onClick={() => router.push('/contact')}
             className="text-blue-600 font-bold hover:underline cursor-pointer"
           >
-            Register your school
+            Contact Support
           </button>
         </p>
       </div>

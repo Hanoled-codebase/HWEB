@@ -1,18 +1,16 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Clock,
-  FileText,
-  Monitor,
-  ShieldCheck,
-  Shuffle,
-  Zap,
-  CheckCircle2,
-  Rocket
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import {
+  QuestionBankIllustration,
+  RandomisedPapersIllustration,
+  TimedExamsIllustration,
+  InstantGradingIllustration,
+  AnyDeviceIllustration,
+  AntiCheatIllustration,
+} from "@/components/landing/ModuleIllustrations";
 
 export const metadata: Metadata = {
   title: "HCBT / Exam Engine – Hanoled",
@@ -22,46 +20,46 @@ export const metadata: Metadata = {
 
 const capabilities = [
   {
-    icon: FileText,
+    icon: QuestionBankIllustration,
     title: "Question Bank",
     description:
       "Build a rich question bank organised by subject, topic, and difficulty level. Import questions from spreadsheets or create them directly.",
     color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
-    icon: Shuffle,
+    icon: RandomisedPapersIllustration,
     title: "Randomised Papers",
     description:
       "Automatically shuffle questions and answer options for every student so no two papers are the same. Minimise cheating effortlessly.",
     color: "bg-[#F5A623]/10 text-[#0B1220]",
   },
   {
-    icon: Clock,
+    icon: TimedExamsIllustration,
     title: "Timed Exams",
     description:
       "Set per-exam or per-question time limits. The countdown timer is always visible to students, and the exam auto-submits when time runs out.",
-    color: "bg-[#F04438]/10 text-rose-600",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
-    icon: Zap,
+    icon: InstantGradingIllustration,
     title: "Instant Grading",
     description:
       "Objective questions are graded the moment a student submits. Results are available to teachers immediately — no manual marking needed.",
-    color: "bg-[#1447E6]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
-    icon: Monitor,
+    icon: AnyDeviceIllustration,
     title: "Any Device",
     description:
       "Students can take exams on phones, tablets, laptops, or desktops. The interface adapts to every screen size for a seamless experience.",
-    color: "bg-[#AFC3F5]/20 text-indigo-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
-    icon: ShieldCheck,
+    icon: AntiCheatIllustration,
     title: "Anti-Cheat Measures",
     description:
       "Full-screen mode, tab-switch detection, and copy-paste blocking help maintain exam integrity in both supervised and remote settings.",
-    color: "bg-emerald-500/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
 ];
 
@@ -72,35 +70,22 @@ export default function HcbtPage() {
 
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden rounded-[3rem] bg-slate-900 px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center text-white">
-          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#1447E6]/30 blur-3xl" />
-          <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full bg-[#F5A623]/20 blur-3xl" />
-          
-          <div className="absolute top-20 right-10 rotate-12 hidden md:block">
-             <div className="bg-red-500/20 text-red-400 font-bold px-4 py-2 rounded-2xl border border-red-500/50 shadow-xl flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                Anti-Cheat Active
-             </div>
-          </div>
-          
+        <section className="relative overflow-hidden rounded-[3rem] bg-white px-6 py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:px-12 sm:py-20 lg:px-16 text-center border border-slate-100">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
+
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-4 py-1.5 shadow-sm transform -rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <Rocket className="h-4 w-4 text-[#F5A623]" />
-              <span className="text-sm font-bold text-[#F5A623]">Exam Engine</span>
-            </div>
-            
             <div className="space-y-4">
-              <h1 className="text-[2rem] font-bold leading-[1.15] text-white sm:text-5xl md:text-6xl">
-                HCBT — Computer-Based Testing, <br />
-                <span className="text-[#F5A623]">made simple</span>
+              <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
+                <span className="text-[#1447E6]">HCBT</span> — Computer-Based Testing, <br />
+                made simple
               </h1>
               {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#1447E6] fill-none stroke-current stroke-[4px] mx-auto mt-2">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
                 <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
               </svg>
             </div>
 
-            <p className="text-lg leading-relaxed text-slate-300 max-w-2xl mx-auto font-medium">
+            <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
               Create, administer, and grade exams digitally. Save hours of
               manual marking, eliminate paper costs, and give students a modern
               exam experience.
@@ -120,9 +105,6 @@ export default function HcbtPage() {
         {/* How it works */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#1447E6]/10 text-[#1447E6] px-3.5 py-1.5 text-xs font-bold mb-3">
-              Workflow
-            </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
               How it works
             </h2>
@@ -175,9 +157,6 @@ export default function HcbtPage() {
         {/* Capabilities Grid */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#F5A623]/10 text-[#0B1220] px-3.5 py-1.5 text-xs font-bold mb-3">
-              Features
-            </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
               Key Capabilities
             </h2>

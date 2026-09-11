@@ -5,8 +5,6 @@ import {
   Heart,
   School,
   Shield,
-  Star,
-  Users
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
@@ -30,22 +28,22 @@ const values = [
     title: "Uncompromising Integrity",
     description:
       "Student data, financial ledgers, and gradebooks are protected with bank-grade encryption and role-based permissions.",
-    color: "bg-[#1447E6]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Heart,
     title: "Relentless Support",
     description:
       "We don't just sell software; we partner with your school. Our support team is always a call or WhatsApp message away.",
-    color: "bg-[#F04438]/10 text-rose-600",
+    color: "bg-[#F5A623]/10 text-[#0B1220]",
   },
 ];
 
 const stats = [
   { value: "100+", label: "Schools onboarded", text: "text-[#1447E6]" },
   { value: "50,000+", label: "Students managed", text: "text-[#F5A623]" },
-  { value: "99.9%", label: "Uptime guarantee", text: "text-emerald-500" },
-  { value: "24/7", label: "Customer support", text: "text-[#1447E6]" },
+  { value: "99.9%", label: "Uptime guarantee", text: "text-[#1447E6]" },
+  { value: "24/7", label: "Customer support", text: "text-[#F5A623]" },
 ];
 
 function BrandRibbon() {
@@ -82,11 +80,6 @@ export default function AboutPage() {
           </div>
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 shadow-sm transform -rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <Star className="h-4 w-4 text-[#1447E6]" />
-              <span className="text-sm font-bold text-[#1447E6]">About Hanoled</span>
-            </div>
-            
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
                 Modernising school management <br />
@@ -106,17 +99,14 @@ export default function AboutPage() {
         </section>
 
         {/* Stats Section */}
-        <section className="mt-16 bg-slate-900 rounded-[3rem] px-8 py-12 sm:px-16 sm:py-16 shadow-xl relative overflow-hidden">
-          <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#F5A623]/10 blur-3xl pointer-events-none" />
-          
+        <section className="mt-16 bg-white rounded-[3rem] px-8 py-12 sm:px-16 sm:py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
           <div className="relative z-10 mx-auto grid max-w-5xl gap-8 sm:grid-cols-4">
             {stats.map((stat, idx) => (
               <div key={idx} className="text-center space-y-2">
                 <div className={`text-4xl sm:text-5xl font-black tracking-tight ${stat.text}`}>
                   {stat.value}
                 </div>
-                <div className="text-sm font-semibold text-slate-400 uppercase tracking-widest">
+                <div className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
                   {stat.label}
                 </div>
               </div>
@@ -127,10 +117,6 @@ export default function AboutPage() {
         {/* Our Story Section */}
         <section className="mt-16 bg-white rounded-[3rem] px-8 py-16 sm:px-16 sm:py-20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
           <div className="max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-1.5 mb-6 text-sm font-bold text-orange-600">
-              Our Journey
-            </div>
-            
             <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl mb-8">
               Why we started Hanoled
             </h2>
@@ -152,9 +138,6 @@ export default function AboutPage() {
         {/* Values Section */}
         <section className="mt-16">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#1447E6]/10 text-[#1447E6] px-3.5 py-1.5 text-xs font-bold mb-3">
-              Core Principles
-            </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
               What drives us forward
             </h2>
@@ -192,20 +175,20 @@ export default function AboutPage() {
               <h2 className="text-3xl font-extrabold sm:text-5xl leading-tight">
                 Join the Hanoled community
               </h2>
-              <p className="text-lg text-amber-900/80 font-bold">
+              <p className="text-lg text-[#0B1220]/80 font-bold">
                 Be part of the movement to modernise education management. Let&apos;s build the future of schooling together.
               </p>
               
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Link
                   href="/#contact-quote"
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-slate-900 px-8 font-bold text-white transition-all hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#0B1220] px-8 font-bold text-white transition-all hover:bg-[#1447E6] hover:-translate-y-1 hover:shadow-lg"
                 >
                   Book a Demo <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border-2 border-slate-900 px-8 font-bold text-slate-900 transition-all hover:bg-slate-900/5"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border-2 border-[#0B1220] px-8 font-bold text-[#0B1220] transition-all hover:bg-[#0B1220]/5"
                 >
                   Contact Us
                 </Link>

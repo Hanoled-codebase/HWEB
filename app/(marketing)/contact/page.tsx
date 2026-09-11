@@ -1,7 +1,7 @@
 "use client";
 
 import { Metadata } from "next";
-import { Mail, MapPin, Phone, Send, MessageSquare } from "lucide-react";
+import { Mail, MapPin, Phone, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
@@ -67,8 +67,7 @@ export default function ContactPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 shadow-sm transform rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <MessageSquare className="h-4 w-4 text-[#1447E6]" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#1447E6]/20 bg-[#1447E6]/5 px-4 py-1.5 shadow-sm transform rotate-2 hover:rotate-0 transition-transform cursor-default">
               <span className="text-sm font-bold text-[#1447E6]">Get in Touch</span>
             </div>
             
@@ -117,40 +116,40 @@ export default function ContactPage() {
                
                <div className="space-y-6 flex-1">
                  {/* Email */}
-                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors border border-blue-100/50">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-[#1447E6]">
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-[#1447E6]/5 hover:bg-[#1447E6]/10 transition-colors border border-[#1447E6]/10">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#1447E6]/10 text-[#1447E6]">
                       <Mail className="h-6 w-6" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Email Us</p>
-                      <a href="mailto:hello@hanoled.io" className="text-slate-500 font-medium hover:text-[#1447E6] transition-colors">
-                        hello@hanoled.io
+                      <a href="mailto:info@hanoled.com" className="text-slate-500 font-medium hover:text-[#1447E6] transition-colors">
+                        info@hanoled.com
                       </a>
                     </div>
                  </div>
-                 
+
                  {/* Phone */}
-                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 transition-colors border border-emerald-100/50">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-[#F5A623]/5 hover:bg-[#F5A623]/10 transition-colors border border-[#F5A623]/20">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#F5A623]/15 text-[#0B1220]">
                       <Phone className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Call Us</p>
-                      <a href="tel:+234800HANOLED" className="text-slate-500 font-medium hover:text-emerald-600 transition-colors">
-                        +234 (800) HANOLED
+                      <p className="text-sm font-bold text-slate-900">Call or WhatsApp</p>
+                      <a href="tel:+2347047396999" className="text-slate-500 font-medium hover:text-[#0B1220] transition-colors">
+                        +234 704 739 6999
                       </a>
                     </div>
                  </div>
-                 
+
                  {/* Office */}
-                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-orange-50/50 hover:bg-orange-50 transition-colors border border-orange-100/50">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                 <div className="flex items-center gap-5 p-4 rounded-2xl bg-[#0B1220]/5 hover:bg-[#0B1220]/10 transition-colors border border-[#0B1220]/10">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#0B1220]/10 text-[#0B1220]">
                       <MapPin className="h-6 w-6" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Visit Us</p>
                       <p className="text-slate-500 font-medium">
-                        12 Innovation Drive, Yaba, Lagos
+                        Abeokuta, Nigeria
                       </p>
                     </div>
                  </div>
@@ -159,16 +158,13 @@ export default function ContactPage() {
           </div>
           
           {/* Right Column - Form */}
-          <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 shadow-xl relative overflow-hidden" id="contact-quote">
-            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#1447E6]/20 blur-3xl pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[#F5A623]/10 blur-3xl pointer-events-none" />
-            
-            <h3 className="text-2xl font-bold text-white mb-8 relative z-10">Send us a message</h3>
+          <div className="bg-white rounded-[2.5rem] p-8 sm:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden" id="contact-quote">
+            <h3 className="text-2xl font-bold text-slate-900 mb-8 relative z-10">Send us a message</h3>
             
             <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="firstName" className="text-sm font-bold text-slate-300">
+                  <label htmlFor="firstName" className="text-sm font-bold text-slate-700">
                     First Name
                   </label>
                   <input
@@ -176,12 +172,12 @@ export default function ContactPage() {
                     name="firstName"
                     type="text"
                     required
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
                     placeholder="John"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="lastName" className="text-sm font-bold text-slate-300">
+                  <label htmlFor="lastName" className="text-sm font-bold text-slate-700">
                     Last Name
                   </label>
                   <input
@@ -189,13 +185,13 @@ export default function ContactPage() {
                     name="lastName"
                     type="text"
                     required
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
                     placeholder="Doe"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-bold text-slate-300">
+                <label htmlFor="email" className="text-sm font-bold text-slate-700">
                   Work Email
                 </label>
                 <input
@@ -203,24 +199,24 @@ export default function ContactPage() {
                   name="email"
                   type="email"
                   required
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
                   placeholder="john@school.edu.ng"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="school" className="text-sm font-bold text-slate-300">
+                <label htmlFor="school" className="text-sm font-bold text-slate-700">
                   School Name
                 </label>
                 <input
                   id="school"
                   name="school"
                   type="text"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
                   placeholder="Excellence Academy"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="message" className="text-sm font-bold text-slate-300">
+                <label htmlFor="message" className="text-sm font-bold text-slate-700">
                   How can we help?
                 </label>
                 <textarea
@@ -228,7 +224,7 @@ export default function ContactPage() {
                   name="message"
                   required
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#1447E6] focus:outline-none focus:ring-1 focus:ring-[#1447E6] transition-colors"
                   placeholder="Tell us about your school's needs..."
                 />
               </div>
