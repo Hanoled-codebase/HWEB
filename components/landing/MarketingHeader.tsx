@@ -2,72 +2,154 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HanoledLogo } from "@/components/ui/HanoledLogo";
-import { LayoutDashboard, Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/features", label: "Features" },
+const featuresSubItems = [
   { href: "/hcbt", label: "HCBT Engine" },
-  { href: "/admissions-portal", label: "Admissions" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About Us" },
-  { href: "/contact", label: "Contact Us" },
+  { href: "/admissions-portal", label: "Admissions Portal" },
 ];
+
+const leftNavItems = [{ href: "/features", label: "Features" }, { href: "/contact", label: "Contact Us" }];
+const rightNavItems = [{ href: "/about", label: "About Us" }];
+const allNavItems = [...leftNavItems, ...rightNavItems];
+
+function isActivePath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href);
+}
+
+function NavLink({ href, label }: { href: string; label: string }) {
+  const pathname = usePathname();
+  const isActive = isActivePath(pathname, href);
+  return (
+    <Link
+      href={href}
+      className={`whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-all ${
+        isActive
+          ? "bg-[#0B1220] text-white shadow-sm font-semibold"
+          : "text-slate-600 hover:bg-slate-100 hover:text-[#1447E6]"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function FeaturesNavItem() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isActive =
+    isActivePath(pathname, "/features") ||
+    featuresSubItems.some((item) => isActivePath(pathname, item.href));
+
+  const openNow = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const closeSoon = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 150);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className="relative" onMouseEnter={openNow} onMouseLeave={closeSoon}>
+      <button
+        type="button"
+        onClick={openNow}
+        aria-expanded={open}
+        className={`flex items-center gap-1 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-all ${
+          isActive
+            ? "bg-[#0B1220] text-white shadow-sm font-semibold"
+            : "text-slate-600 hover:bg-slate-100 hover:text-[#1447E6]"
+        }`}
+      >
+        Features
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 w-56 pt-2">
+          <div className="rounded-2xl border border-slate-100 bg-white p-2 shadow-xl">
+            <Link
+              href="/features"
+              onClick={() => setOpen(false)}
+              className="block rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#1447E6] transition-colors hover:bg-slate-100"
+            >
+              All Features
+            </Link>
+            <div className="my-1 h-px bg-slate-100" />
+            {featuresSubItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className="block rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-[#1447E6]"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MarketingHeader() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-50 pt-4 pb-2 px-4 sm:px-6 lg:px-8 backdrop-blur-md bg-white/80 transition-all">
-      <header className="mx-auto flex max-w-7xl items-center justify-between rounded-[2rem] border border-slate-100 bg-white px-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:h-20 sm:px-6 py-3 sm:py-0">
-        {/* Logo */}
-        <HanoledLogo href="/" size="md" />
-
-        {/* Desktop Nav */}
-        <nav className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-[#0B1220] text-white shadow-sm font-semibold"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-[#1447E6]"
-                }`}
-              >
-                {isActive && item.href === "/" ? (
-                  <span className="flex items-center gap-1.5">
-                    <LayoutDashboard className="h-4 w-4" />
-                    {item.label}
-                  </span>
-                ) : (
-                  item.label
-                )}
-              </Link>
-            );
-          })}
+    <div className="sticky top-0 z-50 pt-3 pb-2 px-3 sm:px-6 lg:px-8 backdrop-blur-md bg-white/80 transition-all">
+      <header className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-[1.75rem] border border-slate-100 bg-white px-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:h-20 sm:rounded-[2rem] sm:px-6 py-2.5 sm:py-0">
+        {/* Left Nav (desktop) */}
+        <nav className="hidden flex-1 items-center gap-0.5 xl:flex">
+          <FeaturesNavItem />
+          <NavLink href="/contact" label="Contact Us" />
         </nav>
 
-        {/* Right Action CTAs */}
-        <div className="hidden items-center gap-3 md:flex">
+        {/* Centered Logo */}
+        <div className="shrink-0">
+          <div className="sm:hidden">
+            <HanoledLogo href="/" size="sm" />
+          </div>
+          <div className="hidden sm:block">
+            <HanoledLogo href="/" size="md" />
+          </div>
+        </div>
+
+        {/* Right Nav + CTAs (desktop) */}
+        <div className="hidden flex-1 items-center justify-end gap-2 xl:flex">
+          <nav className="flex items-center gap-0.5">
+            {rightNavItems.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
+          </nav>
+          <span className="mx-1 h-6 w-px bg-slate-200" />
           <Link
             href="/signin"
-            className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-[#1447E6]"
+            className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-[#1447E6]"
           >
             Sign In
           </Link>
           <Link
-            href="/signup"
-            className="flex items-center gap-1.5 rounded-full bg-[#1447E6] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#1447E6]/25 transition-all hover:bg-[#0b33b3] hover:shadow-xl hover:shadow-[#1447E6]/30 hover:-translate-y-0.5 active:translate-y-0"
+            href="/contact"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#1447E6] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#1447E6]/25 transition-all hover:bg-[#0b33b3] hover:shadow-xl hover:shadow-[#1447E6]/30 hover:-translate-y-0.5 active:translate-y-0"
           >
-            <span>Start Free Trial</span>
+            <span>Get Started</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -75,7 +157,7 @@ export function MarketingHeader() {
         {/* Mobile Toggle Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 lg:hidden"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 xl:hidden"
           aria-label="Toggle Navigation Menu"
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -84,25 +166,45 @@ export function MarketingHeader() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="mx-auto mt-2 max-w-7xl overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-4 shadow-xl lg:hidden">
+        <div className="mx-auto mt-2 max-h-[calc(100vh-6rem)] max-w-7xl overflow-y-auto overscroll-contain rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-xl xl:hidden">
           <nav className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
+            {allNavItems.map((item) => {
+              const isActive = isActivePath(pathname, item.href);
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-[#0B1220] text-white font-semibold"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-[#1447E6]"
-                  }`}
-                >
-                  {item.label}
-                </Link>
+                <div key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-[#0B1220] text-white font-semibold"
+                        : "text-slate-700 hover:bg-slate-50 hover:text-[#1447E6]"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                  {item.href === "/features" && (
+                    <div className="mt-1 flex flex-col gap-1 border-l-2 border-slate-100 pl-4">
+                      {featuresSubItems.map((sub) => {
+                        const subActive = isActivePath(pathname, sub.href);
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                              subActive
+                                ? "text-[#1447E6] font-semibold"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-[#1447E6]"
+                            }`}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
             <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-slate-100">
@@ -114,11 +216,11 @@ export function MarketingHeader() {
                 Sign In
               </Link>
               <Link
-                href="/signup"
+                href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] py-2.5 text-center text-sm font-bold text-white shadow-md hover:bg-[#0b33b3]"
               >
-                <span>Start Free Trial</span>
+                <span>Get Started</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

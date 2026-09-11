@@ -4,9 +4,9 @@ import { HanoledLogo } from "@/components/ui/HanoledLogo";
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-[#0B1220] border-t border-slate-800 text-slate-400 mt-auto w-full">
+    <footer className="bg-[#0B1220] border-t border-white/10 text-slate-400 mt-auto w-full">
       <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-8 md:grid-cols-5 border-b border-slate-800 pb-12">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-8 md:grid-cols-5 border-b border-white/10 pb-12">
           {/* Column 1 - Brand */}
           <div className="col-span-2 space-y-4 md:col-span-1">
             <HanoledLogo variant="white" size="md" />

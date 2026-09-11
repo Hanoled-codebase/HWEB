@@ -38,14 +38,14 @@ const steps = [
     title: "Review & Approve",
     description:
       "Applications appear in your dashboard. Review each one, then approve or reject with a single click.",
-    color: "bg-[#1447E6]/10 text-emerald-700",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {
     icon: Mail,
     title: "Automated Updates",
     description:
       "Parents receive SMS or email updates when their application status changes.",
-    color: "bg-[#F04438]/10 text-rose-600",
+    color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
 ];
 
@@ -80,9 +80,8 @@ export default function AdmissionsPortalPage() {
           </div>
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 shadow-sm">
-              <span className="text-xl">✅</span>
-              <span className="text-sm font-bold text-emerald-700">Admissions Portal</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#1447E6]/20 bg-[#1447E6]/5 px-4 py-1.5 shadow-sm">
+              <span className="text-sm font-bold text-[#1447E6]">Admissions Portal</span>
             </div>
             
             <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
@@ -167,7 +166,7 @@ export default function AdmissionsPortalPage() {
                   key={benefit}
                   className="flex items-center gap-4 rounded-[1.5rem] bg-[#f8f9fc] p-5 border border-slate-100 hover:-translate-y-0.5 transition-transform"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1447E6]/10 text-[#1447E6]">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <span className="text-sm font-semibold text-slate-700">
@@ -183,7 +182,7 @@ export default function AdmissionsPortalPage() {
         <section className="mt-16">
           <div className="relative overflow-hidden rounded-[3rem] bg-[#0B1220] px-8 py-16 sm:px-12 sm:py-20 text-center shadow-2xl">
             <div className="absolute top-0 right-0 p-12">
-               <div className="h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+               <div className="h-32 w-32 rounded-full bg-[#1447E6]/20 blur-3xl" />
             </div>
             
             <div className="relative z-10 max-w-2xl mx-auto space-y-8">

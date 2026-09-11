@@ -154,7 +154,7 @@ export default async function WelcomePortal() {
               </Link>
             ) : (
               <Link
-                href="/pricing"
+                href="/features"
                 className="w-full py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 <Rocket className="w-4 h-4 text-slate-500" />
