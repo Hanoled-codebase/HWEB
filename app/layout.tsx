@@ -36,14 +36,20 @@ export const metadata: Metadata = {
     siteName: "Hanoled",
     images: [
       {
-        url: "/android-chrome-512x512.png",
-        width: 512,
-        height: 512,
-        alt: "Hanoled Logo",
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Hanoled",
       },
     ],
     locale: "en_US",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hanoled - School Management Platform",
+    description: "Modern, unified school management system built specifically for Nigerian primary & secondary schools.",
+    images: ["/og-image.png"],
   },
 };
 
