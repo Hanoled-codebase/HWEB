@@ -82,7 +82,7 @@ export default function ExamResultPage() {
 
           <div className="flex items-center space-x-2">
             <TrendingUp className="w-4 h-4 text-blue-600 animate-pulse" />
-            <span className="text-xs font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent uppercase tracking-wider">
+            <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
               Performance Center
             </span>
           </div>

@@ -124,27 +124,7 @@ export default function FeaturesPage() {
               for West African schools.
             </p>
 
-            <div className="flex items-center justify-center gap-3 pt-4">
-              <div className="flex -space-x-3">
-                {[
-                  { bg: "bg-[#1447E6]", initials: "TC" },
-                  { bg: "bg-[#F5A623]", initials: "PA" },
-                  { bg: "bg-[#1447E6]", initials: "AD" },
-                  { bg: "bg-[#F04438]", initials: "ST" },
-                ].map((user, i) => (
-                  <div
-                    key={i}
-                    className={`flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-sm ${user.bg}`}
-                  >
-                    {user.initials}
-                  </div>
-                ))}
-                <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#0B1220] text-[10px] font-bold text-white shadow-sm">
-                  +1200
-                </div>
-              </div>
-              <span className="text-xs font-bold text-slate-500 uppercase">Trusted Users</span>
-            </div>
+
           </div>
         </section>
 
@@ -188,7 +168,7 @@ export default function FeaturesPage() {
               Ready to transform your school?
             </h2>
             <p className="mt-3 text-lg text-slate-500 font-medium">
-              Join hundreds of schools already using Hanoled to streamline their operations and delight parents.
+              Join schools already using Hanoled to streamline their operations and delight parents.
             </p>
           </div>
 

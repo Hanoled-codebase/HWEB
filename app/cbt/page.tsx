@@ -332,7 +332,7 @@ export default function Home() {
                     <Settings className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                       Admin & Educator Portal
                     </h3>
                     <p className="text-slate-500 text-xs mt-1">

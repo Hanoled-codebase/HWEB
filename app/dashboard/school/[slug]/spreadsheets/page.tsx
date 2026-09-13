@@ -475,7 +475,7 @@ export default function SpreadsheetsPage() {
                 </p>
                 <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:mt-1.5 sm:text-3xl md:text-4xl">
                   Welcome,{" "}
-                  <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  <span className="text-blue-600">
                     {greetingName}
                   </span>
                 </h1>
