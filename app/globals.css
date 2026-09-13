@@ -492,6 +492,33 @@
   html {
     @apply font-sans;
   }
+
+  /* Browser surfaces we didn't explicitly draw still carry the brand. */
+  ::selection {
+    background-color: #1447e6;
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(0.556 0.02 263.4 / 40%);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.488 0.243 264.376 / 60%);
+    background-clip: padding-box;
+  }
+  html {
+    scrollbar-color: oklch(0.556 0.02 263.4 / 40%) transparent;
+  }
 }
 
 @layer utilities {
@@ -694,4 +721,61 @@
   --border: 220 30% 20%;
   --input: 220 30% 20%;
   --ring: 226 84% 56%;
+}
+
+/*
+ * Marketing-site motion primitives — CSS keyframes only (no JS animation
+ * library), transform/opacity/stroke-dashoffset so they stay cheap on
+ * low-end mobile GPUs. Used by the HCBT "exam -> study plan" focal sequence
+ * and form error/success feedback across app/(marketing).
+ */
+@layer utilities {
+  @keyframes seq-fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes seq-pop-in {
+    0%   { opacity: 0; transform: scale(0.55); }
+    70%  { opacity: 1; transform: scale(1.06); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes seq-draw-line {
+    from { stroke-dashoffset: 140; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes form-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(5px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(3px); }
+  }
+
+  .animate-seq-fade-up { animation: seq-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-seq-pop-in { animation: seq-pop-in 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-seq-draw-line {
+    stroke-dasharray: 140;
+    animation: seq-draw-line 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-form-shake { animation: form-shake 400ms ease-in-out; }
+
+  .seq-delay-1 { animation-delay: 150ms; }
+  .seq-delay-2 { animation-delay: 500ms; }
+  .seq-delay-3 { animation-delay: 900ms; }
+}
+
+/* Reduced motion: keep state/feedback (opacity, color) legible, drop spatial movement. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-seq-fade-up,
+  .animate-seq-pop-in,
+  .animate-form-shake {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transform: none !important;
+  }
+  .animate-seq-draw-line {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    stroke-dashoffset: 0 !important;
+  }
 }

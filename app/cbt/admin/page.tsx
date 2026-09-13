@@ -796,7 +796,7 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-2 sm:gap-6 shrink-0">
             <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
-              <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-indigo-400"}`}></span>
+              <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-blue-400"}`}></span>
               <span className="text-[12px] font-semibold text-slate-500">
                 {isAdmin ? "Admin Privileges" : "Teacher Access"}
               </span>
@@ -832,7 +832,7 @@ export default function AdminDashboard() {
             </p>
             <a
               href="/welcome"
-              className="w-full inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+              className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
             >
               Back to Suite
             </a>
@@ -851,7 +851,7 @@ export default function AdminDashboard() {
                 </button>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-150 px-2.5 py-0.5 rounded-full uppercase">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-150 px-2.5 py-0.5 rounded-full uppercase">
                       {designerExam.examType} assessment
                     </span>
                     <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -905,7 +905,7 @@ export default function AdminDashboard() {
                       cbtApi.getTeacherClasses(orgSlug).then(setTeacherClasses).catch(() => {});
                     }
                   }}
-                  className="bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5"
+                  className="bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5"
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Assign</span>
@@ -944,7 +944,7 @@ export default function AdminDashboard() {
 
                 {loadingQuestions ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                   </div>
                 ) : designerQuestions.length === 0 ? (
                   <div className="bg-white rounded-xl p-12 text-center text-slate-500 shadow-sm">
@@ -1026,8 +1026,8 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <div className="bg-white p-4 border-b border-slate-100">
                     <div className="flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-indigo-500" />
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-indigo-700">SSCE past questions importer</h3>
+                      <Sparkles className="w-4 h-4 text-blue-500" />
+                      <h3 className="font-bold text-xs uppercase tracking-wider text-blue-700">SSCE past questions importer</h3>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5">Quickly query, preview, and load authentic WAEC/NECO questions via our smart API cache proxy.</p>
                   </div>
@@ -1040,7 +1040,7 @@ export default function AdminDashboard() {
                         value={importParams.subject}
                         onChange={(e) => handleSubjectChange(e.target.value)}
                         disabled={fetchingSubjects}
-                        className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">-- Choose Subject --</option>
                         {apiSubjects.map((sub, i) => (
@@ -1104,7 +1104,7 @@ export default function AdminDashboard() {
                         disabled={fetchingPastQuestions || !importParams.subject}
                         className={`flex-1 text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
                           previewQuestionsCount === null
-                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm"
+                            ? "bg-[#1447E6] hover:bg-[#0f36b8] text-white shadow-sm"
                             : "bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
@@ -1127,7 +1127,7 @@ export default function AdminDashboard() {
                         disabled={importingQuestions || previewQuestionsCount === null || previewQuestionsCount === 0}
                         className={`flex-1 text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
                           previewQuestionsCount !== null && previewQuestionsCount > 0
-                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm active:scale-95"
+                            ? "bg-[#1447E6] hover:bg-[#0f36b8] text-white shadow-sm active:scale-95"
                             : "bg-slate-100 text-slate-400"
                         } disabled:cursor-not-allowed disabled:scale-100`}
                       >
@@ -1148,7 +1148,7 @@ export default function AdminDashboard() {
                     {/* Preview status note */}
                     {previewQuestionsCount !== null && (
                       <div className="bg-slate-50 border border-slate-250/60 p-3 rounded-xl flex items-start space-x-2.5">
-                        <Info className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+                        <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                         <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                           Found <strong className="text-slate-800">{previewQuestionsCount} questions</strong> available. Click "2. Import Selected" to append {importParams.count} samples to your exam (duplicates will be auto-skipped).
                         </p>
@@ -1264,7 +1264,7 @@ export default function AdminDashboard() {
                 {/* 3. MANUAL QUESTION CREATION FORM */}
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
                   <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 border-b pb-2 flex items-center space-x-1.5">
-                    <Plus className="w-4 h-4 text-indigo-600" />
+                    <Plus className="w-4 h-4 text-blue-600" />
                     <span>Create Manual Question</span>
                   </h3>
 
@@ -1316,8 +1316,8 @@ export default function AdminDashboard() {
                         <label
                           className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
                             uploadingImage
-                              ? "border-indigo-300 bg-indigo-50/50"
-                              : "border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50/30"
+                              ? "border-blue-300 bg-blue-50/50"
+                              : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/30"
                           }`}
                         >
                           <input
@@ -1332,8 +1332,8 @@ export default function AdminDashboard() {
                           />
                           {uploadingImage ? (
                             <div className="flex flex-col items-center space-y-1.5">
-                              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-                              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Uploading...</span>
+                              <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Uploading...</span>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center space-y-1.5">
@@ -1435,7 +1435,7 @@ export default function AdminDashboard() {
           </div>
         ) : loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+            <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
             <p className="text-slate-500 text-sm font-medium">Synchronizing administration systems...</p>
           </div>
         ) : (
@@ -1446,7 +1446,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               
               <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600 w-fit lg:order-2">
+                <div className="bg-blue-50 p-3 rounded-xl text-blue-600 w-fit lg:order-2">
                   <FileText className="w-6 h-6" />
                 </div>
                 <div className="lg:order-1">
@@ -1496,7 +1496,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab("overview")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    activeTab === "overview" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "overview" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
                   Dashboard Overview
@@ -1504,7 +1504,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab("exams")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    activeTab === "exams" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "exams" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
                   Assessment Templates
@@ -1513,7 +1513,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab("students")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    activeTab === "students" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "students" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
                   Grade Auditor
@@ -1523,7 +1523,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setActiveTab("appliances")}
                     className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                      activeTab === "appliances" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
                     Edge Appliances
@@ -1533,7 +1533,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-500/10 active:scale-95 transition-all w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Exam Template</span>
@@ -1547,10 +1547,10 @@ export default function AdminDashboard() {
                 <div className="space-y-6">
                   
                   {/* Greeting */}
-                  <div className="bg-indigo-50/60 p-8 rounded-3xl border border-indigo-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">
+                  <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">
                     <div>
-                      <h2 className="text-xl font-bold text-indigo-900 mb-2">CBT Administrative Console</h2>
-                      <p className="text-xs text-indigo-600/60 leading-relaxed max-w-lg">
+                      <h2 className="text-xl font-bold text-blue-900 mb-2">CBT Administrative Console</h2>
+                      <p className="text-xs text-blue-600/60 leading-relaxed max-w-lg">
                         Welcome to your unified testing center. From here, you can build exam sheets, import bulk questions directly from proxy SSCE archives, and audit live student performances.
                       </p>
                     </div>
@@ -1567,7 +1567,7 @@ export default function AdminDashboard() {
                       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Performance Rankings Preview</h3>
                       <button
                         onClick={() => setActiveTab("students")}
-                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                       >
                         View All
                       </button>
@@ -1591,7 +1591,7 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                              <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">
                                 {student.avgPercentage}% Avg
                               </span>
                             </div>
@@ -1611,7 +1611,7 @@ export default function AdminDashboard() {
             {activeTab === "exams" && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
+                  <span className="h-1.5 w-1.5 bg-blue-600 rounded-full"></span>
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">CBT Assessment Templates</h3>
                 </div>
 
@@ -1622,7 +1622,7 @@ export default function AdminDashboard() {
                     <p className="text-xs text-slate-500 mt-1 mb-6">Create a structure and load manual or proxy questions to make exams live.</p>
                     <button
                       onClick={() => setIsCreateModalOpen(true)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md inline-flex items-center space-x-1.5"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md inline-flex items-center space-x-1.5"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Create First Template</span>
@@ -1686,7 +1686,7 @@ export default function AdminDashboard() {
                               e.stopPropagation();
                               handleOpenDesigner(exam);
                             }}
-                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[12px] px-4 py-2 rounded-[10px] transition-colors"
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-[12px] px-4 py-2 rounded-[10px] transition-colors"
                           >
                             Edit Test
                           </button>
@@ -1702,7 +1702,7 @@ export default function AdminDashboard() {
             {isAdmin && activeTab === "students" && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
+                  <span className="h-1.5 w-1.5 bg-blue-600 rounded-full"></span>
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate Performance Records</h3>
                 </div>
 
@@ -1743,7 +1743,7 @@ export default function AdminDashboard() {
                                   <td className="px-6 py-5 text-sm font-semibold text-slate-700 text-center">
                                     {student.totalExams}
                                   </td>
-                                  <td className="px-6 py-5 text-sm font-bold text-indigo-700 text-center">
+                                  <td className="px-6 py-5 text-sm font-bold text-blue-700 text-center">
                                     {student.avgPercentage}%
                                   </td>
                                   <td className="px-6 py-5">
@@ -1798,7 +1798,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
                               <span>{student.totalExams} tests</span>
-                              <span className="font-semibold text-indigo-700">{student.avgPercentage}%</span>
+                              <span className="font-semibold text-blue-700">{student.avgPercentage}%</span>
                             </div>
                           </div>
                         );
@@ -1843,7 +1843,7 @@ export default function AdminDashboard() {
                   placeholder="e.g. Mathematics Midterm Assessment"
                   value={newExamData.title}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, title: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-indigo-500"
+                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500"
                 />
               </div>
 
@@ -1855,7 +1855,7 @@ export default function AdminDashboard() {
                   placeholder="Summarize the core topics covered..."
                   value={newExamData.description}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-indigo-500"
+                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500"
                 />
               </div>
 
@@ -1956,7 +1956,7 @@ export default function AdminDashboard() {
                   id="shuffleQuestions"
                   checked={newExamData.shuffleQuestions}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                  className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="shuffleQuestions" className="text-xs font-bold text-slate-650 cursor-pointer">
                   Shuffle question orders for each candidate
@@ -1982,7 +1982,7 @@ export default function AdminDashboard() {
                       }}
                       className={`flex-1 text-xs font-bold py-2 rounded-xl border transition-all ${
                         assignTarget === opt.value
-                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                          ? "bg-blue-50 border-blue-300 text-blue-700"
                           : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
                       }`}
                     >
@@ -2071,7 +2071,7 @@ export default function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={creatingExam || (assignTarget === "class" && !targetClassId) || (assignTarget === "student" && (!targetClassId || !targetStudentId))}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md shadow-indigo-500/10 transition-all flex items-center justify-center space-x-1.5"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md shadow-blue-500/10 transition-all flex items-center justify-center space-x-1.5"
                 >
                   {creatingExam ? (
                     <>
@@ -2112,7 +2112,7 @@ export default function AdminDashboard() {
                     onClick={() => { setAssignTargetType("class"); setSelectedStudentId(""); }}
                     className={`flex-1 text-xs font-bold py-2 rounded-xl border transition-all ${
                       assignTargetType === "class"
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                        ? "bg-blue-50 border-blue-300 text-blue-700"
                         : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
                     }`}
                   >
@@ -2123,7 +2123,7 @@ export default function AdminDashboard() {
                     onClick={() => setAssignTargetType("student")}
                     className={`flex-1 text-xs font-bold py-2 rounded-xl border transition-all ${
                       assignTargetType === "student"
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                        ? "bg-blue-50 border-blue-300 text-blue-700"
                         : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
                     }`}
                   >
@@ -2192,7 +2192,7 @@ export default function AdminDashboard() {
                     (assignTargetType === "student" && !selectedStudentId) ||
                     assigningId === assignExamId
                   }
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
                 >
                   {assigningId === assignExamId ? (
                     <>
@@ -2264,7 +2264,7 @@ export default function AdminDashboard() {
             )}
 
             {loadingResults ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-indigo-600 animate-spin" /></div>
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : (
               <>
                 {/* Summary stats */}
@@ -2481,13 +2481,13 @@ export default function AdminDashboard() {
             </button>
 
             {loadingStudentDetail ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-indigo-600 animate-spin" /></div>
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : viewingQuestions && selectedExamResult ? (
               /* ── Question-level breakdown ── */
               <>
                 <button
                   onClick={() => setViewingQuestions(false)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 mb-4 flex items-center gap-1"
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-1"
                 >
                   ← Back to exam list
                 </button>
