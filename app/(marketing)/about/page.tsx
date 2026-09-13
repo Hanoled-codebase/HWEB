@@ -39,35 +39,13 @@ const values = [
   },
 ];
 
-const stats = [
-  { value: "100+", label: "Schools onboarded", text: "text-[#1447E6]" },
-  { value: "50,000+", label: "Students managed", text: "text-[#F5A623]" },
-  { value: "99.9%", label: "Uptime guarantee", text: "text-[#1447E6]" },
-  { value: "24/7", label: "Customer support", text: "text-[#F5A623]" },
-];
 
-function BrandRibbon() {
-  return (
-    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md mt-6 rounded-[2rem] max-w-7xl mx-auto hidden sm:block">
-      <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
-        {Array.from({ length: 15 }).map((_, index) => (
-          <span key={index} className="whitespace-nowrap flex items-center gap-6">
-            Hanoled.io
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-            Hanoled
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#f8f9fc] font-sans selection:bg-[#1447E6] selection:text-white">
       <MarketingHeader />
-      <BrandRibbon />
+
 
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         {/* HERO SECTION */}
@@ -98,21 +76,6 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="mt-16 bg-white rounded-[3rem] px-8 py-12 sm:px-16 sm:py-16 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
-          <div className="relative z-10 mx-auto grid max-w-5xl gap-8 sm:grid-cols-4">
-            {stats.map((stat, idx) => (
-              <div key={idx} className="text-center space-y-2">
-                <div className={`text-4xl sm:text-5xl font-black tracking-tight ${stat.text}`}>
-                  {stat.value}
-                </div>
-                <div className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* Our Story Section */}
         <section className="mt-16 bg-white rounded-[3rem] px-8 py-16 sm:px-16 sm:py-20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">

@@ -16,7 +16,6 @@ import {
 } from "@/components/landing/ModuleIllustrations";
 import {
   ArrowUpRight,
-  Award,
   Building2,
   ChevronDown,
   CheckCircle2,
@@ -251,39 +250,15 @@ export default function LandingPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-                <Button
-                  asChild
-                  className="h-14 rounded-full bg-[#1447E6] px-8 text-base font-bold text-white transition-all hover:bg-[#0b33b3] hover:shadow-lg hover:-translate-y-1"
-                >
-                  <Link href="#contact-quote">
-                    Book a Custom Demo
-                    <ArrowUpRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-3">
-                    {[
-                      { bg: "bg-[#1447E6]", initials: "TC" },
-                      { bg: "bg-[#F5A623]", initials: "PA" },
-                      { bg: "bg-[#5B7FEF]", initials: "AD" },
-                      { bg: "bg-[#0B2E99]", initials: "ST" },
-                    ].map((user, i) => (
-                      <div
-                        key={i}
-                        className={`flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-sm ${user.bg}`}
-                      >
-                        {user.initials}
-                      </div>
-                    ))}
-                    <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#0B1220] text-[10px] font-bold text-white shadow-sm">
-                      +1200
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-slate-500 uppercase">Users</span>
-                </div>
-              </div>
+              <Button
+                asChild
+                className="h-14 rounded-full bg-[#1447E6] px-8 text-base font-bold text-white transition-all hover:bg-[#0b33b3] hover:shadow-lg hover:-translate-y-1"
+              >
+                <Link href="#contact-quote">
+                  Book a Custom Demo
+                  <ArrowUpRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
             </div>
 
             {/* Right Box (African Student Hero Portrait) */}
@@ -307,18 +282,7 @@ export default function LandingPage() {
                   style={{ objectPosition: "center top" }}
                 />
 
-                {/* Bottom-left Stat Card */}
-                <div className="absolute bottom-3 left-3 sm:-bottom-6 sm:-left-6 z-20 flex items-center gap-2 sm:gap-3 rounded-2xl sm:rounded-[1.5rem] bg-white px-3.5 py-2.5 sm:px-5 sm:py-4 shadow-xl shadow-slate-900/10 border border-slate-100">
-                  <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-[#F5A623]/15 text-[#0B1220]">
-                    <Award className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-black text-slate-900 whitespace-nowrap">100+ Schools</p>
-                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 mt-0.5 whitespace-nowrap">Onboarded &amp; growing</p>
-                  </div>
-                </div>
-
-                {/* Top-right Chip on mobile, bottom-right on larger screens so it never collides with the stat card */}
+                {/* Top-right Chip on mobile, bottom-right on larger screens */}
                 <div className="absolute -top-3 right-3 sm:-bottom-4 sm:right-6 sm:top-auto z-20 flex items-center gap-2 rounded-full bg-[#1447E6] pl-2.5 pr-3.5 py-1.5 sm:pl-3 sm:pr-4 sm:py-2 text-white shadow-xl shadow-[#1447E6]/30">
                   <div className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full bg-white/20">
                     <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -467,12 +431,8 @@ export default function LandingPage() {
             </Link>
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
-            <div className="flex items-center gap-2 rounded-full bg-[#1447E6] text-white px-6 py-3 shadow-lg shadow-[#1447E6]/25">
-              <Award className="h-5 w-5 text-[#F5A623]" />
-              <span className="font-bold text-sm whitespace-nowrap">100+ Schools Onboarded</span>
-            </div>
-            <div className="text-left">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-12">
+            <div className="text-center sm:text-left">
               <div className="text-2xl font-black text-slate-900">50,000+</div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Students Managed</div>
             </div>
