@@ -45,6 +45,7 @@ export default function StudentDashboard() {
   const [ssceExams, setSsceExams] = useState<AssignedExam[]>([]);
   const [history, setHistory] = useState<PastResult[]>([]);
   const [schoolName, setSchoolName] = useState<string>("");
+  const [studentName, setStudentName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [startingExamId, setStartingExamId] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
@@ -233,6 +234,9 @@ export default function StudentDashboard() {
           if (authData?.organization?.name) {
             setSchoolName(authData.organization.name);
           }
+          if (authData?.user?.name) {
+            setStudentName(authData.user.name);
+          }
         } catch (authErr: any) {
           console.warn("Auth check warning:", authErr.message);
         }
@@ -337,7 +341,10 @@ export default function StudentDashboard() {
           <div className="h-14 sm:h-16 flex items-center justify-between gap-2">
             <Logo className="w-7 h-7 sm:w-8 sm:h-8" size="sm" badgeText="STUDENT" textColor="text-[#0B1220]" />
 
-            <div className="hidden sm:flex items-center min-w-0">
+            <div className="hidden sm:flex items-center gap-2.5 min-w-0">
+              {studentName && (
+                <span className="text-sm font-semibold text-[#0B1220] truncate">{studentName}</span>
+              )}
               <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80 min-w-0">
                 <School className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="text-xs font-bold text-blue-900 truncate">
@@ -364,7 +371,10 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="sm:hidden pb-2.5">
+          <div className="sm:hidden pb-2.5 space-y-1.5">
+            {studentName && (
+              <p className="text-sm font-semibold text-[#0B1220] truncate">{studentName}</p>
+            )}
             <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80 w-fit max-w-full">
               <School className="w-4 h-4 text-blue-600 shrink-0" />
               <span className="text-xs font-bold text-blue-900 truncate">
