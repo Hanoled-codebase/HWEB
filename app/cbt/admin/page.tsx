@@ -795,6 +795,11 @@ export default function AdminDashboard() {
           <Logo className="w-8 h-8 shrink-0" badgeText={isAdmin ? "ADMIN" : "TEACHER"} textColor="text-[#0B1220]" />
 
           <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+            {currentUser?.name && (
+              <span className="hidden md:inline text-[13px] font-semibold text-[#0B1220]">
+                {currentUser.name}
+              </span>
+            )}
             <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
               <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-blue-400"}`}></span>
               <span className="text-[12px] font-semibold text-slate-500">
