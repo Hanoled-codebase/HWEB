@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_NAMES, sessionCookieClearTargets } from "@/lib/session-cookies";
 
 // A plain Route Handler (not the "use server" logoutAction) so the client-side
 // 401 handler in lib/api.ts can reach it via a normal navigation. It exists
@@ -11,7 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const url = new URL("/signin", request.url);
   const response = NextResponse.redirect(url);
-  for (const name of ["hcore_session", "hcbt_session", "hweb_allowed_platforms", "hweb_user_role", "accessToken"]) {
+  for (const name of SESSION_COOKIE_NAMES) {
+    for (const target of sessionCookieClearTargets(name)) response.cookies.delete(target);
+  }
+  for (const name of ["hweb_allowed_platforms", "hweb_user_role", "accessToken"]) {
     response.cookies.delete(name);
   }
   return response;

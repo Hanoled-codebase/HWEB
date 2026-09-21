@@ -3,7 +3,7 @@
 import React, { useRef } from "react";
 import { Printer, Download, X, Award, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HSMS_BASE } from "@/lib/api";
+import { downloadReportCardPdf } from "@/lib/report-card-download";
 
 export interface ReportCardStudent {
   id: string;
@@ -72,43 +72,15 @@ export default function ReportCardPrintModal({
   };
 
   const handleDownloadPDF = async () => {
+    setIsDownloading(true);
     try {
-      setIsDownloading(true);
-      const token =
-        typeof document !== "undefined"
-          ? document.cookie
-              .split("; ")
-              .find((row) => row.startsWith("accessToken="))
-              ?.split("=")[1]
-          : null;
-
-      const url = `${HSMS_BASE}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
-        term
-      )}&academicYear=${encodeURIComponent(academicYear)}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
-
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      await downloadReportCardPdf({
+        orgSlug,
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        term,
+        academicYear,
       });
-
-      if (!res.ok) {
-        window.open(url, "_blank");
-        return;
-      }
-
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `Report_Card_${student.firstName}_${student.lastName}_${term.replace(/\s+/g, "_")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      const fallbackUrl = `${HSMS_BASE}/export/${orgSlug}/report-card/${student.id}?term=${encodeURIComponent(
-        term
-      )}&academicYear=${encodeURIComponent(academicYear)}`;
-      window.open(fallbackUrl, "_blank");
     } finally {
       setIsDownloading(false);
     }

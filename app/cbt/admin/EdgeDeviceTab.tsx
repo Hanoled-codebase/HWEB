@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, Loader2, Link2, ScrollText, Cloud,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getHcbtToken } from "@/lib/auth-tokens";
+import { authFetchInit } from "@/lib/auth-tokens";
 
 /**
  * "This Device" — the appliance's own control panel, shown in place of the
@@ -17,10 +17,11 @@ import { getHcbtToken } from "@/lib/auth-tokens";
  */
 
 async function edgeApi<T = any>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const token = getHcbtToken();
+  const auth = authFetchInit("hcbt");
   const res = await fetch(path, {
     method: init.method || "GET",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: auth.credentials,
+    headers: { "Content-Type": "application/json", ...auth.headers },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const data = await res.json().catch(() => ({}));

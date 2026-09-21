@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { SESSION_COOKIE_NAMES, exposeTokensToBrowser, sessionCookieClearTargets, sessionCookieOptions } from '@/lib/session-cookies';
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
@@ -77,13 +78,7 @@ export async function loginAction(prevState: any, formData: FormData) {
       const isProduction = process.env.NODE_ENV === 'production';
 
       // Set HCORE session cookie
-      cookieStore.set('hcore_session', data.token, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: 3600 * 24 * 7,
-        path: '/',
-      });
+      cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600 * 24 * 7));
 
       // Exchange for HCBT session with full role and student context
       const hcbtToken = await exchangeHcbtSession(
@@ -98,13 +93,7 @@ export async function loginAction(prevState: any, formData: FormData) {
         }
       );
       if (hcbtToken) {
-        cookieStore.set('hcbt_session', hcbtToken, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'lax',
-          maxAge: 3600 * 24 * 7,
-          path: '/',
-        });
+        cookieStore.set('hcbt_session', hcbtToken, sessionCookieOptions(3600 * 24 * 7));
       }
 
       // Query HCORE for real-time active user context & subscriptions
@@ -175,7 +164,7 @@ export async function loginAction(prevState: any, formData: FormData) {
         redirectUrl = '/welcome';
       }
 
-      return { success: true, redirectUrl, hcoreToken: data.token, hcbtToken };
+      return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
     }
 
     return { error: 'No token received' };
@@ -219,13 +208,7 @@ export async function registerAction(prevState: any, formData: FormData) {
       const cookieStore = await cookies();
       const isProduction = process.env.NODE_ENV === 'production';
       
-      cookieStore.set('hcore_session', data.token, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: 3600,
-        path: '/',
-      });
+      cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600));
 
       // Cancel any unselected subscriptions automatically provisioned by HCORE
       const allPlatforms = ['HSMS', 'HCBT'];
@@ -263,13 +246,7 @@ export async function registerAction(prevState: any, formData: FormData) {
           data.principal?.email,
         );
         if (hcbtToken) {
-          cookieStore.set('hcbt_session', hcbtToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'lax',
-            maxAge: 3600,
-            path: '/',
-          });
+          cookieStore.set('hcbt_session', hcbtToken, sessionCookieOptions(3600));
         }
       }
 
@@ -278,7 +255,7 @@ export async function registerAction(prevState: any, formData: FormData) {
       // Always route to welcome screen post-registration for a playful onboarding experience
       const redirectUrl = '/welcome';
       console.log('Redirecting to:', redirectUrl);
-      return { success: true, redirectUrl, hcoreToken: data.token, hcbtToken };
+      return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
     }
 
     return { error: 'No token received' };
@@ -290,8 +267,9 @@ export async function registerAction(prevState: any, formData: FormData) {
 
 export async function logoutAction() {
   const cookieStore = await cookies();
-  cookieStore.delete('hcore_session');
-  cookieStore.delete('hcbt_session');
+  for (const name of SESSION_COOKIE_NAMES) {
+    for (const target of sessionCookieClearTargets(name)) cookieStore.delete(target);
+  }
   cookieStore.delete('hweb_allowed_platforms');
   cookieStore.delete('hweb_user_role');
   cookieStore.delete('accessToken');

@@ -97,8 +97,9 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
     setPracticeError("");
     setIsPracticeOpen(true);
     try {
-      const { sets } = await cbtApi.getAvailablePracticeSets();
-      setPracticeSets(sets);
+      const res = await cbtApi.getAvailablePracticeSets();
+      // A malformed reply must not crash the modal (it reads practiceSets.length).
+      setPracticeSets(Array.isArray(res?.sets) ? res.sets : []);
     } catch (err: any) {
       setPracticeError(err.message || "Failed to load cached practice sets");
     }

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
 import { DataStateCard } from "@/components/dashboard/shared";
-import { getHcoreToken } from "@/lib/auth-tokens";
+import { authFetchInit } from "@/lib/auth-tokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,11 +106,7 @@ export default function StudentResultsPage() {
               onClick={async () => {
                 try {
                   const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027`;
-                  const token = getHcoreToken();
-                  const res = await fetch(url, {
-                    credentials: "include",
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                  });
+                  const res = await fetch(url, authFetchInit("hcore"));
                   if (!res.ok) throw new Error("Failed to download");
                   const blob = await res.blob();
                   const blobUrl = URL.createObjectURL(blob);

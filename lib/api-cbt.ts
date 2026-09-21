@@ -1,7 +1,7 @@
 // Hanoled CBT Frontend API Client
 
 import { request, HCBT_BASE, type RequestOptions } from './api';
-import { getHcbtToken } from './auth-tokens';
+import { authFetchInit } from './auth-tokens';
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 interface ApiOptions extends RequestOptions {
@@ -36,11 +36,7 @@ export const cbtApi = {
   getEdgeAppliancePlatforms: () => fetchCbt<Record<string, boolean>>(`/edge-nodes/download/platforms`),
   // Binary download — bypasses fetchCbt's JSON parsing, returns a Blob.
   downloadEdgeAppliance: async (platform: "mac" | "win" = "mac"): Promise<Blob> => {
-    const token = getHcbtToken();
-    const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, {
-      credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, authFetchInit("hcbt"));
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.message || data.error || "Failed to download the Edge Appliance executable");
