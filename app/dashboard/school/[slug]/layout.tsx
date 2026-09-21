@@ -252,36 +252,31 @@ export default function DashboardLayout({
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative overflow-x-hidden">
+        <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-hidden bg-slate-50">
           <StaffMobileFrame>
-            {/* Desktop Header */}
-            <header className="sticky top-0 z-10 hidden md:flex h-14 shrink-0 items-center border-b border-slate-100 bg-white/85 backdrop-blur-md px-6">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
-                  <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    <span>School Operations Dashboard</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {currentMember?.role !== "parent" && (
-                    <a
-                      href="/cbt/admin"
-                      className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
-                      CBT Console
-                    </a>
-                  )}
+            {/* Desktop top bar */}
+            <header className="sticky top-0 z-10 hidden items-center justify-between border-b border-slate-200 bg-white px-8 py-4 md:flex">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="font-medium">School Operations Dashboard</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {currentMember?.role !== "parent" && (
                   <a
-                    href="/welcome"
-                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-all"
+                    href="/cbt/admin"
+                    className="flex items-center gap-1.5 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                   >
-                    Suite Hub
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                    CBT Console
                   </a>
-                  <NotificationSheet />
-                </div>
+                )}
+                <a
+                  href="/welcome"
+                  className="rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  Suite Hub
+                </a>
+                <NotificationSheet />
               </div>
             </header>
 
@@ -297,7 +292,7 @@ export default function DashboardLayout({
 
             <MobileTabBar />
           </StaffMobileFrame>
-        </SidebarInset>
+        </div>
       </SidebarProvider>
     </TooltipProvider>
   );

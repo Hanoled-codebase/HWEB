@@ -32,6 +32,7 @@ import { RoleHome } from "@/components/dashboard/mobile/RoleHome";
 import { StudentDashboardView } from "@/components/dashboard/StudentDashboardView";
 import { AdminMobileDashboard } from "@/components/dashboard/AdminMobileDashboard";
 import { MemberMobileDashboard } from "@/components/dashboard/MemberMobileDashboard";
+import { AdminDesktopOverview } from "@/components/dashboard/AdminDesktopOverview";
 
 // Only built from assignments whose subject/class id is present (see the
 // `!subject?.id || !classLevel?.id` guards below), so id is always set.
@@ -644,45 +645,6 @@ export default function DashboardOverviewPage() {
   // recognized teacher/accountant/HOD/librarian in this org's own records —
   // so these tiles must respect that viewer's real permissions, not assume
   // admin. Reuses the exact same page-level gates as the sidebar/nav.
-  const desktopStatsAll = [
-    {
-      key: "students",
-      title: "Students",
-      value: liveCounts?.students ?? currentOrg.counts.students ?? 0,
-      icon: GraduationCap,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-      show: isPrivileged || can("students.view"),
-    },
-    {
-      key: "teachers",
-      title: "Teachers",
-      value: liveCounts?.teachers ?? currentOrg.counts.teachers ?? 0,
-      icon: Users,
-      color: "text-emerald-600",
-      bg: "bg-emerald-100",
-      show: isPrivileged,
-    },
-    {
-      key: "parents",
-      title: "Parents",
-      value: liveCounts?.parents ?? currentOrg.counts.parents ?? 0,
-      icon: Users,
-      color: "text-amber-600",
-      bg: "bg-amber-100",
-      show: isPrivileged || isHOD || can("parents.manage"),
-    },
-    {
-      key: "classes",
-      title: "Classes",
-      value: "Manage",
-      icon: School,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-      show: isPrivileged || isTeacher,
-    },
-  ];
-  const desktopStats = desktopStatsAll.filter((s) => s.show);
 
   const mobileStatsAll = [
     { key: "students", label: "Students", value: liveCounts?.students ?? currentOrg.counts.students ?? 0, icon: GraduationCap },
@@ -715,106 +677,27 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* ── Desktop admin view ────────────────── */}
-      <div className="hidden md:block space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl capitalize">
-              Welcome back, {user.name.split(" ")[0]}
-            </h1>
-            <p className="text-slate-500">
-              Here&apos;s an overview of <span className="capitalize">{currentOrg.name}</span> today.
-            </p>
-          </div>
-
-          {isPrivileged && (
-            <div className="flex gap-2">
-              <Link href={`/dashboard/school/${currentOrg.slug}/students`}>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Student
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {desktopStats.map((stat, i) => (
-            <Card key={i} className="shadow-sm border-slate-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
-                  {stat.title}
-                </CardTitle>
-                <div className={`h-8 w-8 rounded-md flex items-center justify-center ${stat.bg}`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-900">
-                  {stat.value}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
-          <Card className="col-span-4 shadow-sm border-slate-200">
-            <CardHeader>
-              <CardTitle>School Information</CardTitle>
-              <CardDescription>Your organization profile details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500 font-medium block">Category</span>
-                  <span className="text-slate-900 capitalize">{currentOrg.category}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium block">Type</span>
-                  <span className="text-slate-900 capitalize">{currentOrg.type}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium block">Status</span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-600/20">
-                    {currentOrg.subscription?.status || "Active"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium block">Plan</span>
-                  <span className="text-slate-900 capitalize">{currentOrg.subscription?.plan || "Free"}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-3 shadow-sm border-slate-200">
-            <CardHeader>
-              <CardTitle>Quick Links</CardTitle>
-              <CardDescription>Common actions for your role</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <Link href={`/dashboard/school/${currentOrg.slug}/spreadsheets`}>
-                <div className="group flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Layers className="h-5 w-5 text-blue-500 group-hover:text-blue-600" />
-                    <div className="font-medium text-sm text-slate-900">Manage Grades</div>
-                  </div>
-                  <Layers className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </Link>
-              <Link href={`/dashboard/school/${currentOrg.slug}/classes`}>
-                <div className="group flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <School className="h-5 w-5 text-blue-500 group-hover:text-blue-600" />
-                    <div className="font-medium text-sm text-slate-900">View Classes</div>
-                  </div>
-                  <Layers className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="hidden md:block">
+        <AdminDesktopOverview
+          slug={currentOrg.slug}
+          firstName={user.name.split(" ")[0]}
+          orgName={currentOrg.name}
+          category={currentOrg.category}
+          type={currentOrg.type}
+          plan={currentOrg.subscription?.plan}
+          status={currentOrg.subscription?.status}
+          isPrivileged={Boolean(isPrivileged)}
+          canAddStudent={Boolean(isPrivileged)}
+          counts={{
+            students: liveCounts?.students ?? currentOrg.counts.students ?? 0,
+            teachers: liveCounts?.teachers ?? currentOrg.counts.teachers ?? 0,
+            parents: liveCounts?.parents ?? currentOrg.counts.parents ?? 0,
+          }}
+          showStudents={mobileStatsShow.students}
+          showTeachers={mobileStatsShow.teachers}
+          showParents={mobileStatsShow.parents}
+          showClasses={mobileStatsShow.classes}
+        />
       </div>
     </>
   );
