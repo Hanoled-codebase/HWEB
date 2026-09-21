@@ -6,7 +6,8 @@
     "dev": "npx --yes next dev",
     "build": "npx --yes next build",
     "start": "npx --yes next start",
-    "lint": "npx --yes eslint"
+    "lint": "npx --yes eslint",
+    "build:edge": "next build edge-ui"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -225,7 +225,7 @@ export default function StaffAttendancePage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Present", val: stats.present, color: "text-emerald-700", bg: "bg-emerald-50" },
               { label: "Absent", val: stats.absent, color: "text-red-700", bg: "bg-red-50" },

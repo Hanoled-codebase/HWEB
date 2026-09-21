@@ -16,8 +16,8 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadReportCardPdf } from "@/lib/report-card-download";
 
-import { ParentMobileNav } from "@/components/dashboard/ParentMobileNav";
 import ReportCardPrintModal from "@/components/results/ReportCardPrintModal";
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
-import { getHcoreToken } from "@/lib/auth-tokens";
+import { authFetchInit } from "@/lib/auth-tokens";
 import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
@@ -363,17 +363,11 @@ export default function ResultsPage() {
     try {
       setIsDownloadingBatch(true);
       const baseUrl = HSMS_BASE;
-      const token = getHcoreToken() || "";
       const res = await fetch(
         `${baseUrl}/export/${currentOrg.slug}/report-card-bundle/${targetClassId}?term=${encodeURIComponent(
           exportTerm
         )}&academicYear=${encodeURIComponent(exportYear)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-        }
+        authFetchInit("hcore")
       );
 
       if (!res.ok) {
@@ -816,10 +810,6 @@ export default function ResultsPage() {
                   )}
                 </div>
 
-                {currentOrg?.slug && (
-                  <ParentMobileNav slug={currentOrg.slug} active="results" />
-                )}
-
                 <MobileSubjectBreakdown
                   subject={selectedSubject}
                   open={Boolean(selectedSubject)}
@@ -901,10 +891,15 @@ export default function ResultsPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                const url = `${HSMS_BASE}/export/${currentOrg.slug}/report-card/${group.student.id}?term=${encodeURIComponent(exportTerm)}&academicYear=${encodeURIComponent(exportYear)}`;
-                                window.open(url, "_blank");
-                              }}
+                              onClick={() =>
+                                void downloadReportCardPdf({
+                                  orgSlug: currentOrg.slug,
+                                  studentId: group.student.id,
+                                  studentName: `${group.student.firstName} ${group.student.lastName}`,
+                                  term: exportTerm,
+                                  academicYear: exportYear,
+                                })
+                              }
                               className="rounded-md p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                               title="Download Report Card PDF"
                             >

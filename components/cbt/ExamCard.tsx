@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
-import { Clock, FileText, PlayCircle, ArrowRight, Loader2, CheckCircle2, Target, Hourglass, Key } from "lucide-react";
+import { Clock, FileText, PlayCircle, ArrowRight, Loader2, CheckCircle2, Target, Hourglass, Key, Laptop } from "lucide-react";
+import { useExamDeviceStatus } from "@/hooks/useExamDevice";
 
 export interface AssignedExam {
   id: string;
@@ -39,6 +42,8 @@ export function ExamCard({
   const isSubmitted = exam.myResult?.status === "submitted" || exam.myResult?.status === "graded";
   const isPending = isSubmitted && exam.myResult?.resultsReleased === false;
   const isStarting = startingExamId === exam.id;
+  // Phones can see the exam but not start it; the button says so instead of looking broken.
+  const onPhone = useExamDeviceStatus() === "blocked";
   const examType = exam.ssceBoard
     ? `${exam.ssceBoard.toUpperCase()} ${exam.ssceYear ? `(${exam.ssceYear})` : ""}`
     : null;
@@ -162,7 +167,7 @@ export function ExamCard({
           {isPending ? (
             <button
               onClick={() => onViewResult(exam.id)}
-              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-4 py-2.5 rounded-sm transition-colors sm:w-auto min-h-[44px]"
+              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-4 py-2.5 rounded-sm transition-colors w-full sm:w-auto min-h-[48px] sm:min-h-[44px]"
             >
               <span>View Status</span>
               <ArrowRight className="w-3 h-3" />
@@ -170,7 +175,7 @@ export function ExamCard({
           ) : isSubmitted ? (
             <button
               onClick={() => onViewResult(exam.id)}
-              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-sm transition-colors sm:w-auto min-h-[44px]"
+              className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-sm transition-colors w-full sm:w-auto min-h-[48px] sm:min-h-[44px]"
             >
               <span>View Score</span>
               <ArrowRight className="w-3 h-3" />
@@ -179,18 +184,25 @@ export function ExamCard({
             <button
               disabled={isStarting}
               onClick={() => onInitiateStart(exam)}
-              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm shadow-sm transition-all duration-200 w-full sm:w-auto ${
+              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm transition-all duration-200 w-full sm:w-auto min-h-[48px] sm:min-h-0 ${
                 isStarting
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-sm"
+                  : onPhone
+                  ? "bg-white text-slate-700 border border-slate-300 active:bg-slate-50"
                   : isStarted
-                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/10 active:scale-95"
-                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/10 active:scale-95"
+                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/10 active:scale-95"
+                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/10 active:scale-95"
               }`}
             >
               {isStarting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Starting...</span>
+                </>
+              ) : onPhone ? (
+                <>
+                  <Laptop className="w-4 h-4 text-blue-600" />
+                  <span>{isStarted ? "Resume" : "Start"} on a computer</span>
                 </>
               ) : isStarted ? (
                 <>

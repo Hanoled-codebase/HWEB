@@ -388,7 +388,7 @@ export default function MessagingPage() {
 
         {/* Mobile Sticky Floating Send Button */}
         {tab === "compose" && (
-          <div className="fixed bottom-16 inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
+          <div className="fixed bottom-above-nav inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
             <Button
               onClick={sendSingle}
               disabled={sending}

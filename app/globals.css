@@ -779,3 +779,13 @@
     stroke-dashoffset: 0 !important;
   }
 }
+
+/* Mobile app shell: notch / home-indicator safe areas. Requires viewport-fit=cover (see app/layout.tsx). */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-above-nav { bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  .pb-safe-nav { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}

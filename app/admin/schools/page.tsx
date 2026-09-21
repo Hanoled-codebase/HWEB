@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { Search } from "lucide-react"
+import { Chip, ChipTabs, EmptyPanel, MList, SchoolRow } from "@/components/admin/mobile-kit"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -55,9 +57,69 @@ export default function AdminSchools() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Schools Monitor</h1>
+      <h1 className="hidden text-2xl font-bold text-slate-900 md:block">Schools Monitor</h1>
 
-      <div className="flex gap-3 items-center">
+      {/* Phone: search, status chips, one row per school. Desktop keeps the table below. */}
+      <div className="space-y-3 md:hidden">
+        <label className="flex h-12 items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search schools"
+            aria-label="Search schools"
+            className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+        <ChipTabs
+          label="Payment status"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          items={[
+            { key: "", label: "All" },
+            { key: "paid", label: "Paid" },
+            { key: "partial", label: "Partial" },
+            { key: "overdue", label: "Overdue" },
+            { key: "pending", label: "Pending" },
+          ]}
+        />
+        <p className="px-0.5 text-xs font-medium text-muted-foreground">
+          {schools.length} school{schools.length === 1 ? "" : "s"}
+          {filterStatus ? ` · ${filterStatus}` : ""}
+          {search ? ` · matching “${search}”` : ""}
+        </p>
+        {schools.length === 0 ? (
+          <EmptyPanel title="No schools match" hint="Try a different search or status." />
+        ) : (
+          <MList>
+            {schools.map((s) => (
+              <SchoolRow
+                key={s.id}
+                id={s.id}
+                name={s.name}
+                city={s.city}
+                state={s.state}
+                students={s.studentCount}
+                revenue={s.expectedRevenue}
+                paymentStatus={s.paymentStatus}
+                owed={s.amountOwed}
+                extraChips={
+                  s.hosted === "hosted_dedicated" ? (
+                    <Chip tone="primary">Hosted</Chip>
+                  ) : s.hosted === "planned" ? (
+                    <Chip tone="outline">Planned</Chip>
+                  ) : (
+                    <Chip>Shared SaaS</Chip>
+                  )
+                }
+              />
+            ))}
+          </MList>
+        )}
+      </div>
+
+      <div className="hidden gap-3 items-center md:flex">
         <Input
           placeholder="Search schools..."
           value={search}
@@ -78,7 +140,7 @@ export default function AdminSchools() {
         <span className="text-sm text-slate-500">{schools.length} schools</span>
       </div>
 
-      <Card>
+      <Card className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

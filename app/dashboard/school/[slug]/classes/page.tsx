@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
+import { useCachedList } from "@/hooks/useCachedList";
+import { orgQueries } from "@/lib/queries";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -110,9 +112,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function ClassesPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassRecord | null>(null);
@@ -156,30 +155,21 @@ export default function ClassesPage() {
     }
   }, [isDialogOpen, editingClass, form]);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!currentOrg) return;
-      try {
-        setIsLoading(true);
-        // Only privileged (HCORE: members.manage or owner/admin) can call the members endpoint.
-        const [classesData, teachersData] = await Promise.all([
-          apiFetch<ClassRecord[]>(`/classes/${currentOrg.slug}`),
-          isPrivileged
-            ? apiFetch<TeacherOption[]>(
-                `/organizations/${currentOrg.slug}/members?role=member`,
-              )
-            : Promise.resolve<TeacherOption[]>([]),
-        ]);
-        setClasses(classesData);
-        setTeachers(teachersData);
-      } catch {
-        toast.error("Failed to load classes");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-  }, [currentOrg, isPrivileged]);
+  const orgSlug = currentOrg?.slug ?? "";
+  const classesQuery = orgQueries.classes<ClassRecord[]>(orgSlug);
+  const [classes, setClasses, classesLoading] = useCachedList<ClassRecord[]>(
+    classesQuery.queryKey,
+    classesQuery.queryFn,
+    { enabled: !!orgSlug, initial: [], onError: () => toast.error("Failed to load classes") },
+  );
+  // Only privileged (HCORE: members.manage or owner/admin) can call the members endpoint.
+  const teachersQuery = orgQueries.teachers<TeacherOption[]>(orgSlug);
+  const [teachers, , teachersLoading] = useCachedList<TeacherOption[]>(
+    teachersQuery.queryKey,
+    teachersQuery.queryFn,
+    { enabled: !!orgSlug && isPrivileged, initial: [] },
+  );
+  const isLoading = classesLoading || teachersLoading;
 
   const filteredClasses = classes.filter((cls) => {
     // Teachers only see classes they have at least one subject assigned to

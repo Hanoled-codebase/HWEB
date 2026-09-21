@@ -21,40 +21,22 @@ import {
   School,
   UserPlus,
   Users,
-  Receipt,
-  Bell,
-  Menu,
-  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSidebar } from "@/components/ui/sidebar";
-import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import { ParentMobileNav } from "@/components/dashboard/ParentMobileNav";
+import { ParentHome } from "@/components/dashboard/mobile/ParentHome";
+import { RoleHome } from "@/components/dashboard/mobile/RoleHome";
 import { StudentDashboardView } from "@/components/dashboard/StudentDashboardView";
 import { AdminMobileDashboard } from "@/components/dashboard/AdminMobileDashboard";
 import { MemberMobileDashboard } from "@/components/dashboard/MemberMobileDashboard";
 
-function MobileSidebarMenuButton() {
-  const { setOpenMobile } = useSidebar();
-  return (
-    <button
-      onClick={() => setOpenMobile(true)}
-      className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200/80 transition-colors"
-      aria-label="Open menu"
-    >
-      <Menu className="h-4.5 w-4.5" />
-    </button>
-  );
-}
-
+// Only built from assignments whose subject/class id is present (see the
+// `!subject?.id || !classLevel?.id` guards below), so id is always set.
 type AssignmentOption = {
-  id?: string;
+  id: string;
   name?: string;
   level?: string;
   code?: string;
@@ -96,7 +78,7 @@ type ParentResultGroup = {
 };
 
 export default function DashboardOverviewPage() {
-  const { currentOrg, currentMember, currentStudent, isStudent } = useOrganization();
+  const { currentOrg, currentMember, isStudent } = useOrganization();
   const { user } = useAuth();
   const [memberSheets, setMemberSheets] = useState<SpreadsheetSummary[]>([]);
   const [isMemberSheetsLoading, setIsMemberSheetsLoading] = useState(false);
@@ -250,203 +232,11 @@ export default function DashboardOverviewPage() {
   if (role === "parent") {
     const assignedStudents = currentMember.assignedStudents || [];
     const firstName = user.name.split(" ")[0] || user.name;
-    const initial = firstName[0]?.toUpperCase() || "P";
 
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
-        {/* Mobile View matching screenshots */}
-        <div className="md:hidden space-y-6">
-          {/* Top Brand Header */}
-          <div className="flex items-center justify-between pt-1 pb-1">
-            <MobileSidebarMenuButton />
-
-            <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
-              HANOLED
-            </span>
-
-            <div className="flex items-center gap-2">
-              <NotificationSheet />
-              <Avatar className="h-9 w-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs">
-                <AvatarFallback className="bg-slate-100 text-slate-700 font-bold text-xs">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          </div>
-
-          {/* Welcome Header */}
-          <div>
-            <span className="text-[11px] font-extrabold tracking-wider text-slate-400 uppercase block mb-1">
-              PARENT PORTAL
-            </span>
-            <div className="flex items-start justify-between">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950 capitalize">
-                Welcome back,<br />
-                {firstName}
-              </h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 border border-emerald-100/80">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Active
-              </span>
-            </div>
-          </div>
-
-          {/* Linked Students Section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-slate-900">Linked students</h2>
-              <span className="text-xs text-slate-400 font-medium">
-                {assignedStudents.length} linked
-              </span>
-            </div>
-
-            {assignedStudents.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center shadow-sm">
-                <p className="text-sm font-medium text-slate-500">No children linked yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {assignedStudents.map((student) => {
-                  const childResults = parentResults.find(
-                    (g) => g.student.id === student.id,
-                  );
-                  const latestResults = childResults?.results
-                    .filter((r) => r.values.length > 0)
-                    .slice(0, 3);
-
-                  const studentInitials = `${student.firstName?.[0] || ""}${student.lastName?.[0] || ""}` || "ST";
-
-                  return (
-                    <Link
-                      key={student.id || `${student.firstName}-${student.lastName}`}
-                      href={`/dashboard/school/${currentOrg.slug}/results`}
-                      className="block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-slate-200"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-bold text-sm">
-                            {studentInitials}
-                          </div>
-                          <div>
-                            <h3 className="text-base font-bold text-slate-900 capitalize">
-                              {student.firstName} {student.lastName}
-                            </h3>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
-                      </div>
-
-                      {latestResults && latestResults.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 pl-14">
-                          {latestResults.map((r) => (
-                            <span
-                              key={r.id}
-                              className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
-                            >
-                              {r.subject.name}: {r.values[0] || "—"}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="pl-14">
-                          <span className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-                            Tap to view results
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="mt-3.5 pt-3 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
-                        <span>
-                          Last updated{" "}
-                          <span className="font-semibold text-slate-600">
-                            {new Date().toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Links Section */}
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 mb-3">Quick links</h2>
-
-            <div className="space-y-3">
-              <Link
-                href={`/dashboard/school/${currentOrg.slug}/students`}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/80"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100/80 text-slate-600">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">My Children</p>
-                    <p className="text-xs text-slate-400 mt-0.5">View linked student profiles</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300" />
-              </Link>
-
-              <Link
-                href={`/dashboard/school/${currentOrg.slug}/results`}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/80"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100/80 text-slate-600">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">View Results</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Check the latest assessment scores</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300" />
-              </Link>
-
-              <Link
-                href={`/dashboard/school/${currentOrg.slug}/invoices`}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/80"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100/80 text-slate-600">
-                    <Receipt className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">Invoices</p>
-                    <p className="text-xs text-slate-400 mt-0.5">View and pay outstanding fees</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300" />
-              </Link>
-
-              <Link
-                href={`/dashboard/school/${currentOrg.slug}/support`}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/80"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100/80 text-slate-600">
-                    <MessageSquare className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">Support</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Get help or contact the school</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300" />
-              </Link>
-            </div>
-          </div>
-
-          <ParentMobileNav slug={currentOrg.slug} active="overview" />
+      <div className="space-y-6">
+        <div className="md:hidden">
+          <ParentHome slug={currentOrg.slug} students={assignedStudents} results={parentResults} />
         </div>
 
         {/* Desktop */}
@@ -579,19 +369,11 @@ export default function DashboardOverviewPage() {
 
   if (isAccountant) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
-        {/* This role has no dedicated mobile dashboard component (unlike
-            admin/member/parent), so the hamburger + bell that open the
-            shared, permission-filtered sidebar must be provided here —
-            otherwise there is no way to navigate off this screen on mobile. */}
-        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
-          <MobileSidebarMenuButton />
-          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
-            HANOLED
-          </span>
-          <NotificationSheet />
+      <div className="space-y-6">
+        <div className="md:hidden">
+          <RoleHome />
         </div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-6">
+        <div className="hidden md:block rounded-xl border border-emerald-100 bg-emerald-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Finance Dashboard — HCORE Accountant</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
           <p className="mt-2 text-sm text-slate-600">Your HCORE ACCOUNTANT assignment is synced locally — manage fee structure, payments, debt and payroll independently, with HCORE as source when reachable.</p>
@@ -607,15 +389,11 @@ export default function DashboardOverviewPage() {
 
   if (isHOD) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
-        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
-          <MobileSidebarMenuButton />
-          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
-            HANOLED
-          </span>
-          <NotificationSheet />
+      <div className="space-y-6">
+        <div className="md:hidden">
+          <RoleHome />
         </div>
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-6">
+        <div className="hidden md:block rounded-xl border border-indigo-100 bg-indigo-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600">HOD Dashboard — HCORE HOD</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
           <p className="mt-2 text-sm text-slate-600">Department overview from HCORE teaching assignments — scoped locally for independent operation.</p>
@@ -630,15 +408,11 @@ export default function DashboardOverviewPage() {
 
   if (isLibrarian) {
     return (
-      <div className="space-y-6 pb-28 md:pb-0 px-4 sm:px-6 md:px-0 pt-2 md:pt-0">
-        <div className="flex items-center justify-between pt-1 pb-1 md:hidden">
-          <MobileSidebarMenuButton />
-          <span className="text-sm font-bold tracking-[0.14em] text-slate-900 uppercase">
-            HANOLED
-          </span>
-          <NotificationSheet />
+      <div className="space-y-6">
+        <div className="md:hidden">
+          <RoleHome />
         </div>
-        <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-6">
+        <div className="hidden md:block rounded-xl border border-amber-100 bg-amber-50/50 p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600">Library Dashboard — HCORE Librarian</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
           <p className="mt-2 text-sm text-slate-600">Library management from HCORE assignment — works offline from local projection.</p>
@@ -658,8 +432,8 @@ export default function DashboardOverviewPage() {
           <MemberMobileDashboard
             slug={currentOrg.slug}
             userName={user.name.split(" ")[0]}
-            subjectGroups={subjectGroups as any}
-            assignedClasses={assignedClasses as any}
+            subjectGroups={subjectGroups}
+            assignedClasses={assignedClasses}
             readySheetsCount={readySheetsCount}
             sheetsByAssignment={sheetsByAssignment}
             isMemberSheetsLoading={isMemberSheetsLoading}

@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# HCBT Edge Appliance static export
+/edge-ui/out/
+/edge-ui/.next/
+/edge-ui/next-env.d.ts

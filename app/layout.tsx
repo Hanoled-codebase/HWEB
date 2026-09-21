@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { QueryProvider } from "@/components/app/QueryProvider";
 import { ServiceWorkerCleanup } from "@/components/app/ServiceWorkerCleanup";
 
 const poppins = Poppins({ 
@@ -65,7 +66,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ServiceWorkerCleanup />
-        <ToastProvider>{children}</ToastProvider>
+        <QueryProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );

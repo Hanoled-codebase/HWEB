@@ -10,10 +10,13 @@ import {
   MapPin,
   ArrowUpRight,
   Sparkles,
+  Activity,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Chip, EmptyPanel, MList, SchoolRow as SchoolListRow, SectionHead, naira } from "@/components/admin/mobile-kit"
+import { cn } from "@/lib/utils"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -122,7 +125,15 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="space-y-8">
+    <>
+    <MobileDashboard
+      stats={stats}
+      schools={schools}
+      prospects={prospects}
+      pitching={pitching}
+      onboardingInProgress={onboardingInProgress}
+    />
+    <div className="hidden space-y-8 md:block">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Team Dashboard</h1>
@@ -356,6 +367,7 @@ export default function AdminDashboard() {
         </Card>
       )}
     </div>
+    </>
   )
 }
 
@@ -364,5 +376,186 @@ function EmptyRow({ text }: { text: string }) {
     <Card className="border-dashed">
       <CardContent className="py-8 text-center text-sm text-muted-foreground">{text}</CardContent>
     </Card>
+  )
+}
+
+/* ── Phone view ──────────────────────────────────────────────────────────
+   Same data as the desktop dashboard, re-ordered for a thumb: money first,
+   then who is paying (onboarded schools), then the pipeline, then activity.
+   Every list row is a single tap target; there are no tables and no sideways scroll. */
+
+function PipelineRow({ item, stageLabel }: { item: PipelineItem; stageLabel: string }) {
+  return (
+    <div className="flex min-h-[64px] items-center gap-3 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] font-semibold text-foreground">{item.name}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {item.location || "—"}
+          {item.estimatedStudents ? ` · ~${item.estimatedStudents.toLocaleString()} students` : ""}
+        </p>
+        {item.nextAction && <p className="mt-1 truncate text-xs font-medium text-primary">Next: {item.nextAction}</p>}
+        {item.owner && <p className="truncate text-[11px] text-muted-foreground">Owner: {item.owner.name}</p>}
+      </div>
+      <Chip tone="primary">{stageLabel}</Chip>
+    </div>
+  )
+}
+
+function MobileDashboard({
+  stats,
+  schools,
+  prospects,
+  pitching,
+  onboardingInProgress,
+}: {
+  stats: DashboardStats | null
+  schools: SchoolRow[]
+  prospects: PipelineItem[]
+  pitching: PipelineItem[]
+  onboardingInProgress: PipelineItem[]
+}) {
+  const outstanding = stats?.totalOutstanding ?? 0
+  const reach = [
+    `${(stats?.totalActiveSchools ?? 0).toLocaleString()} schools`,
+    `${(stats?.totalStudents ?? 0).toLocaleString()} students`,
+    `${(stats?.pipelineCount ?? 0).toLocaleString()} in pipeline`,
+  ]
+
+  return (
+    <div className="space-y-6 md:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-foreground">Team Dashboard</h1>
+        <Link
+          href="/admin/pipeline"
+          className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground active:bg-primary/90"
+        >
+          Add to pipeline
+        </Link>
+      </div>
+
+      <section aria-label="Term statement" className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <TrendingUp className="h-4 w-4 text-[#F5A623]" /> Expected revenue
+          </p>
+          <p className="text-xl font-bold tabular-nums text-foreground">{naira(stats?.totalExpectedRevenue ?? 0)}</p>
+        </div>
+        <div className="mt-2.5 flex items-baseline justify-between gap-3 border-t border-border pt-2.5">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <AlertCircle className={cn("h-4 w-4", outstanding > 0 ? "text-destructive" : "text-muted-foreground")} /> Outstanding
+          </p>
+          <p className={cn("text-xl font-bold tabular-nums", outstanding > 0 ? "text-destructive" : "text-foreground")}>
+            {naira(outstanding)}
+          </p>
+        </div>
+        <p className="mt-3 flex flex-wrap gap-x-2 gap-y-0.5 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground">
+          {reach.map((item, i) => (
+            <span key={item}>
+              {i > 0 && <span aria-hidden="true" className="mr-2 text-border">|</span>}
+              {item}
+            </span>
+          ))}
+        </p>
+      </section>
+
+      <section>
+        <SectionHead
+          title="Onboarded schools"
+          count={schools.length}
+          action={
+            <Link href="/admin/schools" className="flex min-h-[44px] items-center gap-1 pl-3 text-xs font-semibold text-primary">
+              View all <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          }
+        />
+        {onboardingInProgress.length > 0 && (
+          <div className="mb-3 rounded-2xl bg-warning/10 p-3.5">
+            <p className="text-xs font-semibold text-[#0B1220]">Currently onboarding ({onboardingInProgress.length})</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {onboardingInProgress.map((p) => (
+                <Chip key={p.id} tone="outline" className="bg-card">
+                  {p.name}
+                </Chip>
+              ))}
+            </div>
+          </div>
+        )}
+        {schools.length === 0 ? (
+          <EmptyPanel title="No onboarded schools yet" hint="Schools appear here once they go live." />
+        ) : (
+          <MList>
+            {schools.slice(0, 5).map((s) => (
+              <SchoolListRow
+                key={s.id}
+                id={s.id}
+                name={s.name}
+                city={s.city}
+                state={s.state}
+                students={s.studentCount}
+                revenue={s.expectedRevenue}
+                paymentStatus={s.paymentStatus}
+                owed={s.amountOwed}
+                note={s.subscriptionTier === "Premium" ? "Premium" : undefined}
+                extraChips={<Chip tone={s.subscriptionType === "HSMS+HCBT" ? "gold" : "primary"}>{s.subscriptionType}</Chip>}
+              />
+            ))}
+          </MList>
+        )}
+        {schools.length > 5 && (
+          <Link
+            href="/admin/schools"
+            className="mt-2 flex min-h-[48px] items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold text-primary active:bg-muted"
+          >
+            See all {schools.length} schools
+          </Link>
+        )}
+      </section>
+
+      <section>
+        <SectionHead title="Pitching" count={pitching.length} />
+        {pitching.length === 0 ? (
+          <EmptyPanel title="Nothing in active pitch" hint="Demoed, proposed or committed schools show here." />
+        ) : (
+          <MList>
+            {pitching.map((p) => (
+              <PipelineRow key={p.id} item={p} stageLabel={PITCHING_STAGES.find((st) => st.key === p.stage)?.label ?? p.stage} />
+            ))}
+          </MList>
+        )}
+      </section>
+
+      <section>
+        <SectionHead title="Prospects" count={prospects.length} />
+        {prospects.length === 0 ? (
+          <EmptyPanel title="No prospects logged yet" hint="Top of the funnel: not yet contacted, or just reached out." />
+        ) : (
+          <MList>
+            {prospects.map((p) => (
+              <PipelineRow key={p.id} item={p} stageLabel={p.stage.charAt(0).toUpperCase() + p.stage.slice(1)} />
+            ))}
+          </MList>
+        )}
+      </section>
+
+      {stats && stats.recentActivity.length > 0 && (
+        <section>
+          <SectionHead title="Recent activity" />
+          <MList>
+            {stats.recentActivity.map((a) => (
+              <div key={a.id} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
+                <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium capitalize text-foreground">{a.action.replace(".", " ")}</p>
+                  <p className="truncate text-xs text-muted-foreground">by {a.actor.name}</p>
+                </div>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {new Date(a.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+          </MList>
+        </section>
+      )}
+    </div>
   )
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
-import { HCBT_BASE, isForbiddenError } from "@/lib/api";
+import { HCBT_BASE, EDGE_MODE, isForbiddenError } from "@/lib/api";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
@@ -35,11 +35,17 @@ import {
   Send,
   Key,
   Copy,
-  RefreshCw
+  RefreshCw,
+  LayoutDashboard,
+  ShieldCheck,
+  HardDrive,
 } from "lucide-react";
+import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
+import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
+import EdgeDeviceTab from "./EdgeDeviceTab";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -50,6 +56,8 @@ export default function AdminDashboard() {
 
   // Core Data States
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [orgName, setOrgName] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
   // The real org slug, resolved from the authenticated session — used only
   // for the Edge Appliance pairing display below. `orgSlug` above falls back
   // to the placeholder "hanoled-default" whenever this page is opened
@@ -399,6 +407,7 @@ export default function AdminDashboard() {
         me = await cbtApi.checkAuth();
         setCurrentUser(me?.user || null);
         if (me?.organization?.slug) setResolvedOrgSlug(me.organization.slug);
+        if (me?.organization?.name) setOrgName(me.organization.name);
       } catch (authErr) {
         console.error("CBT auth check failed:", authErr);
       }
@@ -786,18 +795,32 @@ export default function AdminDashboard() {
     setParsedFileName("");
   };
 
+  const roleLabel = isAdmin ? "Admin" : "Teacher";
+  const displayName: string = currentUser?.name || currentUser?.email || "";
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
       <Toaster position="top-right" richColors />
 
-      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-2">
+      <CbtMobileTopBar roleLabel={roleLabel} name={displayName} onOpenAccount={() => setAccountOpen(true)} />
+      <CbtAccountSheet
+        open={accountOpen}
+        onOpenChange={setAccountOpen}
+        name={displayName}
+        email={currentUser?.email}
+        roleLabel={roleLabel}
+        school={orgName}
+        suiteHref={EDGE_MODE ? undefined : "/welcome"}
+        onSignOut={() => { cbtApi.logout(); window.location.assign("/"); }}
+      />
+      <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center justify-between gap-2">
           <Logo className="w-8 h-8 shrink-0" badgeText={isAdmin ? "ADMIN" : "TEACHER"} textColor="text-[#0B1220]" />
 
           <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-            {currentUser?.name && (
-              <span className="hidden md:inline text-[13px] font-semibold text-[#0B1220]">
-                {currentUser.name}
+            {displayName && (
+              <span className="hidden sm:inline max-w-[200px] truncate text-[13px] font-semibold text-[#0B1220]" title={displayName}>
+                {displayName}
               </span>
             )}
             <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
@@ -806,16 +829,18 @@ export default function AdminDashboard() {
                 {isAdmin ? "Admin Privileges" : "Teacher Access"}
               </span>
             </div>
-            <a
-              href="/welcome"
-              className="whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 py-2 sm:px-4 rounded-[10px] transition-all shadow-sm"
-            >
-              <span className="sm:hidden">Suite</span>
-              <span className="hidden sm:inline">Back to Suite</span>
-            </a>
+            {!EDGE_MODE && (
+              <a
+                href="/welcome"
+                className="inline-flex min-h-[44px] items-center whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 sm:px-4 rounded-[10px] transition-all shadow-sm"
+              >
+                <span className="sm:hidden">Suite</span>
+                <span className="hidden sm:inline">Back to Suite</span>
+              </a>
+            )}
             <button
               onClick={() => { cbtApi.logout(); window.location.assign("/"); }}
-              className="whitespace-nowrap text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-all"
+              className="min-h-[44px] whitespace-nowrap px-1 text-[13px] font-medium text-slate-500 hover:text-slate-700 transition-all"
             >
               Sign Out
             </button>
@@ -824,7 +849,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Admin Wrapper */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-safe-nav sm:py-8">
         
         {accessDenied ? (
           <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-2xl border border-rose-100 shadow-xl text-center">
@@ -836,10 +861,10 @@ export default function AdminDashboard() {
               This CBT console is only available to teachers and administrators. Your account doesn&apos;t have examiner-level access for this organization.
             </p>
             <a
-              href="/welcome"
+              href={EDGE_MODE ? "/signin/" : "/welcome"}
               className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
             >
-              Back to Suite
+              {EDGE_MODE ? "Sign in again" : "Back to Suite"}
             </a>
           </div>
         ) : designerExam ? (
@@ -1445,48 +1470,49 @@ export default function AdminDashboard() {
           </div>
         ) : (
           /* MAIN ADMIN DASHBOARD OVERVIEW VIEWS */
-          <div className="space-y-8 animate-fade-in">
-            
+          <div className="space-y-5 sm:space-y-8 animate-fade-in">
+            <CbtGreeting name={displayName} roleLabel={roleLabel} school={orgName} />
+
             {/* Metric cards: fluid responsive grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-blue-50 p-3 rounded-xl text-blue-600 w-fit lg:order-2">
-                  <FileText className="w-6 h-6" />
+              <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-blue-50 p-2 sm:p-3 rounded-xl text-blue-600 w-fit lg:order-2">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="lg:order-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Assessment Templates</p>
-                  <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.totalExams}</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600 w-fit lg:order-2">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <div className="lg:order-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Published Active Exams</p>
-                  <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.publishedExams}</p>
+                <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
+                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Total Assessment Templates</p>
+                  <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.totalExams}</p>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-violet-50 p-3 rounded-xl text-violet-600 w-fit lg:order-2">
-                  <Layers className="w-6 h-6" />
+              <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-emerald-600 w-fit lg:order-2">
+                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="lg:order-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Graded Answer Sheets</p>
-                  <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.totalSubmissions}</p>
+                <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
+                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Published Active Exams</p>
+                  <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.publishedExams}</p>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-amber-50 p-3 rounded-xl text-amber-600 w-fit lg:order-2">
-                  <TrendingUp className="w-6 h-6" />
+              <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-violet-50 p-2 sm:p-3 rounded-xl text-violet-600 w-fit lg:order-2">
+                  <Layers className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="lg:order-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Scoring Ratio</p>
-                  <p className="text-2xl font-black text-slate-800 mt-1 tracking-tight">{stats.avgScore}%</p>
+                <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
+                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Graded Answer Sheets</p>
+                  <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.totalSubmissions}</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+                <div className="bg-amber-50 p-2 sm:p-3 rounded-xl text-amber-600 w-fit lg:order-2">
+                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
+                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Average Scoring Ratio</p>
+                  <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.avgScore}%</p>
                 </div>
               </div>
 
@@ -1497,7 +1523,7 @@ export default function AdminDashboard() {
               {/* Admins see 4 tabs, which don't fit a phone-width screen —
                   scroll horizontally instead of silently clipping "Edge
                   Appliances" off the edge with no way to reach it. */}
-              <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
+              <div className="hidden sm:flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
                 <button
                   onClick={() => setActiveTab("overview")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
@@ -1531,14 +1557,14 @@ export default function AdminDashboard() {
                       activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Edge Appliances
+                    {EDGE_MODE ? "This Device" : "Edge Appliances"}
                   </button>
                 )}
               </div>
 
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-xs min-h-[48px] sm:min-h-0 py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Exam Template</span>
@@ -1639,8 +1665,7 @@ export default function AdminDashboard() {
                       <div
                         key={exam.id}
                         onClick={() => handleOpenResults(exam)}
-                        className="bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden p-6 flex flex-col justify-between"
-                        style={{ minHeight: "220px" }}
+                        className="bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden p-4 sm:p-6 flex flex-col justify-between sm:min-h-[220px]"
                       >
                         <div>
                           {/* Top row: title & More icon */}
@@ -1816,17 +1841,37 @@ export default function AdminDashboard() {
 
             {/* EDGE APPLIANCES TAB — admin only */}
             {isAdmin && activeTab === "appliances" && (
-              <EdgeAppliancesTab orgSlug={resolvedOrgSlug} exams={exams} />
+              EDGE_MODE
+                ? <EdgeDeviceTab />
+                : <EdgeAppliancesTab orgSlug={resolvedOrgSlug} exams={exams} />
             )}
 
           </div>
         )}
       </main>
 
+      {!accessDenied && !designerExam && (
+        <MobileSegmentBar
+          className="sm:hidden"
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: "overview", label: "Overview", icon: LayoutDashboard },
+            { key: "exams", label: "Exams", icon: FileText },
+            ...(isAdmin
+              ? [
+                  { key: "students" as const, label: "Grades", icon: ShieldCheck },
+                  { key: "appliances" as const, label: "Devices", icon: HardDrive },
+                ]
+              : []),
+          ]}
+        />
+      )}
+
       {/* CREATE EXAM TEMPLATE FORM MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
             
             <button
               onClick={() => setIsCreateModalOpen(false)}
@@ -2095,8 +2140,8 @@ export default function AdminDashboard() {
 
       {/* ASSIGN EXAM MODAL */}
       {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
             <button
               onClick={() => setShowAssignModal(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2216,8 +2261,8 @@ export default function AdminDashboard() {
 
       {/* RESULTS MODAL */}
       {resultsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] shadow-xl p-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => setResultsModal(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2342,8 +2387,8 @@ export default function AdminDashboard() {
 
       {/* PASSKEY MODAL */}
       {passkeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] shadow-xl p-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => setPasskeyModal(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2476,8 +2521,8 @@ export default function AdminDashboard() {
 
       {/* STUDENT DETAIL MODAL */}
       {studentDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] shadow-xl p-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => { setStudentDetail(null); setSelectedExamResult(null); setViewingQuestions(false); }}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"

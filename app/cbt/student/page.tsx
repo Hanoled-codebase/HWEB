@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
+import { EDGE_MODE } from "@/lib/api";
 import { logoutAction } from "@/app/actions/auth";
 import { clearAuthTokens } from "@/lib/auth-tokens";
 import { useExamStore } from "@/store/exam";
+import { useExamDeviceStatus, isExamCapableScreen } from "@/hooks/useExamDevice";
+import { ExamDeviceNotice, ExamDeviceBanner } from "@/components/cbt/ExamDeviceNotice";
+import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
+import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
 import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History, Key } from "lucide-react";
 import { toast, Toaster } from "sonner";
@@ -35,6 +40,9 @@ export default function StudentDashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const setSession = useExamStore((state) => state.setSession);
+  const examDevice = useExamDeviceStatus();
+  const [showDeviceNotice, setShowDeviceNotice] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   // Read organization slug from query params, fallback to default for dev
   const orgSlug = searchParams.get("orgSlug") || "hanoled-default";
@@ -122,6 +130,10 @@ export default function StudentDashboard() {
   // Trigger practice simulator
   const handleStartPracticeNow = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!isExamCapableScreen()) {
+      setShowDeviceNotice(true);
+      return;
+    }
     if (!practiceSubject) {
       toast.error("Please select a subject to practice.");
       return;
@@ -255,7 +267,9 @@ export default function StudentDashboard() {
         if (targetExamId) {
           const allExams = [...validSchoolExams, ...validSsceExams];
           const matchedExam = allExams.find((e: any) => e.id === targetExamId);
-          if (matchedExam) {
+          if (matchedExam && !isExamCapableScreen()) {
+            setShowDeviceNotice(true);
+          } else if (matchedExam) {
             setSelectedExam(matchedExam);
             setIsStartModalOpen(true);
             toast.info(`Assessment "${matchedExam.title}" opened. Click "Start Examination" to begin.`);
@@ -282,6 +296,10 @@ export default function StudentDashboard() {
 
   // Open Instructions Modal
   const handleInitiateStart = (exam: AssignedExam) => {
+    if (!isExamCapableScreen()) {
+      setShowDeviceNotice(true);
+      return;
+    }
     setSelectedExam(exam);
     setPasskeyInput("");
     setPasskeyError(null);
@@ -291,6 +309,11 @@ export default function StudentDashboard() {
   // Trigger Start Exam
   const handleStartExamNow = async () => {
     if (!selectedExam) return;
+    if (!isExamCapableScreen()) {
+      setIsStartModalOpen(false);
+      setShowDeviceNotice(true);
+      return;
+    }
     if (selectedExam.passkeyRequired && !passkeyInput.trim()) {
       setPasskeyError("Enter the exam passkey to continue.");
       return;
@@ -314,7 +337,11 @@ export default function StudentDashboard() {
       router.push(`/cbt/student/exam/${selectedExam.id}`);
     } catch (err: any) {
       console.error("Failed to start exam:", err);
-      if (err.code === "INVALID_PASSKEY" || err.code === "PASSKEY_NOT_ASSIGNED") {
+      if (err.code === "DEVICE_NOT_ALLOWED") {
+        // The server judged this a phone even though the screen check passed.
+        setIsStartModalOpen(false);
+        setShowDeviceNotice(true);
+      } else if (err.code === "INVALID_PASSKEY" || err.code === "PASSKEY_NOT_ASSIGNED") {
         setPasskeyError(err.message || "Incorrect passkey.");
       } else {
         toast.error(err.message || "Could not start exam. Please try again.");
@@ -331,12 +358,23 @@ export default function StudentDashboard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
       <Toaster position="top-right" richColors />
+      {showDeviceNotice && <ExamDeviceNotice onClose={() => setShowDeviceNotice(false)} />}
 
       {/* Header with Canonical Logo — brand + actions stay on one row on
           every viewport (never pushed off-screen); the school-name pill
           gets its own full-width row below on mobile, where it has enough
           room to show the whole name instead of clipping mid-word. */}
-      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <CbtMobileTopBar roleLabel="Student" name={studentName} onOpenAccount={() => setAccountOpen(true)} />
+      <CbtAccountSheet
+        open={accountOpen}
+        onOpenChange={setAccountOpen}
+        name={studentName}
+        roleLabel="Student"
+        school={schoolName}
+        suiteHref={EDGE_MODE ? undefined : "/welcome"}
+        onSignOut={handleSignOut}
+      />
+      <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-2">
             <Logo className="w-7 h-7 sm:w-8 sm:h-8" size="sm" badgeText="STUDENT" textColor="text-[#0B1220]" />
@@ -354,39 +392,30 @@ export default function StudentDashboard() {
             </div>
 
             <div className="flex items-center space-x-2 shrink-0">
-              <a
-                href="/welcome"
-                className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
-                title="Back to Suite"
-              >
-                <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Back to Suite</span>
-              </a>
+              {!EDGE_MODE && (
+                <a
+                  href="/welcome"
+                  className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 min-h-[44px] min-w-[44px] p-2 sm:min-h-0 sm:min-w-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
+                  title="Back to Suite"
+                >
+                  <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Back to Suite</span>
+                </a>
+              )}
               <button
                 onClick={handleSignOut}
-                className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 p-2 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
+                className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 min-h-[44px] px-3 sm:min-h-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
               >
                 Sign Out
               </button>
             </div>
           </div>
 
-          <div className="sm:hidden pb-2.5 space-y-1.5">
-            {studentName && (
-              <p className="text-sm font-semibold text-[#0B1220] truncate">{studentName}</p>
-            )}
-            <div className="flex items-center space-x-2 bg-blue-50/80 px-3.5 py-1.5 rounded-full border border-blue-200/80 w-fit max-w-full">
-              <School className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="text-xs font-bold text-blue-900 truncate">
-                {schoolName || (orgSlug !== "hanoled-default" ? orgSlug.replace("-", " ").toUpperCase() : "STUDENT PORTAL")}
-              </span>
-            </div>
-          </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-safe-nav sm:py-8">
         
         {authError ? (
           <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-rose-100 shadow-xl text-center">
@@ -418,10 +447,12 @@ export default function StudentDashboard() {
             <p className="text-slate-500 text-sm font-medium">Synchronizing student portal records...</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            
+          <div className="space-y-5 sm:space-y-8">
+            <CbtGreeting name={studentName} roleLabel="Student" school={schoolName} />
+            {examDevice === "blocked" && <ExamDeviceBanner />}
+
             {/* Tab Navigation Switches */}
-            <div className="flex space-x-1 bg-slate-200/60 p-1.5 rounded-sm border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
+            <div className="hidden sm:flex space-x-1 bg-slate-200/60 p-1.5 rounded-sm border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
               <button
                 onClick={() => setActiveTab("assigned")}
                 className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
@@ -849,10 +880,24 @@ export default function StudentDashboard() {
         )}
       </main>
 
+      {!authError && !loading && (
+        <MobileSegmentBar
+          className="sm:hidden"
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: "assigned", label: "Exams", icon: BookOpen },
+            // Practice is a start-an-exam flow, so it is not offered on phones.
+            ...(examDevice === "blocked" ? [] : [{ key: "practice" as const, label: "Practice", icon: PlayCircle }]),
+            { key: "history", label: "History", icon: History },
+          ]}
+        />
+      )}
+
       {/* Exam Instructions / Start Modal */}
       {isStartModalOpen && selectedExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-sm max-w-lg w-full border border-slate-200 shadow-2xl p-6 sm:p-8 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-sm max-w-lg w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:p-8 relative">
             <h3 className="text-xl font-bold text-slate-800 mb-2">Exam Rules & Guidelines</h3>
             <p className="text-slate-500 text-xs mb-6">Exam: <strong className="text-slate-700">{selectedExam.title}</strong></p>
 

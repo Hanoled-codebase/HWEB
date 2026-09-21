@@ -437,8 +437,8 @@ export default function PayrollPage() {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Staff</th>

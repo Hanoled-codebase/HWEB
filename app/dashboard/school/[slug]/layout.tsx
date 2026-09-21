@@ -4,12 +4,9 @@ import { useRef, useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
-import { usePermissions } from "@/hooks/usePermissions";
-import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { StudentSidebar } from "@/components/dashboard/StudentSidebar";
-import { GraduationCap, Loader2, ChevronLeft } from "lucide-react";
 import { HanoledLoader } from "@/components/ui/hanoled-loader";
 
 import { toast } from "sonner";
@@ -18,7 +15,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { StudentMobileLayout } from "@/components/dashboard/StudentMobileLayout";
 import { StaffRouteGuard } from "@/components/dashboard/StaffRouteGuard";
 import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
-import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
+import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProvider";
+import { MobileTopBar } from "@/components/dashboard/mobile/MobileTopBar";
+import { MobileTabBar } from "@/components/dashboard/mobile/MobileTabBar";
+import { useStaffMobileConfig } from "@/components/dashboard/mobile/mobile-config";
 
 function isUuidLike(segment: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(segment) || /^[0-9a-f]{20,}$/i.test(segment);
@@ -109,29 +109,15 @@ function getPageTitle(pathname: string, slug: string) {
 }
 
 /**
- * Prevents the shadcn Sidebar Sheet from opening on mobile when the user is
- * on the dashboard homepage for admin/owner or a teacher-in-Hweb "member" —
- * AdminMobileDashboard and MemberMobileDashboard provide their own
- * navigation drawers (separate local state) on that route, so the shared
- * Sheet would just sit uselessly open behind them.
- *
- * Parents have no such alternate drawer on their home page — their
- * hamburger button and bottom-nav "More" tab both open this same shared
- * Sheet — so this guard must not fight them there, or both become dead
- * buttons on the one screen where they're the only way to reach the rest
- * of the nav (Timetable, Homework, Library, Invoices, Support, ...).
+ * Phone chrome for every staff and parent role: one top bar, one role-tuned tab
+ * bar, one menu sheet. Built from the same permission-filtered nav as the
+ * desktop sidebar, so a role never sees a destination it cannot open.
+ * Desktop (md and up) is untouched: everything here is md:hidden.
  */
-function MobileSidebarGuard({ slug, pathname, hasOwnDrawer }: { slug: string; pathname: string; hasOwnDrawer: boolean }) {
-  const { setOpenMobile, openMobile, isMobile } = useSidebar();
-  const isDashboardHome = pathname === `/dashboard/school/${slug}`;
-
-  useEffect(() => {
-    if (isMobile && isDashboardHome && hasOwnDrawer && openMobile) {
-      setOpenMobile(false);
-    }
-  }, [isMobile, isDashboardHome, hasOwnDrawer, openMobile, setOpenMobile]);
-
-  return null;
+function StaffMobileFrame({ children }: { children: React.ReactNode }) {
+  const config = useStaffMobileConfig();
+  if (!config) return <>{children}</>;
+  return <MobileMenuProvider config={config}>{children}</MobileMenuProvider>;
 }
 
 export default function DashboardLayout({
@@ -143,17 +129,8 @@ export default function DashboardLayout({
   const slug = params.slug as string;
   const router = useRouter();
   const pathname = usePathname();
-  const { currentOrg, currentMember, currentStudent, isStudent, setCurrentOrg, isLoading, error } =
+  const { currentOrg, currentMember, isStudent, setCurrentOrg, isLoading, error } =
     useOrganization();
-  const { isPrivileged, isAccountant, isHOD, isLibrarian, isTeacher } = usePermissions();
-  // Mirrors page.tsx's branch order: only the admin fallback and the
-  // member+teacher branch render their own mobile dashboard with local
-  // drawer state (AdminMobileDashboard / MemberMobileDashboard). Every other
-  // role's home view relies on the shared sidebar Sheet, so this guard must
-  // not force-close it for them.
-  const hasOwnMobileDrawer =
-    isPrivileged ||
-    (currentMember?.role === "member" && !isAccountant && !isHOD && !isLibrarian && isTeacher);
   const {
     user,
     checkAuth,
@@ -161,7 +138,9 @@ export default function DashboardLayout({
     isLoading: authLoading,
     logout,
   } = useAuth();
-  const [isInitializing, setIsInitializing] = useState(true);
+  // Slug whose org load has finished. Set only from the async completion (never
+  // synchronously in an effect); "still initializing" is derived below.
+  const [initializedSlug, setInitializedSlug] = useState<string | null>(null);
   const lastLoadedSlug = useRef<string | null>(null);
 
   useEffect(() => {
@@ -176,30 +155,26 @@ export default function DashboardLayout({
     }
   }, [authLoading, isInitialized, logout, user]);
 
+  // Load the org context in parallel with checkAuth (/v1/me). Neither needs
+  // the other's result (both authenticate via the bearer token), so waiting
+  // for auth first added a full serial round trip to every cold load. See
+  // fast-rendering skill, Rule 2.
   useEffect(() => {
-    async function init() {
-      if (authLoading || !isInitialized) return;
-      
-      if (!user) {
-        setIsInitializing(false);
-        return;
-      }
+    if (!slug || lastLoadedSlug.current === slug) return;
+    lastLoadedSlug.current = slug;
 
-      if (slug && lastLoadedSlug.current !== slug) {
-        lastLoadedSlug.current = slug;
-        try {
-          if (!currentOrg || currentOrg.slug !== slug) {
-            await setCurrentOrg(slug);
-          }
-        } catch {
-          toast.error("Error loading organization. You might not have access.");
-        }
-      }
-      setIsInitializing(false);
-    }
-    
-    init();
-  }, [slug, user, authLoading, currentOrg, setCurrentOrg, isInitialized]);
+    if (currentOrg && currentOrg.slug === slug) return;
+
+    setCurrentOrg(slug)
+      .catch(() => {
+        toast.error("Error loading organization. You might not have access.");
+      })
+      .finally(() => setInitializedSlug(slug));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  const isInitializing =
+    !!slug && initializedSlug !== slug && !(currentOrg && currentOrg.slug === slug);
 
   if (isInitializing || authLoading || !isInitialized || (slug && isLoading)) {
     return <HanoledLoader />;
@@ -271,82 +246,57 @@ export default function DashboardLayout({
     );
   }
 
+  const isHome = pathname === `/dashboard/school/${slug}`;
+
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <MobileSidebarGuard slug={slug} pathname={pathname} hasOwnDrawer={Boolean(hasOwnMobileDrawer)} />
         <AppSidebar />
         <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative overflow-x-hidden">
-          {/* Desktop Header */}
-          <header className="sticky top-0 z-10 hidden md:flex h-14 shrink-0 items-center border-b border-slate-100 bg-white/85 backdrop-blur-md px-6">
-            <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
-                <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>School Operations Dashboard</span>
+          <StaffMobileFrame>
+            {/* Desktop Header */}
+            <header className="sticky top-0 z-10 hidden md:flex h-14 shrink-0 items-center border-b border-slate-100 bg-white/85 backdrop-blur-md px-6">
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
+                  <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span>School Operations Dashboard</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {currentMember?.role !== "parent" && (
+                    <a
+                      href="/cbt/admin"
+                      className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+                      CBT Console
+                    </a>
+                  )}
+                  <a
+                    href="/welcome"
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    Suite Hub
+                  </a>
+                  <NotificationSheet />
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {currentMember?.role !== "parent" && (
-                  <a
-                    href="/cbt/admin"
-                    className="text-xs font-semibold text-purple-700 hover:text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
-                    CBT Console
-                  </a>
-                )}
-                <a
-                  href="/welcome"
-                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  Suite Hub
-                </a>
-                <NotificationSheet />
-              </div>
-            </div>
-          </header>
-
-          {/* Mobile Sub-page Header */}
-          {pathname !== `/dashboard/school/${slug}` && (
-            <header className="sticky top-0 z-20 flex md:hidden h-14 shrink-0 items-center border-b border-slate-100 bg-white px-4 justify-between">
-              <button
-                onClick={() => {
-                  if (window.history.length > 2) {
-                    router.back();
-                  } else {
-                    const parts = pathname.split("/");
-                    parts.pop();
-                    const parent = parts.join("/");
-                    router.push(parent || `/dashboard/school/${slug}`);
-                  }
-                }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100/80 text-slate-700 shadow-sm cursor-pointer hover:bg-slate-200 transition-colors"
-                aria-label="Go back"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              <h1 className="text-base font-bold text-slate-900 tracking-tight truncate max-w-[200px] text-center">
-                {getPageTitle(pathname, slug)}
-              </h1>
-
-              <NotificationSheet />
             </header>
-          )}
 
-          <main className={`flex-1 overflow-y-auto ${
-            pathname === `/dashboard/school/${slug}` ? "p-0" : "p-4 pb-28 md:pb-6"
-          } md:p-6 lg:p-8`}>
-            <div className="mx-auto w-full max-w-[1400px]">
-              <StaffRouteGuard slug={slug}>
-                {children}
-              </StaffRouteGuard>
-            </div>
-          </main>
+            <MobileTopBar title={getPageTitle(pathname, slug)} isHome={isHome} />
 
-          {pathname !== `/dashboard/school/${slug}` && <MobileBottomNav slug={slug} />}
+            <main className="flex-1 overflow-y-auto px-4 pt-4 pb-safe-nav md:p-6 md:pb-6 lg:p-8">
+              <div className="mx-auto w-full max-w-[1400px]">
+                <StaffRouteGuard slug={slug}>
+                  {children}
+                </StaffRouteGuard>
+              </div>
+            </main>
+
+            <MobileTabBar />
+          </StaffMobileFrame>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

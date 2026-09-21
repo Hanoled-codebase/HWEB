@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { queriesForRoute } from "@/lib/queries";
 import { usePathname } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -30,12 +34,40 @@ import {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isMobile } = useSidebar();
   const { currentOrg, currentMember, organizations } = useOrganization();
   const { user, logout } = useAuth();
   const { visibleNavItems, role: userRole } = useSchoolNavItems();
-  const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher } = usePermissions();
+  const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher, isPrivileged } = usePermissions();
+  const queryClient = useQueryClient();
+  const orgSlug = currentOrg?.slug;
+
+  // Warm the caches for a destination's lists so the click renders instantly.
+  const prefetchRoute = (url: string) => {
+    if (!orgSlug) return;
+    const segment = url.split("/").filter(Boolean).pop() || "";
+    for (const query of queriesForRoute(segment, orgSlug, !!isPrivileged)) {
+      void queryClient.prefetchQuery({ ...query, staleTime: 15_000 });
+    }
+  };
+
+  // After the dashboard has settled, quietly warm the most-visited lists for
+  // admins so the first click on Students/Classes/Teachers is already cached.
+  useEffect(() => {
+    if (!orgSlug || !isPrivileged) return;
+    const timer = setTimeout(() => {
+      for (const segment of ["students", "classes", "teachers"]) {
+        for (const query of queriesForRoute(segment, orgSlug, true)) {
+          void queryClient.prefetchQuery({ ...query, staleTime: 60_000 });
+        }
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [orgSlug, isPrivileged, queryClient]);
 
   if (!currentOrg || !currentMember || !user) return null;
+  // Phones use the bottom-sheet menu (components/dashboard/mobile); this sidebar is desktop-only.
+  if (isMobile) return null;
 
   const getInitials = (name: string) =>
     name
@@ -210,7 +242,13 @@ export function AppSidebar() {
                   <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-blue-600 z-10" />
                 )}
                 <SidebarMenuButton
-                  render={<Link href={item.url} />}
+                  render={
+                    <Link
+                      href={item.url}
+                      onMouseEnter={() => prefetchRoute(item.url)}
+                      onFocus={() => prefetchRoute(item.url)}
+                    />
+                  }
                   tooltip={item.title}
                   className={
                     isActive
