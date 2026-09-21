@@ -211,9 +211,9 @@ export default function AdminSupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4", !showMobileList && "max-lg:hidden")}>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+          <h1 className="hidden text-xl font-bold tracking-tight text-slate-900 sm:block sm:text-2xl">
             Support Tickets
           </h1>
           <p className="text-slate-500">
@@ -225,16 +225,16 @@ export default function AdminSupportPage() {
             )}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchTickets}>
+        <Button variant="outline" size="sm" onClick={fetchTickets} className="max-sm:w-full">
           <RefreshCw className="mr-2 h-3.5 w-3.5" />
           Refresh
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className={cn("grid grid-cols-2 gap-3 sm:flex sm:items-center", !showMobileList && "max-lg:hidden")}>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as string)}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-full bg-white sm:w-[140px]">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -246,7 +246,7 @@ export default function AdminSupportPage() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as string)}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-full bg-white sm:w-[140px]">
             <SelectValue placeholder="All Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -275,7 +275,7 @@ export default function AdminSupportPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-420px)]">
+              <ScrollArea className="lg:h-[calc(100vh-420px)]">
                 {isLoading ? (
                   <div className="space-y-2 p-4">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -361,19 +361,19 @@ export default function AdminSupportPage() {
         {/* ── Chat / Detail View ────────────────────────────────── */}
         <div className={cn("lg:block", showMobileList && "hidden")}>
           {selectedTicket ? (
-            <Card className="flex h-[calc(100vh-420px)] flex-col border-slate-200 shadow-sm">
+            <Card className="flex h-[calc(100dvh-10.5rem)] flex-col border-slate-200 shadow-sm lg:h-[calc(100vh-420px)]">
               {/* Header */}
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                 <button
                   type="button"
                   onClick={handleBackToList}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 lg:hidden"
+                  aria-label="Back to tickets" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-bold text-slate-900">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h3 className="line-clamp-2 text-sm font-bold text-slate-900 sm:truncate">
                       {selectedTicket.subject}
                     </h3>
                     <Badge variant="outline" className={cn("shrink-0 px-2 py-0 text-[11px] font-medium", STATUS_CONFIG[selectedTicket.status].className)}>
@@ -395,12 +395,12 @@ export default function AdminSupportPage() {
                   </p>
                 </div>
                 {selectedTicket.status !== "closed" && (
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex shrink-0 gap-2 max-lg:w-full">
                     <Select
                       value={selectedTicket.status}
                       onValueChange={(v) => handleUpdateStatus(selectedTicket.id, v as TicketStatus)}
                     >
-                      <SelectTrigger className="w-[130px] bg-white">
+                      <SelectTrigger className="bg-white max-lg:flex-1 lg:w-[130px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -426,7 +426,7 @@ export default function AdminSupportPage() {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 px-5 py-4">
+              <ScrollArea className="flex-1 px-4 py-4 sm:px-5">
                 {messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
@@ -449,7 +449,7 @@ export default function AdminSupportPage() {
                               ? "bg-blue-600 text-white"
                               : "border border-slate-200 bg-white text-slate-800",
                           )}>
-                            <p className="mb-1 text-[11px] font-semibold" style={mine ? { color: "rgba(255,255,255,0.7)" } : { color: "rgb(100,116,139)" }}>
+                            <p className={cn("mb-1 text-[11px] font-semibold", mine ? "text-white/70" : "text-slate-500")}>
                               {senderName(msg)}
                             </p>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.message}</p>
@@ -466,7 +466,7 @@ export default function AdminSupportPage() {
               </ScrollArea>
 
               {/* Input */}
-              <div className="border-t border-slate-200 px-5 py-4">
+              <div className="border-t border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                 <form
                   onSubmit={(e) => { e.preventDefault(); handleReply(); }}
                   className="flex gap-3"
@@ -477,7 +477,7 @@ export default function AdminSupportPage() {
                     onChange={(e) => setMessageInput(e.target.value)}
                     placeholder="Type your reply..."
                     disabled={isSending || selectedTicket.status === "closed"}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm ring-offset-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-12 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-base sm:h-10 sm:text-sm ring-offset-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <Button
                     type="submit"

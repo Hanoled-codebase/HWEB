@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { ChipTabs, EmptyPanel, MList } from "@/components/admin/mobile-kit"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -32,6 +33,7 @@ interface PipelineItem {
 
 export default function PipelinePage() {
   const [items, setItems] = useState<PipelineItem[]>([])
+  const [activeStage, setActiveStage] = useState("prospect")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ name: "", location: "", estimatedStudents: "", stage: "prospect", nextAction: "", notes: "" })
 
@@ -80,11 +82,11 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Onboarding Pipeline</h1>
+      <div className="flex items-center justify-end md:justify-between">
+        <h1 className="hidden text-2xl font-bold text-slate-900 md:block">Onboarding Pipeline</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button>Add School</Button></DialogTrigger>
-          <DialogContent>
+          <DialogTrigger asChild><Button className="max-md:w-full">Add School</Button></DialogTrigger>
+          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
             <DialogHeader><DialogTitle>Add to Pipeline</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="School name" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
@@ -101,7 +103,45 @@ export default function PipelinePage() {
         </Dialog>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: "400px" }}>
+      {/* Phone: pick a stage, then work its list. The 7-column board is desktop-only. */}
+      <div className="space-y-3 md:hidden">
+        <ChipTabs
+          label="Pipeline stage"
+          value={activeStage}
+          onChange={setActiveStage}
+          items={STAGES.map((st) => ({ key: st.key, label: st.label, count: stageItems(st.key).length }))}
+        />
+        {stageItems(activeStage).length === 0 ? (
+          <EmptyPanel
+            title={`No schools in ${STAGES.find((st) => st.key === activeStage)?.label ?? "this stage"}`}
+            hint="Move a school here from the stage before it, or add a new one."
+          />
+        ) : (
+          <MList>
+            {stageItems(activeStage).map((item) => {
+              const next = STAGES[STAGES.findIndex((st) => st.key === item.stage) + 1]
+              return (
+                <article key={item.id} className="space-y-2 px-4 py-3.5">
+                  <p className="text-[15px] font-semibold text-foreground">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.location || "—"}
+                    {item.estimatedStudents ? ` · ~${item.estimatedStudents.toLocaleString()} students` : ""}
+                  </p>
+                  {item.nextAction && <p className="text-xs font-medium text-primary">Next: {item.nextAction}</p>}
+                  {item.owner && <p className="text-[11px] text-muted-foreground">Owner: {item.owner.name}</p>}
+                  {next && (
+                    <Button variant="outline" className="mt-1 w-full text-sm" onClick={() => advanceStage(item.id, item.stage)}>
+                      Move to {next.label}
+                    </Button>
+                  )}
+                </article>
+              )
+            })}
+          </MList>
+        )}
+      </div>
+
+      <div className="hidden gap-3 overflow-x-auto pb-4 md:flex" style={{ minHeight: "400px" }}>
         {STAGES.map(stage => (
           <div key={stage.key} className="flex-shrink-0 w-64">
             <div className={`rounded-t-lg px-3 py-2 text-sm font-medium ${stage.color}`}>

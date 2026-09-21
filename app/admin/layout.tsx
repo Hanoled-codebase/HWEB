@@ -98,6 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     },
     showCbtConsole: false,
     showNotifications: false,
+    hideBack: true,
     logout,
   }
   const currentTitle =

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Chip, EmptyPanel, MList, naira } from "@/components/admin/mobile-kit"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -72,12 +73,12 @@ export default function HostedPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Hosted Schools Manager</h1>
+      <div className={`flex items-center justify-end md:justify-between ${canManageHosted ? "" : "max-md:hidden"}`}>
+        <h1 className="hidden text-2xl font-bold text-slate-900 md:block">Hosted Schools Manager</h1>
         {canManageHosted && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button>Add Hosted School</Button></DialogTrigger>
-          <DialogContent>
+          <DialogTrigger asChild><Button className="max-md:w-full">Add Hosted School</Button></DialogTrigger>
+          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
             <DialogHeader><DialogTitle>Add Hosted Configuration</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="Organization ID" value={form.organizationId} onChange={e => setForm(p => ({ ...p, organizationId: e.target.value }))} required />
@@ -97,7 +98,50 @@ export default function HostedPage() {
         )}
       </div>
 
-      <Card>
+      {/* Phone: one card-row per hosted school. */}
+      <div className="md:hidden">
+        {configs.length === 0 ? (
+          <EmptyPanel title="No hosted configurations yet" hint="Dedicated and planned deployments are listed here." />
+        ) : (
+          <MList>
+            {configs.map((c) => (
+              <article key={c.id} className="space-y-2.5 px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-[15px] font-semibold text-foreground">{c.organization.name}</p>
+                  {c.hostingTier === "hosted_dedicated" ? (
+                    <Chip tone="primary">Hosted (Dedicated)</Chip>
+                  ) : c.hostingTier === "planned" ? (
+                    <Chip tone="outline">Planned</Chip>
+                  ) : (
+                    <Chip>Shared SaaS</Chip>
+                  )}
+                </div>
+                <p className="break-all text-xs text-muted-foreground">{c.subdomain || "No subdomain yet"}</p>
+                <dl className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-[11px] text-muted-foreground">Database</dt>
+                    <dd className="break-words text-sm font-medium text-foreground">{c.dbInstance || "—"}</dd>
+                  </div>
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-[11px] text-muted-foreground">Monthly cost</dt>
+                    <dd className="text-sm font-semibold tabular-nums text-foreground">
+                      {c.infraCostMonthly ? naira(Number(c.infraCostMonthly)) : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-[11px] text-muted-foreground">Moved</dt>
+                    <dd className="text-sm font-medium tabular-nums text-foreground">
+                      {c.movedAt ? new Date(c.movedAt).toLocaleDateString() : "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </MList>
+        )}
+      </div>
+
+      <Card className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

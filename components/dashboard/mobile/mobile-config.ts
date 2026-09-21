@@ -65,6 +65,8 @@ export type MobileShellConfig = {
   logout?: () => void | Promise<void>;
   /** The bell reads school notifications; shells outside a school hide it. */
   showNotifications?: boolean;
+  /** Every destination is a top-level tab or menu item, so pages never show a back arrow. */
+  hideBack?: boolean;
 };
 
 const SECTION_TITLES: Record<string, string> = {

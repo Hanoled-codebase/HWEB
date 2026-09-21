@@ -126,3 +126,15 @@ Everything below `md` (768px) in `/dashboard/school/[slug]`, `/admin` and the CB
 - **Account holder's name is always on screen.** Phones: `CbtGreeting` (Deep Ink card, gold role chip, school) at the top of every dashboard plus the avatar -> `CbtAccountSheet` (name, email, role, school, Back to Suite, Sign out). Tablet/desktop: the name sits in the header beside the role badge. Shared chrome lives in `components/cbt/CbtMobileChrome.tsx`.
 - **Navigation:** the pill tab row is `sm`-and-up only; phones get `MobileSegmentBar` at the bottom (student: Exams / Practice / History; teacher: Overview / Exams; admin: Overview / Exams / Grades / Devices). Dialogs become bottom sheets on phones.
 - **Students on phones are view-only for exams.** Phones see the list and results; every Start/Resume/Practice path shows `ExamDeviceNotice`, and the exam room itself refuses to mount. The Practice tab is not offered on phones. Server-side the same rule is enforced by `Hcbt/shared/exam-device` (cloud backend middleware + edge appliance), which returns `403 DEVICE_NOT_ALLOWED`.
+
+## Platform admin phone view (hanoled.com/admin)
+
+Phones only (`md:hidden` / `hidden md:block` pairs); the desktop tables and 7-column board are untouched.
+
+- **Shell:** the shared mobile shell (top bar, tab bar: Home / Schools / Payments / Pipeline + Menu for Hosted, Support, sign out). `hideBack` is set because every admin destination is top level.
+- **Lists, not tables:** `components/admin/mobile-kit.tsx` holds `MList` (one rounded container, hairline dividers), `SchoolRow` (whole row is the 72px tap target, term revenue right-aligned in tabular figures), `ChipTabs` (44px filter chips), `PaymentChip`, `SectionHead`, `EmptyPanel`.
+- **Colour is brand-only:** Hanoled Blue for interaction and the current filter; Success / Warning / Alert appear only as payment or ticket status (`paid` / `partial` / `overdue`, owed amounts, overdue banner); Growth Gold is used once per screen (the revenue icon on the dashboard statement, the HSMS+HCBT subscription chip).
+- **Dashboard order for a thumb:** term statement (expected revenue, outstanding, reach) -> onboarded schools (first 5 + "See all") -> pitching -> prospects -> recent activity.
+- **Pipeline:** stage chips with counts plus the selected stage's list and a 44px "Move to next stage" button, instead of horizontal kanban columns.
+- **Support:** ticket list scrolls with the page; an open conversation fills the space between the top bar and the tab bar, actions get their own row, and the composer uses a 16px input (no iOS zoom).
+- **Dialogs** (Record Payment, Add School, Add Hosted School) are bottom sheets on phones.

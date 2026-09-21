@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { AlertTriangle } from "lucide-react"
+import { EmptyPanel, MList, PaymentChip, naira } from "@/components/admin/mobile-kit"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -67,13 +69,13 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Payment Tracker</h1>
+      <div className="flex items-center justify-end md:justify-between">
+        <h1 className="hidden text-2xl font-bold text-slate-900 md:block">Payment Tracker</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Record Payment</Button>
+            <Button className="max-md:w-full">Record Payment</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
             <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="Organization ID" value={form.organizationId} onChange={e => setForm(p => ({ ...p, organizationId: e.target.value }))} required />
@@ -89,7 +91,74 @@ export default function PaymentsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* Phone: a statement (billed, collected, outstanding), then one row per record. */}
+      <div className="space-y-4 md:hidden">
+        <section aria-label="Payment totals" className="divide-y divide-border rounded-2xl border border-border bg-card px-4">
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <p className="text-sm font-medium text-muted-foreground">Total billed</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{naira(summary.totalBilled)}</p>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <p className="text-sm font-medium text-muted-foreground">Collected</p>
+            <p className="text-lg font-bold tabular-nums text-success">{naira(summary.totalCollected)}</p>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <p className="text-sm font-medium text-muted-foreground">Outstanding</p>
+            <p className={`text-lg font-bold tabular-nums ${summary.totalOutstanding > 0 ? "text-destructive" : "text-foreground"}`}>
+              {naira(summary.totalOutstanding)}
+            </p>
+          </div>
+        </section>
+
+        {records.filter((r) => r.daysOverdue > 7).length > 0 && (
+          <div role="status" className="flex items-start gap-2.5 rounded-2xl bg-destructive/10 p-3.5 text-sm font-medium text-destructive">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            {records.filter((r) => r.daysOverdue > 7).length} school
+            {records.filter((r) => r.daysOverdue > 7).length === 1 ? " is" : "s are"} overdue by more than 7 days
+          </div>
+        )}
+
+        {records.length === 0 ? (
+          <EmptyPanel title="No payments recorded" hint="Tap Record Payment to log the first one." />
+        ) : (
+          <MList>
+            {records.map((r) => (
+              <article key={r.id} className="space-y-2.5 px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">{r.schoolName}</p>
+                    <p className="text-xs text-muted-foreground">{r.term}</p>
+                  </div>
+                  <PaymentChip status={r.status} />
+                </div>
+                <dl className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-muted-foreground">Billed</dt>
+                    <dd className="text-sm font-semibold tabular-nums text-foreground">{naira(r.amountBilled)}</dd>
+                  </div>
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-muted-foreground">Paid</dt>
+                    <dd className="text-sm font-semibold tabular-nums text-foreground">{naira(r.amountPaid)}</dd>
+                  </div>
+                  <div className="flex flex-col-reverse">
+                    <dt className="text-muted-foreground">Owed</dt>
+                    <dd className={`text-sm font-semibold tabular-nums ${r.balanceOwed > 0 ? "text-destructive" : "text-foreground"}`}>
+                      {naira(r.balanceOwed)}
+                    </dd>
+                  </div>
+                </dl>
+                {r.daysOverdue > 0 && (
+                  <p className="text-xs font-semibold text-destructive">
+                    {r.daysOverdue} day{r.daysOverdue === 1 ? "" : "s"} overdue
+                  </p>
+                )}
+              </article>
+            ))}
+          </MList>
+        )}
+      </div>
+
+      <div className="hidden grid-cols-3 gap-4 md:grid">
         <Card>
           <CardHeader><CardTitle className="text-sm text-slate-500">Total Billed</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold">₦{summary.totalBilled.toLocaleString()}</p></CardContent>
@@ -105,12 +174,12 @@ export default function PaymentsPage() {
       </div>
 
       {records.filter(r => r.daysOverdue > 7).length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+        <div className="hidden bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm md:block">
           ⚠ {records.filter(r => r.daysOverdue > 7).length} schools overdue by more than 7 days
         </div>
       )}
 
-      <Card>
+      <Card className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
