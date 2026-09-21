@@ -29,6 +29,57 @@ function MobileTabBarInner() {
 
   const activeTab = config.tabs.find((tab) => isPathActive(pathname, tab, config.basePath));
 
+  if (config.tabStyle === "pill") {
+    const menuActive = menuOpen || !activeTab;
+    const pill = (active: boolean) =>
+      cn(
+        "flex flex-col items-center gap-1 rounded-2xl px-3.5 py-1.5 transition-colors",
+        active ? "bg-blue-50 text-blue-600" : "text-slate-500",
+      );
+    const label = (active: boolean) => cn("text-[13px] leading-tight", active ? "font-semibold" : "font-medium");
+    return (
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      >
+        <ul className="mx-auto flex max-w-[520px] items-stretch px-2 pt-1.5 pb-1.5">
+          {config.tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab?.key === tab.key;
+            return (
+              <li key={tab.key} className="flex min-w-0 flex-1 justify-center">
+                <Link
+                  href={tab.href}
+                  aria-current={active ? "page" : undefined}
+                  className="flex min-h-[56px] items-center justify-center active:opacity-70"
+                >
+                  <span className={pill(active)}>
+                    <Icon className="h-5 w-5" strokeWidth={active ? 2.3 : 2} />
+                    <span className={label(active)}>{tab.label}</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+          <li className="flex min-w-0 flex-1 justify-center">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              className="flex min-h-[56px] items-center justify-center active:opacity-70"
+            >
+              <span className={pill(menuActive)}>
+                <Menu className="h-5 w-5" strokeWidth={menuActive ? 2.3 : 2} />
+                <span className={label(menuActive)}>Menu</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Primary"

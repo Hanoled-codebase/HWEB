@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Search } from "lucide-react"
-import { Chip, ChipTabs, EmptyPanel, MList, SchoolRow } from "@/components/admin/mobile-kit"
+import { CardList, Chip, ChipTabs, EmptyPanel, SchoolRow } from "@/components/admin/mobile-kit"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -92,7 +92,7 @@ export default function AdminSchools() {
         {schools.length === 0 ? (
           <EmptyPanel title="No schools match" hint="Try a different search or status." />
         ) : (
-          <MList>
+          <CardList>
             {schools.map((s) => (
               <SchoolRow
                 key={s.id}
@@ -115,7 +115,7 @@ export default function AdminSchools() {
                 }
               />
             ))}
-          </MList>
+          </CardList>
         )}
       </div>
 
