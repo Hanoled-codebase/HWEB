@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
-import { HCBT_BASE, isForbiddenError } from "@/lib/api";
+import { HCBT_BASE, EDGE_MODE, isForbiddenError } from "@/lib/api";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
@@ -40,6 +40,7 @@ import {
 import { toast, Toaster } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
+import EdgeDeviceTab from "./EdgeDeviceTab";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -806,13 +807,15 @@ export default function AdminDashboard() {
                 {isAdmin ? "Admin Privileges" : "Teacher Access"}
               </span>
             </div>
-            <a
-              href="/welcome"
-              className="whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 py-2 sm:px-4 rounded-[10px] transition-all shadow-sm"
-            >
-              <span className="sm:hidden">Suite</span>
-              <span className="hidden sm:inline">Back to Suite</span>
-            </a>
+            {!EDGE_MODE && (
+              <a
+                href="/welcome"
+                className="whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 py-2 sm:px-4 rounded-[10px] transition-all shadow-sm"
+              >
+                <span className="sm:hidden">Suite</span>
+                <span className="hidden sm:inline">Back to Suite</span>
+              </a>
+            )}
             <button
               onClick={() => { cbtApi.logout(); window.location.assign("/"); }}
               className="whitespace-nowrap text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-all"
@@ -836,10 +839,10 @@ export default function AdminDashboard() {
               This CBT console is only available to teachers and administrators. Your account doesn&apos;t have examiner-level access for this organization.
             </p>
             <a
-              href="/welcome"
+              href={EDGE_MODE ? "/signin/" : "/welcome"}
               className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
             >
-              Back to Suite
+              {EDGE_MODE ? "Sign in again" : "Back to Suite"}
             </a>
           </div>
         ) : designerExam ? (
@@ -1531,7 +1534,7 @@ export default function AdminDashboard() {
                       activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Edge Appliances
+                    {EDGE_MODE ? "This Device" : "Edge Appliances"}
                   </button>
                 )}
               </div>
@@ -1816,7 +1819,9 @@ export default function AdminDashboard() {
 
             {/* EDGE APPLIANCES TAB — admin only */}
             {isAdmin && activeTab === "appliances" && (
-              <EdgeAppliancesTab orgSlug={resolvedOrgSlug} exams={exams} />
+              EDGE_MODE
+                ? <EdgeDeviceTab />
+                : <EdgeAppliancesTab orgSlug={resolvedOrgSlug} exams={exams} />
             )}
 
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useExamId } from "@/lib/route-params";
 import { cbtApi } from "@/lib/api-cbt";
 import { useExamStore } from "@/store/exam";
 import {
@@ -42,8 +43,7 @@ function compactAnswers(raw: Record<string, number | null>): Record<string, numb
 
 export default function ActiveExamPage() {
   const router = useRouter();
-  const params = useParams();
-  const examId = params.examId as string;
+  const examId = useExamId();
 
   const session = useExamStore((state) => state.session);
   const answers = useExamStore((state) => state.answers);

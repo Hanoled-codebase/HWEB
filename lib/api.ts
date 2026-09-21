@@ -3,7 +3,9 @@ import { getHcoreToken, getHcbtToken } from "./auth-tokens";
 
 export const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 export const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
-export const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
+// The HCBT Edge Appliance serves this UI itself, so its API is same-origin.
+export const EDGE_MODE = process.env.NEXT_PUBLIC_EDGE_MODE === "1";
+export const HCBT_BASE = EDGE_MODE ? '' : (process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002');
 
 export type RequestOptions = RequestInit & {
   params?: Record<string, string | number | boolean | undefined>;
@@ -94,7 +96,12 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
     );
 
     if (!response.ok) {
-      if (response.status === 401 && !isAuthPath) {
+      if (response.status === 401 && !isAuthPath && EDGE_MODE) {
+        // No HCORE to refresh against offline — the local session is simply over.
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/signin")) {
+          window.location.href = "/signin/";
+        }
+      } else if (response.status === 401 && !isAuthPath) {
         try {
           const refreshRes = await fetch(`${HCORE_BASE}/v1/auth/refresh`, {
             method: "POST",

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useExamId } from "@/lib/route-params";
 import { cbtApi } from "@/lib/api-cbt";
 import { ResultView } from "@/components/cbt/ResultView";
 import { Loader2, ArrowLeft, RefreshCw, AlertCircle, TrendingUp, Hourglass } from "lucide-react";
@@ -10,9 +11,8 @@ import { Toaster } from "sonner";
 
 export default function ExamResultPage() {
   const router = useRouter();
-  const params = useParams();
   const searchParams = useSearchParams();
-  const examId = params.examId as string;
+  const examId = useExamId();
   const orgSlug = searchParams.get("orgSlug") || "hanoled-default";
 
 
