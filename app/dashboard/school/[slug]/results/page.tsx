@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ParentMobileNav } from "@/components/dashboard/ParentMobileNav";
 import ReportCardPrintModal from "@/components/results/ReportCardPrintModal";
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
 import { Badge } from "@/components/ui/badge";
@@ -815,10 +814,6 @@ export default function ResultsPage() {
                     </button>
                   )}
                 </div>
-
-                {currentOrg?.slug && (
-                  <ParentMobileNav slug={currentOrg.slug} active="results" />
-                )}
 
                 <MobileSubjectBreakdown
                   subject={selectedSubject}

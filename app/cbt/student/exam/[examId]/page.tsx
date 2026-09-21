@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useExamId } from "@/lib/route-params";
 import { cbtApi } from "@/lib/api-cbt";
 import { useExamStore } from "@/store/exam";
+import { useExamDeviceStatus } from "@/hooks/useExamDevice";
+import { ExamDeviceNotice } from "@/components/cbt/ExamDeviceNotice";
 import {
   autoSaveAnswers,
   recoverAnswers,
@@ -41,7 +43,25 @@ function compactAnswers(raw: Record<string, number | null>): Record<string, numb
   return result;
 }
 
+/**
+ * The exam room only opens on a computer or tablet. This gate runs before any
+ * exam logic mounts, so a phone hitting a direct link or bookmark never starts
+ * the attempt, never arms proctoring, and never touches the timer.
+ */
 export default function ActiveExamPage() {
+  const device = useExamDeviceStatus();
+  if (device === "unknown") {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+  if (device === "blocked") return <ExamDeviceNotice />;
+  return <ActiveExam />;
+}
+
+function ActiveExam() {
   const router = useRouter();
   const examId = useExamId();
 

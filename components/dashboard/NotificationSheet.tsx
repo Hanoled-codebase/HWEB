@@ -72,7 +72,7 @@ function formatRelativeTime(dateStr: string) {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
-export function NotificationSheet() {
+export function NotificationSheet({ triggerClassName }: { triggerClassName?: string } = {}) {
   const {
     notifications,
     unreadCount,
@@ -94,7 +94,7 @@ export function NotificationSheet() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none cursor-pointer"
+        className={`relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none cursor-pointer ${triggerClassName ?? ""}`}
       >
         <Bell className="h-4 w-4 text-slate-700" />
         {unreadCount > 0 && (

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
+import { useCachedList } from "@/hooks/useCachedList";
+import { orgQueries } from "@/lib/queries";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -87,8 +89,6 @@ type TeacherMember = {
 export default function TeachersPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
-  const [teachers, setTeachers] = useState<TeacherMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
@@ -101,25 +101,13 @@ export default function TeachersPage() {
     defaultValues: { email: "" },
   });
 
-  useEffect(() => {
-    async function fetchTeachers() {
-      if (!currentOrg) return;
-      try {
-        setIsLoading(true);
-        const data = isPrivileged
-          ? await apiFetch<TeacherMember[]>(
-              `/organizations/${currentOrg.slug}/members?role=member`,
-            )
-          : [];
-        setTeachers(data);
-      } catch {
-        toast.error("Failed to load teachers");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchTeachers();
-  }, [currentOrg, isPrivileged]);
+  const orgSlug = currentOrg?.slug ?? "";
+  const teachersQuery = orgQueries.teachers<TeacherMember[]>(orgSlug);
+  const [teachers, setTeachers, isLoading] = useCachedList<TeacherMember[]>(
+    teachersQuery.queryKey,
+    teachersQuery.queryFn,
+    { enabled: !!orgSlug && isPrivileged, initial: [], onError: () => toast.error("Failed to load teachers") },
+  );
 
   const filteredTeachers = teachers.filter(
     (t) =>
@@ -364,7 +352,7 @@ export default function TeachersPage() {
 
       {/* Mobile Floating Sticky Invite Button */}
       {isPrivileged && (
-        <div className="fixed bottom-16 inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
+        <div className="fixed bottom-above-nav inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
           <Button
             onClick={() => setIsDialogOpen(true)}
             className="w-full h-12 bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"

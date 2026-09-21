@@ -4,6 +4,10 @@ import { useEffect, useState, createContext, useContext, useCallback } from "rea
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { LayoutGrid, School, CreditCard, GitBranch, Server, LifeBuoy, LogOut } from "lucide-react"
+import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProvider"
+import { MobileTopBar } from "@/components/dashboard/mobile/MobileTopBar"
+import { MobileTabBar } from "@/components/dashboard/mobile/MobileTabBar"
+import type { MobileShellConfig } from "@/components/dashboard/mobile/mobile-config"
 import { Button } from "@/components/ui/button"
 import { HanoledLogo } from "@/components/ui/HanoledLogo"
 
@@ -67,9 +71,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/support", label: "Support", icon: LifeBuoy },
   ]
 
+  // Phone chrome: same top bar / tab bar / menu sheet as the school app, with
+  // the platform destinations. The 240px sidebar below is md and up only.
+  const mobileConfig: MobileShellConfig = {
+    profile: "admin",
+    roleLabel: admin.role.replace("_", " "),
+    basePath: "/admin",
+    tabs: [
+      { key: "dashboard", label: "Home", href: "/admin", icon: LayoutGrid, exact: true },
+      { key: "schools", label: "Schools", href: "/admin/schools", icon: School, exact: false },
+      { key: "payments", label: "Payments", href: "/admin/payments", icon: CreditCard, exact: false },
+      { key: "pipeline", label: "Pipeline", href: "/admin/pipeline", icon: GitBranch, exact: false },
+    ],
+    sections: [
+      {
+        title: "Platform",
+        items: navItems.map((item) => ({ key: item.href, label: item.label, href: item.href, icon: item.icon })),
+      },
+    ],
+    identity: {
+      orgName: "Hanoled Admin",
+      userName: admin.name,
+      userEmail: admin.email,
+      initials: admin.name.charAt(0).toUpperCase(),
+      subline: "admin.hanoled.com",
+    },
+    showCbtConsole: false,
+    showNotifications: false,
+    logout,
+  }
+  const currentTitle =
+    navItems.find((item) => item.href === pathname || (item.href !== "/admin" && pathname.startsWith(item.href)))?.label ?? "Admin"
+
   return (
-    <div className="flex h-screen bg-muted/30">
-      <aside className="flex w-60 flex-col border-r border-border bg-white">
+    <MobileMenuProvider config={mobileConfig}>
+    <div className="flex h-screen flex-col bg-muted/30 md:flex-row">
+      <MobileTopBar title={currentTitle} isHome={pathname === "/admin"} />
+      <aside className="hidden w-60 flex-col border-r border-border bg-white md:flex">
         <div className="border-b border-border px-4 py-4">
           <HanoledLogo size="sm" href="/admin" />
           <p className="mt-1 text-xs text-muted-foreground">admin.hanoled.com</p>
@@ -109,7 +147,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-auto px-4 pt-4 pb-safe-nav md:p-6">{children}</main>
+      <MobileTabBar />
     </div>
+    </MobileMenuProvider>
   )
 }

@@ -369,8 +369,8 @@ export default function SchemeOfWorkPage() {
                   </div>
                 </div>
                 {expanded.has(item.id) && (
-                  <div className="border-t border-slate-100 px-4 py-3">
-                    <table className="w-full text-left text-sm">
+                  <div className="border-t border-slate-100 px-4 py-3 overflow-x-auto">
+                    <table className="w-full min-w-[480px] text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 text-xs font-medium text-slate-400 uppercase tracking-wider">
                           <th className="pb-2 pr-2 w-12">#</th>

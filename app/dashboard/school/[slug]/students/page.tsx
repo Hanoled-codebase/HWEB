@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch } from "@/lib/api";
+import { useCachedList } from "@/hooks/useCachedList";
+import { orgQueries } from "@/lib/queries";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +36,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ParentMobileNav } from "@/components/dashboard/ParentMobileNav";
 import BulkStudentImportModal from "@/components/students/BulkStudentImportModal";
 import {
   ArrowRight,
@@ -164,9 +165,6 @@ function compareClasses(a: ClassOption, b: ClassOption) {
 export default function StudentsPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [sortOrder, setSortOrder] = useState<"az" | "za" | "class" | "recent">("az");
@@ -180,30 +178,21 @@ export default function StudentsPage() {
     currentMember?.role === "owner" || currentMember?.role === "admin";
   const isParent = currentMember?.role === "parent";
 
-  useEffect(() => {
-    async function fetchStudents() {
-      if (!currentOrg) return;
-      try {
-        setIsLoading(true);
-        const requests: Promise<[StudentRecord[], ClassOption[]]> = Promise.all(
-          [
-            apiFetch<StudentRecord[]>(`/students/${currentOrg.slug}`),
-            isPrivileged
-              ? apiFetch<ClassOption[]>(`/classes/${currentOrg.slug}`)
-              : Promise.resolve([]),
-          ],
-        );
-        const [studentData, classData] = await requests;
-        setStudents(studentData);
-        setClasses(classData.sort(compareClasses));
-      } catch {
-        toast.error("Failed to load students");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchStudents();
-  }, [currentOrg, isPrivileged]);
+  const orgSlug = currentOrg?.slug ?? "";
+  const studentsQuery = orgQueries.students<StudentRecord[]>(orgSlug);
+  const [students, setStudents, studentsLoading] = useCachedList<StudentRecord[]>(
+    studentsQuery.queryKey,
+    studentsQuery.queryFn,
+    { enabled: !!orgSlug, initial: [], onError: () => toast.error("Failed to load students") },
+  );
+  const classesQuery = orgQueries.classes<ClassOption[]>(orgSlug);
+  const [rawClasses, , classesLoading] = useCachedList<ClassOption[]>(
+    classesQuery.queryKey,
+    classesQuery.queryFn,
+    { enabled: !!orgSlug && isPrivileged, initial: [] },
+  );
+  const classes = useMemo(() => [...rawClasses].sort(compareClasses), [rawClasses]);
+  const isLoading = studentsLoading || classesLoading;
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -638,10 +627,6 @@ export default function StudentsPage() {
           )}
         </section>
       </div>
-
-      {isParent && currentOrg?.slug && (
-        <ParentMobileNav slug={currentOrg.slug} active="children" />
-      )}
 
       {/* ── Promote / Assign dialog ──────────────────────────────────── */}
       <Dialog

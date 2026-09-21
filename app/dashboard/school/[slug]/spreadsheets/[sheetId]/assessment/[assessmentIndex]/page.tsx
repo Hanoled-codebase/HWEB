@@ -544,7 +544,7 @@ export default function AssessmentEntryPage() {
 
       {/* ── Fixed bottom save button ── */}
       {canEdit && (
-        <div className="fixed bottom-0 inset-x-0 bg-[#F5F5FA] px-4 pb-6 pt-3 z-20 md:absolute md:bottom-auto md:top-auto md:relative md:px-0 md:pb-0 md:pt-4">
+        <div className="fixed bottom-0 inset-x-0 bg-slate-50 px-4 pb-6 pt-3 z-20 md:absolute md:bottom-auto md:top-auto md:relative md:px-0 md:pb-0 md:pt-4">
           <button
             onClick={handleSave}
             disabled={isSaving}

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
+import { useCachedList } from "@/hooks/useCachedList";
+import { orgQueries } from "@/lib/queries";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,9 +71,6 @@ type ParentMember = {
 
 export default function ParentsPage() {
   const { currentOrg, currentMember } = useOrganization();
-  const [parents, setParents] = useState<ParentMember[]>([]);
-  const [students, setStudents] = useState<StudentOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
@@ -84,27 +83,20 @@ export default function ParentsPage() {
     defaultValues: { email: "", studentIds: [] },
   });
 
-  useEffect(() => {
-    async function fetchPageData() {
-      if (!currentOrg) return;
-      try {
-        setIsLoading(true);
-        const [parentData, studentData] = await Promise.all([
-          isPrivileged
-            ? apiFetch<ParentMember[]>(`/organizations/${currentOrg.slug}/members?role=parent`)
-            : Promise.resolve<ParentMember[]>([]),
-          apiFetch<StudentOption[]>(`/students/${currentOrg.slug}`),
-        ]);
-        setParents(parentData);
-        setStudents(studentData);
-      } catch (error: unknown) {
-        toast.error(error instanceof Error ? error.message : "Failed to load parents");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchPageData();
-  }, [currentOrg, isPrivileged]);
+  const orgSlug = currentOrg?.slug ?? "";
+  const parentsQuery = orgQueries.parents<ParentMember[]>(orgSlug);
+  const [parents, setParents, parentsLoading] = useCachedList<ParentMember[]>(
+    parentsQuery.queryKey,
+    parentsQuery.queryFn,
+    { enabled: !!orgSlug && isPrivileged, initial: [], onError: () => toast.error("Failed to load parents") },
+  );
+  const studentsQuery = orgQueries.students<StudentOption[]>(orgSlug);
+  const [students, setStudents, studentsLoading] = useCachedList<StudentOption[]>(
+    studentsQuery.queryKey,
+    studentsQuery.queryFn,
+    { enabled: !!orgSlug, initial: [] },
+  );
+  const isLoading = parentsLoading || studentsLoading;
 
   const filteredParents = parents.filter(
     (p) =>

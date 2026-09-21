@@ -1,7 +1,17 @@
+import type { Viewport } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { logoutAction } from "@/app/actions/auth";
+
+// viewport-fit=cover lets the mobile app shell paint under the notch / home indicator
+// and position itself with env(safe-area-inset-*). Scoped to the signed-in app only.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1447E6",
+};
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 

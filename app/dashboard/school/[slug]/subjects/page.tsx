@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch } from "@/lib/api";
+import { useCachedList } from "@/hooks/useCachedList";
+import { orgQueries } from "@/lib/queries";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,8 +70,6 @@ const subjectFormSchema = z.object({
 export default function SubjectsPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -82,21 +82,13 @@ export default function SubjectsPage() {
     defaultValues: { name: "", code: "", category: "" },
   });
 
-  useEffect(() => {
-    async function fetchSubjects() {
-      if (!currentOrg) return;
-      try {
-        setIsLoading(true);
-        const data = await apiFetch<Subject[]>(`/subjects/${currentOrg.slug}`);
-        setSubjects(data);
-      } catch {
-        toast.error("Failed to load subjects");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchSubjects();
-  }, [currentOrg]);
+  const orgSlug = currentOrg?.slug ?? "";
+  const subjectsQuery = orgQueries.subjects<Subject[]>(orgSlug);
+  const [subjects, setSubjects, isLoading] = useCachedList<Subject[]>(
+    subjectsQuery.queryKey,
+    subjectsQuery.queryFn,
+    { enabled: !!orgSlug, initial: [], onError: () => toast.error("Failed to load subjects") },
+  );
 
   const categoryFiltered = activeCategory
     ? subjects.filter((s) => s.category === activeCategory)
