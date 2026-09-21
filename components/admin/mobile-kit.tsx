@@ -13,18 +13,24 @@ import { cn } from "@/lib/utils"
 
 export const naira = (n: number) => "₦" + Math.round(n).toLocaleString()
 
-const chipBase = "inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap"
+const chipBase = "inline-flex h-[26px] shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold whitespace-nowrap"
 
+/** Payment status. Pending and partial are Warning (Growth Gold); paid is Success; overdue is Alert. */
 export function PaymentChip({ status }: { status: string }) {
-  const tone =
+  const [tone, dot] =
     status === "paid"
-      ? "bg-success/10 text-success"
-      : status === "partial"
-        ? "bg-warning/15 text-[#0B1220]"
+      ? ["bg-success/10 text-emerald-700", "bg-success"]
+      : status === "partial" || status === "pending"
+        ? ["bg-warning/15 text-amber-700", "bg-warning"]
         : status === "overdue"
-          ? "bg-destructive/10 text-destructive"
-          : "bg-muted text-muted-foreground"
-  return <span className={cn(chipBase, "capitalize", tone)}>{status}</span>
+          ? ["bg-destructive/10 text-red-700", "bg-destructive"]
+          : ["bg-muted text-muted-foreground", "bg-muted-foreground/60"]
+  return (
+    <span className={cn(chipBase, "capitalize", tone)}>
+      <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+      {status}
+    </span>
+  )
 }
 
 export function Chip({
@@ -53,6 +59,13 @@ export function MList({ children, className }: { children: React.ReactNode; clas
   )
 }
 
+/** Each record is its own card, 12px apart. */
+export function CardList({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("space-y-3", className)}>{children}</div>
+}
+
+export const rowCard = "rounded-[20px] border border-border bg-card shadow-sm"
+
 export function SectionHead({
   title,
   count,
@@ -63,10 +76,10 @@ export function SectionHead({
   action?: React.ReactNode
 }) {
   return (
-    <div className="mb-2.5 flex min-h-8 items-center justify-between gap-3 px-0.5">
-      <h2 className="flex items-baseline gap-2 text-[15px] font-bold text-foreground">
+    <div className="mb-3 flex min-h-8 items-center justify-between gap-3 px-0.5">
+      <h2 className="flex items-baseline gap-2 text-base font-bold text-foreground">
         {title}
-        {count !== undefined && <span className="text-xs font-medium tabular-nums text-muted-foreground">{count}</span>}
+        {count !== undefined && <span className="text-base font-normal tabular-nums text-muted-foreground">{count}</span>}
       </h2>
       {action}
     </div>
@@ -124,7 +137,7 @@ export function ChipTabs<K extends string>({
   )
 }
 
-/** One school: name and place on the left, term revenue on the right, payment status underneath. */
+/** One school as a card: name and headcount, status chips, and term revenue on the right. */
 export function SchoolRow({
   id,
   name,
@@ -149,27 +162,38 @@ export function SchoolRow({
   extraChips?: React.ReactNode
 }) {
   const place = [city, state].filter(Boolean).join(", ")
+  const awaiting = students === 0 && revenue === 0
   return (
-    <Link href={`/admin/schools/${id}`} className="flex min-h-[72px] items-center gap-3 px-4 py-3 active:bg-muted/60">
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">{name}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {place || "—"} · {students.toLocaleString()} students{note ? ` · ${note}` : ""}
-        </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <PaymentChip status={paymentStatus} />
-          {extraChips}
+    <Link href={`/admin/schools/${id}`} className={cn(rowCard, "block min-h-[72px] px-4 py-4 active:bg-muted/60")}>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[15px] font-bold leading-snug text-foreground">{name}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {place ? `${place} · ` : ""}
+            {students.toLocaleString()} students{note ? ` · ${note}` : ""}
+          </p>
         </div>
+        <div className="shrink-0 pt-0.5 text-right">
+          {awaiting ? (
+            <p className="text-xs italic text-muted-foreground">Awaiting onboarding</p>
+          ) : (
+            <>
+              <p className="text-[17px] font-bold leading-tight tabular-nums text-foreground">{naira(revenue)}</p>
+              {owed && owed > 0 ? (
+                <p className="mt-0.5 text-[13px] font-medium tabular-nums text-destructive">Owes {naira(owed)}</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-muted-foreground">per term</p>
+              )}
+            </>
+          )}
+        </div>
+        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-muted-foreground/50" />
       </div>
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-semibold tabular-nums text-foreground">{naira(revenue)}</p>
-        {owed && owed > 0 ? (
-          <p className="text-[11px] font-medium tabular-nums text-destructive">Owes {naira(owed)}</p>
-        ) : (
-          <p className="text-[11px] text-muted-foreground">per term</p>
-        )}
+      {/* Full-width row: chips never get squeezed by the amount column on narrow phones. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <PaymentChip status={paymentStatus} />
+        {extraChips}
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
     </Link>
   )
 }

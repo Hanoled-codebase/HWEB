@@ -3,7 +3,7 @@
 import { useEffect, useState, createContext, useContext, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutGrid, School, CreditCard, GitBranch, Server, LifeBuoy, LogOut } from "lucide-react"
+import { LayoutGrid, School, Building2, CreditCard, GitBranch, Server, LifeBuoy, LogOut } from "lucide-react"
 import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProvider"
 import { MobileTopBar } from "@/components/dashboard/mobile/MobileTopBar"
 import { MobileTabBar } from "@/components/dashboard/mobile/MobileTabBar"
@@ -31,6 +31,7 @@ export const useAdmin = () => useContext(AdminContext)
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [openTickets, setOpenTickets] = useState(0)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -44,6 +45,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .catch(() => { if (!pathname.includes("/login")) router.push("/admin/login") })
       .finally(() => setLoading(false))
   }, [pathname, router])
+
+  // The phone bell links to Support and shows a dot only while tickets are open.
+  // Background fetch, once per signed-in admin; a failure just leaves the dot off.
+  const adminId = admin?.id
+  useEffect(() => {
+    if (!adminId) return
+    fetch(`${ADMIN_API}/support-tickets`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : []))
+      .then((tickets: { status?: string }[]) =>
+        setOpenTickets(Array.isArray(tickets) ? tickets.filter(t => t.status === "open").length : 0),
+      )
+      .catch(() => {})
+  }, [adminId])
 
   const logout = useCallback(async () => {
     await fetch(`${ADMIN_API}/auth/logout`, { method: "POST", credentials: "include" })
@@ -79,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     basePath: "/admin",
     tabs: [
       { key: "dashboard", label: "Home", href: "/admin", icon: LayoutGrid, exact: true },
-      { key: "schools", label: "Schools", href: "/admin/schools", icon: School, exact: false },
+      { key: "schools", label: "Schools", href: "/admin/schools", icon: Building2, exact: false },
       { key: "payments", label: "Payments", href: "/admin/payments", icon: CreditCard, exact: false },
       { key: "pipeline", label: "Pipeline", href: "/admin/pipeline", icon: GitBranch, exact: false },
     ],
@@ -93,12 +107,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       orgName: "Hanoled Admin",
       userName: admin.name,
       userEmail: admin.email,
-      initials: admin.name.charAt(0).toUpperCase(),
+      initials: admin.name.split(" ").filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "A",
       subline: "admin.hanoled.com",
     },
     showCbtConsole: false,
     showNotifications: false,
     hideBack: true,
+    homeBar: "account",
+    tabStyle: "pill",
+    bell: { href: "/admin/support", label: "Support tickets", dot: openTickets > 0 },
     logout,
   }
   const currentTitle =

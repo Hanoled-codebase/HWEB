@@ -9,13 +9,15 @@ import {
   TrendingUp,
   MapPin,
   ArrowUpRight,
+  ChevronRight,
+  Plus,
   Sparkles,
   Activity,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Chip, EmptyPanel, MList, SchoolRow as SchoolListRow, SectionHead, naira } from "@/components/admin/mobile-kit"
+import { CardList, Chip, EmptyPanel, SchoolRow as SchoolListRow, SectionHead, naira, rowCard } from "@/components/admin/mobile-kit"
 import { cn } from "@/lib/utils"
 
 import { HSMS_BASE } from "@/lib/api"
@@ -386,15 +388,15 @@ function EmptyRow({ text }: { text: string }) {
 
 function PipelineRow({ item, stageLabel }: { item: PipelineItem; stageLabel: string }) {
   return (
-    <div className="flex min-h-[64px] items-center gap-3 px-4 py-3">
+    <div className={cn(rowCard, "flex items-start gap-3 px-4 py-4")}>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-foreground">{item.name}</p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="line-clamp-2 text-[15px] font-bold leading-snug text-foreground">{item.name}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {item.location || "—"}
           {item.estimatedStudents ? ` · ~${item.estimatedStudents.toLocaleString()} students` : ""}
         </p>
-        {item.nextAction && <p className="mt-1 truncate text-xs font-medium text-primary">Next: {item.nextAction}</p>}
-        {item.owner && <p className="truncate text-[11px] text-muted-foreground">Owner: {item.owner.name}</p>}
+        {item.nextAction && <p className="mt-2 truncate text-xs font-medium text-primary">Next: {item.nextAction}</p>}
+        {item.owner && <p className="mt-0.5 truncate text-xs text-muted-foreground">Owner: {item.owner.name}</p>}
       </div>
       <Chip tone="primary">{stageLabel}</Chip>
     </div>
@@ -423,35 +425,37 @@ function MobileDashboard({
 
   return (
     <div className="space-y-6 md:hidden">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-foreground">Team Dashboard</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="whitespace-nowrap text-xl font-bold leading-tight text-foreground">Team Dashboard</h1>
+        {/* 38px button; the ::before stretches the tap area to 44px without changing how it looks. */}
         <Link
           href="/admin/pipeline"
-          className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground active:bg-primary/90"
+          className="relative inline-flex h-[38px] shrink-0 items-center gap-1.5 rounded-[14px] bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] active:bg-primary/90"
         >
-          Add to pipeline
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
+          Add to Pipeline
         </Link>
       </div>
 
-      <section aria-label="Term statement" className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <TrendingUp className="h-4 w-4 text-[#F5A623]" /> Expected revenue
+      <section aria-label="Term statement" className={cn(rowCard, "overflow-hidden")}>
+        <div className="flex min-h-[60px] items-center justify-between gap-3 px-4">
+          <p className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
+            <TrendingUp className="h-[18px] w-[18px] text-[#F5A623]" /> Expected revenue
           </p>
           <p className="text-xl font-bold tabular-nums text-foreground">{naira(stats?.totalExpectedRevenue ?? 0)}</p>
         </div>
-        <div className="mt-2.5 flex items-baseline justify-between gap-3 border-t border-border pt-2.5">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <AlertCircle className={cn("h-4 w-4", outstanding > 0 ? "text-destructive" : "text-muted-foreground")} /> Outstanding
+        <div className="flex min-h-[60px] items-center justify-between gap-3 border-t border-border px-4">
+          <p className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
+            <AlertCircle className={cn("h-[18px] w-[18px]", outstanding > 0 ? "text-destructive" : "text-muted-foreground")} /> Outstanding
           </p>
           <p className={cn("text-xl font-bold tabular-nums", outstanding > 0 ? "text-destructive" : "text-foreground")}>
             {naira(outstanding)}
           </p>
         </div>
-        <p className="mt-3 flex flex-wrap gap-x-2 gap-y-0.5 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 border-t border-border bg-muted/50 px-4 py-4 text-[13px] text-muted-foreground">
           {reach.map((item, i) => (
-            <span key={item}>
-              {i > 0 && <span aria-hidden="true" className="mr-2 text-border">|</span>}
+            <span key={item} className="flex items-center gap-2.5">
+              {i > 0 && <span aria-hidden="true" className="text-muted-foreground/50">·</span>}
               {item}
             </span>
           ))}
@@ -460,18 +464,18 @@ function MobileDashboard({
 
       <section>
         <SectionHead
-          title="Onboarded schools"
+          title="Onboarded Schools"
           count={schools.length}
           action={
-            <Link href="/admin/schools" className="flex min-h-[44px] items-center gap-1 pl-3 text-xs font-semibold text-primary">
-              View all <ArrowUpRight className="h-3.5 w-3.5" />
+            <Link href="/admin/schools" className="flex min-h-[44px] items-center gap-0.5 pl-3 text-sm font-semibold text-primary">
+              View all <ChevronRight className="h-4 w-4" />
             </Link>
           }
         />
         {onboardingInProgress.length > 0 && (
-          <div className="mb-3 rounded-2xl bg-warning/10 p-3.5">
+          <div className="mb-3 rounded-[20px] bg-warning/10 p-4">
             <p className="text-xs font-semibold text-[#0B1220]">Currently onboarding ({onboardingInProgress.length})</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-2">
               {onboardingInProgress.map((p) => (
                 <Chip key={p.id} tone="outline" className="bg-card">
                   {p.name}
@@ -483,7 +487,7 @@ function MobileDashboard({
         {schools.length === 0 ? (
           <EmptyPanel title="No onboarded schools yet" hint="Schools appear here once they go live." />
         ) : (
-          <MList>
+          <CardList>
             {schools.slice(0, 5).map((s) => (
               <SchoolListRow
                 key={s.id}
@@ -499,12 +503,12 @@ function MobileDashboard({
                 extraChips={<Chip tone={s.subscriptionType === "HSMS+HCBT" ? "gold" : "primary"}>{s.subscriptionType}</Chip>}
               />
             ))}
-          </MList>
+          </CardList>
         )}
         {schools.length > 5 && (
           <Link
             href="/admin/schools"
-            className="mt-2 flex min-h-[48px] items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold text-primary active:bg-muted"
+            className="mt-3 flex min-h-[48px] items-center justify-center rounded-[20px] border border-border bg-card text-sm font-semibold text-primary active:bg-muted"
           >
             See all {schools.length} schools
           </Link>
@@ -516,11 +520,11 @@ function MobileDashboard({
         {pitching.length === 0 ? (
           <EmptyPanel title="Nothing in active pitch" hint="Demoed, proposed or committed schools show here." />
         ) : (
-          <MList>
+          <CardList>
             {pitching.map((p) => (
               <PipelineRow key={p.id} item={p} stageLabel={PITCHING_STAGES.find((st) => st.key === p.stage)?.label ?? p.stage} />
             ))}
-          </MList>
+          </CardList>
         )}
       </section>
 
@@ -529,23 +533,23 @@ function MobileDashboard({
         {prospects.length === 0 ? (
           <EmptyPanel title="No prospects logged yet" hint="Top of the funnel: not yet contacted, or just reached out." />
         ) : (
-          <MList>
+          <CardList>
             {prospects.map((p) => (
               <PipelineRow key={p.id} item={p} stageLabel={p.stage.charAt(0).toUpperCase() + p.stage.slice(1)} />
             ))}
-          </MList>
+          </CardList>
         )}
       </section>
 
       {stats && stats.recentActivity.length > 0 && (
         <section>
-          <SectionHead title="Recent activity" />
-          <MList>
+          <SectionHead title="Recent Activity" />
+          <CardList>
             {stats.recentActivity.map((a) => (
-              <div key={a.id} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
+              <div key={a.id} className={cn(rowCard, "flex min-h-[60px] items-center gap-3 px-4 py-3")}>
                 <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium capitalize text-foreground">{a.action.replace(".", " ")}</p>
+                  <p className="truncate text-sm font-semibold capitalize text-foreground">{a.action.replace(".", " ")}</p>
                   <p className="truncate text-xs text-muted-foreground">by {a.actor.name}</p>
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -553,7 +557,7 @@ function MobileDashboard({
                 </span>
               </div>
             ))}
-          </MList>
+          </CardList>
         </section>
       )}
     </div>

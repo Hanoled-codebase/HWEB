@@ -67,6 +67,12 @@ export type MobileShellConfig = {
   showNotifications?: boolean;
   /** Every destination is a top-level tab or menu item, so pages never show a back arrow. */
   hideBack?: boolean;
+  /** Home top bar shows the signed-in person (initials, name, role) instead of a school. */
+  homeBar?: "account";
+  /** Active tab is a soft pill around the icon and its label, instead of a pill behind the icon only. */
+  tabStyle?: "pill";
+  /** A bell that links somewhere (e.g. support tickets) and shows a dot only when there is something new. */
+  bell?: { href: string; label: string; dot: boolean };
 };
 
 const SECTION_TITLES: Record<string, string> = {

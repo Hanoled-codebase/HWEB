@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { SchoolDetailMobile } from "@/components/admin/SchoolDetailMobile"
 
 import { HSMS_BASE } from "@/lib/api"
 
@@ -35,7 +36,11 @@ export default function SchoolDetail() {
   if (!school) return <div className="text-slate-500 py-20 text-center">Loading...</div>
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="md:hidden">
+      <SchoolDetailMobile school={school} />
+    </div>
+    <div className="hidden space-y-6 md:block">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{school.name}</h1>
@@ -122,5 +127,6 @@ export default function SchoolDetail() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }
