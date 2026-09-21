@@ -24,6 +24,7 @@ import {
   SectionTitle,
   StatStrip,
   ToolGrid,
+  sentenceCase,
   type HomeStat,
   type HomeTool,
 } from "./HomeKit";
@@ -78,34 +79,48 @@ export function RoleHome({ stats = [] }: { stats?: HomeStat[] }) {
   const primary = (PRIMARY_ACTION[profile] ?? []).find((candidate) => byKey.has(candidate.key));
   const primaryItem = primary ? byKey.get(primary.key) : undefined;
 
-  const tools: HomeTool[] = (HOME_TOOLS[profile] ?? HOME_TOOLS.member)
-    .filter((key) => byKey.has(key) && key !== primary?.key)
-    .slice(0, 7)
-    .map((key) => {
-      const item = byKey.get(key)!;
-      return { key, label: key === "spreadsheets" ? "Grade sheets" : item.title, href: item.url, icon: HERO_ICONS[key] ?? item.icon };
-    });
+  // Anything already in the tab bar is one tap away from every screen, so the
+  // grid skips it and shows what the tab bar cannot.
+  const inTabBar = new Set(config.tabs.map((tab) => tab.key));
+  const preferred = (HOME_TOOLS[profile] ?? HOME_TOOLS.member).filter(
+    (key) => byKey.has(key) && key !== primary?.key && !inTabBar.has(key),
+  );
+  // Pad from the rest of the role's visible nav so a role with few preferred
+  // tools (a librarian, say) still gets a useful grid rather than one tile.
+  const padding = visibleNavItems
+    .map((item) => item.key)
+    .filter((key) => key !== "overview" && key !== primary?.key && !inTabBar.has(key) && !preferred.includes(key));
+  const toolKeys = [...preferred, ...padding].slice(0, Math.max(preferred.length, 5)).slice(0, 7);
+
+  const tools: HomeTool[] = toolKeys.map((key) => {
+    const item = byKey.get(key)!;
+    return { key, label: key === "spreadsheets" ? "Grade sheets" : item.title, href: item.url, icon: HERO_ICONS[key] ?? item.icon };
+  });
 
   const firstName = user?.name?.split(" ")[0] || "there";
 
   return (
-    <div className="space-y-5">
-      <HomeGreeting
-        name={firstName}
-        roleLabel={config.roleLabel}
-        detail={currentOrg?.category ? `${currentOrg.category} school` : undefined}
-      />
+    <div className="space-y-7">
+      <div className="space-y-4">
+        <HomeGreeting
+          name={firstName}
+          detail={currentOrg?.category ? `${sentenceCase(currentOrg.category)} school` : undefined}
+        />
 
-      {primary && primaryItem && (
-        <PrimaryAction href={primaryItem.url} icon={primary.icon} label={primary.label} hint={primary.hint} />
+        <div className="space-y-3">
+          {primary && primaryItem && (
+            <PrimaryAction href={primaryItem.url} icon={primary.icon} label={primary.label} hint={primary.hint} />
+          )}
+          <StatStrip stats={stats} />
+        </div>
+      </div>
+
+      {tools.length > 0 && (
+        <section>
+          <SectionTitle>More tools</SectionTitle>
+          <ToolGrid tools={tools} />
+        </section>
       )}
-
-      <StatStrip stats={stats} />
-
-      <section>
-        <SectionTitle>Your tools</SectionTitle>
-        <ToolGrid tools={tools} />
-      </section>
     </div>
   );
 }

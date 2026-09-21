@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ChevronRight, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
-import { useMobileMenu } from "./MobileMenuProvider";
 import { EmptyNote, HomeGreeting, SectionTitle, ToolGrid, type HomeTool } from "./HomeKit";
 
 export type ParentResultGroup = {
@@ -36,7 +35,6 @@ export function ParentHome({
   results: ParentResultGroup[];
 }) {
   const { user } = useAuth();
-  const { config } = useMobileMenu();
   const { visibleNavItems } = useSchoolNavItems();
   const byKey = new Map(visibleNavItems.map((item) => [item.key, item]));
 
@@ -46,10 +44,9 @@ export function ParentHome({
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-7">
       <HomeGreeting
         name={user?.name?.split(" ")[0] || "there"}
-        roleLabel={config.roleLabel}
         detail={students.length === 1 ? "1 child linked" : `${students.length} children linked`}
       />
 
@@ -71,7 +68,7 @@ export function ParentHome({
                 <Link
                   key={student.id || `${student.firstName}-${student.lastName}`}
                   href={`/dashboard/school/${slug}/results`}
-                  className="block rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm active:bg-slate-50"
+                  className="block rounded-2xl border border-slate-100 bg-white p-3.5 transition-colors active:bg-slate-50"
                 >
                   <div className="flex items-center gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">

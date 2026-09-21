@@ -50,14 +50,16 @@ function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }
         </>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={goBack}
-            aria-label="Go back"
-            className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-800 active:bg-slate-100"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
+          {!config.hideBack && (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Go back"
+              className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-800 active:bg-slate-100"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+          )}
           <h1 className="min-w-0 flex-1 truncate py-2 text-[17px] font-bold tracking-tight text-slate-900">{title}</h1>
         </>
       )}

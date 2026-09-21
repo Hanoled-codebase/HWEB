@@ -51,7 +51,7 @@ function MobileTabBarInner() {
                 </span>
                 <span
                   className={cn(
-                    "max-w-full truncate text-[11px] leading-tight",
+                    "max-w-full truncate text-xs leading-tight",
                     active ? "font-semibold text-blue-600" : "font-medium text-slate-500",
                   )}
                 >
@@ -79,7 +79,7 @@ function MobileTabBarInner() {
             </span>
             <span
               className={cn(
-                "text-[11px] leading-tight",
+                "text-xs leading-tight",
                 menuOpen || !activeTab ? "font-semibold text-blue-600" : "font-medium text-slate-500",
               )}
             >

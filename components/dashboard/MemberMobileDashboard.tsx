@@ -47,28 +47,28 @@ export function MemberMobileDashboard({
   const primaryClassName = assignedClasses[0]?.name || null;
 
   return (
-    <div className="space-y-5">
-      <HomeGreeting
-        name={userName}
-        roleLabel={config.roleLabel}
-        detail={primaryClassName ? `Class: ${primaryClassName}` : undefined}
-      />
+    <div className="space-y-7">
+      <div className="space-y-4">
+        <HomeGreeting name={userName} detail={primaryClassName ? `Class: ${primaryClassName}` : undefined} />
 
-      {config.profile === "class-teacher" && can("attendance") ? (
-        <PrimaryAction href={`${base}/attendance`} icon={ClipboardCheck} label="Take attendance" hint="Mark today's register" />
-      ) : (
-        can("spreadsheets") && (
-          <PrimaryAction href={`${base}/spreadsheets`} icon={Layers} label="Enter scores" hint="Open your grade sheets" />
-        )
-      )}
+        <div className="space-y-3">
+          {config.profile === "class-teacher" && can("attendance") ? (
+            <PrimaryAction href={`${base}/attendance`} icon={ClipboardCheck} label="Take attendance" hint="Mark today's register" />
+          ) : (
+            can("spreadsheets") && (
+              <PrimaryAction href={`${base}/spreadsheets`} icon={Layers} label="Enter scores" hint="Open your grade sheets" />
+            )
+          )}
 
-      <StatStrip
-        stats={[
-          { key: "subjects", label: "Subjects", value: subjectGroups.length },
-          { key: "classes", label: "Classes", value: assignedClasses.length },
-          { key: "sheets", label: "Sheets ready", value: readySheetsCount },
-        ]}
-      />
+          <StatStrip
+            stats={[
+              { key: "subjects", label: "Subjects", value: subjectGroups.length },
+              { key: "classes", label: "Classes", value: assignedClasses.length },
+              { key: "sheets", label: "Sheets ready", value: readySheetsCount },
+            ]}
+          />
+        </div>
+      </div>
 
       <section>
         <SectionTitle aside={primaryClassName ?? undefined}>Your subjects</SectionTitle>
@@ -78,7 +78,7 @@ export function MemberMobileDashboard({
         ) : (
           <div className="space-y-3">
             {subjectGroups.map((group) => (
-              <div key={group.subject.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <div key={group.subject.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
                 <Link
                   href={`${base}/spreadsheets?subjectId=${group.subject.id}`}
                   className="flex min-h-[64px] items-center gap-3 p-3.5 active:bg-slate-50"
