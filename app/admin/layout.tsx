@@ -59,8 +59,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .catch(() => {})
   }, [adminId])
 
+  // The platform admin session lives in HSMS alone (no HCORE/HCBT sessions are
+  // opened by /admin/login). An unreachable HSMS must not strand the admin here.
   const logout = useCallback(async () => {
-    await fetch(`${ADMIN_API}/auth/logout`, { method: "POST", credentials: "include" })
+    try {
+      await fetch(`${ADMIN_API}/auth/logout`, { method: "POST", credentials: "include" })
+    } catch (e) {
+      console.error("Admin logout failed", e)
+    }
     setAdmin(null)
     router.push("/admin/login")
   }, [router])
@@ -165,7 +171,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto px-4 pt-4 pb-safe-nav md:p-6">{children}</main>
+      <main className="flex-1 overflow-auto px-4 pt-4 pb-safe-nav md:p-6"><div key={pathname} className="m-page">{children}</div></main>
       <MobileTabBar />
     </div>
     </MobileMenuProvider>

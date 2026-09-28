@@ -202,7 +202,7 @@ export const cbtApi = {
 
   // ── Auth ─────────────────────────────────────────────────────────────
   login: (identifier: string, password: string) => fetchCbt("/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
-  logout: () => fetchCbt("/auth/logout", { method: "POST" }),
+  logout: (options: ApiOptions = {}) => fetchCbt("/auth/logout", { ...options, method: "POST" }),
   getProfile: () => fetchCbt("/auth/profile"),
   checkAuth: async () => {
     try {

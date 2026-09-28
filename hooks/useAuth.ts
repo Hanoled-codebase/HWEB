@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { request, HCORE_BASE } from "@/lib/api";
 import { useOrganization } from "@/hooks/useOrganization";
+import { endBackendSessions, leaveSignedOut } from "@/lib/sign-out";
 
 export interface User {
   id: string;
@@ -80,16 +81,9 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true, isInitialized: true });
-    try {
-      await request(HCORE_BASE, "/v1/auth/logout", { method: "POST" });
-    } catch (e) {
-      console.error("Logout failed", e);
-    } finally {
-      useOrganization.getState().clear();
-      set({ user: null, isAuthenticated: false, error: null });
-      if (typeof window !== "undefined") {
-        window.location.assign("/signin");
-      }
-    }
+    await endBackendSessions();
+    useOrganization.getState().clear();
+    set({ user: null, isAuthenticated: false, error: null });
+    leaveSignedOut();
   }
 }));

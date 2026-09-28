@@ -31,11 +31,16 @@ export function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
-  const rawToken =
-    request.cookies.get('hcore_session')?.value ||
-    request.cookies.get('hcbt_session')?.value ||
-    request.cookies.get('accessToken')?.value;
-  const token = rawToken && isLikelyValidToken(rawToken) ? rawToken : undefined;
+  const liveCookie = (name: string) => {
+    const value = request.cookies.get(name)?.value;
+    return value && isLikelyValidToken(value) ? value : undefined;
+  };
+  // Protected pages accept any live session: the CBT console runs on HCBT's alone.
+  const token = liveCookie('hcore_session') || liveCookie('hcbt_session') || liveCookie('accessToken');
+  // Only an HCORE session counts as signed in on /signin: /welcome, where the
+  // redirect below lands, requires one, so a leftover HCBT cookie (e.g. after a
+  // logout that only reached HCORE) would bounce /signin <-> /welcome forever.
+  const hasHcoreSession = Boolean(liveCookie('hcore_session'));
 
   // 1. If accessing a protected route without a token, redirect to login
   if (isProtectedRoute && !token) {
@@ -46,7 +51,7 @@ export function proxy(request: NextRequest) {
   }
 
   // 2. If logged in and trying to access login/register, honor callbackUrl or redirect to welcome hub
-  if (isAuthRoute && token) {
+  if (isAuthRoute && hasHcoreSession) {
     const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
     if (callbackUrl && callbackUrl.startsWith('/')) {
       return NextResponse.redirect(new URL(callbackUrl, request.url));
