@@ -153,24 +153,27 @@ export default function FaqsPage() {
                       >
                         <button
                           onClick={() => toggle(id)}
+                          aria-expanded={isOpen}
                           className="flex w-full items-center justify-between px-6 py-4 text-left"
                         >
                           <span className="text-sm font-semibold text-slate-800">
                             {faq.q}
                           </span>
                           <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+                            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ease-[var(--ease-out-smooth)] ${
                               isOpen ? "rotate-180" : ""
                             }`}
                           />
                         </button>
-                        {isOpen && (
-                          <div className="border-t border-slate-100 px-6 py-4">
-                            <p className="text-sm leading-relaxed text-slate-500">
-                              {faq.a}
-                            </p>
+                        <div className="m-collapsible" data-open={isOpen} aria-hidden={!isOpen}>
+                          <div>
+                            <div className="border-t border-slate-100 px-6 py-4">
+                              <p className="text-sm leading-relaxed text-slate-500">
+                                {faq.a}
+                              </p>
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}

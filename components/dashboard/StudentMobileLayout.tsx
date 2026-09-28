@@ -28,7 +28,7 @@ export function StudentMobileLayout({ children }: { children: React.ReactNode })
       <div className="flex min-h-screen flex-col bg-slate-50">
         <MobileTopBar title={current?.label ?? "Hanoled"} isHome={isHome} />
         <main className="flex-1 px-4 pt-4 pb-safe-nav">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+          <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">{children}</div>
         </main>
         <MobileTabBar />
       </div>

@@ -61,10 +61,12 @@ export function MList({ children, className }: { children: React.ReactNode; clas
 
 /** Each record is its own card, 12px apart. */
 export function CardList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("space-y-3", className)}>{children}</div>
+  return <div className={cn("m-stagger space-y-3", className)}>{children}</div>
 }
 
 export const rowCard = "rounded-[20px] border border-border bg-card shadow-sm"
+/** Tappable rows dip slightly on press: feedback starts on pointer-down. */
+const pressable = "transition-[background-color,scale] duration-100 active:scale-[0.985]"
 
 export function SectionHead({
   title,
@@ -164,7 +166,7 @@ export function SchoolRow({
   const place = [city, state].filter(Boolean).join(", ")
   const awaiting = students === 0 && revenue === 0
   return (
-    <Link href={`/admin/schools/${id}`} className={cn(rowCard, "block min-h-[72px] px-4 py-4 active:bg-muted/60")}>
+    <Link href={`/admin/schools/${id}`} className={cn(rowCard, pressable, "block min-h-[72px] px-4 py-4 active:bg-muted/60")}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-[15px] font-bold leading-snug text-foreground">{name}</p>
