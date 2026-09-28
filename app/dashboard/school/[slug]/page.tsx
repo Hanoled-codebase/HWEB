@@ -7,32 +7,28 @@ import { usePermissions } from "@/hooks/usePermissions";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ArrowRight,
   BarChart3,
-  BookOpen,
   ChevronRight,
   GraduationCap,
-  Layers,
   School,
-  UserPlus,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { ParentHome } from "@/components/dashboard/mobile/ParentHome";
-import { RoleHome } from "@/components/dashboard/mobile/RoleHome";
 import { StudentDashboardView } from "@/components/dashboard/StudentDashboardView";
 import { AdminMobileDashboard } from "@/components/dashboard/AdminMobileDashboard";
-import { MemberMobileDashboard } from "@/components/dashboard/MemberMobileDashboard";
+import { TeachingHome } from "@/components/dashboard/teaching/TeachingHome";
 import { AdminDesktopOverview } from "@/components/dashboard/AdminDesktopOverview";
+import { FinanceHome } from "@/components/dashboard/finance/FinanceHome";
+import { DepartmentHome } from "@/components/dashboard/department/DepartmentHome";
+import { LibraryHome } from "@/components/dashboard/library/LibraryHome";
+import { WorkspaceSwitch } from "@/components/dashboard/WorkspaceSwitch";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 // Only built from assignments whose subject/class id is present (see the
 // `!subject?.id || !classLevel?.id` guards below), so id is always set.
@@ -46,22 +42,11 @@ type AssignmentOption = {
 type SpreadsheetSummary = {
   id: string;
   status: "pending" | "active" | "inactive";
+  subjectId?: string;
+  classLevelId?: string;
   classLevel?: { id?: string; name?: string | null } | null;
   subject?: { id?: string; name?: string | null } | null;
 };
-
-function getStatusClassName(status: SpreadsheetSummary["status"]) {
-  switch (status) {
-    case "active":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "pending":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    case "inactive":
-      return "border-slate-200 bg-slate-100 text-slate-700";
-    default:
-      return "border-slate-200 bg-slate-100 text-slate-700";
-  }
-}
 
 function buildAssignmentKey(subjectId: string, classId: string) {
   return `${subjectId}:${classId}`;
@@ -97,8 +82,11 @@ export default function DashboardOverviewPage() {
   }, [currentOrg?.slug]);
 
   const role = currentMember?.role;
-  const { isPrivileged: permPrivileged, isAccountant, isHOD, isLibrarian, isTeacher, can } = usePermissions();
+  const { isPrivileged: permPrivileged, isHOD, isTeacher, can } = usePermissions();
   const isPrivileged = permPrivileged || role === "owner" || role === "admin";
+  // Staff with more than one hat (a teacher who also keeps the bursary) get
+  // one home per workspace and a switch between them.
+  const { available: workspaces, active: workspace, setActive: setWorkspace } = useWorkspace();
 
   const teachingAssignments = useMemo(
     () =>
@@ -155,29 +143,13 @@ export default function DashboardOverviewPage() {
       );
   }, [teachingAssignments]);
 
-  const assignedClasses = useMemo(() => {
-    const map = new Map<string, AssignmentOption>();
-
-    teachingAssignments.forEach((assignment) => {
-      const classLevel = assignment.classLevel as AssignmentOption | null;
-      if (!classLevel?.id || map.has(classLevel.id)) {
-        return;
-      }
-
-      map.set(classLevel.id, classLevel);
-    });
-
-    return Array.from(map.values()).sort((left, right) =>
-      (left.name || "").localeCompare(right.name || ""),
-    );
-  }, [teachingAssignments]);
-
   const sheetsByAssignment = useMemo(() => {
     const map = new Map<string, SpreadsheetSummary>();
 
     memberSheets.forEach((sheet) => {
-      const subjectId = sheet.subject?.id || "";
-      const classId = sheet.classLevel?.id || "";
+      // The list returns the ids as plain fields; the nested objects only carry names.
+      const subjectId = sheet.subjectId || sheet.subject?.id || "";
+      const classId = sheet.classLevelId || sheet.classLevel?.id || "";
 
       if (!subjectId || !classId) {
         return;
@@ -260,7 +232,7 @@ export default function DashboardOverviewPage() {
                 <CardTitle className="text-sm font-semibold text-slate-700">
                   Linked Children
                 </CardTitle>
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-xs font-medium text-slate-500">
                   {assignedStudents.length} linked
                 </span>
               </div>
@@ -300,7 +272,7 @@ export default function DashboardOverviewPage() {
                                 {latestResults.map((r) => (
                                   <span
                                     key={r.id}
-                                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm"
+                                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm"
                                   >
                                     {r.subject.name}: {r.values[0] || "—"}
                                   </span>
@@ -319,7 +291,7 @@ export default function DashboardOverviewPage() {
                   })}
                 </div>
               )}
-              <p className="mt-4 text-xs text-slate-400">
+              <p className="mt-4 text-xs text-slate-500">
                 Last updated{" "}
                 <span className="font-semibold text-slate-500">
                   {new Date().toLocaleDateString("en-US", {
@@ -368,276 +340,42 @@ export default function DashboardOverviewPage() {
     );
   }
 
-  if (isAccountant) {
-    return (
-      <div className="space-y-6">
-        <div className="md:hidden">
-          <RoleHome />
-        </div>
-        <div className="hidden md:block rounded-xl border border-emerald-100 bg-emerald-50/50 p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Finance Dashboard — HCORE Accountant</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
-          <p className="mt-2 text-sm text-slate-600">Your HCORE ACCOUNTANT assignment is synced locally — manage fee structure, payments, debt and payroll independently, with HCORE as source when reachable.</p>
-          <div className="mt-4 flex gap-2">
-            <Button asChild className="bg-emerald-600 hover:bg-emerald-700"><Link href={`/dashboard/school/${currentOrg.slug}/payments`}>Payments</Link></Button>
-            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/billing`}>Billing</Link></Button>
-            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/payroll`}>Payroll</Link></Button>
-          </div>
-        </div>
+  const switcher =
+    workspace && workspaces.length > 1 ? (
+      <WorkspaceSwitch items={workspaces} active={workspace} onChange={setWorkspace} />
+    ) : null;
+  const withSwitch = (home: React.ReactNode) =>
+    switcher ? (
+      <div className="space-y-5">
+        {/* Phones switch here; desktop has the switch in the sidebar. */}
+        <div className="md:hidden">{switcher}</div>
+        {home}
       </div>
+    ) : (
+      home
     );
+
+  if (role === "member" && workspace === "finance") {
+    return <FinanceHome switcher={switcher} />;
   }
 
-  if (isHOD) {
-    return (
-      <div className="space-y-6">
-        <div className="md:hidden">
-          <RoleHome />
-        </div>
-        <div className="hidden md:block rounded-xl border border-indigo-100 bg-indigo-50/50 p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600">HOD Dashboard — HCORE HOD</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
-          <p className="mt-2 text-sm text-slate-600">Department overview from HCORE teaching assignments — scoped locally for independent operation.</p>
-          <div className="mt-4 flex gap-2">
-            <Button asChild><Link href={`/dashboard/school/${currentOrg.slug}/teachers`}>Department Teachers</Link></Button>
-            <Button asChild variant="outline"><Link href={`/dashboard/school/${currentOrg.slug}/students`}>Department Students</Link></Button>
-          </div>
-        </div>
-      </div>
-    );
+  if (role === "member" && workspace === "department") {
+    return <DepartmentHome switcher={switcher} />;
   }
 
-  if (isLibrarian) {
-    return (
-      <div className="space-y-6">
-        <div className="md:hidden">
-          <RoleHome />
-        </div>
-        <div className="hidden md:block rounded-xl border border-amber-100 bg-amber-50/50 p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600">Library Dashboard — HCORE Librarian</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950 capitalize">Welcome back, {user.name.split(" ")[0]}</h1>
-          <p className="mt-2 text-sm text-slate-600">Library management from HCORE assignment — works offline from local projection.</p>
-          <Button asChild className="mt-4"><Link href={`/dashboard/school/${currentOrg.slug}/library`}>Library</Link></Button>
-        </div>
-      </div>
-    );
+  if (role === "member" && workspace === "library") {
+    return <LibraryHome switcher={switcher} />;
   }
 
   if (role === "member" && isTeacher) {
-    const readySheetsCount = memberSheets.length;
-
-    return (
-      <>
-        {/* Mobile Member Dashboard */}
-        <div className="md:hidden">
-          <MemberMobileDashboard
-            slug={currentOrg.slug}
-            userName={user.name.split(" ")[0]}
-            subjectGroups={subjectGroups}
-            assignedClasses={assignedClasses}
-            readySheetsCount={readySheetsCount}
-            sheetsByAssignment={sheetsByAssignment}
-            isMemberSheetsLoading={isMemberSheetsLoading}
-            orgName={currentOrg.name}
-          />
-        </div>
-
-        {/* Desktop Member Dashboard */}
-        <div className="hidden md:block space-y-6">
-        <div className="rounded-xl border border-blue-100 bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-400">
-                Teaching Dashboard
-              </p>
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl capitalize">
-                Welcome back, {user.name.split(" ")[0]}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                Your workspace is now tied to the subjects and classes assigned
-                to you. Open a class sheet directly from the relevant subject
-                card below.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button asChild className="bg-blue-600 hover:bg-blue-700">
-                <Link
-                  href={`/dashboard/school/${currentOrg.slug}/spreadsheets`}
-                >
-                  <Layers className="mr-2 h-4 w-4" />
-                  View All Sheets
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-white/80 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                Subjects
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">
-                {subjectGroups.length}
-              </p>
-            </div>
-            <div className="rounded-lg border border-white/80 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                Classes
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">
-                {assignedClasses.length}
-              </p>
-            </div>
-            <div className="rounded-lg border border-white/80 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                Available Sheets
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">
-                {readySheetsCount}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle>Assigned Classes</CardTitle>
-            <CardDescription>
-              Every spreadsheet you can access is tied to one of these class and
-              subject combinations.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {assignedClasses.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No class assignments yet. Ask an admin to assign your teaching
-                load.
-              </p>
-            ) : (
-              assignedClasses.map((classOption) => (
-                <Badge
-                  key={classOption.id}
-                  variant="outline"
-                  className="border-blue-200 bg-blue-50 text-blue-700"
-                >
-                  {classOption.name || "Class"}
-                </Badge>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {subjectGroups.length === 0 ? (
-          <Card className="w-full border-dashed border-slate-300 shadow-sm">
-            <CardContent className="py-12 px-6 text-center w-full">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4">
-                <BookOpen className="h-7 w-7" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">
-                No subjects assigned yet.
-              </h3>
-              <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-                An admin needs to assign at least one subject and class to your
-                profile before you can manage spreadsheets.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {subjectGroups.map((group) => (
-              <Card
-                key={group.subject.id}
-                className="border-slate-200 shadow-sm"
-              >
-                <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-slate-900">
-                      <BookOpen className="h-5 w-5 text-blue-600" />
-                      {group.subject.name || "Subject"}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {group.classes.length}{" "}
-                      {group.classes.length === 1 ? "class" : "classes"}{" "}
-                      assigned
-                    </CardDescription>
-                  </div>
-                  <Button asChild variant="outline">
-                    <Link
-                      href={`/dashboard/school/${currentOrg.slug}/spreadsheets?subjectId=${group.subject.id}`}
-                    >
-                      Open
-                    </Link>
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {isMemberSheetsLoading
-                    ? Array.from({ length: group.classes.length || 1 }).map(
-                        (_, index) => (
-                          <Skeleton key={index} className="h-20 rounded-lg" />
-                        ),
-                      )
-                    : group.classes.map((classOption) => {
-                        const spreadsheet = sheetsByAssignment.get(
-                          buildAssignmentKey(
-                            group.subject.id || "",
-                            classOption.id || "",
-                          ),
-                        );
-
-                        return (
-                          <div
-                            key={classOption.id}
-                            className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="space-y-1">
-                              <p className="font-medium text-slate-900">
-                                {classOption.name || "Class"}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                {spreadsheet
-                                  ? "Spreadsheet ready for score entry"
-                                  : "No spreadsheet created yet for this class."}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {spreadsheet ? (
-                                <Badge
-                                  variant="outline"
-                                  className={getStatusClassName(
-                                    spreadsheet.status,
-                                  )}
-                                >
-                                  {spreadsheet.status}
-                                </Badge>
-                              ) : null}
-                              <Button
-                                asChild
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                <Link
-                                  href={
-                                    spreadsheet
-                                      ? `/dashboard/school/${currentOrg.slug}/spreadsheets/${spreadsheet.id}`
-                                      : `/dashboard/school/${currentOrg.slug}/spreadsheets?subjectId=${group.subject.id}&classLevelId=${classOption.id}`
-                                  }
-                                >
-                                  {spreadsheet ? "Open Sheet" : "Create Sheet"}
-                                  <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-      </>
+    return withSwitch(
+      <TeachingHome
+        slug={currentOrg.slug}
+        firstName={user.name.split(" ")[0]}
+        subjectGroups={subjectGroups}
+        sheetsByAssignment={sheetsByAssignment}
+        isSheetsLoading={isMemberSheetsLoading}
+      />,
     );
   }
 

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseIntegerParam, parseRouteParam } from "@/lib/spreadsheets";
 import {
@@ -87,16 +88,19 @@ export default function StudentAssessmentScorePage() {
   const progressWidth =
     percentage === null ? 0 : Math.max(0, Math.min(percentage, 100));
 
+  useMobilePageTitle(assessment?.name);
+
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">
-      <div className="mx-auto flex max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
-        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-5 shadow-[0_24px_70px_rgba(37,99,235,0.10)] backdrop-blur sm:p-6">
+    <div className="min-h-full pb-10">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 md:gap-5 md:px-6 md:py-4 lg:px-8">
+        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-4 shadow-[0_24px_70px_rgba(37,99,235,0.10)] sm:p-6">
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="mb-4 h-11 w-11 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                aria-label="Back"
+                  className="mb-4 hidden h-11 w-11 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 md:inline-flex"
                 onClick={() =>
                   router.push(
                     `/dashboard/school/${currentOrg?.slug}/classes/${classId}/students/${studentId}/subjects/${subjectId}`,
@@ -113,13 +117,13 @@ export default function StudentAssessmentScorePage() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-400">
+                  <p className="hidden text-sm font-semibold uppercase tracking-[0.24em] text-blue-500 md:block">
                     Assessment Score
                   </p>
-                  <h1 className="mt-2 text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl">
+                  <h1 className="mt-2 hidden text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl md:block">
                     {assessment?.name || "Assessment"}
                   </h1>
-                  <p className="mt-3 text-sm text-slate-500 sm:text-base">
+                  <p className="text-sm text-slate-600 sm:text-base md:mt-3 md:text-slate-500">
                     {performance
                       ? getStudentFullName(performance.student)
                       : "Student"}{" "}
@@ -193,7 +197,7 @@ export default function StudentAssessmentScorePage() {
             </div>
 
             <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/70 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Performance Meter
               </p>
               <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
@@ -212,7 +216,7 @@ export default function StudentAssessmentScorePage() {
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-lg border border-white bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Student
                   </p>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -220,7 +224,7 @@ export default function StudentAssessmentScorePage() {
                   </p>
                 </div>
                 <div className="rounded-lg border border-white bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Subject
                   </p>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -228,7 +232,7 @@ export default function StudentAssessmentScorePage() {
                   </p>
                 </div>
                 <div className="rounded-lg border border-white bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Class
                   </p>
                   <p className="mt-2 text-sm font-semibold text-slate-900">

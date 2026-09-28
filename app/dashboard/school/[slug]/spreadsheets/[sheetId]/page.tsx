@@ -6,7 +6,6 @@ import {
   ChevronRight,
   FileText,
   HelpCircle,
-  Layers,
   Loader2,
   Plus,
   Search,
@@ -20,19 +19,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
 import {
   SpreadsheetDetail,
   SpreadsheetQuestion,
-  getDisplayName,
   getErrorMessage,
-  getInitials,
   getOrderedAssessments,
   getSpreadsheetLabel,
   getStatusClassName,
@@ -87,7 +84,7 @@ function StatusDot({ status }: { status: string }) {
 export default function SpreadsheetAssessmentsPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentOrg, currentMember } = useOrganization();
+  const { currentOrg } = useOrganization();
   const sheetId = parseRouteParam(params.sheetId);
 
   const [sheet, setSheet] = useState<SpreadsheetDetail | null>(null);
@@ -131,10 +128,10 @@ export default function SpreadsheetAssessmentsPage() {
         ? sheet.columns.map((name) => ({ name, total: undefined }) as SA)
         : [];
   const displayAssessments = getOrderedAssessments(rawAssessments);
-  const greetingName = getDisplayName(currentMember?.user?.name);
   const className = sheet?.classLevel?.name || "Class";
   const subjectName = sheet?.subject?.name || "Subject";
   const spreadsheetLabel = sheet ? getSpreadsheetLabel(sheet) : "Spreadsheet";
+  useMobilePageTitle(sheet ? `${subjectName} · ${className}` : null);
 
   const filteredAssessments = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -240,7 +237,7 @@ export default function SpreadsheetAssessmentsPage() {
   /* ── Loading ── */
   if (isLoading) {
     return (
-      <div className="-mx-4 -mt-4 bg-[#F5F5FA] px-4 pt-5 pb-10 space-y-4">
+      <div className="-mx-4 -mt-4 bg-slate-50 px-4 pt-5 pb-10 space-y-4">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-44" />
@@ -283,72 +280,50 @@ export default function SpreadsheetAssessmentsPage() {
 
   return (
     /* Bleed edge-to-edge on mobile, matching the layout's p-4 offset */
-    <div className="-mx-4 -mt-4 flex flex-col bg-[#F5F5FA]">
+    <div className="-mx-4 -mt-4 flex flex-col bg-slate-50">
       <div className="px-4 pt-5 pb-10">
 
-        {/* ── Welcome header ── */}
-        <div className="mb-4 flex items-start justify-between gap-3">
+        {/* ── Context: which sheet this is (the top bar carries "Subject · Class" on phones) ── */}
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-                Welcome, <span className="text-slate-900">{greetingName}</span>
-              </h1>
-              <StatusDot status={sheet.status} />
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              Working in{" "}
-              <span className="font-semibold text-indigo-600">{subjectName}</span>
-              {" · "}
-              <span className="font-semibold text-indigo-600">{className}</span>
+            <h1 className="hidden truncate text-2xl font-bold text-slate-900 md:block">{spreadsheetLabel}</h1>
+            <p className="hidden truncate text-sm text-slate-600 md:mt-1 md:block">
+              <span className="font-semibold text-slate-900">{subjectName}</span>
+              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="font-semibold text-slate-900">{className}</span>
+            </p>
+            <p className="text-sm text-slate-600 md:hidden">
+              {displayAssessments.length} {displayAssessments.length === 1 ? "assessment" : "assessments"} · tap one to enter scores
             </p>
           </div>
-          <Avatar className="h-11 w-11 shrink-0 ring-2 ring-indigo-100">
-            <AvatarImage
-              src={currentMember?.user?.avatar || currentMember?.user?.image || ""}
-              alt={currentMember?.user?.name || ""}
-            />
-            <AvatarFallback className="bg-indigo-50 text-sm font-bold text-indigo-700">
-              {getInitials(currentMember?.user?.name)}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-
-        {/* ── Current spreadsheet info card ── */}
-        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
-            <Layers className="h-5 w-5 text-indigo-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Current Spreadsheet
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-              {spreadsheetLabel}
-            </p>
-          </div>
+          <StatusDot status={sheet.status} />
         </div>
 
         {/* ── Tab switcher ── */}
-        <div className="mb-4 flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div role="tablist" aria-label="Sheet sections" className="mb-4 flex rounded-2xl bg-slate-200/60 p-1">
           <button
+            role="tab"
+            aria-selected={activeTab === "assessments"}
             onClick={() => setActiveTab("assessments")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-colors",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors",
               activeTab === "assessments"
-                ? "bg-white shadow-sm text-slate-900 shadow-slate-200"
-                : "text-slate-400 hover:text-slate-600",
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             <FileText className="h-4 w-4" />
             Assessments
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "questions"}
             onClick={() => setActiveTab("questions")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-colors",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors",
               activeTab === "questions"
-                ? "bg-white shadow-sm text-slate-900 shadow-slate-200"
-                : "text-slate-400 hover:text-slate-600",
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             <HelpCircle className="h-4 w-4" />
@@ -373,7 +348,7 @@ export default function SpreadsheetAssessmentsPage() {
 
             {/* Assessment list */}
             {filteredAssessments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400 shadow-sm">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
                 {displayAssessments.length === 0
                   ? "No assessments defined for this spreadsheet."
                   : "No assessments match your search."}
@@ -420,7 +395,7 @@ export default function SpreadsheetAssessmentsPage() {
         {activeTab === "questions" && (
           <>
             {rawAssessments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400 shadow-sm">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
                 <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                 No assessments defined. Create assessments first.
               </div>
@@ -428,7 +403,7 @@ export default function SpreadsheetAssessmentsPage() {
               <div className="space-y-4">
                 {/* Assessment picker */}
                 <div>
-                  <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Assessment
                   </Label>
                   <Select
@@ -476,7 +451,7 @@ export default function SpreadsheetAssessmentsPage() {
 
                 {/* Questions list */}
                 {questions.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400 shadow-sm">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
                     <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                     No questions yet. Add questions manually or import from JSON.
                   </div>
@@ -508,7 +483,7 @@ export default function SpreadsheetAssessmentsPage() {
                                 ))}
                               </div>
                             )}
-                            <div className="mt-2 flex gap-3 text-xs text-slate-400">
+                            <div className="mt-2 flex gap-3 text-xs text-slate-500">
                               {q.correctAnswer && (
                                 <span>Answer: <span className="font-semibold text-emerald-600">{q.correctAnswer}</span></span>
                               )}

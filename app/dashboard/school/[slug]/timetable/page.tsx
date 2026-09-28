@@ -291,9 +291,9 @@ export default function TimetablePage() {
 
   return (
     <div className="space-y-4 pb-28 md:pb-0">
-      <div className="flex flex-col gap-1">
+      <div className="hidden flex-col gap-1 md:flex">
         <h1 className="text-xl font-bold text-slate-900">{isPrivileged ? "Timetable Management" : "Timetable"}</h1>
-        <p className="text-xs text-slate-400 font-medium">
+        <p className="text-sm text-slate-500 font-medium">
           {isPrivileged ? "Create and manage class schedules." : "View class schedules."}
         </p>
       </div>
@@ -301,7 +301,7 @@ export default function TimetablePage() {
       {isPrivileged && (
         <Button
           onClick={() => setShowCreateSchedule(!showCreateSchedule)}
-          className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-2xl shadow-sm flex items-center justify-center gap-2"
+          className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-2xl shadow-sm flex items-center justify-center gap-2 md:w-auto md:px-5"
         >
           <Plus className="h-4 w-4" />
           New Schedule
@@ -370,46 +370,44 @@ export default function TimetablePage() {
         </Card>
       ) : (
         <>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
             {schedules.map((s) => {
               const isSelected = selectedSchedule?.id === s.id;
               return (
                 <button
                   key={s.id}
                   onClick={() => setSelectedSchedule(s)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                  aria-pressed={isSelected}
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all md:min-h-0 md:px-3 md:py-1 md:text-xs ${
                     isSelected
-                      ? "bg-[#EEF0FF] text-[#1447E6] border border-indigo-100"
-                      : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
+                      ? "border border-blue-600 bg-blue-600 text-white"
+                      : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   }`}
                 >
-                  {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[#1447E6]" />}
                   <span>{s.classLevel.name}</span>
                 </button>
               );
             })}
 
-            {selectedSchedule && (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200">
-                {selectedSchedule.classLevel.name}
-                {selectedSchedule.term ? ` · ${selectedSchedule.term}` : ""}
-                {selectedSchedule.academicYear ? ` · ${selectedSchedule.academicYear}` : ""}
-              </span>
-            )}
           </div>
 
           {selectedSchedule && (
-            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex items-center justify-between">
-              <p className="text-xs text-slate-500 font-medium">
-                {selectedSchedule._count.slots} slots ·{" "}
-                {selectedSchedule.isActive ? (
-                  <span className="text-emerald-500 font-semibold">Active</span>
-                ) : (
-                  <span className="text-slate-400">Inactive</span>
-                )}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <p className="text-sm font-medium text-slate-600">
+                <span className="font-semibold text-slate-900">{selectedSchedule.classLevel.name}</span>
+                {selectedSchedule.term ? ` · ${selectedSchedule.term}` : ""}
+                {selectedSchedule.academicYear ? ` · ${selectedSchedule.academicYear}` : ""}
+                <span className="block text-xs md:inline md:before:content-['_·_']">
+                  {selectedSchedule._count.slots} periods ·{" "}
+                  {selectedSchedule.isActive ? (
+                    <span className="font-semibold text-emerald-700">Active</span>
+                  ) : (
+                    <span className="text-slate-500">Inactive</span>
+                  )}
+                </span>
               </p>
               {isPrivileged && (
-                <div className="flex gap-2">
+                <div className="flex gap-3 md:gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -445,22 +443,23 @@ export default function TimetablePage() {
                   <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-50">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-900">{day.day}</span>
-                      <span className="bg-slate-100 text-slate-500 text-[11px] font-medium px-2.5 py-0.5 rounded-full">
+                      <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
                         {day.slots.length} period{day.slots.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                     {isPrivileged && (
                       <button
                         onClick={() => openAddSlot(day.dayIndex)}
-                        className="text-[#1447E6] hover:text-indigo-700 text-xs font-semibold flex items-center gap-1"
+                        aria-label={`Add a period on ${day.day}`}
+                        className="-my-2 -mr-2 flex min-h-11 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 md:min-h-9"
                       >
-                        + Add
+                        <Plus className="h-4 w-4" /> Add
                       </button>
                     )}
                   </div>
                   <div className="p-4">
                     {day.slots.length === 0 ? (
-                      <div className="text-center py-6 text-slate-400 text-xs font-medium border-2 border-dashed border-slate-200/80 rounded-2xl">
+                      <div className="text-center py-6 text-slate-500 text-sm font-medium border-2 border-dashed border-slate-200/80 rounded-2xl">
                         No periods scheduled
                       </div>
                     ) : (
@@ -482,7 +481,7 @@ export default function TimetablePage() {
                               <div className="min-w-0">
                                 <span className="text-sm font-semibold text-slate-800 block truncate">{slot.subject}</span>
                                 {slot.subjectCode && (
-                                  <span className="text-[11px] text-slate-400">{slot.subjectCode}</span>
+                                  <span className="text-xs text-slate-500">{slot.subjectCode}</span>
                                 )}
                               </div>
                             </div>
@@ -515,6 +514,7 @@ export default function TimetablePage() {
                                   size="sm"
                                   variant="ghost"
                                   className="h-7 text-xs text-rose-500 hover:text-rose-700"
+                                  aria-label={`Delete ${slot.subject} period`}
                                   onClick={() => handleDeleteSlot(slot.id)}
                                 >
                                   <Trash2 className="h-3 w-3" />

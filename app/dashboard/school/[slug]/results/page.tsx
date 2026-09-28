@@ -4,12 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   AlertTriangle,
-  BarChart3,
   BookOpen,
   ChevronDown,
+  ChevronRight,
   Download,
   FileText,
-  Filter,
   Loader2,
   Printer,
   RefreshCw,
@@ -192,7 +191,7 @@ function getMobileBadgeClass(label: string) {
 
 function getScoreTone(percentage: number | null) {
   if (percentage === null) {
-    return { stroke: "#cbd5e1", text: "text-slate-400" };
+    return { stroke: "oklch(0.865 0.014 263.4)", text: "text-slate-500" };
   }
 
   if (percentage >= 75) {
@@ -224,7 +223,7 @@ function MobileScoreRing({ percentage }: { percentage: number | null }) {
           cy="24"
           r={radius}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="oklch(0.925 0.010 263.4)"
           strokeWidth="4"
         />
         {percentage !== null && (
@@ -336,7 +335,10 @@ export default function ResultsPage() {
 
   const [resultGroups, setResultGroups] = useState<StudentResultGroup[]>([]);
   const [notifications, setNotifications] = useState<ParentNotification[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState("");
+  // ?student=<id> preselects a learner (a parent tapping one child on the home screen lands on that child).
+  const [selectedStudentId, setSelectedStudentId] = useState(() =>
+    typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("student") ?? "",
+  );
   const [selectedSubject, setSelectedSubject] =
     useState<StudentPerformanceSubject | null>(null);
   const [showAllMobileSubjects, setShowAllMobileSubjects] = useState(false);
@@ -519,10 +521,10 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-16">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="hidden flex-col items-start justify-between gap-5 md:flex md:flex-row md:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
               {currentMember?.role === "parent" ? "Parent Portal" : "Results Portal"}
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
@@ -617,15 +619,16 @@ export default function ResultsPage() {
         ) : (
           <>
             {/* Search and Class Level Filter Bar */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:gap-3 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-4 md:shadow-sm">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  type="text"
-                  placeholder="Search student by name or admission number..."
+                  type="search"
+                  placeholder="Search by name or admission no."
+                  aria-label="Search students"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-sm"
+                  className="h-11 bg-white pl-10 md:text-sm"
                 />
               </div>
 
@@ -653,88 +656,76 @@ export default function ResultsPage() {
 
             {selectedGroup && (
               <section className="md:hidden">
-                <div className="rounded-[2rem] bg-gradient-to-b from-white to-blue-50/80 px-2 pb-7 pt-4">
-                  <div className="flex items-center gap-4">
-                    <div className="relative flex h-24 w-28 shrink-0 items-center justify-center rounded-3xl border-[3px] border-blue-700 bg-white shadow-sm">
-                      <BarChart3 className="h-10 w-10 text-blue-100" />
-                      <span className="absolute -bottom-3 right-1 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-bold uppercase text-white">
-                        Active
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <h1 className="text-headline-small font-normal text-slate-950 capitalize">
-                        {selectedGroup.student.firstName}
-                        <br />
-                        {selectedGroup.student.lastName}
-                      </h1>
-                      <p className="mt-2 text-label-large font-medium text-slate-700">
-                        ID:{" "}
-                        <span className="font-bold text-blue-700">
-                          {getStudentRecordId(
-                            selectedGroup.student as StudentPerformanceResponse["student"],
-                          )}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-7 flex flex-wrap gap-3 pl-32">
-                    <span className="rounded-full bg-emerald-300 px-4 py-1.5 text-xs font-bold uppercase text-emerald-900">
-                      {selectedGroup.student.classLevel?.name ||
-                        "Unassigned"}
-                    </span>
-                  </div>
-                </div>
-
-                {resultGroups.length > 1 && (
-                  <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+                {/* Who these results belong to. A few children: full-name chips. A school's worth: a picker. */}
+                {resultGroups.length > 1 && resultGroups.length <= 4 ? (
+                  <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
                     {resultGroups.map((group) => {
-                      const isActive =
-                        group.student.id === selectedGroup.student.id;
-
+                      const isActive = group.student.id === selectedGroup.student.id;
                       return (
                         <button
                           key={group.student.id}
                           type="button"
+                          aria-pressed={isActive}
                           onClick={() => {
                             setSelectedStudentId(group.student.id);
                             setShowAllMobileSubjects(false);
                             setSelectedSubject(null);
                           }}
                           className={cn(
-                            "shrink-0 rounded-full border px-4 py-2 text-sm font-bold capitalize",
-                            isActive
-                              ? "border-blue-700 bg-blue-700 text-white"
-                              : "border-slate-200 bg-white text-slate-600",
+                            "min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold capitalize",
+                            isActive ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700",
                           )}
                         >
-                          {group.student.firstName}
+                          {group.student.firstName} {group.student.lastName}
                         </button>
                       );
                     })}
                   </div>
-                )}
+                ) : resultGroups.length > 4 ? (
+                  <Select
+                    value={selectedGroup.student.id}
+                    onValueChange={(val) => {
+                      setSelectedStudentId(String(val));
+                      setShowAllMobileSubjects(false);
+                      setSelectedSubject(null);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Choose a learner" className="h-12 w-full rounded-xl bg-white capitalize">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(filteredResultGroups.length > 0 ? filteredResultGroups : resultGroups).map((group) => (
+                        <SelectItem key={group.student.id} value={group.student.id} className="capitalize">
+                          {group.student.firstName} {group.student.lastName}
+                          {group.student.classLevel?.name ? ` · ${group.student.classLevel.name}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
 
-                <div className="mt-8 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-title-large font-medium text-slate-950">
-                      Academic Results
+                <div className={cn("mt-4 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4", resultGroups.length > 4 ? "hidden" : "flex")}>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold uppercase text-blue-700">
+                    {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-lg font-bold capitalize text-slate-900">
+                      {selectedGroup.student.firstName} {selectedGroup.student.lastName}
                     </h2>
-                    <p className="text-body-small font-normal text-slate-500">
-                      {performanceSubjects.length} Subjects registered
+                    <p className="truncate text-sm text-slate-600">
+                      {selectedGroup.student.classLevel?.name || "Not in a class"}
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      {getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-11 rounded-2xl bg-blue-50 px-4 text-label-large font-medium text-blue-700 hover:bg-blue-100"
-                  >
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter
-                  </Button>
                 </div>
 
-                <div className="mt-4 space-y-4">
+                <div className="mt-6 flex items-baseline justify-between gap-3">
+                  <h2 className="text-base font-semibold text-slate-900">Subjects</h2>
+                  <p className="text-sm text-slate-500">{performanceSubjects.length} with results</p>
+                </div>
+
+                <div className="mt-3 space-y-3">
                   {visibleMobileSubjects.map((subject) => {
                     const summary = getSubjectPerformanceSummary(subject);
                     const label = getSubjectRecordLabel(summary);
@@ -746,9 +737,9 @@ export default function ResultsPage() {
                         type="button"
                         onClick={() => setSelectedSubject(subject)}
                         className={cn(
-                          "flex w-full flex-col gap-3 rounded-3xl border bg-white p-4 text-left shadow-sm",
+                          "flex w-full flex-col gap-2 rounded-2xl border bg-white p-4 text-left",
                           inProgress
-                            ? "border-dashed border-slate-400 bg-blue-50/40"
+                            ? "border-dashed border-slate-300"
                             : "border-slate-200",
                         )}
                       >
@@ -765,21 +756,17 @@ export default function ResultsPage() {
                             {getSubjectName(subject)}
                           </p>
 
-                          <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" />
+                          <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                         </div>
 
                         <div className="flex items-center justify-between gap-3 pl-[68px]">
                           <p className="min-w-0 truncate text-sm font-medium text-slate-500">
                             {inProgress
-                              ? "Grading in progress..."
+                              ? `${summary.enteredCount} of ${summary.totalCount} scores in · grading in progress`
                               : `${summary.enteredCount} of ${summary.totalCount} assessments`}
                           </p>
 
-                          {inProgress ? (
-                            <div className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-white">
-                              <div className="h-full w-1/3 rounded-full bg-blue-200" />
-                            </div>
-                          ) : (
+                          {inProgress ? null : (
                             <span
                               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${getMobileBadgeClass(label)}`}
                             >
@@ -795,7 +782,7 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       onClick={() => setShowAllMobileSubjects((value) => !value)}
-                      className="flex h-14 w-full items-center justify-center gap-3 rounded-3xl border border-blue-200 bg-blue-50 text-base font-bold text-blue-700"
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-blue-700"
                     >
                       {showAllMobileSubjects
                         ? "Show Less"
@@ -824,7 +811,7 @@ export default function ResultsPage() {
               <section className="hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 md:block">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                       Children
                     </p>
                     <h2 className="mt-1.5 text-base sm:text-xl font-bold text-slate-900">
@@ -922,7 +909,7 @@ export default function ResultsPage() {
                       <AlertTriangle className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                         Alerts
                       </p>
                       <h2 className="mt-0.5 text-base sm:text-xl font-bold text-slate-900">
@@ -987,6 +974,7 @@ export default function ResultsPage() {
             {selectedGroup && (
               <div className="hidden md:block">
                 <StudentAcademicRecord
+                  titlesPage={false}
                   student={
                     selectedGroup.student as StudentPerformanceResponse["student"]
                   }

@@ -59,7 +59,9 @@ function todayString() {
 export default function StaffAttendancePage() {
   const { currentOrg } = useOrganization();
   const { can, isPrivileged } = usePermissions();
-  const canManageStaffAttendance = can("attendance.mark") || isPrivileged;
+  // Taking the student register (attendance.mark) says nothing about staff
+  // records: only owners/admins may write these, as the server enforces.
+  const canManageStaffAttendance = isPrivileged;
   const [dateStr, setDateStr] = useState(todayString());
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,71 +168,84 @@ export default function StaffAttendancePage() {
   }, {});
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+    <div className={`space-y-4 md:space-y-6 md:p-6 ${tab === "mark" ? "pb-24 md:pb-6" : ""}`}>
+      {/* Header (phones: the top bar names the page) */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="hidden md:block">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
             <Clock className="h-6 w-6 text-blue-600" />
             Staff Attendance
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Track daily staff presence and punctuality</p>
+          <p className="mt-1 text-sm text-slate-500">Track daily staff presence and punctuality</p>
         </div>
-        {/* Tab Switcher */}
-        <div className="flex rounded-lg border overflow-hidden">
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors ${tab === "mark" ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
-            onClick={() => setTab("mark")}
-          >
-            Mark Attendance
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors ${tab === "history" ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
-            onClick={() => setTab("history")}
-          >
-            History
-          </button>
+        {/* Mark / History: same segmented control as the student register */}
+        <div role="tablist" aria-label="Staff attendance view" className="grid w-full grid-cols-2 rounded-xl border border-slate-200 bg-white p-1 md:flex md:w-auto">
+          {(["mark", "history"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              className={`min-h-11 rounded-lg px-4 text-sm font-semibold transition-colors md:min-h-9 ${tab === key ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+              onClick={() => setTab(key)}
+            >
+              {key === "mark" ? "Mark attendance" : "History"}
+            </button>
+          ))}
         </div>
       </div>
 
       {tab === "mark" && (
         <>
-          {/* Date Navigator */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button variant="outline" size="icon" onClick={() => shiftDate(-1)}>
+          {/* Date navigator */}
+          <div className="flex items-center gap-2 md:flex-wrap md:gap-3">
+            <Button variant="outline" size="icon" aria-label="Previous day" className="shrink-0" onClick={() => shiftDate(-1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Input
               type="date"
+              aria-label="Date"
               value={dateStr}
               onChange={(e) => setDateStr(e.target.value)}
-              className="w-44"
+              className="min-w-0 flex-1 md:w-44 md:flex-none"
             />
-            <Button variant="outline" size="icon" onClick={() => shiftDate(1)} disabled={dateStr >= todayString()}>
+            <Button variant="outline" size="icon" aria-label="Next day" className="shrink-0" onClick={() => shiftDate(1)} disabled={dateStr >= todayString()}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={fetchSummary} disabled={loading}>
-              <RefreshCcw className="h-4 w-4 mr-1" />
-              Reload
+            <Button variant="outline" size="sm" aria-label="Reload" className="shrink-0 max-md:w-12 max-md:px-0 md:h-9" onClick={fetchSummary} disabled={loading}>
+              <RefreshCcw className="h-4 w-4 md:mr-1" />
+              <span className="hidden md:inline">Reload</span>
             </Button>
+            {/* Desktop: inline save. Phones: pinned above the tab bar (below). */}
             <Button
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white ml-auto"
+              className="ml-auto hidden bg-blue-600 text-white hover:bg-blue-700 md:inline-flex md:h-9"
               onClick={handleBulkSave}
               disabled={saving || members.length === 0 || !canManageStaffAttendance}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save Attendance
             </Button>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Quick stats: one line on phones, tiles on desktop */}
+          <p className="text-sm text-slate-600 md:hidden">
+            {[
+              { label: "present", val: stats.present },
+              { label: "absent", val: stats.absent },
+              { label: "late", val: stats.late },
+              { label: "on leave", val: stats.leave },
+            ]
+              .filter((item) => item.val > 0)
+              .map((item) => `${item.val} ${item.label}`)
+              .join(" · ") || "No staff marked yet"}
+          </p>
+          <div className="hidden grid-cols-4 gap-3 md:grid">
             {[
               { label: "Present", val: stats.present, color: "text-emerald-700", bg: "bg-emerald-50" },
               { label: "Absent", val: stats.absent, color: "text-red-700", bg: "bg-red-50" },
               { label: "Late", val: stats.late, color: "text-amber-700", bg: "bg-amber-50" },
-              { label: "On Leave", val: stats.leave, color: "text-purple-700", bg: "bg-purple-50" },
+              { label: "On Leave", val: stats.leave, color: "text-blue-700", bg: "bg-blue-50" },
             ].map((s) => (
               <Card key={s.label} className={`${s.bg} border-0 shadow-sm`}>
                 <CardContent className="p-3 text-center">
@@ -247,19 +262,19 @@ export default function StaffAttendancePage() {
               {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
             </div>
           ) : members.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No staff members found</p>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-slate-500">
+              <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <p className="text-sm">No staff yet. Staff appear here once they accept their invite.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white max-md:divide-y max-md:divide-slate-100 md:space-y-2 md:overflow-visible md:border-0 md:bg-transparent">
               {members.map((m) => {
                 const status = statusMap[m.id] || "present";
                 const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.present;
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center gap-2 sm:gap-4 p-3 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors"
+                    className="flex min-h-16 items-center gap-3 bg-white px-4 py-2.5 transition-colors md:gap-4 md:rounded-xl md:border md:border-slate-200 md:p-3 md:hover:border-blue-300"
                   >
                     <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-sm font-semibold text-blue-700">
@@ -268,7 +283,7 @@ export default function StaffAttendancePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-900 text-sm truncate">{m.user.name}</p>
-                      <p className="text-xs text-slate-500 capitalize">{m.role}</p>
+                      <p className="text-xs text-slate-500 capitalize">{m.role === "member" ? "Staff" : m.role}</p>
                     </div>
                     <Select
                       value={statusMap[m.id] || "present"}
@@ -279,7 +294,7 @@ export default function StaffAttendancePage() {
                           setStatusMap(next);
                         }}
                     >
-                      <SelectTrigger className={`w-28 sm:w-36 h-8 text-xs font-medium ${cfg.bg} ${cfg.color} border-0 rounded-lg`}>
+                      <SelectTrigger aria-label={`Status for ${m.user.name}`} className={`h-11 w-32 shrink-0 rounded-lg border-0 text-sm font-medium md:h-8 md:w-36 md:text-xs ${cfg.bg} ${cfg.color}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -298,6 +313,19 @@ export default function StaffAttendancePage() {
             </div>
           )}
         </>
+      )}
+
+      {tab === "mark" && canManageStaffAttendance && members.length > 0 && (
+        <div className="fixed inset-x-0 bottom-above-nav z-30 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md md:hidden">
+          <Button
+            className="h-12 w-full bg-blue-600 font-semibold text-white hover:bg-blue-700"
+            onClick={handleBulkSave}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save staff attendance
+          </Button>
+        </div>
       )}
 
       {tab === "history" && (
@@ -327,7 +355,7 @@ export default function StaffAttendancePage() {
                         </h3>
                         <span className="text-xs text-slate-500">{presentCount}/{total} present</span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                         {recs.map((r) => {
                           const cfg = STATUS_CONFIG[r.status] || STATUS_CONFIG.present;
                           return (

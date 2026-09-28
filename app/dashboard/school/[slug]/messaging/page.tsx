@@ -148,7 +148,7 @@ export default function MessagingPage() {
   };
 
   const statusBadge = (status: string) => (
-    <Badge variant="outline" className={cn("rounded-full px-2 py-0 text-[11px] font-medium",
+    <Badge variant="outline" className={cn("rounded-full px-2 py-0 text-xs font-medium",
       status === "sent" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : status === "pending" ? "border-amber-200 bg-amber-50 text-amber-700"
       : "border-rose-200 bg-rose-50 text-rose-700"
@@ -174,17 +174,17 @@ export default function MessagingPage() {
   return (
     <div className="min-h-full bg-slate-50/60 pb-28 md:pb-10">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 p-0 md:p-6 lg:p-8">
-        <div>
-          <p className="text-xs text-slate-400 font-medium">Send messages and manage templates.</p>
+        <div className="hidden md:block">
+          <p className="text-sm text-slate-500 font-medium">Send messages and manage templates.</p>
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <div className="w-full overflow-x-auto pb-1">
-            <TabsList className="grid w-full grid-cols-4 h-11 items-center rounded-2xl bg-slate-100 p-1">
-              <TabsTrigger value="compose" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Compose</TabsTrigger>
-              <TabsTrigger value="bulk" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Bulk</TabsTrigger>
-              <TabsTrigger value="templates" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Templates</TabsTrigger>
-              <TabsTrigger value="queue" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Queue</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 md:h-11 md:grid-cols-4 md:gap-0">
+              <TabsTrigger value="compose" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Compose</TabsTrigger>
+              <TabsTrigger value="bulk" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Bulk</TabsTrigger>
+              <TabsTrigger value="templates" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Templates</TabsTrigger>
+              <TabsTrigger value="queue" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Queue</TabsTrigger>
             </TabsList>
           </div>
 
@@ -194,7 +194,7 @@ export default function MessagingPage() {
               <Card className="overflow-hidden rounded-2xl border-slate-100 shadow-sm bg-white lg:col-span-2">
                 <CardContent className="space-y-4 p-4 md:p-6">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600">Channel</label>
+                    <label className="text-sm font-medium text-slate-700 md:text-xs md:font-semibold md:text-slate-600">Channel</label>
                     <Select value={composeChannel} onValueChange={(v: unknown) => setComposeChannel(v as string)}>
                       <SelectTrigger className="h-11 rounded-xl bg-white border-slate-200"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -207,7 +207,7 @@ export default function MessagingPage() {
 
                   {templates.length > 0 && (
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600">Template <span className="font-normal text-slate-400">(optional)</span></label>
+                      <label className="text-sm font-medium text-slate-700 md:text-xs md:font-semibold md:text-slate-600">Template <span className="font-normal text-slate-500">(optional)</span></label>
                       <Select value={composeTemplate} onValueChange={(v: unknown) => {
                         setComposeTemplate(v as string);
                         const tpl = templates.find((t) => t.id === v);
@@ -227,20 +227,25 @@ export default function MessagingPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600">Recipient</label>
-                    <Input value={composeRecipient} onChange={(e) => setComposeRecipient(e.target.value)}
-                      className="h-11 rounded-xl bg-white border-slate-200 placeholder:text-slate-400 text-sm"
-                      placeholder={composeChannel === "email" ? "email@example.com" : "+2348012345678"} />
+                    <label htmlFor="compose-recipient" className="text-sm font-medium text-slate-700 md:text-xs md:font-semibold md:text-slate-600">
+                      {composeChannel === "email" ? "Recipient email" : "Recipient phone number"}
+                    </label>
+                    <Input id="compose-recipient" value={composeRecipient} onChange={(e) => setComposeRecipient(e.target.value)}
+                      type={composeChannel === "email" ? "email" : "tel"}
+                      inputMode={composeChannel === "email" ? "email" : "tel"}
+                      autoComplete={composeChannel === "email" ? "email" : "tel"}
+                      className="h-11 rounded-xl bg-white border-slate-200 placeholder:text-slate-400 md:text-sm"
+                      placeholder={composeChannel === "email" ? "parent@example.com" : "0801 234 5678 or +234 801 234 5678"} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600">Message</label>
-                    <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)}
-                      className="min-h-[110px] resize-y rounded-2xl bg-white border-slate-200 placeholder:text-slate-400 text-sm" placeholder="Type your message or use {{variable}} placeholders" />
+                    <label htmlFor="compose-body" className="text-sm font-medium text-slate-700 md:text-xs md:font-semibold md:text-slate-600">Message</label>
+                    <Textarea id="compose-body" value={composeBody} onChange={(e) => setComposeBody(e.target.value)}
+                      className="min-h-[110px] resize-y rounded-2xl bg-white border-slate-200 placeholder:text-slate-400 md:text-sm" placeholder="Type your message. A template can fill in names for you." />
                   </div>
 
                   <div className="pt-2 hidden md:block">
-                    <Button onClick={sendSingle} disabled={sending} className="w-full rounded-2xl bg-[#1447E6] hover:bg-[#0f36b8] h-12 font-semibold text-white sm:w-auto shadow-sm">
+                    <Button onClick={sendSingle} disabled={sending} className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 h-12 font-semibold text-white sm:w-auto shadow-sm">
                       {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                       Send Message
                     </Button>
@@ -327,7 +332,7 @@ export default function MessagingPage() {
                   <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)}
                     className="min-h-[100px] rounded-2xl" placeholder="e.g. Dear {{studentName}}, ..." />
                 </div>
-                <Button onClick={sendBulk} disabled={bulking || !bulkClass} className="w-full h-12 rounded-2xl bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold">
+                <Button onClick={sendBulk} disabled={bulking || !bulkClass} className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                   {bulking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
                   Broadcast to Class
                 </Button>
@@ -339,7 +344,7 @@ export default function MessagingPage() {
           <TabsContent value="templates" className="mt-4">
             {loadingTemplates ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}</div>
             : templates.length === 0
-            ? <Card className="border-dashed border-slate-300 rounded-2xl"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><MessageSquare className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-400">No templates available.</p></CardContent></Card>
+            ? <Card className="border-dashed border-slate-300 rounded-2xl"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><MessageSquare className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No templates available.</p></CardContent></Card>
             : <div className="grid gap-4 sm:grid-cols-2">
                 {templates.map((t) => (
                   <Card key={t.id} className="border-slate-100 rounded-2xl shadow-sm bg-white">
@@ -347,7 +352,7 @@ export default function MessagingPage() {
                       <div className="flex items-center gap-2">
                         {channelIcon(t.channel)}
                         <CardTitle className="text-sm font-semibold">{t.name}</CardTitle>
-                        {t.isDefault && <Badge variant="secondary" className="text-[11px] px-1.5 py-0">default</Badge>}
+                        {t.isDefault && <Badge variant="secondary" className="text-xs px-1.5 py-0">default</Badge>}
                       </div>
                       <CardDescription className="text-xs">{t.channel} · {t.variables?.length ? t.variables.join(", ") : "no vars"}</CardDescription>
                     </CardHeader>
@@ -364,7 +369,7 @@ export default function MessagingPage() {
           <TabsContent value="queue" className="mt-4">
             {loadingQueue ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}</div>
             : queue.length === 0
-            ? <Card className="border-dashed border-slate-300 rounded-2xl"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Megaphone className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-400">No messages in queue.</p></CardContent></Card>
+            ? <Card className="border-dashed border-slate-300 rounded-2xl"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Megaphone className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No messages in queue.</p></CardContent></Card>
             : <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
                 {queue.map((item) => (
                   <div key={item.id} className="flex items-center justify-between px-4 py-3">
@@ -374,9 +379,9 @@ export default function MessagingPage() {
                         <span className="text-sm font-medium text-slate-900">{item.recipient}</span>
                         {statusBadge(item.status)}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-slate-400">{item.body}</p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{item.body}</p>
                     </div>
-                    <div className="ml-4 shrink-0 text-right text-xs text-slate-400">
+                    <div className="ml-4 shrink-0 text-right text-xs text-slate-500">
                       {new Date(item.createdAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -392,7 +397,7 @@ export default function MessagingPage() {
             <Button
               onClick={sendSingle}
               disabled={sending}
-              className="w-full h-12 bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Send Message

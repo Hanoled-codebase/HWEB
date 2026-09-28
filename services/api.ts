@@ -1,5 +1,12 @@
 import { request, HCORE_BASE, HSMS_BASE, HCBT_BASE } from '../lib/api';
 
+/** One class/subject teaching duty as HCORE stores it; ids are HCORE ids. */
+export type TeachingAssignmentInput = {
+  classGroupId: string;
+  subjectId: string | null;
+  assignmentType: 'SUBJECT_TEACHER' | 'CLASS_TEACHER';
+};
+
 export const api = {
   // ─────────────────────────────────────────────────────────────────────────────
   // HCORE — Auth & Identity (Section 2.1)
@@ -125,10 +132,21 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  updateTeacherAssignments: (orgId: string, affiliationId: string, assignments: any[]) =>
-    request<any>(HCORE_BASE, `/v1/organizations/${orgId}/teachers/${affiliationId}/assignments`, {
+  // Errors are not swallowed here: an empty list read by mistake would make the
+  // replace-all update below wipe this teacher's assignments.
+  getTeacherAssignments: (orgId: string, affiliationId: string) =>
+    request<{ assignments: Array<TeachingAssignmentInput & { id: string }> }>(
+      HCORE_BASE,
+      `/v1/organizations/${orgId}/teachers/${affiliationId}/assignments`,
+      { showErrorToast: false },
+    ),
+
+  /** Replaces the teacher's whole set: send every assignment they should keep. */
+  updateTeacherAssignments: (orgId: string, affiliationId: string, assignments: TeachingAssignmentInput[]) =>
+    request<{ ok: boolean; count: number }>(HCORE_BASE, `/v1/organizations/${orgId}/teachers/${affiliationId}/assignments`, {
       method: 'POST',
       body: JSON.stringify({ assignments }),
+      showErrorToast: false,
     }),
 
   importTeachers: (orgId: string, data: any) =>

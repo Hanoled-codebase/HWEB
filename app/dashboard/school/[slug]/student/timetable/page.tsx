@@ -106,15 +106,15 @@ export default function StudentTimetablePage() {
   const hours = Array.from({ length: TOTAL_HOURS }, (_, i) => START_HOUR + i);
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex items-center gap-3">
-        <Link href={`/dashboard/school/${slug}`}>
+        <Link href={`/dashboard/school/${slug}`} aria-label="Back to dashboard" className="hidden md:block">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">Timetable</h1>
+          <h1 className="hidden text-lg font-bold text-slate-900 md:block">Timetable</h1>
           <p className="text-sm text-slate-500">
             {data?.schedule?.term
               ? `${data.schedule.term}${data.schedule.academicYear ? ` · ${data.schedule.academicYear}` : ""}`
@@ -153,7 +153,7 @@ export default function StudentTimetablePage() {
               >
                 {day.day}
                 {day.dayIndex === mondayBased && (
-                  <span className="ml-1 text-[10px] text-blue-500">· Today</span>
+                  <span className="ml-1 text-xs text-blue-500">· Today</span>
                 )}
               </button>
             ))}
@@ -163,7 +163,7 @@ export default function StudentTimetablePage() {
           <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
             {/* Header row: day names */}
             <div className="grid grid-cols-[60px_repeat(6,1fr)] border-b border-slate-200">
-              <div className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-100 bg-slate-50/50" />
+              <div className="p-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-r border-slate-100 bg-slate-50/50" />
               {DAY_NAMES.map((name, i) => {
                 const hasSlots = data.days[i]?.slots.length > 0;
                 return (
@@ -175,7 +175,7 @@ export default function StudentTimetablePage() {
                   >
                     {name.substring(0, 3)}
                     {i === mondayBased && (
-                      <span className="ml-1 text-[11px] text-blue-500 font-semibold">· Today</span>
+                      <span className="ml-1 text-xs text-blue-500 font-semibold">· Today</span>
                     )}
                   </div>
                 );
@@ -192,7 +192,7 @@ export default function StudentTimetablePage() {
                     className="col-span-full grid grid-cols-subgrid"
                     style={{ height: HOUR_HEIGHT }}
                   >
-                    <div className="text-[10px] font-semibold text-slate-400 text-right pr-2 border-r border-slate-100 bg-slate-50/50 flex items-start pt-0.5">
+                    <div className="text-xs font-semibold text-slate-500 text-right pr-2 border-r border-slate-100 bg-slate-50/50 flex items-start pt-0.5">
                       {`${h.toString().padStart(2, "0")}:00`}
                     </div>
                     {DAY_NAMES.map((_, di) => (
@@ -237,11 +237,11 @@ export default function StudentTimetablePage() {
                           transform: `translateX(calc((100% / 6) * ${day.dayIndex} + 2px))`,
                         }}
                       >
-                        <p className="text-[10px] font-bold leading-tight truncate">
+                        <p className="text-xs font-bold leading-tight truncate">
                           {slot.subject}
                         </p>
                         {slot.room && (
-                          <p className="text-[11px] opacity-70 leading-tight truncate flex items-center gap-0.5 mt-0.5">
+                          <p className="text-xs opacity-70 leading-tight truncate flex items-center gap-0.5 mt-0.5">
                             <MapPin className="w-2.5 h-2.5 inline" />
                             {slot.room}
                           </p>
@@ -265,7 +265,7 @@ export default function StudentTimetablePage() {
                   }`}>
                     <span className="text-sm font-bold text-slate-800">{day.day}</span>
                     {day.dayIndex === mondayBased && (
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Today</span>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Today</span>
                     )}
                   </div>
                   <div className="p-3 space-y-2">
@@ -282,7 +282,7 @@ export default function StudentTimetablePage() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className={`text-sm font-semibold truncate ${color.text}`}>{slot.subject}</p>
-                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
                               <span className="flex items-center gap-0.5">
                                 <Clock className="w-3 h-3" />
                                 {slot.startTime} – {slot.endTime}
@@ -296,7 +296,7 @@ export default function StudentTimetablePage() {
                             </div>
                           </div>
                           {slot.room && (
-                            <span className="shrink-0 text-[10px] text-slate-400 flex items-center gap-0.5">
+                            <span className="shrink-0 text-xs text-slate-500 flex items-center gap-0.5">
                               <MapPin className="w-3 h-3" />
                               {slot.room}
                             </span>

@@ -29,13 +29,22 @@ export function sentenceCase(value: string) {
  * already in the top bar, so repeating them in a hero would only push the
  * real work down the screen.
  */
+// Shared/role accounts ("School Admin", "Bursar Office") aren't a person to greet by name.
+const NOT_A_FIRST_NAME = new Set(["school", "admin", "administrator", "owner", "bursar", "office", "staff", "user", "there", "principal"]);
+
 export function HomeGreeting({ name, detail }: { name: string; detail?: string }) {
   const today = new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" });
+  const greetName = name && !NOT_A_FIRST_NAME.has(name.trim().toLowerCase()) ? name : null;
   return (
     <section className="px-0.5 pt-1">
       <p className="text-xs font-medium text-slate-500">{today}</p>
       <h2 className="mt-1 text-balance text-[26px] font-bold leading-[1.15] tracking-tight text-slate-900">
-        {timeOfDay()}, <span className="capitalize">{name}</span>
+        {timeOfDay()}
+        {greetName && (
+          <>
+            , <span className="capitalize">{greetName}</span>
+          </>
+        )}
       </h2>
       {detail && <p className="mt-1 text-sm text-slate-500">{detail}</p>}
     </section>
@@ -66,7 +75,7 @@ export function PrimaryAction({
   return (
     <Link
       href={href}
-      className="flex min-h-[72px] items-center gap-3.5 rounded-2xl bg-blue-600 p-3.5 pr-4 text-white shadow-[0_10px_24px_-12px_rgba(20,71,230,0.6)] transition-colors active:bg-blue-700"
+      className="flex min-h-[72px] items-center gap-3.5 rounded-2xl bg-blue-600 p-3.5 pr-4 text-white shadow-[0_10px_24px_-12px_rgba(20,71,230,0.6)] transition-[background-color,scale] duration-100 active:scale-[0.98] active:bg-blue-700"
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
         <Icon className="h-5 w-5" />
@@ -87,12 +96,12 @@ export function ToolGrid({ tools, showAll = true }: { tools: HomeTool[]; showAll
   // Flat cells: the tools are a lookup, so they sit quieter than the lead
   // action. No shadow, one hairline.
   const cell =
-    "flex min-h-[60px] items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left transition-colors active:bg-slate-50";
+    "flex min-h-[60px] items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left transition-[background-color,scale] duration-100 active:scale-[0.97] active:bg-slate-50";
   // With an even number of tools the "All tools" cell would sit alone on the
   // last row, so it takes the full width instead.
   const allSpansRow = tools.length % 2 === 0;
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className="m-stagger grid grid-cols-2 gap-2.5">
       {tools.map((tool) => {
         const Icon = tool.icon;
         return (

@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { formatScore, getInitials } from "@/lib/spreadsheets";
 import {
   StudentPerformanceResponse,
@@ -56,6 +57,8 @@ type StudentAcademicRecordProps = {
   emptyTitle?: string;
   emptyDescription?: string;
   onOpenSubject?: (subject: StudentPerformanceSubject) => void;
+  /** Hand the learner's name to the phone top bar (off where the record is one of several on the page). */
+  titlesPage?: boolean;
 };
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
@@ -70,18 +73,18 @@ type ScoreColors = {
 function getScoreColors(pct: number | null): ScoreColors {
   // Null / no data → neutral gray track, no arc
   if (pct === null) {
-    return { arc: "#cbd5e1", track: "#f1f5f9", bar: "bg-slate-200" };
+    return { arc: "oklch(0.865 0.014 263.4)", track: "oklch(0.965 0.006 263.4)", bar: "bg-slate-200" };
   }
   if (pct >= 75) {
-    return { arc: "#12B76A", track: "#d1fae5", bar: "bg-emerald-500" };
+    return { arc: "#12B76A", track: "oklch(0.92 0.05 154.9)", bar: "bg-emerald-500" };
   }
   if (pct >= 50) {
-    return { arc: "#F5A623", track: "#fef3c7", bar: "bg-amber-400" };
+    return { arc: "#F5A623", track: "oklch(0.93 0.06 73.0)", bar: "bg-amber-400" };
   }
   if (pct >= 25) {
-    return { arc: "#F04438", track: "#ffe4e6", bar: "bg-rose-400" };
+    return { arc: "#F04438", track: "oklch(0.93 0.04 28.5)", bar: "bg-rose-400" };
   }
-  return { arc: "#F04438", track: "#ffe4e6", bar: "bg-rose-500" };
+  return { arc: "#F04438", track: "oklch(0.93 0.04 28.5)", bar: "bg-rose-500" };
 }
 
 function getGradeBadgeClass(label: string): string {
@@ -187,7 +190,7 @@ function ProgressRing({
         <p
           className={cn(
             "mt-1.5 font-medium text-slate-500",
-            compact ? "text-[10px] sm:text-[11px]" : "text-xs sm:text-sm",
+            compact ? "text-xs sm:text-[11px]" : "text-xs sm:text-sm",
           )}
         >
           {value}
@@ -206,8 +209,8 @@ function ProgressRing({
           className={cn(
             "mt-1 font-semibold uppercase text-slate-400",
             compact
-              ? "text-[11px] tracking-[0.08em]"
-              : "text-[11px]  tracking-[0.12em]",
+              ? "text-xs tracking-[0.08em]"
+              : "text-xs  tracking-[0.12em]",
           )}
         >
           Avg. score
@@ -279,10 +282,10 @@ function SubjectCard({
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-xl font-bold tracking-tight text-slate-900">
+          <h3 className="truncate text-lg font-bold tracking-tight text-slate-900 md:text-xl">
             {getSubjectName(subject)}
           </h3>
-          <p className="mt-1 max-w-[18rem] text-sm leading-5 text-slate-400">
+          <p className="mt-1 max-w-[18rem] text-sm leading-5 text-slate-500">
             {summary.enteredCount} of {summary.totalCount} assessments recorded
           </p>
         </div>
@@ -290,7 +293,7 @@ function SubjectCard({
         <Badge
           variant="outline"
           className={cn(
-            "shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]",
+            "shrink-0 rounded-full px-3 py-1 text-xs font-semibold md:text-[11px] md:uppercase md:tracking-[0.14em]",
             getGradeBadgeClass(gradeLabel),
           )}
         >
@@ -305,14 +308,24 @@ function SubjectCard({
         stretch it to 400 px and leave a sea of white space.
       */}
       <div className="grid gap-5 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
-        <ProgressRing
-          percentage={summary.percentage}
-          value={ringValue}
-          compact={true}
-        />
+        <div className="hidden md:block">
+          <ProgressRing
+            percentage={summary.percentage}
+            value={ringValue}
+            compact={true}
+          />
+        </div>
 
-        {/* Assessment list */}
-        <div className="min-w-0 rounded-2xl bg-slate-50/50 px-4 py-3 sm:px-5">
+        {/* Phones: the ring's number as one line */}
+        <p className="-mt-2 flex items-baseline gap-2 md:hidden">
+          <span className="text-2xl font-bold tabular-nums text-slate-900">
+            {summary.percentage === null || summary.enteredCount === 0 ? "—" : `${Math.round(summary.percentage)}%`}
+          </span>
+          <span className="text-sm text-slate-500">{summary.enteredCount === 0 ? "No scores yet" : ringValue}</span>
+        </p>
+
+        {/* Assessment list (a tappable card opens the subject instead, on phones) */}
+        <div className={cn("min-w-0 rounded-2xl bg-slate-50/50 px-4 py-3 sm:px-5", onOpen && "max-md:hidden")}>
           <div className="divide-y divide-slate-100/70">
             {orderedAssessments.map((assessment, i) => {
               const AssessmentIcon = getAssessmentIcon(assessment.name);
@@ -346,7 +359,7 @@ function SubjectCard({
                         {assessment.name}
                       </p>
                       {!entered && (
-                        <span className="rounded-full bg-amber-50/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-500">
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                           Waiting
                         </span>
                       )}
@@ -363,7 +376,7 @@ function SubjectCard({
                         </p>
                       </div>
                     ) : (
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         Not entered
                       </p>
                     )}
@@ -377,7 +390,7 @@ function SubjectCard({
 
       {/* ── Footer ──────────────────────────────────────────────────── */}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-slate-100/70 pt-4">
-        <p className="text-xs leading-5 text-slate-400">{updatedLabel}</p>
+        <p className="text-xs leading-5 text-slate-500">{updatedLabel}</p>
         {onOpen && (
           <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
             Open subject
@@ -390,7 +403,7 @@ function SubjectCard({
 
   const cardCn = cn(
     "w-full overflow-hidden rounded-3xl bg-white p-5 shadow-sm sm:p-6",
-    "min-h-[20rem]",
+    "md:min-h-[20rem]",
   );
 
   if (onOpen) {
@@ -423,20 +436,22 @@ export function StudentAcademicRecord({
   emptyTitle = "No subjects recorded yet",
   emptyDescription = "This learner does not have any published subject records yet.",
   onOpenSubject,
+  titlesPage = true,
 }: StudentAcademicRecordProps) {
   const subjectsAnchorId = useId();
   const studentName = getStudentFullName(student);
+  useMobilePageTitle(titlesPage ? studentName : null);
 
   return (
     <div className="space-y-5">
       {/* ── Student header card ─────────────────────────────────────── */}
-      <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-8">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           {/* Avatar + info */}
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="flex flex-row items-center gap-4 sm:gap-5">
             <Avatar
               size="lg"
-              className="h-20 w-20 shrink-0 rounded-full bg-slate-100 shadow-sm"
+              className="h-14 w-14 shrink-0 rounded-full bg-slate-100 shadow-sm sm:h-20 sm:w-20"
             >
               <AvatarFallback className="bg-slate-100 text-xl font-bold text-slate-600">
                 {getInitials(studentName) || <UserRound className="h-8 w-8" />}
@@ -444,13 +459,13 @@ export function StudentAcademicRecord({
             </Avatar>
 
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
+              <p className="hidden text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 md:block">
                 {eyebrow}
               </p>
-              <h1 className="mt-2 truncate text-xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+              <h1 className="mt-2 hidden truncate text-3xl font-bold tracking-tight text-slate-900 md:block lg:text-4xl">
                 {studentName}
               </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 md:mt-3 md:gap-y-2">
                 <div className="flex items-center gap-1.5 text-sm">
                   <GraduationCap className="h-3.5 w-3.5 text-slate-400" />
                   <span className="text-slate-500 font-normal">Class:</span>
@@ -473,7 +488,7 @@ export function StudentAcademicRecord({
                   return todayStatus ? (
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
                         todayStatus === "present" ? "bg-emerald-50 text-emerald-700" :
                         todayStatus === "late" ? "bg-amber-50 text-amber-700" :
                         todayStatus === "excused" ? "bg-blue-50 text-blue-700" :
@@ -495,14 +510,14 @@ export function StudentAcademicRecord({
                   ) : null;
                 })()}
               </div>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500">
+              <p className="mt-4 hidden max-w-2xl text-sm leading-6 text-slate-500 md:block">
                 {description}
               </p>
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="shrink-0">
+          {/* CTA (phones scroll straight into the subjects anyway) */}
+          <div className="hidden shrink-0 md:block">
             <Button
               type="button"
               variant="outline"
@@ -521,7 +536,7 @@ export function StudentAcademicRecord({
 
         {/* ── Academic summary micro-grid ──────────────────────────── */}
         {subjects.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:mt-6 sm:grid-cols-4 sm:gap-4 sm:pt-6">
             {(() => {
               const totalScored = subjects.reduce(
                 (sum, s) => sum + (getSubjectPerformanceSummary(s).scored || 0),
@@ -538,52 +553,52 @@ export function StudentAcademicRecord({
 
               return (
                 <>
-                  <div className="rounded-xl bg-slate-50/50 p-4 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <div className="rounded-xl bg-slate-50/50 p-3 text-center sm:p-4">
+                    <p className="text-xs font-medium text-slate-500">
                       Total Score
                     </p>
-                    <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                       {formatScore(totalScored)}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       / {formatScore(totalPossible)}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-slate-50/50 p-4 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <div className="rounded-xl bg-slate-50/50 p-3 text-center sm:p-4">
+                    <p className="text-xs font-medium text-slate-500">
                       Average
                     </p>
-                    <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                       {avgPct !== null ? `${avgPct}%` : "—"}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       Across {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-slate-50/50 p-4 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <div className="rounded-xl bg-slate-50/50 p-3 text-center sm:p-4">
+                    <p className="text-xs font-medium text-slate-500">
                       Subjects
                     </p>
-                    <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                       {subjects.length}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       Assessments recorded
                     </p>
                   </div>
-                  <div className="rounded-xl bg-slate-50/50 p-4 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <div className="rounded-xl bg-slate-50/50 p-3 text-center sm:p-4">
+                    <p className="text-xs font-medium text-slate-500">
                       Attendance
                     </p>
                     <p className={cn(
-                      "mt-1 text-3xl font-bold tracking-tight",
+                      "mt-1 text-2xl font-bold tracking-tight sm:text-3xl",
                       attRate !== null && attRate >= 75 ? "text-emerald-600" :
                       attRate !== null && attRate >= 50 ? "text-amber-600" :
                       attRate !== null ? "text-rose-600" : "text-slate-900"
                     )}>
                       {attRate !== null ? `${Math.round(attRate)}%` : "—"}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       Attendance rate
                     </p>
                   </div>
@@ -597,7 +612,7 @@ export function StudentAcademicRecord({
       {/* ── Subject cards ───────────────────────────────────────────── */}
       <section id={subjectsAnchorId}>
         {subjects.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
+          <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm sm:p-14">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
               <BookOpen className="h-7 w-7" />
             </div>
@@ -609,7 +624,7 @@ export function StudentAcademicRecord({
             </p>
           </div>
         ) : (
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-3 sm:gap-5 xl:grid-cols-2">
             {subjects.map((subject, index) => (
               <SubjectCard
                 key={`${subject.subject?.id || subject.spreadsheetId}-${index}`}

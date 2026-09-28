@@ -112,8 +112,8 @@ export default function ParentInvoicesPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div>
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Fee Overview
           </h1>
@@ -132,7 +132,7 @@ export default function ParentInvoicesPage() {
           <Card className="border-dashed border-slate-300">
             <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
-              <p className="text-sm text-slate-400">No fee information available.</p>
+              <p className="text-sm text-slate-500">No fee information available.</p>
             </CardContent>
           </Card>
         ) : (
@@ -170,7 +170,7 @@ export default function ParentInvoicesPage() {
                     <h2 className="text-lg font-semibold text-slate-900">
                       {selected.student.firstName} {selected.student.lastName}
                       {selected.student.admissionNumber && (
-                        <span className="ml-2 text-sm font-normal text-slate-400">
+                        <span className="ml-2 text-sm font-normal text-slate-500">
                           {selected.student.admissionNumber}
                         </span>
                       )}
@@ -193,18 +193,18 @@ export default function ParentInvoicesPage() {
                   <CardContent className="p-5">
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="text-center">
-                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
                           Total Fee
                         </p>
                         <p className="mt-1 text-2xl font-bold text-slate-900">
                           ₦{selected.feeSummary.totalFee.toLocaleString()}
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {selected.feeSummary.assignedFees.length} fee items
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
                           Paid
                         </p>
                         <p className="mt-1 text-2xl font-bold text-emerald-600">
@@ -212,7 +212,7 @@ export default function ParentInvoicesPage() {
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
                           Balance
                         </p>
                         <p className={cn(
@@ -272,7 +272,7 @@ export default function ParentInvoicesPage() {
                   </CardHeader>
                   <CardContent className="p-5 pt-0">
                     {selected.feeSummary.assignedFees.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-4">
+                      <p className="text-sm text-slate-500 text-center py-4">
                         No fees have been assigned yet. Contact the school.
                       </p>
                     ) : (
@@ -283,7 +283,7 @@ export default function ParentInvoicesPage() {
                               <Badge
                                 variant="outline"
                                 className={cn(
-                                  "rounded-full text-[11px] px-2 py-0 font-medium",
+                                  "rounded-full text-xs px-2 py-0 font-medium",
                                   fee.category === "tuition" && "border-blue-200 bg-blue-50 text-blue-700",
                                   fee.category === "boarding" && "border-purple-200 bg-purple-50 text-purple-700",
                                   fee.category === "transport" && "border-amber-200 bg-amber-50 text-amber-700",
@@ -313,10 +313,10 @@ export default function ParentInvoicesPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700">Wallet</p>
-                          <p className="text-xs text-slate-400">Fund your wallet and pay fees easily</p>
+                          <p className="text-xs text-slate-500">Fund your wallet and pay fees easily</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 text-[11px] font-medium text-amber-700 px-3 py-1">
+                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 px-3 py-1">
                         Coming Soon
                       </Badge>
                     </div>
@@ -389,7 +389,7 @@ export default function ParentInvoicesPage() {
                   {selected.invoices.length === 0 ? (
                     <Card className="border-dashed border-slate-300">
                       <CardContent className="py-8 text-center">
-                        <p className="text-sm text-slate-400">No invoices yet.</p>
+                        <p className="text-sm text-slate-500">No invoices yet.</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -412,7 +412,7 @@ export default function ParentInvoicesPage() {
                                     <Badge
                                       variant="outline"
                                       className={cn(
-                                        "rounded-full text-[11px] px-2 py-0",
+                                        "rounded-full text-xs px-2 py-0",
                                         isPaid
                                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                           : inv.status === "PARTIALLY_PAID"
@@ -435,7 +435,7 @@ export default function ParentInvoicesPage() {
                                   </div>
                                 </div>
                                 <div className="shrink-0 text-right space-y-1">
-                                  <p className="text-xs text-slate-400">Total</p>
+                                  <p className="text-xs text-slate-500">Total</p>
                                   <p className="text-lg font-bold text-slate-900">
                                     ₦{inv.total.toLocaleString()}
                                   </p>
@@ -457,7 +457,7 @@ export default function ParentInvoicesPage() {
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs text-slate-500">Amount</span>
                                     <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">₦</span>
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">₦</span>
                                       <input
                                         type="number"
                                         min={1}
@@ -523,7 +523,7 @@ export default function ParentInvoicesPage() {
                                 <p className="font-medium text-slate-900 truncate">
                                   {tx.reference.slice(0, 16)}...
                                 </p>
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-slate-500">
                                   {tx.term} · {new Date(tx.createdAt).toLocaleDateString("en-GB", {
                                     day: "numeric", month: "short", year: "numeric",
                                   })} · {tx.channel}

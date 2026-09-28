@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   Users, CheckCircle2, XCircle, Search, ExternalLink, Eye, Calendar, FileEdit,
+  Share2,
 } from "lucide-react";
 
 type Admission = {
@@ -135,9 +136,9 @@ export default function AdmissionsAdminPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admissions</h1>
             <p className="mt-1 text-sm text-slate-500">Review and manage applications.</p>
           </div>
@@ -149,9 +150,9 @@ export default function AdmissionsAdminPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
           <Select value={filterStatus} onValueChange={(v: unknown) => setFilterStatus(v as string)}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="All status" /></SelectTrigger>
+            <SelectTrigger aria-label="Filter by status" className="w-full md:w-[180px]"><SelectValue placeholder="All status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">All</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
@@ -164,13 +165,41 @@ export default function AdmissionsAdminPage() {
               <SelectItem value="enrolled">Enrolled</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-slate-400">Public form: <a href={`/admissions/${currentOrg.slug}`} target="_blank" className="text-blue-600 underline underline-offset-2">/admissions/{currentOrg.slug} <ExternalLink className="inline h-3 w-3" /></a></p>
+          {/* Parents apply through this link: on a phone, share it rather than read it */}
+          <div className="flex items-center gap-2">
+            <p className="hidden text-xs text-slate-500 md:block">Public form: <a href={`/admissions/${currentOrg.slug}`} target="_blank" className="text-blue-600 underline underline-offset-2">/admissions/{currentOrg.slug} <ExternalLink className="inline h-3 w-3" /></a></p>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 border-slate-200 bg-white font-semibold md:hidden"
+              onClick={async () => {
+                const url = `${window.location.origin}/admissions/${currentOrg.slug}`;
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: `${currentOrg.name} admissions`, url });
+                  } else {
+                    await navigator.clipboard.writeText(url);
+                    toast.success("Application link copied");
+                  }
+                } catch {
+                  /* share sheet dismissed */
+                }
+              }}
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Share application form
+            </Button>
+            <Button asChild variant="outline" size="icon" aria-label="Open application form" className="border-slate-200 bg-white md:hidden">
+              <a href={`/admissions/${currentOrg.slug}`} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
         </div>
 
         {loading ? (
           <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
         ) : admissions.length === 0 ? (
-          <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Users className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-400">No applications yet.</p></CardContent></Card>
+          <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Users className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No applications yet.</p></CardContent></Card>
         ) : (
           <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
             {admissions.map((a) => (
@@ -206,7 +235,7 @@ export default function AdmissionsAdminPage() {
                 {/* Middle Section: Desktop-only contact info */}
                 <div className="hidden md:block min-w-0 flex-1 max-w-xs">
                   <p className="text-xs font-medium text-slate-900 truncate">{a.email}</p>
-                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{a.phone}</p>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{a.phone}</p>
                 </div>
 
                 {/* Middle Section 2: Desktop-only Class Level */}
@@ -261,18 +290,18 @@ export default function AdmissionsAdminPage() {
             {selected && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><p className="text-xs text-slate-400">Name</p><p className="font-medium">{selected.firstName} {selected.lastName}</p></div>
-                  <div><p className="text-xs text-slate-400">Status</p>{statusBadge(selected.status)}</div>
-                  <div><p className="text-xs text-slate-400">Email</p><p>{selected.email}</p></div>
-                  <div><p className="text-xs text-slate-400">Phone</p><p>{selected.phone}</p></div>
-                  <div><p className="text-xs text-slate-400">Gender</p><p>{selected.gender || "—"}</p></div>
-                  <div><p className="text-xs text-slate-400">Fee Paid</p><p>{selected.feePaid ? "Yes" : "No"}</p></div>
-                  <div><p className="text-xs text-slate-400">Class</p><p>{selected.classLevel?.name || "—"}</p></div>
-                  <div><p className="text-xs text-slate-400">Date of Birth</p><p>{selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : "—"}</p></div>
-                  <div className="col-span-2"><p className="text-xs text-slate-400">Previous School</p><p>{selected.previousSchool || "—"}</p></div>
-                  {selected.examDate && <div><p className="text-xs text-slate-400">Exam Date</p><p>{new Date(selected.examDate).toLocaleDateString()}</p></div>}
-                  {selected.examScore !== null && selected.examScore !== undefined && <div><p className="text-xs text-slate-400">Exam Score</p><p>{selected.examScore} / {selected.examPassMark || 50}</p></div>}
-                  <div className="col-span-2"><p className="text-xs text-slate-400">Submitted</p><p>{new Date(selected.createdAt).toLocaleString()}</p></div>
+                  <div><p className="text-xs text-slate-500">Name</p><p className="font-medium">{selected.firstName} {selected.lastName}</p></div>
+                  <div><p className="text-xs text-slate-500">Status</p>{statusBadge(selected.status)}</div>
+                  <div><p className="text-xs text-slate-500">Email</p><p>{selected.email}</p></div>
+                  <div><p className="text-xs text-slate-500">Phone</p><p>{selected.phone}</p></div>
+                  <div><p className="text-xs text-slate-500">Gender</p><p>{selected.gender || "—"}</p></div>
+                  <div><p className="text-xs text-slate-500">Fee Paid</p><p>{selected.feePaid ? "Yes" : "No"}</p></div>
+                  <div><p className="text-xs text-slate-500">Class</p><p>{selected.classLevel?.name || "—"}</p></div>
+                  <div><p className="text-xs text-slate-500">Date of Birth</p><p>{selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : "—"}</p></div>
+                  <div className="col-span-2"><p className="text-xs text-slate-500">Previous School</p><p>{selected.previousSchool || "—"}</p></div>
+                  {selected.examDate && <div><p className="text-xs text-slate-500">Exam Date</p><p>{new Date(selected.examDate).toLocaleDateString()}</p></div>}
+                  {selected.examScore !== null && selected.examScore !== undefined && <div><p className="text-xs text-slate-500">Exam Score</p><p>{selected.examScore} / {selected.examPassMark || 50}</p></div>}
+                  <div className="col-span-2"><p className="text-xs text-slate-500">Submitted</p><p>{new Date(selected.createdAt).toLocaleString()}</p></div>
                 </div>
               </div>
             )}

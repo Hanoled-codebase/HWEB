@@ -40,7 +40,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Mail, Trash2, Loader2, UserPlus, GraduationCap } from "lucide-react";
+import { Mail, MoreHorizontal, Trash2, Loader2, UserPlus, GraduationCap } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   EntityHeader,
@@ -160,7 +167,7 @@ export default function ParentsPage() {
           isPrivileged && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 md:w-auto">
                   <UserPlus className="mr-2 h-4 w-4" />
                   Invite Parent
                 </Button>
@@ -259,86 +266,86 @@ export default function ParentsPage() {
         placeholder="Search parents..."
       />
 
-      {/* Mobile Card View */}
-      <div className="space-y-3 block md:hidden">
+      {/* Phones: one grouped list */}
+      <div className="block md:hidden">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
-              <div className="flex items-center gap-3">
+          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-1.5 flex-1">
+                <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-40" />
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : filteredParents.length === 0 ? (
-          <div className="bg-white p-8 text-center rounded-2xl border border-slate-100">
-            <p className="text-sm text-slate-500">
-              {searchQuery ? "No parents match your search." : "No parents found in this organization."}
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+            <p className="text-sm text-slate-600">
+              {searchQuery ? "No parent matches that search." : "No parents yet. Invite a parent and link their children."}
             </p>
           </div>
         ) : (
-          filteredParents.map((parent) => (
-            <div
-              key={parent.id}
-              className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3 min-w-0">
-                  <Avatar className="h-11 w-11 border border-slate-100 shrink-0">
-                    <AvatarFallback className="bg-amber-50 text-amber-700 font-medium text-xs">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {filteredParents.map((parent) => {
+              const children = (parent.assignedStudents || []).map((stu) => `${stu.firstName} ${stu.lastName}`);
+              const name = parent.user?.name || "Unnamed parent";
+              return (
+                <li key={parent.id} className="flex items-center gap-1 py-3 pl-4 pr-2">
+                  <Avatar className="h-10 w-10 shrink-0 border border-slate-100">
+                    <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-700">
                       {getInitials(parent.user?.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="font-bold text-slate-900 text-sm capitalize truncate">
-                      {parent.user?.name}
-                    </span>
-                    <span className="text-xs text-slate-400 capitalize">
-                      {parent.role}
-                    </span>
+                  <div className="ml-2 min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-semibold capitalize text-slate-900">{name}</p>
+                    <p className="truncate text-sm capitalize text-slate-500">
+                      {children.length > 0 ? (
+                        <>
+                          <GraduationCap className="-mt-0.5 mr-1 inline h-3.5 w-3.5 text-blue-600" />
+                          {children.join(", ")}
+                        </>
+                      ) : (
+                        <span className="normal-case">No children linked yet</span>
+                      )}
+                    </p>
                   </div>
-                </div>
-
-                {isPrivileged && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
-                    onClick={() => handleRemove(parent.id)}
-                    title="Remove parent"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-
-              {parent.user?.email && (
-                <div className="flex items-center text-xs text-slate-500 pl-1 min-w-0">
-                  <Mail className="h-3.5 w-3.5 mr-2 text-slate-400 shrink-0" />
-                  <span className="truncate">{parent.user.email}</span>
-                </div>
-              )}
-
-              {parent.assignedStudents && parent.assignedStudents.length > 0 ? (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {parent.assignedStudents.map((stu) => (
-                    <span
-                      key={stu.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-[#EEF0FF] px-3 py-0.5 text-[11px] font-semibold text-[#1447E6] capitalize"
-                    >
-                      <GraduationCap className="h-3 w-3" />
-                      {stu.firstName} {stu.lastName}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <span className="block pl-1 text-xs text-slate-400">No linked students</span>
-              )}
-            </div>
-          ))
+                  {isPrivileged || parent.user?.email ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" aria-label={`Actions for ${name}`} className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500">
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end">
+                        {parent.user?.email && (
+                          <DropdownMenuItem onClick={() => { window.location.href = `mailto:${parent.user?.email}`; }}>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Email {parent.user.email}
+                          </DropdownMenuItem>
+                        )}
+                        {isPrivileged && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleRemove(parent.id)}
+                              className="text-red-600 focus:bg-red-50 focus:text-red-700"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove parent
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
@@ -411,7 +418,7 @@ export default function ParentsPage() {
                         {parent.assignedStudents.map((stu) => (
                           <span
                             key={stu.id}
-                            className="inline-flex cursor-default items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 capitalize transition-colors hover:bg-slate-200"
+                            className="inline-flex cursor-default items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 capitalize transition-colors hover:bg-slate-200"
                           >
                             <GraduationCap className="h-3 w-3" />
                             {stu.firstName} {stu.lastName}
@@ -419,7 +426,7 @@ export default function ParentsPage() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400">No linked students</span>
+                      <span className="text-sm text-slate-500">No linked students</span>
                     )}
                   </TableCell>
                   <TableCell align="right">

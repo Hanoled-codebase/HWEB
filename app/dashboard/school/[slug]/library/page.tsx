@@ -81,8 +81,9 @@ type LoanReservation = {
 
 export default function LibraryPage() {
   const { currentOrg } = useOrganization();
-  const { isPrivileged, isLibrarian } = usePermissions();
-  const isStaff = isPrivileged || isLibrarian;
+  const { can } = usePermissions();
+  // Shelf and loan management follows the school's role settings (Librarian by default).
+  const isStaff = can("library.manage");
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loans, setLoans] = useState<LoanReservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,9 +196,9 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-4 md:space-y-6 md:p-6">
+      <div className="flex items-center justify-between gap-4 max-md:flex-col max-md:items-stretch md:flex-wrap">
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             Library
@@ -209,8 +210,8 @@ export default function LibraryPage() {
         {isStaff && (
           <Dialog open={showAddBook} onOpenChange={setShowAddBook}>
             <DialogTrigger asChild>
-              <Button className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm">
-                <Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" /> Add Book
+              <Button className="h-11 shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:px-4">
+                <Plus className="mr-2 h-4 w-4" /> Add Book
               </Button>
             </DialogTrigger>
             <DialogContent>

@@ -139,7 +139,7 @@ export default function EdgeDeviceTab() {
           <h2 className="text-xl font-black text-[#0B1220]">This Device</h2>
           <p className="text-sm text-slate-500 font-medium">Pairing, accounts, exam packages and sync for this appliance.</p>
         </div>
-        <span className={`self-start text-[11px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-full ${STATE_STYLE[status.deviceState] || STATE_STYLE.UNPAIRED}`}>
+        <span className={`self-start text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full ${STATE_STYLE[status.deviceState] || STATE_STYLE.UNPAIRED}`}>
           {String(status.deviceState).replace(/_/g, " ")}
         </span>
       </div>
@@ -152,7 +152,7 @@ export default function EdgeDeviceTab() {
           { label: "Audit chain", value: status.auditChain?.valid ? "Intact" : "Check needed", good: !!status.auditChain?.valid },
         ].map((s) => (
           <div key={s.label} className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{s.label}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{s.label}</p>
             <p className={`mt-1 text-sm font-bold truncate ${s.mono ? "font-mono" : ""} ${s.good === true ? "text-emerald-600" : s.good === false ? "text-[#F04438]" : "text-[#0B1220]"}`}>{s.value}</p>
           </div>
         ))}
@@ -181,7 +181,7 @@ export default function EdgeDeviceTab() {
             {[["Learners", roster?.learners], ["Staff", roster?.staff], ["Classes", roster?.classes], ["Exams", roster?.exams]].map(([l, n]) => (
               <div key={l as string} className="bg-slate-50 rounded-xl py-2.5">
                 <dd className="text-base font-extrabold text-[#0B1220]">{n ?? 0}</dd>
-                <dt className="text-[10px] font-bold uppercase text-slate-400">{l}</dt>
+                <dt className="text-xs font-bold uppercase text-slate-500">{l}</dt>
               </div>
             ))}
           </dl>
@@ -230,7 +230,7 @@ export default function EdgeDeviceTab() {
               {[["Exams to send", status.cbtPending.exams], ["Results to send", status.cbtPending.results], ["Deletions", status.cbtPending.deleted]].map(([l, n]) => (
                 <div key={l as string} className="bg-slate-50 rounded-xl py-2">
                   <dd className="text-base font-extrabold text-[#0B1220]">{n}</dd>
-                  <dt className="text-[10px] font-bold uppercase text-slate-400">{l}</dt>
+                  <dt className="text-xs font-bold uppercase text-slate-500">{l}</dt>
                 </div>
               ))}
             </dl>
@@ -249,7 +249,7 @@ export default function EdgeDeviceTab() {
                       Keep this device&apos;s version
                     </button>
                   ) : (
-                    <span className="text-[10px] font-bold uppercase text-slate-500">{String(c.reason).replace(/_/g, " ")}</span>
+                    <span className="text-xs font-bold uppercase text-slate-500">{String(c.reason).replace(/_/g, " ")}</span>
                   )}
                 </div>
               ))}
@@ -292,15 +292,15 @@ export default function EdgeDeviceTab() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-[#0B1220] truncate">{p.manifest.title || p.examId}</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         {p.manifest.totalQuestions ?? "—"} questions · {p.manifest.durationMinutes ?? "—"} min · {p.candidateCount} candidates
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${p.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                      <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${p.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {p.unlocked ? "Unlocked" : "Locked"}
                       </span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${p.armed ? "bg-amber-50 text-[#8a5c10]" : "bg-slate-100 text-slate-500"}`}>
+                      <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${p.armed ? "bg-amber-50 text-[#8a5c10]" : "bg-slate-100 text-slate-500"}`}>
                         {p.armed ? "Armed" : "Not armed"}
                       </span>
                     </div>
@@ -309,7 +309,7 @@ export default function EdgeDeviceTab() {
                   {pre && (
                     <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
                       {Object.entries(pre.checks).map(([k, v]) => (
-                        <li key={k} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <li key={k} className="flex items-center gap-1.5 text-xs text-slate-600">
                           {v ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-[#F04438] shrink-0" />}
                           {k.replace(/([A-Z])/g, " $1").toLowerCase()}
                         </li>
@@ -384,12 +384,12 @@ export default function EdgeDeviceTab() {
                 <span className="text-slate-400 shrink-0">{new Date(e.timestamp).toLocaleString()}</span>
               </li>
             ))}
-            {(!audit || audit.entries.length === 0) && <li className="text-xs text-slate-400">No events yet.</li>}
+            {(!audit || audit.entries.length === 0) && <li className="text-xs text-slate-500">No events yet.</li>}
           </ul>
         </Card>
       </div>
 
-      <p className="text-[11px] text-slate-400 flex items-center gap-1.5"><Server className="w-3 h-3" /> Live invigilation for locally created exams is in the Grade Auditor tab; this panel is for the device itself.</p>
+      <p className="text-xs text-slate-500 flex items-center gap-1.5"><Server className="w-3 h-3" /> Live invigilation for locally created exams is in the Grade Auditor tab; this panel is for the device itself.</p>
     </div>
   );
 }

@@ -59,7 +59,7 @@ export function ParentHome({
             hint="Ask the school office to link your child to your account."
           />
         ) : (
-          <div className="space-y-2.5">
+          <div className="m-stagger space-y-2.5">
             {students.map((student) => {
               const group = results.find((g) => g.student.id === student.id);
               const latest = group?.results.filter((r) => r.values.length > 0).slice(0, 3);
@@ -67,7 +67,7 @@ export function ParentHome({
               return (
                 <Link
                   key={student.id || `${student.firstName}-${student.lastName}`}
-                  href={`/dashboard/school/${slug}/results`}
+                  href={`/dashboard/school/${slug}/results${student.id ? `?student=${encodeURIComponent(student.id)}` : ""}`}
                   className="block rounded-2xl border border-slate-100 bg-white p-3.5 transition-colors active:bg-slate-50"
                 >
                   <div className="flex items-center gap-3">
@@ -78,8 +78,8 @@ export function ParentHome({
                       <span className="block truncate text-[15px] font-bold capitalize text-slate-900">
                         {student.firstName} {student.lastName}
                       </span>
-                      <span className="block text-xs text-slate-500">
-                        {latest && latest.length > 0 ? "Latest scores" : "Tap to see results"}
+                      <span className="block text-sm text-slate-500">
+                        {latest && latest.length > 0 ? "Scores so far this term" : "No scores yet · tap for results"}
                       </span>
                     </span>
                     <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
@@ -91,7 +91,10 @@ export function ParentHome({
                           key={r.id}
                           className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-100"
                         >
-                          {r.subject.name}: <span className="font-bold tabular-nums text-slate-900">{r.values[0] ?? "—"}</span>
+                          {r.subject.name}{" "}
+                          <span className="font-bold tabular-nums text-slate-900">
+                            {r.values.reduce((sum, value) => sum + (Number(value) || 0), 0)}
+                          </span>
                         </span>
                       ))}
                     </div>

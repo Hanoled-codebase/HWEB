@@ -190,9 +190,9 @@ export default function BusTrackingPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-4 md:space-y-6 md:p-6">
+      <div className="flex items-center justify-between gap-4 max-md:flex-col max-md:items-stretch md:flex-wrap">
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Bus className="h-6 w-6 text-blue-600" />
             Bus Route Tracking

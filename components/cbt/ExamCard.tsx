@@ -55,7 +55,7 @@ export function ExamCard({
       <div className="p-5 flex flex-col flex-1">
         {/* Top row: type tag + status */}
         <div className="flex items-start justify-between mb-3 gap-2">
-          <span className={`inline-flex items-center text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+          <span className={`inline-flex items-center text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
             examType
               ? "bg-indigo-50 text-indigo-700 border-indigo-100"
               : "bg-blue-50 text-blue-700 border-blue-100"
@@ -64,18 +64,18 @@ export function ExamCard({
           </span>
 
           {isPending ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
               <Hourglass className="w-3 h-3" />
               Pending Review
             </span>
           ) : isSubmitted ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-100">
               <CheckCircle2 className="w-3 h-3" />
               Completed
             </span>
           ) : null}
           {isStarted && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 animate-pulse">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               In Progress
             </span>
@@ -98,7 +98,7 @@ export function ExamCard({
         {isPending && (
           <div className="mt-3 flex items-center gap-3 rounded-sm px-3.5 py-2.5 bg-amber-50/60 border border-amber-100">
             <Hourglass className="w-5 h-5 text-amber-500 shrink-0" />
-            <p className="text-[11px] font-semibold text-amber-800 leading-snug">
+            <p className="text-xs font-semibold text-amber-800 leading-snug">
               Submitted — your teacher hasn't released the results yet.
             </p>
           </div>
@@ -120,15 +120,15 @@ export function ExamCard({
                   strokeLinecap="round"
                 />
               </svg>
-              <span className="absolute text-[10px] font-extrabold text-slate-700">
+              <span className="absolute text-xs font-extrabold text-slate-700">
                 {Math.round(percentage)}%
               </span>
             </div>
             <div className="flex-1 min-w-0 leading-none">
-              <p className="text-[11px] font-bold text-slate-700">
+              <p className="text-xs font-bold text-slate-700">
                 {percentage >= exam.passMark ? "Passed" : "Needs Improvement"}
               </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {score}/{exam.totalQuestions} correct
               </p>
             </div>
@@ -141,7 +141,7 @@ export function ExamCard({
 
         {/* Bottom row: metadata + action */}
         <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-semibold text-slate-500">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-slate-500">
             <span className="inline-flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               {exam.duration} min
@@ -180,6 +180,12 @@ export function ExamCard({
               <span>View Score</span>
               <ArrowRight className="w-3 h-3" />
             </button>
+          ) : onPhone ? (
+            // Phones can't sit exams (the list's banner says why): a plain note, not a button that only says no.
+            <p className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-sm bg-slate-50 px-4 text-sm font-medium text-slate-600 sm:w-auto">
+              <Laptop className="h-4 w-4 text-blue-600" aria-hidden="true" />
+              {isStarted ? "Resume" : "Start"} on a computer or tablet
+            </p>
           ) : (
             <button
               disabled={isStarting}
@@ -187,8 +193,6 @@ export function ExamCard({
               className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm transition-all duration-200 w-full sm:w-auto min-h-[48px] sm:min-h-0 ${
                 isStarting
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-sm"
-                  : onPhone
-                  ? "bg-white text-slate-700 border border-slate-300 active:bg-slate-50"
                   : isStarted
                   ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/10 active:scale-95"
                   : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/10 active:scale-95"
@@ -198,11 +202,6 @@ export function ExamCard({
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Starting...</span>
-                </>
-              ) : onPhone ? (
-                <>
-                  <Laptop className="w-4 h-4 text-blue-600" />
-                  <span>{isStarted ? "Resume" : "Start"} on a computer</span>
                 </>
               ) : isStarted ? (
                 <>

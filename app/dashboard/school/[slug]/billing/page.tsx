@@ -90,8 +90,8 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="max-w-5xl space-y-8">
-      <div>
+    <div className="max-w-5xl space-y-4 md:space-y-8">
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Billing & Subscription</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
           Manage your school's plan, view student capacity, and payment history.
@@ -138,7 +138,7 @@ export default function BillingPage() {
                       style={{ width: `${Math.min(100, (studentCount / 50) * 100)}%` }} 
                     />
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     {studentCount <= 50 
                       ? "Free up to 50 students. Upgrade to Growth for unlimited." 
                       : "You have exceeded the Startup plan limit. Upgrade recommended."}
@@ -199,7 +199,7 @@ export default function BillingPage() {
               </div>
             </div>
             <Separator className="bg-blue-100/50" />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Fees are billed at the start of every academic term.
             </p>
           </CardContent>
@@ -213,7 +213,47 @@ export default function BillingPage() {
           <h2 className="text-lg font-bold text-slate-900">Payment History</h2>
         </div>
         
-        <Card className="shadow-sm border-slate-200">
+        {/* Phones: one row per payment, amount right-aligned */}
+        <div className="md:hidden">
+          {loadingHistory ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading payments…
+            </div>
+          ) : transactions.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+              No subscription payments yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {transactions.map((tx) => (
+                <li key={tx.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold capitalize text-slate-900">
+                      {tx.invoice?.student
+                        ? `${tx.invoice.student.firstName} ${tx.invoice.student.lastName}`
+                        : tx.channel}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">
+                      {new Date(tx.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
+                      <span className="mx-1 text-slate-300">·</span>
+                      <span className="font-mono">{tx.reference}</span>
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums text-slate-900">
+                      ₦{Number(tx.amount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className={`text-xs font-medium ${tx.status === "SUCCESS" ? "text-emerald-700" : "text-amber-700"}`}>
+                      {tx.status === "SUCCESS" ? "Paid" : tx.status.toLowerCase()}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <Card className="hidden shadow-sm border-slate-200 md:block">
           <div className="overflow-x-auto">
             <table className="min-w-[640px] w-full text-left text-sm border-collapse">
               <thead>
@@ -240,7 +280,7 @@ export default function BillingPage() {
                     <td className="px-6 py-14 text-center" colSpan={5}>
                       <div className="flex flex-col items-center gap-3">
                         <FileText className="h-8 w-8 text-slate-300" />
-                        <p className="text-sm text-slate-400 font-normal">
+                        <p className="text-sm text-slate-500 font-normal">
                           No transactions recorded yet for this organization.
                         </p>
                       </div>
@@ -272,12 +312,12 @@ export default function BillingPage() {
                       </td>
                       <td className="px-6 py-3.5">
                         {tx.status === "SUCCESS" ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[11px]">
+                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             Success
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-100 text-amber-700 border-0 text-[11px]">
+                          <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">
                             <Clock4 className="h-3 w-3 mr-1" />
                             {tx.status}
                           </Badge>

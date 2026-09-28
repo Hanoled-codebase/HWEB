@@ -59,11 +59,11 @@ export default function StudentResultsPage() {
   }, [slug]);
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 md:p-6">
       
-      {/* Header */}
+      {/* Header (phones: the top bar names the page and carries the back target) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="hidden md:block">
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
             <Link
               href={`/dashboard/school/${slug}`}

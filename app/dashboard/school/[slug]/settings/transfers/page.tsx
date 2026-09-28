@@ -162,7 +162,7 @@ export default function TransfersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold tracking-tight text-slate-950">
             Inter-School Student Transfers
           </h1>
@@ -170,8 +170,8 @@ export default function TransfersPage() {
             Manage incoming student transfers and initiate outgoing student relocation.
           </p>
         </div>
-        <Button size="sm" variant="outline" onClick={fetchData} className="shrink-0">
-          <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
+        <Button size="sm" variant="outline" onClick={fetchData} className="shrink-0 max-md:w-full">
+          <RefreshCw className="mr-2 h-4 w-4" /> Refresh
         </Button>
       </div>
 
@@ -281,7 +281,7 @@ export default function TransfersPage() {
                           From: <span className="font-medium text-slate-700">{req.fromOrganization?.name}</span>
                         </p>
                         {req.notes && (
-                          <p className="text-xs italic text-slate-400 mt-1 line-clamp-1">
+                          <p className="text-xs italic text-slate-500 mt-1 line-clamp-1">
                             &ldquo;{req.notes}&rdquo;
                           </p>
                         )}

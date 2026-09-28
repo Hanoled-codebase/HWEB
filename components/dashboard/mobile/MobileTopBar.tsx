@@ -22,7 +22,7 @@ export function MobileTopBar(props: { title: string; isHome: boolean }) {
 function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { config } = useMobileMenu();
+  const { config, pageTitle } = useMobileMenu();
   const { identity } = config;
 
   // With hideBack, top-level destinations (tabs, menu items) have no back arrow, but a page
@@ -57,7 +57,7 @@ function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }
           <div className="min-w-0 flex-1 py-3">
             <p className="truncate text-base font-bold leading-tight text-slate-900">{identity.orgName}</p>
             <p className="truncate text-[13px] capitalize leading-snug text-slate-600">{identity.userName}</p>
-            <p className="truncate text-xs font-medium uppercase leading-tight tracking-wide text-slate-400">{config.roleLabel}</p>
+            <p className="truncate text-xs font-medium uppercase leading-tight tracking-wide text-slate-500">{config.roleLabel}</p>
           </div>
         </>
       ) : isHome ? (
@@ -100,7 +100,7 @@ function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }
               accountStyle && showBack ? "text-center" : ""
             }`}
           >
-            {title}
+            {pageTitle ?? title}
           </h1>
         </>
       )}

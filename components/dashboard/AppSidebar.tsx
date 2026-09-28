@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { queriesForRoute } from "@/lib/queries";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSchoolNavItems, type SchoolNavItem } from "@/hooks/useSchoolNavItems";
+import { useWorkspace, type WorkspaceKey } from "@/hooks/useWorkspace";
+import { WorkspaceSwitch } from "@/components/dashboard/WorkspaceSwitch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +31,15 @@ const PRIMARY = ["overview"];
 const ACADEMICS = ["students", "classes", "subjects", "attendance", "timetable", "results", "homework"];
 const PEOPLE = ["teachers", "parents", "admissions"];
 const COMMUNICATION = ["messaging"];
-const BOTTOM = ["settings", "support"];
+const BOTTOM = ["settings", "access", "support"];
+// Staff whose role covers any of the bursary get it as its own group; admins
+// reach these from the Overview launcher instead.
+// Each workspace's tools as one group, for staff who hold that workspace.
+const WORKSPACE_GROUPS: Array<{ workspace: WorkspaceKey; title: string; keys: string[] }> = [
+  { workspace: "department", title: "Department", keys: ["spreadsheets", "scheme-of-work", "lesson-notes", "hr", "staff-attendance"] },
+  { workspace: "finance", title: "Bursary", keys: ["record-payment", "payments", "debt", "fee-structure", "billing", "payroll", "scratch-cards", "staff-attendance"] },
+  { workspace: "library", title: "Library", keys: ["library-desk", "library"] },
+];
 const IN_SIDEBAR = new Set([...PRIMARY, ...ACADEMICS, ...PEOPLE, ...COMMUNICATION, ...BOTTOM]);
 
 function NavGroup({
@@ -48,7 +58,13 @@ function NavGroup({
     <div className="mb-1">
       {title && <div className="px-3 pb-1 pt-4 text-xs font-medium text-slate-400">{title}</div>}
       {items.map((item) => {
-        const isActive = item.key === "overview" ? pathname === item.url : pathname === item.url || pathname.startsWith(`${item.url}/`);
+        // A nested destination (Payments › Record Payment) lights up alone.
+        const matches = (url: string) => pathname === url || pathname.startsWith(`${url}/`);
+        const isActive =
+          item.key === "overview"
+            ? pathname === item.url
+            : matches(item.url) &&
+              !items.some((other) => other.url.length > item.url.length && other.url.startsWith(item.url) && matches(other.url));
         return (
           <Link
             key={item.key}
@@ -56,7 +72,7 @@ function NavGroup({
             onMouseEnter={() => onHover(item.url)}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-[background-color,color,scale] duration-150 active:scale-[0.98]",
               isActive ? "bg-blue-50 font-semibold text-blue-700" : "font-medium text-slate-600 hover:bg-slate-50",
             )}
           >
@@ -71,10 +87,12 @@ function NavGroup({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentOrg, currentMember, organizations } = useOrganization();
   const { user, logout } = useAuth();
   const { visibleNavItems, role: userRole } = useSchoolNavItems();
   const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher, isPrivileged } = usePermissions();
+  const { available: workspaces, active: workspace, setActive: setWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
   const orgSlug = currentOrg?.slug;
   const [search, setSearch] = useState("");
@@ -106,10 +124,24 @@ export function AppSidebar() {
   const pick = (keys: string[]) => keys.flatMap((key) => (byKey.has(key) ? [byKey.get(key)!] : []));
   // Roles without the Overview tool launcher (teachers, accountants, librarians...) still need to
   // reach everything they are allowed to, so their extra destinations stay in the sidebar.
-  const extras = useMemo(
-    () => (isPrivileged ? [] : visibleNavItems.filter((item) => !IN_SIDEBAR.has(item.key))),
-    [isPrivileged, visibleNavItems],
-  );
+  // Groups for the workspaces this person holds, the active one first; a key
+  // shown in an earlier group is not repeated in a later one.
+  const groups = useMemo(() => {
+    if (isPrivileged) return [];
+    const held = WORKSPACE_GROUPS.filter((group) => workspaces.includes(group.workspace)).sort(
+      (a, b) => Number(b.workspace === workspace) - Number(a.workspace === workspace),
+    );
+    const used = new Set<string>();
+    return held.map((group) => {
+      const items = group.keys.filter((key) => !used.has(key) && byKey.has(key)).map((key) => byKey.get(key)!);
+      items.forEach((item) => used.add(item.key));
+      return { ...group, items };
+    });
+  }, [isPrivileged, workspaces, workspace, byKey]);
+  const grouped = new Set(groups.flatMap((group) => group.items.map((item) => item.key)));
+  const extras = isPrivileged ? [] : visibleNavItems.filter((item) => !IN_SIDEBAR.has(item.key) && !grouped.has(item.key));
+  const activeGroup = groups.find((group) => group.workspace === workspace);
+  const otherGroups = groups.filter((group) => group !== activeGroup);
 
   if (!currentOrg || !currentMember || !user) return null;
 
@@ -121,23 +153,24 @@ export function AppSidebar() {
       .toUpperCase()
       .substring(0, 2);
 
-  const roleLabel = isAccountant
-    ? "Accountant"
-    : isHOD
-      ? "Head of Department"
-      : isLibrarian
-        ? "Librarian"
-        : isClassTeacher
-          ? "Class Teacher"
-          : isSubjectTeacher
-            ? "Subject Teacher"
-            : userRole === "owner"
-              ? "School Owner"
-              : userRole === "admin"
-                ? "School Admin"
-                : userRole === "parent"
-                  ? "Parent"
-                  : "Staff";
+  // Every hat this person wears, not just the first one found.
+  const heldRoles = [
+    isHOD && "Head of Department",
+    isClassTeacher && "Class Teacher",
+    isSubjectTeacher && "Subject Teacher",
+    isAccountant && "Accountant",
+    isLibrarian && "Librarian",
+  ].filter(Boolean) as string[];
+  const roleLabel =
+    userRole === "owner"
+      ? "School Owner"
+      : userRole === "admin"
+        ? "School Admin"
+        : userRole === "parent"
+          ? "Parent"
+          : heldRoles.length
+            ? heldRoles.join(" · ")
+            : "Staff";
 
   const needle = search.trim().toLowerCase();
   const results = needle ? visibleNavItems.filter((item) => item.title.toLowerCase().includes(needle)) : null;
@@ -176,7 +209,7 @@ export function AppSidebar() {
           />
           <DropdownMenuItem
             render={
-              <Link href="/cbt/admin" className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
+              <Link href={orgSlug ? `/cbt/admin?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/admin"} className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
                 <div className="flex items-center gap-2">
                   <span className="flex h-2 w-2 rounded-full bg-blue-500" />
                   <span className="text-sm font-medium">CBT Exam Console</span>
@@ -248,6 +281,21 @@ export function AppSidebar() {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {workspace && workspaces.length > 1 && (
+        <div className="px-3 pt-3">
+          <WorkspaceSwitch
+            size="sm"
+            items={workspaces}
+            active={workspace}
+            onChange={(key) => {
+              setWorkspace(key);
+              const home = `/dashboard/school/${currentOrg.slug}`;
+              if (pathname !== home) router.push(home);
+            }}
+          />
+        </div>
+      )}
+
       {/* Search */}
       <div className="px-3 pt-3">
         <div className="relative">
@@ -273,9 +321,14 @@ export function AppSidebar() {
         ) : (
           <>
             <NavGroup items={pick(PRIMARY)} pathname={pathname} onHover={prefetchRoute} />
+            {/* The active workspace's tools come first. */}
+            {activeGroup && <NavGroup title={activeGroup.title} items={activeGroup.items} pathname={pathname} onHover={prefetchRoute} />}
             <NavGroup title="Academics" items={pick(ACADEMICS)} pathname={pathname} onHover={prefetchRoute} />
             <NavGroup title="People" items={pick(PEOPLE)} pathname={pathname} onHover={prefetchRoute} />
             <NavGroup title="Communication" items={pick(COMMUNICATION)} pathname={pathname} onHover={prefetchRoute} />
+            {otherGroups.map((group) => (
+              <NavGroup key={group.workspace} title={group.title} items={group.items} pathname={pathname} onHover={prefetchRoute} />
+            ))}
             <NavGroup title="More" items={extras} pathname={pathname} onHover={prefetchRoute} />
           </>
         )}

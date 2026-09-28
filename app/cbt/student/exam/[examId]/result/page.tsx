@@ -7,7 +7,6 @@ import { cbtApi } from "@/lib/api-cbt";
 import { ResultView } from "@/components/cbt/ResultView";
 import { Loader2, ArrowLeft, RefreshCw, AlertCircle, TrendingUp, Hourglass } from "lucide-react";
 import { useExamStore } from "@/store/exam";
-import { Toaster } from "sonner";
 
 export default function ExamResultPage() {
   const router = useRouter();
@@ -67,7 +66,6 @@ export default function ExamResultPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
-      <Toaster position="top-right" richColors />
 
      
       <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
@@ -95,7 +93,7 @@ export default function ExamResultPage() {
           <div className="flex flex-col items-center justify-center py-32 space-y-4">
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
             <p className="text-slate-500 text-sm font-semibold">Generating your correction sheets...</p>
-            <p className="text-[11px] text-slate-400">We are processing your answers and calculating explanations.</p>
+            <p className="text-xs text-slate-500">We are processing your answers and calculating explanations.</p>
           </div>
         ) : pending ? (
           <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-sm border border-amber-100 shadow-xl text-center">

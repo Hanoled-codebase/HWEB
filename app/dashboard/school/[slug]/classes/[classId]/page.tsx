@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
@@ -66,6 +67,7 @@ export default function ClassDetailPage() {
   const classId = parseRouteParam(params.classId);
 
   const [classDetail, setClassDetail] = useState<ClassDetail | null>(null);
+  useMobilePageTitle(classDetail?.name);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -123,12 +125,13 @@ export default function ClassDetailPage() {
 
   if (!isLoading && forbidden) {
     return (
-      <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="min-h-full  pb-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 md:px-6 md:py-4 lg:px-8">
           <Button
             variant="ghost"
             size="icon"
-            className="h-12 w-12 shrink-0 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            aria-label="Back to classes"
+            className="hidden h-12 w-12 shrink-0 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 md:inline-flex"
             onClick={() => router.push(`/dashboard/school/${currentOrg?.slug}/classes`)}
           >
             <ArrowLeft className="h-5 w-5" />
@@ -144,9 +147,9 @@ export default function ClassDetailPage() {
   }
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 lg:px-8">
-        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-4 shadow-[0_24px_70px_rgba(37,99,235,0.10)] backdrop-blur sm:p-6">
+    <div className="min-h-full  pb-10">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:gap-5 md:px-6 md:py-4 lg:px-8">
+        <section className="md:rounded-xl md:border md:border-blue-100/80 md:bg-white/90 md:p-6 md:shadow-[0_24px_70px_rgba(37,99,235,0.10)]">
           <div className="flex flex-col gap-4 sm:gap-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -168,22 +171,32 @@ export default function ClassDetailPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-400 sm:text-sm">
-                      Class View
-                    </p>
-                    <h1 className="mt-2 text-xl font-bold tracking-tight text-blue-950 sm:text-3xl">
+                    <h1 className="hidden text-3xl font-bold tracking-tight text-blue-950 md:block">
                       {classDetail?.name || "Class"}
                     </h1>
-                    <p className="mt-2 text-sm text-slate-500 sm:mt-3 sm:text-base">
+                    <p className="hidden text-base text-slate-500 md:mt-3 md:block">
                       Open any student in this class to inspect subjects,
                       assessments, and recorded scores.
+                    </p>
+                    {/* Phones: the facts in one line (the class name is in the top bar) */}
+                    <p className="text-sm text-slate-600 md:hidden">
+                      <span className="font-semibold tabular-nums text-slate-900">
+                        {classDetail?.totalStudents || students.length}
+                      </span>
+                      {classDetail?.limit ? ` of ${classDetail.limit} places filled` : " learners"}
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      {classDetail?.assignedTeacher?.user?.name ? (
+                        <>Form teacher <span className="font-semibold capitalize text-slate-900">{classDetail.assignedTeacher.user.name}</span></>
+                      ) : (
+                        "No form teacher yet"
+                      )}
                     </p>
                   </>
                 )}
               </div>
 
               {!isLoading && classDetail && (
-                <div className="grid gap-3 sm:min-w-[220px]">
+                <div className="hidden gap-3 md:grid md:min-w-[220px]">
                   <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
                       Level
@@ -210,13 +223,13 @@ export default function ClassDetailPage() {
 
             {/* Stat chips — icon/number/label stacked vertically so labels can
                 wrap instead of truncating in a cramped 1/3-width column */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="hidden grid-cols-3 gap-3 md:grid">
               <div className="rounded-lg border border-blue-100 bg-white p-3 sm:p-4">
                 <Users className="h-4 w-4 shrink-0 text-blue-500" />
                 <p className="mt-2 text-xl font-bold text-slate-950 sm:text-2xl">
                   {isLoading ? "-" : students.length}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
+                <p className="mt-1 text-xs font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
                   Students
                 </p>
               </div>
@@ -225,7 +238,7 @@ export default function ClassDetailPage() {
                 <p className="mt-2 text-xl font-bold text-slate-950 sm:text-2xl">
                   {isLoading ? "-" : classDetail?.limit || 0}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
+                <p className="mt-1 text-xs font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
                   Capacity
                 </p>
               </div>
@@ -236,7 +249,7 @@ export default function ClassDetailPage() {
                     ? "-"
                     : classDetail?.totalStudents || students.length}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
+                <p className="mt-1 text-xs font-semibold uppercase leading-tight text-blue-400 sm:text-xs sm:tracking-[0.18em]">
                   Filled
                 </p>
               </div>
@@ -265,12 +278,12 @@ export default function ClassDetailPage() {
           </div>
         </section>
 
-        <section className="space-y-3 sm:space-y-4">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white max-md:divide-y max-md:divide-slate-100 md:space-y-4 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-blue-100 bg-white p-4 shadow-[0_16px_40px_rgba(37,99,235,0.08)]"
+                className="p-4 md:rounded-xl md:border md:border-blue-100 md:bg-white md:shadow-[0_16px_40px_rgba(37,99,235,0.08)]"
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <Skeleton className="h-12 w-12 shrink-0 rounded-full sm:h-14 sm:w-14" />
@@ -283,7 +296,7 @@ export default function ClassDetailPage() {
               </div>
             ))
           ) : filteredStudents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-blue-200 bg-white/95 p-6 text-center shadow-[0_12px_35px_rgba(37,99,235,0.05)] sm:p-8">
+            <div className="p-6 text-center md:rounded-xl md:border md:border-dashed md:border-blue-200 md:bg-white/95 md:p-8 md:shadow-[0_12px_35px_rgba(37,99,235,0.05)]">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 sm:h-16 sm:w-16">
                 <Users className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" />
               </div>
@@ -308,7 +321,7 @@ export default function ClassDetailPage() {
                     `/dashboard/school/${currentOrg?.slug}/classes/${classId}/students/${student.id}`,
                   )
                 }
-                className="group flex w-full items-center gap-3 rounded-xl border border-blue-100 bg-white px-4 py-3.5 text-left shadow-[0_16px_40px_rgba(37,99,235,0.08)] transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_20px_45px_rgba(37,99,235,0.14)] sm:gap-4 sm:p-5"
+                className="group flex min-h-[68px] w-full items-center gap-3 bg-white px-4 py-3 text-left transition active:bg-slate-50 md:gap-4 md:rounded-xl md:border md:border-blue-100 md:p-5 md:shadow-[0_16px_40px_rgba(37,99,235,0.08)] md:hover:-translate-y-0.5 md:hover:border-blue-200 md:hover:shadow-[0_20px_45px_rgba(37,99,235,0.14)]"
               >
                 <Avatar className="h-11 w-11 shrink-0 border border-blue-200 sm:h-14 sm:w-14">
                   <AvatarImage
@@ -324,12 +337,12 @@ export default function ClassDetailPage() {
                   {/* Name: single-line truncate on mobile so the card stays a
                       fixed compact height; wraps up to 2 lines from sm: up
                       where there's more room to breathe. */}
-                  <h2 className="truncate text-base font-bold tracking-tight text-slate-950 group-hover:text-blue-700 sm:line-clamp-2 sm:text-xl">
+                  <h2 className="truncate text-[15px] font-semibold tracking-tight text-slate-950 group-hover:text-blue-700 sm:line-clamp-2 sm:text-xl sm:font-bold">
                     {getStudentFullName(student)}
                   </h2>
 
                   {/* Mobile: compact inline subtitle, no badges */}
-                  <p className="mt-1 truncate text-xs text-slate-500 sm:hidden">
+                  <p className="mt-0.5 truncate text-sm capitalize text-slate-500 sm:hidden">
                     {[student.admissionNumber, student.gender]
                       .filter(Boolean)
                       .join(" · ") || "No admission number"}

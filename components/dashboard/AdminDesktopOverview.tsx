@@ -155,6 +155,7 @@ export function AdminDesktopOverview({
   const dismissKey = `hanoled_invites_alert_dismissed_${slug}`;
   // The alert only renders after the invites request resolves (client side), so reading
   // sessionStorage here cannot cause a server/client mismatch.
+  const [inviteLeaving, setInviteLeaving] = useState(false);
   const [inviteDismissed, setInviteDismissed] = useState(() => {
     try {
       return typeof window !== "undefined" && sessionStorage.getItem(dismissKey) === "1";
@@ -283,40 +284,48 @@ export function AdminDesktopOverview({
 
       {/* Pending invites, surfaced here instead of living in the sidebar */}
       {isPrivileged && pendingInvites > 0 && !inviteDismissed && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
-          <div className="flex items-center gap-3">
-            <UserPlus className="h-5 w-5 shrink-0 text-amber-600" />
-            <p className="text-sm text-amber-900">
-              <span className="font-semibold">
-                {pendingInvites} pending invite{pendingInvites === 1 ? "" : "s"}
-              </span>{" "}
-              {pendingInvites === 1 ? "is" : "are"} waiting to be accepted.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <Link href={`${base}/invites`} className="text-sm font-semibold text-amber-800 hover:text-amber-900">
-              Review
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setInviteDismissed(true);
-                try {
-                  sessionStorage.setItem(dismissKey, "1");
-                } catch {
-                  /* ignore */
-                }
-              }}
-              className="text-sm text-amber-700 hover:text-amber-900"
-            >
-              Dismiss
-            </button>
+        <div className="m-collapsible" data-open={inviteLeaving ? "false" : "true"}>
+          <div className="m-rise">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <UserPlus className="h-5 w-5 shrink-0 text-amber-600" />
+                <p className="text-sm text-amber-900">
+                  <span className="font-semibold">
+                    {pendingInvites} pending invite{pendingInvites === 1 ? "" : "s"}
+                  </span>{" "}
+                  {pendingInvites === 1 ? "is" : "are"} waiting to be accepted.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-4">
+                <Link href={`${base}/invites`} className="text-sm font-semibold text-amber-800 hover:text-amber-900">
+                  Review
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Collapse first, unmount once the collapse has finished.
+                    setInviteLeaving(true);
+                    window.setTimeout(() => {
+                      setInviteDismissed(true);
+                      try {
+                        sessionStorage.setItem(dismissKey, "1");
+                      } catch {
+                        /* ignore */
+                      }
+                    }, 280);
+                  }}
+                  className="text-sm text-amber-700 hover:text-amber-900"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Stat row */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+      <div className="m-stagger grid gap-4" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
         {stats.map((stat) => (
           <StatCard key={stat.key} stat={stat} />
         ))}
@@ -329,21 +338,21 @@ export function AdminDesktopOverview({
           <p className="mb-5 text-sm text-slate-500">Your organization profile details</p>
           <div className="grid grid-cols-2 gap-y-5">
             <div>
-              <div className="mb-1 text-xs text-slate-400">Category</div>
+              <div className="mb-1 text-xs text-slate-500">Category</div>
               <div className="text-sm font-medium text-slate-900">{cap(category) || "—"}</div>
             </div>
             <div>
-              <div className="mb-1 text-xs text-slate-400">Type</div>
+              <div className="mb-1 text-xs text-slate-500">Type</div>
               <div className="text-sm font-medium text-slate-900">{cap(type) || "—"}</div>
             </div>
             <div>
-              <div className="mb-1 text-xs text-slate-400">Status</div>
+              <div className="mb-1 text-xs text-slate-500">Status</div>
               <span className="inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-700">
                 {status || "Active"}
               </span>
             </div>
             <div>
-              <div className="mb-1 text-xs text-slate-400">Plan</div>
+              <div className="mb-1 text-xs text-slate-500">Plan</div>
               <div className="text-sm font-medium text-slate-900">{cap(plan) || "Free"}</div>
             </div>
           </div>
@@ -413,7 +422,7 @@ export function AdminDesktopOverview({
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+          <div key={currentTool} className="m-stagger grid grid-cols-3 gap-3 md:grid-cols-6">
             {(categories.find(([name]) => name === currentTool)?.[1] ?? []).map((tool) => {
               const item = byKey.get(tool.key)!;
               const Icon = tool.icon;
@@ -421,7 +430,7 @@ export function AdminDesktopOverview({
                 <Link
                   key={tool.key}
                   href={item.url}
-                  className="group flex flex-col items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-blue-200 hover:shadow-sm"
+                  className="group flex flex-col items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-[border-color,box-shadow,translate,scale] duration-200 ease-[var(--ease-out-smooth)] hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-sm active:scale-[0.98]"
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 transition-colors group-hover:bg-blue-50">
                     <Icon className="h-5 w-5 text-slate-500 group-hover:text-blue-600" strokeWidth={2} />

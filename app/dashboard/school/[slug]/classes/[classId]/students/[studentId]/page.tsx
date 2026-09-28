@@ -59,9 +59,10 @@ export default function ClassStudentSubjectsPage() {
   }, [fetchPerformance]);
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top,#f8fbff_0%,#eef5ff_45%,#f7fafc_100%)] pb-10">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3">
+    <div className="min-h-full pb-10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-5 md:px-6 md:py-4 lg:px-8">
+        {/* Phones already have a back target in the top bar */}
+        <div className="hidden items-center justify-between gap-3 md:flex">
           <Button
             variant="ghost"
             className="h-11 rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white"

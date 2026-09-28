@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -48,8 +49,10 @@ type FeeItem = {
 };
 
 export default function FeeStructurePage() {
-  const { currentOrg, currentMember } = useOrganization();
-  const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
+  const { currentOrg } = useOrganization();
+  const { can } = usePermissions();
+  // Follows what this school lets the viewer's role do (Settings → Staff access).
+  const canEditFees = can("fee_structure.edit");
   const [items, setItems] = useState<FeeItem[]>([]);
   const [classLevels, setClassLevels] = useState<ClassLevel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +132,7 @@ export default function FeeStructurePage() {
 
   if (!currentOrg) return null;
 
-  if (!isPrivileged) {
+  if (!canEditFees) {
     return (
       <div className="min-h-full bg-slate-50/60 pb-10">
         <div className="mx-auto max-w-5xl p-6">
@@ -145,15 +148,15 @@ export default function FeeStructurePage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="hidden min-w-0 md:block">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Fee Structure</h1>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">Manage fee items and generate invoices.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditItem(null); form.reset(); } }}>
             <DialogTrigger asChild>
-              <Button className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"><Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />New Fee Item</Button>
+              <Button className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"><Plus className="mr-2 h-4 w-4" />New fee item</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
@@ -229,15 +232,15 @@ export default function FeeStructurePage() {
             {loading ? (
               <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
             ) : items.length === 0 ? (
-              <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Receipt className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-400">No fee items yet.</p></CardContent></Card>
+              <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><Receipt className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No fee items yet.</p></CardContent></Card>
             ) : (
               <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
-                    <Badge variant="outline" className={cn("rounded-full text-[11px] px-1.5 py-0 font-medium shrink-0 sm:px-2", categoryColors[item.category] || categoryColors.other)}>{item.category}</Badge>
+                    <Badge variant="outline" className={cn("rounded-full text-xs px-1.5 py-0 font-medium shrink-0 sm:px-2", categoryColors[item.category] || categoryColors.other)}>{item.category}</Badge>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-slate-900 sm:text-sm">{item.name}</p>
-                      <p className="text-[11px] text-slate-400 sm:text-xs">{item.frequency} · {item.classLevel?.name || "All classes"}{item.isOptional ? " · Optional" : ""}</p>
+                      <p className="text-xs text-slate-500 sm:text-xs">{item.frequency} · {item.classLevel?.name || "All classes"}{item.isOptional ? " · Optional" : ""}</p>
                     </div>
                     <div className="text-xs font-semibold text-slate-900 shrink-0 sm:text-sm">₦{Number(item.amount).toLocaleString()}</div>
                     <div className="flex gap-1 shrink-0">
@@ -288,7 +291,7 @@ export default function FeeStructurePage() {
                           }}
                           className="h-4 w-4 rounded border-slate-300"
                         />
-                        <Badge variant="outline" className={cn("rounded-full text-[11px] px-2 py-0 font-medium", categoryColors[item.category] || categoryColors.other)}>
+                        <Badge variant="outline" className={cn("rounded-full text-xs px-2 py-0 font-medium", categoryColors[item.category] || categoryColors.other)}>
                           {item.category}
                         </Badge>
                         <span className="flex-1">{item.name}</span>

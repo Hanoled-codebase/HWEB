@@ -25,7 +25,7 @@ export function MobileSegmentBar<K extends string>({
     <nav
       aria-label="Sections"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 pb-safe backdrop-blur-md",
+        "m-glass fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 pb-safe",
         className,
       )}
     >
@@ -39,7 +39,7 @@ export function MobileSegmentBar<K extends string>({
                 type="button"
                 onClick={() => onChange(item.key)}
                 aria-current={active ? "page" : undefined}
-                className="flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 transition-colors active:bg-slate-100"
+                className="flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 transition-[background-color,opacity] duration-100 active:bg-slate-100 active:opacity-80"
               >
                 <span
                   className={cn(
@@ -51,7 +51,7 @@ export function MobileSegmentBar<K extends string>({
                 </span>
                 <span
                   className={cn(
-                    "max-w-full truncate text-[11px] leading-tight",
+                    "max-w-full truncate text-xs leading-tight",
                     active ? "font-semibold text-blue-600" : "font-medium text-slate-500",
                   )}
                 >

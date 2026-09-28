@@ -83,8 +83,8 @@ export default function StudentInvoicesPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div>
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             My Invoices
           </h1>
@@ -103,7 +103,7 @@ export default function StudentInvoicesPage() {
           <Card className="border-dashed border-slate-300">
             <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
-              <p className="text-sm text-slate-400">No invoices found.</p>
+              <p className="text-sm text-slate-500">No invoices found.</p>
             </CardContent>
           </Card>
         ) : (
@@ -132,7 +132,7 @@ export default function StudentInvoicesPage() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          "rounded-full text-[11px] px-2 py-0",
+                          "rounded-full text-xs px-2 py-0",
                           isPaid
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : inv.status === "PARTIALLY_PAID"
@@ -145,7 +145,7 @@ export default function StudentInvoicesPage() {
                     </div>
 
                     {inv.dueDate && (
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-slate-500">
                         Due: {new Date(inv.dueDate).toLocaleDateString()}
                       </p>
                     )}
@@ -173,13 +173,13 @@ export default function StudentInvoicesPage() {
                       {!isPaid ? (
                         <div className="flex items-center gap-6">
                           <div>
-                            <p className="text-[11px] uppercase tracking-wide text-slate-400">Paid</p>
+                            <p className="text-xs uppercase tracking-wide text-slate-500">Paid</p>
                             <p className="text-sm font-semibold text-emerald-600 tabular-nums">
                               ₦{paid.toLocaleString()}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-wide text-slate-400">Balance</p>
+                            <p className="text-xs uppercase tracking-wide text-slate-500">Balance</p>
                             <p className={cn(
                               "text-sm font-bold tabular-nums",
                               balance > 0 ? "text-rose-600" : "text-slate-900",
@@ -194,7 +194,7 @@ export default function StudentInvoicesPage() {
 
                       {/* Total (right side) */}
                       <div className="text-right">
-                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Total</p>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
                         <p className="text-xl font-bold text-slate-900 tabular-nums">
                           ₦{total.toLocaleString()}
                         </p>

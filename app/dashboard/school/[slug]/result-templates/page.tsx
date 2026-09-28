@@ -221,9 +221,9 @@ export default function ResultTemplatesPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="hidden min-w-0 md:block">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Result Templates</h1>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">Configure grading templates and compute term results.</p>
           </div>
@@ -236,7 +236,7 @@ export default function ResultTemplatesPage() {
             if (!o) { setEditItem(null); resetForm(); } 
           }}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"><Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />New Template</Button>
+              <Button onClick={resetForm} className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"><Plus className="mr-2 h-4 w-4" />New template</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -276,9 +276,9 @@ export default function ResultTemplatesPage() {
                   {formGrades.map((g, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <Input placeholder="Grade" value={g.grade} onChange={(e) => updateGrade(i, "grade", e.target.value)} className="w-[80px] text-xs" />
-                      <span className="text-xs text-slate-400">Min</span>
+                      <span className="text-xs text-slate-500">Min</span>
                       <Input type="number" value={g.min} onChange={(e) => updateGrade(i, "min", e.target.value)} className="w-[80px] text-xs" />
-                      <span className="text-xs text-slate-400">Max</span>
+                      <span className="text-xs text-slate-500">Max</span>
                       <Input type="number" value={g.max} onChange={(e) => updateGrade(i, "max", e.target.value)} className="w-[80px] text-xs" />
                       <button type="button" onClick={() => removeGrade(i)} className="text-xs text-red-400 hover:text-red-600">✕</button>
                     </div>
@@ -303,7 +303,7 @@ export default function ResultTemplatesPage() {
           <TabsContent value="templates" className="mt-4">
             {loadingT ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
             : templates.length === 0
-            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><ClipboardList className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-400">No templates yet.</p></CardContent></Card>
+            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><ClipboardList className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No templates yet.</p></CardContent></Card>
             : <div className="grid gap-4 sm:grid-cols-2">
                 {templates.map((t) => (
                   <Card key={t.id} className="border-slate-200 shadow-sm">
@@ -315,7 +315,7 @@ export default function ResultTemplatesPage() {
                           <button type="button" onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
-                      {t.isDefault && <Badge variant="secondary" className="text-[10px] mt-1">Default</Badge>}
+                      {t.isDefault && <Badge variant="secondary" className="text-xs mt-1">Default</Badge>}
                       <CardDescription className="text-xs mt-1">{t.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -446,26 +446,26 @@ export default function ResultTemplatesPage() {
 
             {loadingR ? <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
             : results.length === 0
-            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-8 text-center sm:py-12"><Calculator className="h-8 w-8 text-slate-300 sm:h-10 sm:w-10" /><p className="text-xs text-slate-400 sm:text-sm">No results yet. Select a class and compute.</p></CardContent></Card>
+            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-8 text-center sm:py-12"><Calculator className="h-8 w-8 text-slate-300 sm:h-10 sm:w-10" /><p className="text-xs text-slate-500 sm:text-sm">No results yet. Select a class and compute.</p></CardContent></Card>
             : <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
                 {results.map((r) => (
                   <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-xs sm:gap-4 sm:px-4 sm:py-2.5 sm:text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-slate-900">{r.student.firstName} {r.student.lastName}</p>
-                      <p className="text-[10px] text-slate-400 sm:text-xs">{r.classLevel.name} · {r.term} · {r.template.name}</p>
+                      <p className="text-xs text-slate-500 sm:text-xs">{r.classLevel.name} · {r.term} · {r.template.name}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-bold text-sm sm:text-lg">{r.totalScore}</p>
                     </div>
-                    <Badge variant="outline" className={cn("rounded-full px-1.5 py-0 text-[10px] font-bold shrink-0 sm:px-2.5 sm:py-0.5 sm:text-xs",
+                    <Badge variant="outline" className={cn("rounded-full px-1.5 py-0 text-xs font-bold shrink-0 sm:px-2.5 sm:py-0.5 sm:text-xs",
                       r.grade === "A" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                       : r.grade === "B" ? "border-blue-200 bg-blue-50 text-blue-700"
                       : r.grade === "C" ? "border-amber-200 bg-amber-50 text-amber-700"
                       : r.grade === "D" ? "border-orange-200 bg-orange-50 text-orange-700"
                       : "border-rose-200 bg-rose-50 text-rose-700"
                     )}>{r.grade}</Badge>
-                    <div className="text-[10px] text-slate-400 shrink-0 w-6 text-center sm:text-xs sm:w-8">#{r.position || "—"}</div>
-                    {r.publishedAt && <Badge variant="secondary" className="text-[11px] px-1 py-0 shrink-0 sm:text-[10px]">Published</Badge>}
+                    <div className="text-xs text-slate-500 shrink-0 w-6 text-center sm:text-xs sm:w-8">#{r.position || "—"}</div>
+                    {r.publishedAt && <Badge variant="secondary" className="text-xs px-1 py-0 shrink-0 sm:text-[10px]">Published</Badge>}
                   </div>
                 ))}
               </div>

@@ -29,7 +29,7 @@ import {
   ShieldAlert,
   EyeOff,
 } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 const MAX_TAB_SWITCHES = 3;
 const PROCTOR_WARNING_DURATION = 5;
@@ -348,7 +348,7 @@ function ActiveExam() {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="font-semibold text-slate-300">Synchronizing secure examination papers...</p>
+        <p className="font-semibold text-slate-300">Loading your exam paper…</p>
         <p className="text-xs text-slate-500 mt-1">Please do not refresh or close this window.</p>
       </div>
     );
@@ -379,7 +379,6 @@ function ActiveExam() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col select-none">
-      <Toaster position="top-right" richColors />
 
       <header className="bg-slate-950/80 backdrop-blur border-b border-slate-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

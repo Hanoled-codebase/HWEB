@@ -117,13 +117,13 @@ export function DiscussionBoard({
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-[#1447E6]" />
-              <p className="text-xs text-slate-400 mt-2">Loading discussions...</p>
+              <p className="text-xs text-slate-500 mt-2">Loading discussions...</p>
             </div>
           ) : comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <MessageSquare className="h-10 w-10 text-slate-300 mb-2" />
               <p className="text-sm font-medium text-slate-600">No questions yet</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-[240px]">
+              <p className="text-xs text-slate-500 mt-1 max-w-[240px]">
                 Be the first to ask a question or share a thought on this resource.
               </p>
             </div>
@@ -148,7 +148,7 @@ export function DiscussionBoard({
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                     <span>{name}</span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                         isStaff
                           ? "bg-blue-50 text-blue-700"
                           : "bg-slate-100 text-slate-600"
@@ -156,7 +156,7 @@ export function DiscussionBoard({
                     >
                       {roleText}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-500">
                       {new Date(comment.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
