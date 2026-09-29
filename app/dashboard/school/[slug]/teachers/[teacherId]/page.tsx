@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ResetPasswordButton } from "@/components/dashboard/ResetPasswordButton";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
 import { editTeachingAssignments, hcoreIds, teachingKey, toHcoreTeaching } from "@/lib/teaching-assignments";
@@ -349,6 +350,15 @@ export default function TeacherDetailPage() {
                 </SelectContent>
               </Select>
             </div>
+          )}
+          {isPrivileged && teacher.id !== currentMember.id && currentOrg && teacher.hcoreAffiliationId && (
+            <ResetPasswordButton
+              orgId={currentOrg.id}
+              target={{ affiliationId: teacher.hcoreAffiliationId }}
+              personName={teacher.user?.name || "this teacher"}
+              signInHint="their email address"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white text-[#0B1220] hover:bg-slate-50 md:h-9 md:w-auto"
+            />
           )}
           {!isPrivileged || teacher.id === currentMember.id ? (
             <Badge

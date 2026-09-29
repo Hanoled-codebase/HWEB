@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Fingerprint, Loader2, XCircle, CheckCircle2, Hotel, 
 import { toast } from "sonner";
 
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
+import { ResetPasswordButton } from "@/components/dashboard/ResetPasswordButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ type StudentProfile = {
   id: string;
   firstName: string;
   lastName: string;
+  hcoreLearnerId?: string | null;
   studentType?: string;
   usesBus?: boolean;
   hostelAllocation?: HostelAllocation | null;
@@ -191,6 +193,15 @@ export default function StudentDetailPage() {
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit Profile
               </Button>
+            )}
+
+            {canEditProfile && currentOrg && studentProfile?.hcoreLearnerId && (
+              <ResetPasswordButton
+                orgId={currentOrg.id}
+                target={{ learnerId: studentProfile.hcoreLearnerId }}
+                personName={`${studentProfile.firstName} ${studentProfile.lastName}`.trim()}
+                signInHint="their admission number"
+              />
             )}
           </div>
         </div>
