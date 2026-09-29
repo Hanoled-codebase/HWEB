@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Edge appliance UI build output (gitignored).
+    "edge-ui/out/**",
+    "edge-ui/.next/**",
   ]),
 ]);
 
