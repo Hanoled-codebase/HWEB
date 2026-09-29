@@ -1,0 +1,146 @@
+'use client';
+
+import React, { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Check, KeyRound, Loader2 } from 'lucide-react';
+import { completePasswordChangeAction, type SignInContext } from '@/app/actions/auth';
+import { setAuthTokens } from '@/lib/auth-tokens';
+
+// Mirrors HCORE's passwordSchema; HCORE makes the final call.
+function passwordRules(value: string) {
+  const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(value)).length;
+  return [
+    { label: 'At least 12 characters', met: value.length >= 12 },
+    { label: 'Three of: lowercase, capitals, numbers, symbols', met: kinds >= 3 },
+  ];
+}
+
+const inputClass =
+  'w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-xs sm:text-sm text-[#0B1220] placeholder-slate-400 transition-all';
+
+/**
+ * Shown instead of the sign-in form when the password was right but was set by
+ * someone else (an import default or an admin reset). No session exists until
+ * the person picks their own password here.
+ */
+export function RequiredPasswordChange({
+  changeToken,
+  context,
+  onRestart,
+}: {
+  changeToken: string;
+  context: SignInContext;
+  onRestart: () => void;
+}) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(completePasswordChangeAction, null);
+  const [password, setPassword] = useState('');
+  const rules = passwordRules(password);
+  const isStudent = context.identifierType === 'ADMISSION_NUMBER';
+
+  useEffect(() => {
+    if (state && 'success' in state) {
+      setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
+      router.push(state.redirectUrl);
+    }
+  }, [state, router]);
+
+  return (
+    <div>
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#1447E6]/10 text-[#1447E6]">
+        <KeyRound size={22} />
+      </div>
+      <h2 className="text-2xl font-bold text-center text-[#0B1220] mb-1">Choose a new password</h2>
+      <p className="text-center text-xs sm:text-sm text-slate-500 mb-6">
+        Your password was set by your school. Pick one only you know to finish signing in
+        {isStudent ? ' — not your admission number.' : '.'}
+      </p>
+
+      {state && 'error' in state && (
+        <div
+          role="alert"
+          className="bg-[#F04438]/10 text-[#F04438] p-3 rounded-lg text-xs sm:text-sm mb-4 border border-[#F04438]/30"
+        >
+          {state.error}
+          {state.expired && (
+            <button type="button" onClick={onRestart} className="ml-1 font-bold underline cursor-pointer">
+              Sign in again
+            </button>
+          )}
+        </div>
+      )}
+
+      <form action={formAction} className="space-y-4">
+        <input type="hidden" name="changeToken" value={changeToken} />
+        <input type="hidden" name="identifierType" value={context.identifierType} />
+        <input type="hidden" name="identifier" value={context.identifier} />
+        <input type="hidden" name="organizationSlugOrId" value={context.organizationSlugOrId || ''} />
+        <input type="hidden" name="callbackUrl" value={context.callbackUrl || ''} />
+
+        <div className="space-y-1.5">
+          <label htmlFor="newPassword" className="block text-xs font-bold text-[#0B1220] uppercase tracking-wider">
+            New password
+          </label>
+          <input
+            id="newPassword"
+            type="password"
+            name="newPassword"
+            autoComplete="new-password"
+            className={inputClass}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            autoFocus
+          />
+          <ul className="space-y-1 pt-1">
+            {rules.map((rule) => (
+              <li
+                key={rule.label}
+                className={`flex items-center gap-1.5 text-[11px] ${rule.met ? 'text-[#12B76A]' : 'text-slate-500'}`}
+              >
+                <Check size={12} className={rule.met ? 'opacity-100' : 'opacity-30'} />
+                {rule.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="confirmPassword" className="block text-xs font-bold text-[#0B1220] uppercase tracking-wider">
+            Type it again
+          </label>
+          <input
+            id="confirmPassword"
+            type="password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            className={inputClass}
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={pending || rules.some((rule) => !rule.met)}
+          className="w-full flex items-center justify-center gap-2 bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 mt-3 cursor-pointer shadow-sm text-xs sm:text-sm"
+        >
+          {pending ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Saving…
+            </>
+          ) : (
+            <>
+              Set password and continue <ArrowRight size={16} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+        <button type="button" onClick={onRestart} className="text-xs text-slate-500 hover:text-[#1447E6] cursor-pointer">
+          Back to sign in
+        </button>
+      </div>
+    </div>
+  );
+}

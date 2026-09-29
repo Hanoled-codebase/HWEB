@@ -46,7 +46,130 @@ async function exchangeHcbtSession(
   }
 }
 
-export async function loginAction(prevState: any, formData: FormData) {
+export type SignInContext = {
+  identifierType: string;
+  identifier: string;
+  organizationSlugOrId: string;
+  callbackUrl: string | null;
+};
+
+// The parts of HCORE's login / password-change response used here.
+type HcoreSignInResponse = {
+  token?: string;
+  principal?: { id?: string; email?: string | null };
+  roles?: string[];
+  activeOrganization?: { slug?: string } | null;
+  studentId?: string | null;
+  learnerId?: string | null;
+};
+
+export type SignInResult =
+  | { success: true; redirectUrl: string; hcoreToken?: string; hcbtToken?: string | null }
+  | { passwordChangeRequired: true; changeToken: string; context: SignInContext }
+  | { error: string; expired?: boolean };
+
+// Everything after HCORE accepts the credentials: session cookies, the HCBT
+// session exchange, allowed platforms and where to land.
+async function finishSignIn(
+  data: HcoreSignInResponse,
+  { identifierType, identifier, organizationSlugOrId, callbackUrl }: SignInContext,
+): Promise<SignInResult> {
+  if (!data.token) return { error: 'No token received' };
+
+  const cookieStore = await cookies();
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Set HCORE session cookie
+  cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600 * 24 * 7));
+
+  // Exchange for HCBT session with full role and student context
+  const hcbtToken = await exchangeHcbtSession(
+    data.token,
+    data.principal?.id,
+    data.principal?.email || identifier,
+    {
+      roles: data.roles,
+      orgSlug: organizationSlugOrId || data.activeOrganization?.slug,
+      studentId: data.studentId ?? undefined,
+      learnerId: data.learnerId ?? undefined,
+    }
+  );
+  if (hcbtToken) {
+    cookieStore.set('hcbt_session', hcbtToken, sessionCookieOptions(3600 * 24 * 7));
+  }
+
+  // Query HCORE for real-time active user context & subscriptions
+  let allowedPlatforms: string[] = []; 
+  try {
+    const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
+      headers: { 'Authorization': `Bearer ${data.token}` },
+      cache: 'no-store',
+    });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      const primaryOrg = meData.organizations?.[0];
+      if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
+        // `subscribed` is org-level (does the school pay for this product at all).
+        // Only surface a product to this user if they also hold an actual
+        // role in it — otherwise e.g. a Parent at a school that also buys
+        // HCBT would be routed into the CBT product with no role there.
+        allowedPlatforms = primaryOrg.subscribed.filter(
+          (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
+        );
+      }
+    }
+  } catch (e) {
+    console.error('Context fetch error in loginAction:', e);
+  }
+
+  // If still empty, check existing cookie
+  if (allowedPlatforms.length === 0) {
+    const existingCookie = cookieStore.get('hweb_allowed_platforms')?.value;
+    if (existingCookie) {
+      allowedPlatforms = existingCookie.split(',').filter(Boolean);
+    } else {
+      allowedPlatforms = ['HSMS', 'HCBT'];
+    }
+  }
+
+  // Set cookie for strict frontend route enforcement
+  cookieStore.set('hweb_allowed_platforms', allowedPlatforms.join(','), {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 3600 * 24 * 7,
+    path: '/',
+  });
+
+  if (!allowedPlatforms.includes('HCBT')) {
+    // Clear any old HCBT session if org doesn't have CBT entitlement
+    cookieStore.delete('hcbt_session');
+  }
+
+  // Track user identity type for routing
+  const isStudent = identifierType === 'ADMISSION_NUMBER';
+  cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : 'STAFF', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 3600 * 24 * 7,
+    path: '/',
+  });
+
+  let redirectUrl = callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/welcome';
+
+  if (isStudent) {
+    // Students ALWAYS land directly in their Student Examination Room!
+    const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
+    redirectUrl = `/cbt/student${orgParam}`;
+  } else if (redirectUrl === '/dashboard' || redirectUrl === '/') {
+    redirectUrl = '/welcome';
+  }
+
+  return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
+}
+
+export async function loginAction(prevState: any, formData: FormData): Promise<SignInResult> {
   const identifierType = formData.get('identifierType') as string;
   const identifier = formData.get('identifier') as string;
   const password = formData.get('password') as string;
@@ -70,105 +193,55 @@ export async function loginAction(prevState: any, formData: FormData) {
     const data = await res.json();
 
     if (!res.ok) {
+      // Correct password, but one the person didn't choose: HCORE issued no
+      // session, only a token for the "choose a new password" step.
+      if (data.code === 'PASSWORD_CHANGE_REQUIRED' && data.changeToken) {
+        return {
+          passwordChangeRequired: true,
+          changeToken: data.changeToken,
+          context: { identifierType, identifier, organizationSlugOrId, callbackUrl },
+        };
+      }
       return { error: data.error || 'Login failed' };
     }
 
-    if (data.token) {
-      const cookieStore = await cookies();
-      const isProduction = process.env.NODE_ENV === 'production';
+    return await finishSignIn(data, { identifierType, identifier, organizationSlugOrId, callbackUrl });
+  } catch (err: any) {
+    return { error: 'Network error. Please ensure Hcore API is running.' };
+  }
+}
 
-      // Set HCORE session cookie
-      cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600 * 24 * 7));
+// Second step of a sign-in that answered PASSWORD_CHANGE_REQUIRED: set the
+// new password with the change token, then sign in exactly as loginAction does.
+export async function completePasswordChangeAction(_prevState: SignInResult | null, formData: FormData): Promise<SignInResult> {
+  const changeToken = formData.get('changeToken') as string;
+  const newPassword = formData.get('newPassword') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+  const context: SignInContext = {
+    identifierType: formData.get('identifierType') as string,
+    identifier: formData.get('identifier') as string,
+    organizationSlugOrId: formData.get('organizationSlugOrId') as string,
+    callbackUrl: formData.get('callbackUrl') as string | null,
+  };
 
-      // Exchange for HCBT session with full role and student context
-      const hcbtToken = await exchangeHcbtSession(
-        data.token,
-        data.principal?.id || data.user?.id || data.principalId,
-        data.principal?.email || identifier,
-        {
-          roles: data.roles,
-          orgSlug: organizationSlugOrId || data.activeOrganization?.slug,
-          studentId: data.studentId,
-          learnerId: data.learnerId,
-        }
-      );
-      if (hcbtToken) {
-        cookieStore.set('hcbt_session', hcbtToken, sessionCookieOptions(3600 * 24 * 7));
-      }
+  if (newPassword !== confirmPassword) {
+    return { error: 'The two passwords do not match.' };
+  }
 
-      // Query HCORE for real-time active user context & subscriptions
-      let allowedPlatforms: string[] = []; 
-      try {
-        const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
-          headers: { 'Authorization': `Bearer ${data.token}` },
-          cache: 'no-store',
-        });
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          const primaryOrg = meData.organizations?.[0];
-          if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-            // `subscribed` is org-level (does the school pay for this product at all).
-            // Only surface a product to this user if they also hold an actual
-            // role in it — otherwise e.g. a Parent at a school that also buys
-            // HCBT would be routed into the CBT product with no role there.
-            allowedPlatforms = primaryOrg.subscribed.filter(
-              (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
-            );
-          }
-        }
-      } catch (e) {
-        console.error('Context fetch error in loginAction:', e);
-      }
+  try {
+    const res = await fetch(`${HCORE_BASE}/v1/auth/password/change`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changeToken, newPassword, audience: 'hcore-api' }),
+    });
+    const data = await res.json();
 
-      // If still empty, check existing cookie
-      if (allowedPlatforms.length === 0) {
-        const existingCookie = cookieStore.get('hweb_allowed_platforms')?.value;
-        if (existingCookie) {
-          allowedPlatforms = existingCookie.split(',').filter(Boolean);
-        } else {
-          allowedPlatforms = ['HSMS', 'HCBT'];
-        }
-      }
-
-      // Set cookie for strict frontend route enforcement
-      cookieStore.set('hweb_allowed_platforms', allowedPlatforms.join(','), {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: 3600 * 24 * 7,
-        path: '/',
-      });
-
-      if (!allowedPlatforms.includes('HCBT')) {
-        // Clear any old HCBT session if org doesn't have CBT entitlement
-        cookieStore.delete('hcbt_session');
-      }
-
-      // Track user identity type for routing
-      const isStudent = identifierType === 'ADMISSION_NUMBER';
-      cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : 'STAFF', {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: 3600 * 24 * 7,
-        path: '/',
-      });
-
-      let redirectUrl = callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/welcome';
-
-      if (isStudent) {
-        // Students ALWAYS land directly in their Student Examination Room!
-        const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
-        redirectUrl = `/cbt/student${orgParam}`;
-      } else if (redirectUrl === '/dashboard' || redirectUrl === '/') {
-        redirectUrl = '/welcome';
-      }
-
-      return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
+    if (!res.ok) {
+      return { error: data.error || 'Could not set your new password', expired: data.code === 'INVALID_CHANGE_TOKEN' };
     }
 
-    return { error: 'No token received' };
-  } catch (err: any) {
+    return await finishSignIn(data, context);
+  } catch {
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }
 }
