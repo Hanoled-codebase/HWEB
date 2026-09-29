@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Headers that are safe to enforce everywhere: they stop MIME sniffing, plugin
 // embeds and <base> hijacking, and stop leaking full URLs to other sites.
@@ -33,4 +34,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Source maps go to Sentry only when SENTRY_AUTH_TOKEN (with SENTRY_ORG and
+// SENTRY_PROJECT) is set at build time; otherwise the build is unchanged.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  widenClientFileUpload: true,
+  silent: !process.env.CI,
+  telemetry: false,
+});

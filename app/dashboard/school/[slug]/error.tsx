@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -13,6 +14,8 @@ export default function SchoolPageError({ error, reset }: { error: Error & { dig
 
   useEffect(() => {
     console.error(error);
+    // Error boundaries swallow errors, so Sentry only sees them if we pass them on.
+    Sentry.captureException(error);
   }, [error]);
 
   return (

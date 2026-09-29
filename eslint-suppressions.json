@@ -1,0 +1,513 @@
+{
+  "app/(auth)/accept-invite/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/(auth)/forgot-password/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(auth)/reset-password/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(auth)/signin/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 4
+    }
+  },
+  "app/(auth)/verify/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/(marketing)/about/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "app/actions/auth.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/admin/login/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/admin/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/admin/schools/[id]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/admin/support/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "app/admissions/[orgSlug]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/cbt/admin/EdgeAppliancesTab.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/cbt/admin/EdgeDeviceTab.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 13
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/cbt/admin/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 56
+    },
+    "react/no-unescaped-entities": {
+      "count": 4
+    }
+  },
+  "app/cbt/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/cbt/student/exam/[examId]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/cbt/student/exam/[examId]/result/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "app/cbt/student/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 11
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "app/dashboard/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/admissions/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/billing/page.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/classes/[classId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/classes/[classId]/students/[studentId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/classes/[classId]/students/[studentId]/subjects/[subjectId]/assessments/[assessmentIndex]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/classes/[classId]/students/[studentId]/subjects/[subjectId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/classes/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react-hooks/use-memo": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/clinic/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/debt/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/fee-structure/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/dashboard/school/[slug]/invites/page.tsx": {
+    "react-hooks/purity": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/lesson-notes/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/messaging/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/dashboard/school/[slug]/page.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/payments/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 3
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/payroll/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/question-bank/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/dashboard/school/[slug]/result-templates/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/dashboard/school/[slug]/results/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/scheme-of-work/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/scratch-cards/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/settings/features/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/settings/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "app/dashboard/school/[slug]/settings/transfers/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/dashboard/school/[slug]/spreadsheets/[sheetId]/assessment/[assessmentIndex]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/spreadsheets/[sheetId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/staff-attendance/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/student/invoices/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/student/library/page.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/student/results/transcript/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/students/[studentId]/edit/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/students/[studentId]/page.tsx": {
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/students/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/subjects/[subjectId]/classes/[classId]/page.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/subjects/[subjectId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/subjects/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/support/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/dashboard/school/[slug]/teachers/[teacherId]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/teachers/[teacherId]/subjects/[subjectId]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/school/[slug]/timetable/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/payment/verify/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/cbt/ExamCard.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 1
+    }
+  },
+  "components/core/Navbar.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "components/core/Sidebar.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "components/core/pages/Directory.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 4
+    }
+  },
+  "components/core/pages/Login.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "components/core/pages/ProductChooser.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "components/core/pages/Register.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "components/core/pages/Sessions.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/core/pages/Subscriptions.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    },
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/dashboard/DiscussionBoard.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "components/forms/StudentForm.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "components/results/ReportCardPrintModal.tsx": {
+    "react/no-unescaped-entities": {
+      "count": 3
+    }
+  },
+  "components/ui/select.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "edge-ui/app/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "edge-ui/app/signin/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "hooks/use-mobile.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useAuth.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "hooks/useExamTimer.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useInView.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useNotifications.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useOrganization.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "hooks/useSchoolNavItems.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "lib/api-cbt.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "services/api.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 67
+    }
+  },
+  "store/exam.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  }
+}
