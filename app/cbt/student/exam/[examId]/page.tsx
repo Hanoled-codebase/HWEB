@@ -12,6 +12,7 @@ import {
   recoverAnswers,
   clearAutoSave,
   enqueueAttempt,
+  buildSubmitOperations,
   isOnline,
 } from "@/lib/cbt-offline";
 import { startSyncWorker } from "@/lib/cbt-sync";
@@ -239,6 +240,29 @@ function ActiveExam() {
     await executeSubmission(true);
   };
 
+  // Queue the finished attempt for lib/cbt-sync.ts. Without a lease the queued
+  // copy could never sync, so throw instead and leave the answers on this page.
+  const queueOfflineSubmission = async () => {
+    const lease = session?.offline;
+    if (!session || !lease?.leaseToken) {
+      throw new Error("You're offline and this exam can't be saved for later. Reconnect, then submit again.");
+    }
+    const compact = compactAnswers(answers);
+    const cheating = tabSwitchCount >= MAX_TAB_SWITCHES;
+    const submittedAt = new Date().toISOString();
+    await enqueueAttempt({
+      examId,
+      attemptId: session.examResultId,
+      leaseToken: lease.leaseToken,
+      answers: compact,
+      operations: buildSubmitOperations(compact, cheating, lease.lastSyncedSequence ?? 0, submittedAt),
+      cheating,
+      submittedAt,
+    });
+    clearSession();
+    clearAutoSave(examId);
+  };
+
   const executeSubmission = async (isAuto = false) => {
     setSubmitting(true);
     setIsSubmitModalOpen(false);
@@ -301,45 +325,28 @@ function ActiveExam() {
         router.push(`/cbt/student/exam/${examId}/result`);
       } else {
         // Offline path — enqueue for background sync
-        await enqueueAttempt({
-          examId,
-          attemptId: (session as any).attemptId || examId,
-          leaseToken: (session as any).leaseToken || '',
-          answers: compactAnswers(answers),
-          cheating: tabSwitchCount >= MAX_TAB_SWITCHES,
-          submittedAt: new Date().toISOString(),
-        });
-
-        clearSession();
-        clearAutoSave(examId);
+        await queueOfflineSubmission();
         toast.success("You are offline. Your exam has been saved and will sync automatically when you reconnect.", { duration: 8000 });
         router.push(`/cbt/student`);
       }
     } catch (err: any) {
       console.error("Submission failed:", err);
+      let message = err.message;
 
       // Last-resort offline fallback if the network call itself threw
       if (!isOnline()) {
         try {
-          await enqueueAttempt({
-            examId,
-            attemptId: (session as any).attemptId || examId,
-            leaseToken: (session as any).leaseToken || '',
-            answers: compactAnswers(answers),
-            cheating: tabSwitchCount >= MAX_TAB_SWITCHES,
-            submittedAt: new Date().toISOString(),
-          });
-          clearSession();
-          clearAutoSave(examId);
+          await queueOfflineSubmission();
           toast.success("Saved offline. Will sync when back online.", { duration: 8000 });
           router.push(`/cbt/student`);
           return;
-        } catch {
-          // IndexedDB itself failed — nothing more we can do
+        } catch (queueErr) {
+          // No lease, or IndexedDB failed: the answers stay on this page.
+          if (queueErr instanceof Error) message = queueErr.message;
         }
       }
 
-      toast.error(err.message || "Failed to submit exam. Please try again or contact your administrator.");
+      toast.error(message || "Failed to submit exam. Please try again or contact your administrator.");
       setSubmitting(false);
     }
   };

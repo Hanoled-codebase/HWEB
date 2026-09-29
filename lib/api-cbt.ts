@@ -91,13 +91,8 @@ export const cbtApi = {
   getSubjects: () => fetchCbt("/past-questions/subjects"),
   getYears: (subject: string) => fetchCbt(`/past-questions/years?subject=${encodeURIComponent(subject)}`),
 
-  // ── Offline Lease & Sync ────────────────────────────────────────────
-  acquireLease: (examId: string) =>
-    fetchCbt<{ leaseToken: string; exam: any; expiresAt: string }>(
-      `/offline/lease`, { method: "POST", body: JSON.stringify({ examId }) }
-    ),
-  syncOfflineAttempt: (data: { leaseToken: string; attemptId: string; answers: Record<string, number>; submittedAt: string }) =>
-    fetchCbt(`/offline/sync`, { method: "POST", body: JSON.stringify(data) }),
+  // Offline submission sync lives in lib/cbt-sync.ts: it authenticates with the
+  // attempt lease and must bypass request()'s session refresh / sign-out.
 
   // ── Admin / Teacher Operations ──────────────────────────────────────
   getAdminStats: (orgSlug: string) => fetchCbt(`/admin/stats?orgSlug=${orgSlug}`),

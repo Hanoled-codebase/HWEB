@@ -23,6 +23,12 @@ export interface ExamSession {
   };
   questions: Question[];
   startedAt: string;
+  // Attempt-scoped credential from /start. It lets a submission queued while
+  // offline sync later even if the browser session has expired by then.
+  offline?: {
+    leaseToken: string;
+    lastSyncedSequence: number;
+  };
 }
 
 export interface ExamState {

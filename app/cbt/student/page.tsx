@@ -6,6 +6,7 @@ import { cbtApi } from "@/lib/api-cbt";
 import { EDGE_MODE } from "@/lib/api";
 import { signOutEverywhere } from "@/lib/sign-out";
 import { useExamStore } from "@/store/exam";
+import { startSyncWorker } from "@/lib/cbt-sync";
 import { useExamDeviceStatus, isExamCapableScreen } from "@/hooks/useExamDevice";
 import { ExamDeviceNotice, ExamDeviceBanner } from "@/components/cbt/ExamDeviceNotice";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
@@ -77,6 +78,10 @@ export default function StudentDashboard() {
   const [fetchingPracticeSubjects, setFetchingPracticeSubjects] = useState(false);
   const [fetchingPracticeYears, setFetchingPracticeYears] = useState(false);
   const [initializingPractice, setInitializingPractice] = useState(false);
+
+  // An exam submitted offline sends the student here, so keep flushing the
+  // offline queue on this page too, not only inside the exam room.
+  useEffect(() => startSyncWorker(), []);
 
   // Fetch subjects list dynamically for practice tab
   useEffect(() => {
