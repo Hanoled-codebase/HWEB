@@ -362,11 +362,6 @@
       "count": 2
     }
   },
-  "app/payment/verify/page.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/cbt/ExamCard.tsx": {
     "react/no-unescaped-entities": {
       "count": 1
