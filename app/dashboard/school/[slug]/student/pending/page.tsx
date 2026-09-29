@@ -33,15 +33,15 @@ export default function StudentPendingPage() {
 
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex items-center gap-3">
-        <Link href={`/dashboard/school/${slug}`}>
+        <Link href={`/dashboard/school/${slug}`} aria-label="Back to dashboard" className="hidden md:block">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">Pending Exams</h1>
+          <h1 className="hidden text-lg font-bold text-slate-900 md:block">Pending Exams</h1>
           <p className="text-sm text-slate-500">
             Computer-based tests awaiting your attempt
           </p>

@@ -7,6 +7,10 @@ import { loginAction } from '../../actions/auth';
 import { api } from '@/services/api';
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
 import { setAuthTokens } from '@/lib/auth-tokens';
+import { RequiredPasswordChange } from '@/components/auth/RequiredPasswordChange';
+
+const cardClass =
+  'w-full max-w-md p-8 sm:p-10 bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/80 relative z-10';
 
 function LoginForm() {
   const router = useRouter();
@@ -22,6 +26,8 @@ function LoginForm() {
   const [loadingSchools, setLoadingSchools] = useState(false);
 
   const [state, formAction, pending] = useActionState(loginAction, null);
+  // "Back to sign in" from the new-password step hides that step for this token.
+  const [abandonedChangeToken, setAbandonedChangeToken] = useState<string | null>(null);
 
   // Load public organizations for discovery
   useEffect(() => {
@@ -73,7 +79,7 @@ function LoginForm() {
   };
 
   useEffect(() => {
-    if (state?.success && state?.redirectUrl) {
+    if (state && 'success' in state) {
       setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
       router.push(state.redirectUrl);
     }
@@ -84,8 +90,20 @@ function LoginForm() {
     s.slug.toLowerCase().includes(schoolSearchQuery.toLowerCase())
   );
 
+  if (state && 'passwordChangeRequired' in state && state.changeToken !== abandonedChangeToken) {
+    return (
+      <div className={cardClass}>
+        <RequiredPasswordChange
+          changeToken={state.changeToken}
+          context={state.context}
+          onRestart={() => setAbandonedChangeToken(state.changeToken)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-md p-8 sm:p-10 bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/80 relative z-10">
+    <div className={cardClass}>
       <div className="flex justify-center mb-4">
         <HanoledLogo size="lg" variant="blue" iconOnly />
       </div>
@@ -123,7 +141,7 @@ function LoginForm() {
         </button>
       </div>
 
-      {state?.error && (
+      {state && 'error' in state && (
         <div className="bg-rose-50 text-rose-600 p-3 rounded-lg text-xs sm:text-sm mb-4 flex items-center gap-2 border border-rose-200">
           {state.error}
         </div>

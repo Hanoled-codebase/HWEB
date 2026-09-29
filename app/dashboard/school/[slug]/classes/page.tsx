@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -48,6 +49,7 @@ import {
 import {
   Search,
   ArrowRight,
+  ChevronRight,
   MoreHorizontal,
   Plus,
   Pencil,
@@ -265,9 +267,9 @@ export default function ClassesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+      <div className="flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
+        <div className="hidden md:block">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Classes
           </h1>
           <p className="text-slate-500">
@@ -278,7 +280,7 @@ export default function ClassesPage() {
         {isPrivileged && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 md:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Class
               </Button>
@@ -401,19 +403,73 @@ export default function ClassesPage() {
       </div>
 
       <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-[384px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+        <div className="relative flex-1 md:max-w-[384px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
             type="search"
             placeholder="Search classes..."
-            className="pl-8 bg-white"
+            aria-label="Search classes"
+            className="bg-white pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Phones: one grouped list, a whole row opens the class */}
+      {!isLoading && filteredClasses.length > 0 && (
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white md:hidden">
+          {filteredClasses.map((cls) => (
+            <li key={cls.id} className="flex items-center gap-1 pr-2">
+              <Link
+                href={`/dashboard/school/${currentOrg?.slug}/classes/${cls.id}`}
+                className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 active:bg-slate-50"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-slate-900">{cls.name}</span>
+                  <span className="block truncate text-sm text-slate-500">
+                    {cls.assignedTeacher?.user?.name ? `Form teacher: ${cls.assignedTeacher.user.name}` : "No form teacher yet"}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right text-sm tabular-nums text-slate-500">
+                  <span className="font-semibold text-slate-900">{cls.totalStudents || 0}</span>
+                  {cls.limit ? ` / ${cls.limit}` : ""}
+                  <span className="block text-xs">learners</span>
+                </span>
+              </Link>
+              {isPrivileged ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button variant="ghost" aria-label={`Actions for ${cls.name}`} className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditDialog(cls)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit Class
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => handleDelete(cls.id)}
+                      className="text-red-600 focus:bg-red-50 focus:text-red-700"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <ChevronRight className="mr-2 h-5 w-5 shrink-0 text-slate-300" aria-hidden="true" />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${!isLoading && filteredClasses.length > 0 ? "max-md:hidden" : ""}`}>
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="shadow-sm border-slate-200">
@@ -439,7 +495,7 @@ export default function ClassesPage() {
                   : "No classes found. Get started by creating one."}
             </span>
             {!searchQuery && isTeacher && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-slate-500">
                 Ask an admin to assign a subject and class to your profile.
               </span>
             )}
@@ -457,7 +513,7 @@ export default function ClassesPage() {
             >
               {isPrivileged && (
                 <div
-                  className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute right-2 top-2 transition-opacity focus-within:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <DropdownMenu>

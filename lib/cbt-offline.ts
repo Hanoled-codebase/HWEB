@@ -2,7 +2,9 @@
  * Offline Exam Cache Engine
  * 
  * Uses IndexedDB to store exam leases and queue offline submissions.
- * When online, syncs queued attempts via POST /api/cbt/offline/sync.
+ * When online, lib/cbt-sync.ts replays queued attempts to
+ * POST /api/student/:examId/offline/sync (or the Edge appliance's
+ * POST /api/offline/sync).
  *
  * Object Stores:
  *   - exam_leases: Cached exam data (questions, metadata) for offline use
@@ -38,15 +40,32 @@ export interface ExamLease {
   orgSlug: string;
 }
 
+/** One entry of HCBT's ordered offline-attempt log (see Hcbt offlineAttempt.js). */
+export interface OfflineOperation {
+  operationId: string;
+  sequence: number;
+  type: 'ANSWER_SET' | 'SUBMIT_INTENT';
+  questionId?: string;
+  selectedOption?: number;
+  payload?: { cheating: boolean };
+  clientTimestamp: string;
+}
+
 export interface SyncQueueItem {
   id: string;          // Auto-generated UUID
   examId: string;
   attemptId: string;
   leaseToken: string;
   answers: Record<string, number>;
+  // Built once at enqueue time so every retry resends the same operation IDs,
+  // which is what lets the server deduplicate them.
+  operations?: OfflineOperation[];
   cheating: boolean;
   submittedAt: string; // ISO timestamp when the student hit "submit"
   retries: number;
+  // Set when the server rejected the submission outright. The item is kept, not
+  // deleted, so the student's answers are never thrown away.
+  failed?: { at: string; reason: string };
 }
 
 // ── IndexedDB Helpers ──────────────────────────────────────────────────
@@ -111,9 +130,44 @@ export function isLeaseValid(lease: ExamLease): boolean {
 
 // ── Sync Queue Operations ──────────────────────────────────────────────
 
-/** Generate a simple UUID */
+/** Generate a v4 UUID (the sync endpoint rejects operation IDs that aren't one) */
 function uuid(): string {
-  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // randomUUID only exists in secure contexts, e.g. not on a plain-http LAN address.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
+ * Turn a finished attempt into the operation log the offline sync endpoint
+ * expects: one ANSWER_SET per answered question, then a SUBMIT_INTENT.
+ * Sequences continue from the last one the server acknowledged.
+ */
+export function buildSubmitOperations(
+  answers: Record<string, number>,
+  cheating: boolean,
+  lastSyncedSequence: number,
+  submittedAt: string,
+): OfflineOperation[] {
+  const operations: OfflineOperation[] = Object.entries(answers).map(([questionId, selectedOption], index) => ({
+    operationId: uuid(),
+    sequence: lastSyncedSequence + index + 1,
+    type: 'ANSWER_SET',
+    questionId,
+    selectedOption,
+    clientTimestamp: submittedAt,
+  }));
+  operations.push({
+    operationId: uuid(),
+    sequence: lastSyncedSequence + operations.length + 1,
+    type: 'SUBMIT_INTENT',
+    payload: { cheating },
+    clientTimestamp: submittedAt,
+  });
+  return operations;
 }
 
 /** Enqueue an attempt for background sync */
@@ -139,6 +193,15 @@ export async function incrementRetry(id: string): Promise<void> {
   const item = await txPromise<SyncQueueItem>(STORE_SYNC_QUEUE, 'readonly', (store) => store.get(id));
   if (item) {
     item.retries += 1;
+    await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.put(item));
+  }
+}
+
+/** Stop retrying an item the server rejected, but keep its answers. */
+export async function markSyncFailed(id: string, reason: string): Promise<void> {
+  const item = await txPromise<SyncQueueItem>(STORE_SYNC_QUEUE, 'readonly', (store) => store.get(id));
+  if (item) {
+    item.failed = { at: new Date().toISOString(), reason };
     await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.put(item));
   }
 }

@@ -419,7 +419,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ABOUT US + STATS */}
+        {/* ABOUT US */}
         <section className="mt-16 text-center">
           <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">
             Built by people who understand West African schools
@@ -430,21 +430,6 @@ export default function LandingPage() {
               Read More
             </Link>
           </p>
-
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-12">
-            <div className="text-center sm:text-left">
-              <div className="text-2xl font-black text-slate-900">50,000+</div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Students Managed</div>
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-black text-slate-900">99.9%</div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Uptime Guarantee</div>
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-black text-slate-900">24/7</div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer Support</div>
-            </div>
-          </div>
         </section>
 
         {/* OUR SERVICES (numbered accordion) */}
@@ -473,6 +458,7 @@ export default function LandingPage() {
                 >
                   <button
                     onClick={() => setActiveModule(isOpen ? null : m.id)}
+                    aria-expanded={isOpen}
                     className="flex w-full items-center gap-4 p-5 sm:p-6 text-left"
                   >
                     <span className="w-7 shrink-0 text-sm font-black tabular-nums text-slate-300">
@@ -487,17 +473,19 @@ export default function LandingPage() {
                       <ChevronDown className="h-4 w-4" />
                     </span>
                   </button>
-                  {isOpen && (
-                    <div className="flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-start sm:px-6 sm:pl-[3.75rem]">
-                      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${m.color}`}>
-                        <Illustration className="h-9 w-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="font-bold text-slate-800">{m.headline}</h4>
-                        <p className="text-sm text-slate-500 leading-relaxed font-medium">{m.desc}</p>
+                  <div className="m-collapsible" data-open={isOpen} aria-hidden={!isOpen}>
+                    <div>
+                      <div className="flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-start sm:px-6 sm:pl-[3.75rem]">
+                        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${m.color}`}>
+                          <Illustration className="h-9 w-9" />
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="font-bold text-slate-800">{m.headline}</h4>
+                          <p className="text-sm text-slate-500 leading-relaxed font-medium">{m.desc}</p>
+                        </div>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -595,16 +583,19 @@ export default function LandingPage() {
                 >
                   <button
                     onClick={() => toggleFaq(idx)}
+                    aria-expanded={isOpen}
                     className="flex justify-between items-center w-full p-5 text-left text-sm sm:text-base font-bold text-slate-800 hover:bg-slate-50 transition-colors"
                   >
                     <span className="pr-4">{faq.question}</span>
-                    <HelpCircle className={`h-5 w-5 shrink-0 transition-transform ${isOpen ? "text-[#1447E6] rotate-180" : "text-slate-400"}`} />
+                    <HelpCircle className={`h-5 w-5 shrink-0 transition-transform duration-300 ease-[var(--ease-out-smooth)] ${isOpen ? "text-[#1447E6] rotate-180" : "text-slate-400"}`} />
                   </button>
-                  {isOpen && (
-                    <div className="p-5 pt-0 border-t border-slate-50 text-xs sm:text-sm font-semibold leading-relaxed text-slate-500">
-                      {faq.answer}
+                  <div className="m-collapsible" data-open={isOpen} aria-hidden={!isOpen}>
+                    <div>
+                      <div className="p-5 pt-0 border-t border-slate-50 text-xs sm:text-sm font-semibold leading-relaxed text-slate-500">
+                        {faq.answer}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}

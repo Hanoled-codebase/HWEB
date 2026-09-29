@@ -199,24 +199,24 @@ export default function ClinicPage() {
   const selectedStudent = students.find((s) => s.id === form.studentId);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 md:space-y-6 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
+      <div className="flex items-center justify-between gap-4 max-md:flex-col max-md:items-stretch md:flex-wrap">
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Stethoscope className="h-6 w-6 text-emerald-600" />
+            <Stethoscope className="h-6 w-6 text-blue-600" />
             Clinic Log
           </h1>
           <p className="text-sm text-slate-500 mt-1">Track student medical visits and health records</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
-            <RefreshCcw className="h-4 w-4 mr-1" />
-            Refresh
+        <div className="grid grid-cols-[auto_1fr] gap-2 md:flex">
+          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} aria-label="Refresh">
+            <RefreshCcw className="h-4 w-4 md:mr-1" />
+            <span className="hidden md:inline">Refresh</span>
           </Button>
           <Button
             size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => { setForm(EMPTY_FORM); setDialogOpen(true); }}
           >
             <Plus className="h-4 w-4 mr-1" />
@@ -225,15 +225,28 @@ export default function ClinicPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats: one quiet line on phones (nothing when there are no visits), tiles on desktop */}
+      {stats.total > 0 && (
+        <p className="text-sm text-slate-600 md:hidden">
+          <span className="font-semibold tabular-nums text-slate-900">{stats.total}</span> visits
+          <span className="mx-1.5 text-slate-300">·</span>
+          <span className="font-semibold tabular-nums text-slate-900">{stats.today}</span> today
+          {stats.referred > 0 && (
+            <>
+              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="font-semibold tabular-nums text-red-700">{stats.referred}</span> referred out
+            </>
+          )}
+        </p>
+      )}
+      <div className="hidden gap-4 md:grid md:grid-cols-4">
         {[
-          { label: "Total Visits", value: stats.total, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Today", value: stats.today, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Referred Out", value: stats.referred, color: "text-red-600", bg: "bg-red-50" },
-          { label: "Parent Notified", value: stats.notified, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Total Visits", value: stats.total, color: "text-slate-900" },
+          { label: "Today", value: stats.today, color: "text-slate-900" },
+          { label: "Referred Out", value: stats.referred, color: stats.referred > 0 ? "text-red-600" : "text-slate-900" },
+          { label: "Parent Notified", value: stats.notified, color: "text-slate-900" },
         ].map((s) => (
-          <Card key={s.label} className={`${s.bg} border-0 shadow-sm`}>
+          <Card key={s.label} className="border-slate-200 bg-white shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs text-slate-500 uppercase tracking-wider">{s.label}</p>
               <p className={`text-2xl font-bold ${s.color} mt-1`}>{s.value}</p>
@@ -243,11 +256,13 @@ export default function ClinicPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      <div className="relative md:max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <Input
+          type="search"
+          aria-label="Search clinic visits"
           className="pl-9"
-          placeholder="Search by student name or complaint..."
+          placeholder="Search by student or complaint"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -282,14 +297,14 @@ export default function ClinicPage() {
                         {log.student.firstName} {log.student.lastName}
                       </p>
                       {log.student.admissionNumber && (
-                        <span className="text-xs text-slate-400">#{log.student.admissionNumber}</span>
+                        <span className="text-xs text-slate-500">#{log.student.admissionNumber}</span>
                       )}
                       {log.student.classLevel && (
                         <Badge variant="outline" className="text-xs">{log.student.classLevel.name}</Badge>
                       )}
                     </div>
                     <p className="text-sm text-slate-600 mt-0.5 line-clamp-1">{log.complaint}</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       {format(new Date(log.visitDate), "dd MMM yyyy, h:mm a")} · Attended by {log.attendedBy.user.name}
                     </p>
                   </div>
@@ -358,13 +373,13 @@ export default function ClinicPage() {
                           onClick={() => { setForm((f) => ({ ...f, studentId: s.id })); setStudentSearch(""); }}
                         >
                           <span>{s.firstName} {s.lastName}</span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-slate-500">
                             {s.classLevel?.name} {s.admissionNumber ? `· #${s.admissionNumber}` : ""}
                           </span>
                         </button>
                       ))}
                       {filteredStudents.length === 0 && (
-                        <p className="px-3 py-2 text-sm text-slate-400">No students found</p>
+                        <p className="px-3 py-2 text-sm text-slate-500">No students found</p>
                       )}
                     </div>
                   )}
@@ -520,7 +535,7 @@ export default function ClinicPage() {
               )}
 
               <Separator />
-              <p className="text-xs text-slate-400">Attended by: {viewLog.attendedBy.user.name}</p>
+              <p className="text-xs text-slate-500">Attended by: {viewLog.attendedBy.user.name}</p>
 
               {isPrivileged && (
                 <Button

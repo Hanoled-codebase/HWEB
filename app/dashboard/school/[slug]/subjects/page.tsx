@@ -35,7 +35,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Search, Loader2, Plus } from "lucide-react";
+import { Search, Loader2, Plus, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { EntityHeader } from "@/components/dashboard/shared";
@@ -73,6 +73,8 @@ export default function SubjectsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Phones fold the add form away until asked for; desktop keeps it in the sidebar.
+  const [addOpen, setAddOpen] = useState(false);
 
   const isPrivileged =
     currentMember?.role === "owner" || currentMember?.role === "admin";
@@ -173,14 +175,15 @@ export default function SubjectsPage() {
         subtitle={`${subjects.length} subjects (${defaultCount} default, ${customCount} custom)`}
       />
 
-      {/* Category filter tabs */}
-      <div className="flex flex-wrap gap-2">
+      {/* Category filter chips: one scrolling row on phones, wrapping on desktop */}
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
         <button
           onClick={() => setActiveCategory(null)}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+          aria-pressed={!activeCategory}
+          className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition md:min-h-0 md:px-3 md:py-1 md:text-xs ${
             !activeCategory
               ? "bg-blue-600 text-white shadow-sm"
-              : "bg-slate-50/70 text-slate-600 hover:bg-slate-100"
+              : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 md:bg-slate-50/70 md:ring-0"
           }`}
         >
           All ({subjects.length})
@@ -192,14 +195,15 @@ export default function SubjectsPage() {
             <button
               key={key}
               onClick={() => setActiveCategory(key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              aria-pressed={activeCategory === key}
+              className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-medium transition md:min-h-0 md:px-3 md:py-1 md:text-xs ${
                 activeCategory === key
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-slate-50/70 text-slate-600 hover:bg-slate-100"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 md:bg-slate-50/70 md:ring-0"
               }`}
             >
               <span>{CATEGORIES[key]}</span>
-              <span className="ml-1 text-slate-400">({count})</span>
+              <span className={`ml-1 ${activeCategory === key ? "text-blue-100" : "text-slate-500"}`}>({count})</span>
             </button>
           );
         })}
@@ -212,7 +216,8 @@ export default function SubjectsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search subjects by name or code..."
+              placeholder="Search by name or code"
+              aria-label="Search subjects"
               className="h-11 rounded-2xl bg-white pl-10 shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -242,19 +247,19 @@ export default function SubjectsPage() {
               const catSubjects = grouped[catKey];
               return (
                 <div key={catKey}>
-                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-widest text-slate-500 md:mb-3 md:px-0">
                     {catInfo || "Other"}
-                    <span className="ml-2 font-normal text-slate-300">
+                    <span className="ml-2 font-normal text-slate-400">
                       ({catSubjects.length})
                     </span>
                   </h2>
-                  <div className="space-y-1.5">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white max-md:divide-y max-md:divide-slate-100 md:space-y-1.5 md:overflow-visible md:border-0 md:bg-transparent">
                     {catSubjects.map((subject) => (
                       <div
                         key={subject.id}
                         role="button"
                         tabIndex={0}
-                        className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm transition hover:shadow-md"
+                        className="flex min-h-16 cursor-pointer items-center gap-3 bg-white px-4 py-3 transition active:bg-slate-50 md:rounded-2xl md:shadow-sm md:hover:shadow-md"
                         onClick={() =>
                           router.push(
                             `/dashboard/school/${currentOrg?.slug}/subjects/${subject.id}`,
@@ -275,18 +280,18 @@ export default function SubjectsPage() {
                               {subject.name}
                             </span>
                             {subject.isDefault && (
-                              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-600">Default</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">Default</span>
                             )}
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            <span className="font-mono text-slate-400">{subject.code || "—"}</span>
+                            <span className="font-mono text-slate-500">{subject.code || "—"}</span>
                             {subject.assignedClasses && subject.assignedClasses.length > 0 && (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {subject.assignedClasses.length} {subject.assignedClasses.length === 1 ? "Class" : "Classes"}
                               </span>
                             )}
                             {subject.assignedTeachers && subject.assignedTeachers.length > 0 && (
-                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                                 {subject.assignedTeachers.length} {subject.assignedTeachers.length === 1 ? "Teacher" : "Teachers"}
                               </span>
                             )}
@@ -298,9 +303,11 @@ export default function SubjectsPage() {
                               e.stopPropagation();
                               handleDelete(subject.id, subject.name, subject.isDefault);
                             }}
-                            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`Remove ${subject.name}`}
+                            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:mr-0 md:h-auto md:w-auto md:px-2 md:py-1 md:text-xs md:font-medium"
                           >
-                            Remove
+                            <Trash2 className="h-4 w-4 md:hidden" />
+                            <span className="hidden md:inline">Remove</span>
                           </button>
                         )}
                       </div>
@@ -314,8 +321,19 @@ export default function SubjectsPage() {
 
         {/* Add form sidebar */}
         {isPrivileged && (
-          <div className="lg:col-span-1">
-            <div className="sticky top-[80px] space-y-4">
+          <div className="max-lg:order-first lg:col-span-1">
+            {!addOpen && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-slate-200 bg-white font-semibold text-slate-800 lg:hidden"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add a custom subject
+              </Button>
+            )}
+            <div className={cn("space-y-4 lg:sticky lg:top-[80px]", !addOpen && "max-lg:hidden")}>
               <Card className="shadow-sm border-0">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -408,7 +426,7 @@ export default function SubjectsPage() {
                 </CardContent>
               </Card>
 
-              <div className="rounded-2xl bg-amber-50/50 p-4 text-xs leading-5 text-amber-700">
+              <div className="rounded-2xl bg-slate-100 p-4 text-sm leading-5 text-slate-600 md:text-xs">
                 <strong>Note:</strong> Default subjects cannot be deleted or
                 renamed. You can add custom subjects for unique curriculum needs.
               </div>

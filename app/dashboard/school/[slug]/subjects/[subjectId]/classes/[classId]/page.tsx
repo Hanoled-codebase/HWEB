@@ -132,7 +132,7 @@ function StudentSubjectCard({
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4">
-          <p className="text-xs font-semibold uppercase text-slate-400">
+          <p className="text-xs font-semibold uppercase text-slate-500">
             Total
           </p>
           <p className="mt-1 text-2xl font-bold text-slate-950">
@@ -301,7 +301,7 @@ export default function SubjectClassResultsPage() {
 
               <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[22rem]">
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase text-slate-400">
+                  <p className="text-xs font-semibold uppercase text-slate-500">
                     Class Average
                   </p>
                   <p className="mt-2 text-3xl font-bold text-slate-950">
@@ -309,7 +309,7 @@ export default function SubjectClassResultsPage() {
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase text-slate-400">
+                  <p className="text-xs font-semibold uppercase text-slate-500">
                     Subject
                   </p>
                   <p className="mt-2 truncate text-xl font-bold text-slate-950">

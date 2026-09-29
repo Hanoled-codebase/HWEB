@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
-import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -11,6 +10,13 @@ import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -38,21 +44,36 @@ import {
   XCircle,
   Eye,
   EyeOff,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { PaymentsLedger } from "@/components/dashboard/finance/PaymentsLedger";
 
-const gatewaySchema = z.object({
+const paystackSchema = z.object({
   publicKey: z.string().min(1, "Public key is required"),
   secretKey: z.string().min(1, "Secret key is required"),
+});
+
+const monnifySchema = z.object({
+  bankCode: z.string().min(1, "Select a bank"),
+  accountNumber: z.string().min(10, "Enter a valid account number").max(10, "Enter a valid account number"),
+  email: z.string().email("Enter a valid email"),
 });
 
 type GatewayData = {
   id?: string;
   provider: string;
-  publicKey: string;
+  publicKey?: string | null;
   isLive: boolean;
   isActive: boolean;
+  subAccountCode?: string | null;
+  settlementBankName?: string | null;
+  settlementAccountNumber?: string | null;
+  settlementAccountName?: string | null;
 };
+
+type Bank = { name: string; code: string };
 
 type Transaction = {
   id: string;
@@ -70,22 +91,36 @@ export default function PaymentsPage() {
   const { currentOrg, currentMember } = useOrganization();
   const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [gateway, setGateway] = useState<GatewayData | null>(null);
+  const [providerTab, setProviderTab] = useState<"paystack" | "monnify">("paystack");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(true);
 
-  const form = useForm<z.infer<typeof gatewaySchema>>({
-    resolver: zodResolver(gatewaySchema),
+  const paystackForm = useForm<z.infer<typeof paystackSchema>>({
+    resolver: zodResolver(paystackSchema),
     defaultValues: { publicKey: "", secretKey: "" },
   });
 
+  const monnifyForm = useForm<z.infer<typeof monnifySchema>>({
+    resolver: zodResolver(monnifySchema),
+    defaultValues: { bankCode: "", accountNumber: "", email: "" },
+  });
+
   useEffect(() => {
-    if (!currentOrg) return;
+    // Gateway settings are admin-only; everyone else gets the ledger view.
+    if (!currentOrg || !isPrivileged) return;
     fetchGateway();
     fetchHistory();
-  }, [currentOrg]);
+  }, [currentOrg, isPrivileged]);
+
+  useEffect(() => {
+    if (providerTab !== "monnify" || banks.length > 0) return;
+    fetchBanks();
+  }, [providerTab]);
 
   async function fetchGateway() {
     if (!currentOrg) return;
@@ -95,11 +130,25 @@ export default function PaymentsPage() {
         `/payments/gateway/${currentOrg.slug}`,
       );
       setGateway(data);
-      if (data.isActive) {
-        form.reset({ publicKey: data.publicKey, secretKey: "" });
+      if (data.isActive && (data.provider === "paystack" || data.provider === "monnify")) {
+        setProviderTab(data.provider);
+      }
+      if (data.isActive && data.provider === "paystack") {
+        paystackForm.reset({ publicKey: data.publicKey || "", secretKey: "" });
       }
     } catch { /* apiFetch handles toast */ } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchBanks() {
+    if (!currentOrg) return;
+    try {
+      setBanksLoading(true);
+      const data = await apiFetch<Bank[]>(`/payments/monnify/banks/${currentOrg.slug}`);
+      setBanks(data);
+    } catch { /* apiFetch handles toast */ } finally {
+      setBanksLoading(false);
     }
   }
 
@@ -115,7 +164,7 @@ export default function PaymentsPage() {
     }
   }
 
-  async function onSubmit(values: z.infer<typeof gatewaySchema>) {
+  async function onSubmitPaystack(values: z.infer<typeof paystackSchema>) {
     if (!currentOrg) return;
     setSaving(true);
     try {
@@ -137,158 +186,249 @@ export default function PaymentsPage() {
     }
   }
 
+  async function onSubmitMonnify(values: z.infer<typeof monnifySchema>) {
+    if (!currentOrg) return;
+    setSaving(true);
+    try {
+      const data = await apiFetch<GatewayData>(
+        `/payments/gateway/${currentOrg.slug}/monnify-subaccount`,
+        {
+          method: "POST",
+          body: JSON.stringify(values),
+        },
+      );
+      setGateway(data);
+      toast.success(`Settlement account saved: ${data.settlementAccountName}`);
+    } catch { /* apiFetch handles toast */ } finally {
+      setSaving(false);
+    }
+  }
+
   if (!currentOrg) return null;
 
   if (!isPrivileged) {
-    return (
-      <div className="min-h-full bg-slate-50/60 pb-10">
-        <div className="mx-auto max-w-5xl p-6">
-          <DataStateCard
-            variant="forbidden"
-            title="Payment gateway settings isn&apos;t available to your role"
-            description="This is managed by the school&apos;s admin team."
-          />
-        </div>
-      </div>
-    );
+    return <PaymentsLedger slug={currentOrg.slug} />;
   }
+
+  const isConfigured = gateway?.isActive && gateway.provider === providerTab;
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Payment Settings
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Configure your Paystack gateway for fee collection.
-          </p>
+      {/* Phones lead with money in (transactions); gateway keys and webhook sit below. */}
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="hidden md:block">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Payment Settings
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Configure a payment gateway for fee collection.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="h-12 w-full rounded-xl border-slate-200 bg-white font-semibold md:h-11 md:w-auto">
+            <Link href={`/dashboard/school/${currentOrg.slug}/payments/record`}>
+              <Banknote className="mr-2 h-4 w-4" /> Record a cash or transfer payment
+            </Link>
+          </Button>
         </div>
 
         {loading ? (
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="border-slate-200 shadow-sm max-md:order-2">
             <CardContent className="p-6 space-y-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="border-slate-200 shadow-sm max-md:order-2">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-blue-600" />
-                    Paystack Gateway
+                    Payment Gateway
                   </CardTitle>
                   <CardDescription>
-                    Enter your Paystack API keys from the{" "}
-                    <a
-                      href="https://dashboard.paystack.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline underline-offset-2"
-                    >
-                      Paystack Dashboard
-                    </a>
+                    Choose a provider to collect fees for this school.
                   </CardDescription>
                 </div>
-                {gateway?.isActive && (
+                {isConfigured && (
                   <Badge
                     variant="outline"
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium",
-                      gateway.isActive
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-slate-50 text-slate-500",
-                    )}
+                    className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
                   >
-                    {gateway.isActive ? (
-                      <><CheckCircle2 className="mr-1 h-3 w-3" /> Configured</>
-                    ) : (
-                      <><XCircle className="mr-1 h-3 w-3" /> Not configured</>
-                    )}
+                    <CheckCircle2 className="mr-1 h-3 w-3" /> Configured
                   </Badge>
                 )}
               </div>
             </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                  <FormField
-                    control={form.control}
-                    name="publicKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Public Key</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="pk_live_xxxxxxxxxxxx"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Found in Paystack Dashboard → Settings → API Keys &amp; Webhooks
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            <CardContent className="space-y-5">
+              <Select value={providerTab} onValueChange={(v) => setProviderTab(v as "paystack" | "monnify")}>
+                <SelectTrigger className="w-full bg-white">
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="paystack">Paystack</SelectItem>
+                  <SelectItem value="monnify">Monnify</SelectItem>
+                </SelectContent>
+              </Select>
 
-                  <FormField
-                    control={form.control}
-                    name="secretKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Secret Key</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showSecret ? "text" : "password"}
-                              placeholder="sk_live_xxxxxxxxxxxx"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowSecret(!showSecret)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                            >
-                              {showSecret ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Secret key is never shown after saving.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {providerTab === "paystack" ? (
+                <Form {...paystackForm}>
+                  <form onSubmit={paystackForm.handleSubmit(onSubmitPaystack)} className="space-y-5">
+                    <p className="text-sm text-slate-500">
+                      Enter your own Paystack API keys from the{" "}
+                      <a
+                        href="https://dashboard.paystack.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline underline-offset-2"
+                      >
+                        Paystack Dashboard
+                      </a>
+                      . Payments go straight to your Paystack account.
+                    </p>
 
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                    <strong>Test mode:</strong> Use test keys from Paystack
-                    dashboard. Set to live keys only after verifying payments
-                    work correctly.
-                  </div>
+                    <FormField
+                      control={paystackForm.control}
+                      name="publicKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Public Key</FormLabel>
+                          <FormControl>
+                            <Input placeholder="pk_live_xxxxxxxxxxxx" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Found in Paystack Dashboard → Settings → API Keys &amp; Webhooks
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <Button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
+                    <FormField
+                      control={paystackForm.control}
+                      name="secretKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Secret Key</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showSecret ? "text" : "password"}
+                                placeholder="sk_live_xxxxxxxxxxxx"
+                                autoComplete="off"
+                                className="pr-12"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSecret(!showSecret)}
+                                aria-label={showSecret ? "Hide secret key" : "Show secret key"}
+                                className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700"
+                              >
+                                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormDescription>Secret key is never shown after saving.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      <strong>Test mode:</strong> Use test keys from Paystack dashboard. Set to
+                      live keys only after verifying payments work correctly.
+                    </div>
+
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Save Gateway
+                    </Button>
+                  </form>
+                </Form>
+              ) : (
+                <Form {...monnifyForm}>
+                  <form onSubmit={monnifyForm.handleSubmit(onSubmitMonnify)} className="space-y-5">
+                    <p className="text-sm text-slate-500">
+                      Payments are processed through Hanoled&apos;s Monnify contract. Add your
+                      school&apos;s bank account below and your share of every payment settles
+                      there directly — Hanoled only keeps a small platform commission.
+                    </p>
+
+                    {gateway?.provider === "monnify" && gateway.settlementAccountName && (
+                      <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                        <Banknote className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          Currently settling to <strong>{gateway.settlementAccountName}</strong>{" "}
+                          — {gateway.settlementBankName} ({gateway.settlementAccountNumber})
+                        </div>
+                      </div>
                     )}
-                    Save Gateway
-                  </Button>
-                </form>
-              </Form>
+
+                    <FormField
+                      control={monnifyForm.control}
+                      name="bankCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bank</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger className="w-full bg-white">
+                                <SelectValue placeholder={banksLoading ? "Loading banks…" : "Select your bank"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {banks.map((bank) => (
+                                <SelectItem key={bank.code} value={bank.code}>
+                                  {bank.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={monnifyForm.control}
+                      name="accountNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0123456789" maxLength={10} {...field} />
+                          </FormControl>
+                          <FormDescription>The school&apos;s NUBAN account, 10 digits.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={monnifyForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Settlement Contact Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="finance@school.edu" {...field} />
+                          </FormControl>
+                          <FormDescription>Used by Monnify for settlement notifications.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Verify &amp; Save Settlement Account
+                    </Button>
+                  </form>
+                </Form>
+              )}
             </CardContent>
           </Card>
         )}
@@ -296,39 +436,46 @@ export default function PaymentsPage() {
         <Separator />
 
         {/* Webhook URL */}
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-slate-200 shadow-sm max-md:order-2">
           <CardHeader>
             <CardTitle className="text-base">Webhook URL</CardTitle>
             <CardDescription>
-              Add this URL to your Paystack dashboard for automatic payment
-              verification.
+              {providerTab === "monnify" ? (
+                <>This is already registered on Hanoled&apos;s Monnify contract — nothing to add here.</>
+              ) : (
+                <>Add this URL to your Paystack dashboard for automatic payment verification.</>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <code className="flex-1 break-all text-sm text-slate-700">
                 {typeof window !== "undefined" &&
-                  `${window.location.origin}/api/payments/webhook/${currentOrg.slug}`}
+                  (providerTab === "monnify"
+                    ? `${window.location.origin}/api/billing/webhooks/monnify`
+                    : `${window.location.origin}/api/payments/webhook/${currentOrg.slug}`)}
               </code>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    `${window.location.origin}/api/payments/webhook/${currentOrg.slug}`,
-                  );
-                  toast.success("Copied");
-                }}
-              >
-                Copy
-              </Button>
+              {providerTab === "paystack" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/api/payments/webhook/${currentOrg.slug}`,
+                    );
+                    toast.success("Copied");
+                  }}
+                >
+                  Copy
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Transaction History */}
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-slate-200 shadow-sm max-md:order-1">
           <CardHeader>
             <CardTitle className="text-base">Recent Transactions</CardTitle>
             <CardDescription>
@@ -343,8 +490,8 @@ export default function PaymentsPage() {
                 ))}
               </div>
             ) : transactions.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">
-                No transactions yet.
+              <p className="py-6 text-center text-sm text-slate-500">
+                No online payments yet. Cash and transfer payments you record show on each student's invoice.
               </p>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -358,16 +505,16 @@ export default function PaymentsPage() {
                         {tx.invoice?.student?.firstName}{" "}
                         {tx.invoice?.student?.lastName}
                       </p>
-                      <p className="text-xs text-slate-400">{tx.reference}</p>
+                      <p className="truncate text-xs text-slate-500">{tx.reference}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-900">
+                    <div className="shrink-0 pl-3 text-right">
+                      <p className="text-sm font-semibold tabular-nums text-slate-900">
                         ₦{Number(tx.amount).toLocaleString()}
                       </p>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "mt-0.5 rounded-full px-2 py-0 text-[11px] font-medium",
+                          "mt-0.5 rounded-full px-2 py-0 text-xs font-medium capitalize",
                           tx.status === "SUCCESS"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : tx.status === "PENDING"

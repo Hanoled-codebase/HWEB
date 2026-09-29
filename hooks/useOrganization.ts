@@ -60,6 +60,8 @@ export interface Member {
     subject: { id?: string; name?: string; code?: string } | null;
   }>;
   assignedStudents: Array<{ id?: string; firstName?: string; lastName?: string }>;
+  /** This school's role permissions, from the HSMS member profile. */
+  access?: { roleCapabilities?: Record<string, string[]> };
 }
 
 interface StudentProfile {
@@ -109,6 +111,29 @@ function normalizeOrganization(
   };
 }
 
+type AccessPolicy = NonNullable<Member["access"]>;
+const ACCESS_CACHE_PREFIX = "hanoled.access.";
+
+/**
+ * The school's role permissions as last seen on this device. When HSMS can't
+ * be reached, the menu keeps following the school's settings instead of
+ * falling back to the defaults (which could show a tool the school took away;
+ * the server still refuses it, but the menu shouldn't offer it).
+ */
+function rememberAccess(slug: string, access: AccessPolicy | undefined): AccessPolicy | undefined {
+  if (typeof window === "undefined") return access;
+  try {
+    if (access) {
+      window.localStorage.setItem(ACCESS_CACHE_PREFIX + slug, JSON.stringify(access));
+      return access;
+    }
+    const cached = window.localStorage.getItem(ACCESS_CACHE_PREFIX + slug);
+    return cached ? (JSON.parse(cached) as AccessPolicy) : undefined;
+  } catch {
+    return access;
+  }
+}
+
 export const useOrganization = create<OrgState>((set, get) => ({
   organizations: [],
   currentOrg: null,
@@ -152,14 +177,14 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // concurrently instead of paying two round trips back-to-back on every
       // cold dashboard load. See fast-rendering skill, Rule 2.
       //
-      // Also fetch Hanoled (HSMS)'s own member-profile in the same batch.
-      // HOD/Accountant/Librarian assignments are granted through the HR
-      // admin page, which writes only to Hanoled's local MemberAssignment
-      // table — that write never reaches HCORE, so HCORE's member-profile
-      // alone won't reflect a role granted that way. This fetch is
-      // best-effort (a user with no Hanoled Member row yet, e.g. brand new
-      // to the org, is expected to reject here) and merged in below rather
-      // than trusted as a replacement for HCORE's role/identity data.
+      // Also fetch Hanoled (HSMS)'s own member-profile in the same batch. It
+      // carries this school's role permissions (what an Accountant, HOD...
+      // may do here) and any HOD/Accountant/Librarian grant made locally
+      // before those roles moved to HCORE (Settings → Staff access). This
+      // fetch is best-effort (a user with no Hanoled Member row yet, e.g.
+      // brand new to the org, is expected to reject here) and merged in
+      // below rather than trusted as a replacement for HCORE's role/identity
+      // data.
       const [contextResult, memberResult, hsmsMemberResult] = await Promise.allSettled([
         needsContextFetch
           ? request<any>(HCORE_BASE, "/v1/me/contexts")
@@ -220,6 +245,9 @@ export const useOrganization = create<OrgState>((set, get) => ({
             ...member,
             memberAssignments: mergedAssignments,
             teachingAssignments: normalizedAssignments,
+            // HCORE says who holds which role; HSMS says what each role may
+            // do at this school (usePermissions combines the two).
+            access: rememberAccess(slug, hsmsMember?.access),
           },
           isStudent: false,
           isLoading: false,

@@ -148,7 +148,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
+      <div className="hidden md:block">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
           Settings
         </h1>
@@ -159,7 +159,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card className="shadow-sm border-slate-200">
+        {/* overflow-visible on phones so the Save bar below can stick to the thumb zone */}
+        <Card className="shadow-sm border-slate-200 max-md:overflow-visible">
           <CardHeader>
             <CardTitle className="text-base sm:text-xl">
               School Profile
@@ -401,10 +402,10 @@ export default function SettingsPage() {
                 </div>
 
                 {isAdmin && (
-                  <div className="flex justify-end pt-4">
+                  <div className="bottom-above-nav z-10 flex justify-end pt-4 max-md:sticky max-md:-mx-6 max-md:rounded-b-xl max-md:border-t max-md:border-slate-100 max-md:bg-white/95 max-md:px-6 max-md:py-3 max-md:backdrop-blur-md">
                     <Button
                       type="submit"
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 max-md:h-12 max-md:w-full"
                       disabled={isUpdating}
                     >
                       {isUpdating ? (
@@ -433,7 +434,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button asChild variant="outline" className="w-full border-slate-200 font-semibold md:w-auto">
                 <Link href={`/dashboard/school/${currentOrg.slug}/settings/transfers`}>
                   Manage Transfers
                 </Link>

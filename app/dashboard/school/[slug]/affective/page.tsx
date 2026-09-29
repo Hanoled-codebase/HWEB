@@ -341,14 +341,15 @@ export default function AffectivePage() {
               placeholder="Search students..."
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              className="h-10 rounded-xl bg-white pl-10 shadow-sm"
+              aria-label="Search students"
+              className="h-11 rounded-xl bg-white pl-10 shadow-sm md:h-10"
             />
           </div>
         )}
         {!selected && query && (
           <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
             {filtered.length === 0 ? (
-              <p className="p-3 text-sm text-slate-400">No students found</p>
+              <p className="p-3 text-sm text-slate-500">No students found</p>
             ) : (
               filtered.map((s) => (
                 <button
@@ -365,7 +366,7 @@ export default function AffectivePage() {
                     {s.firstName} {s.lastName}
                   </span>
                   {s.admissionNumber && (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-500">
                       {s.admissionNumber}
                     </span>
                   )}
@@ -428,9 +429,9 @@ export default function AffectivePage() {
       />
 
       <Tabs defaultValue="scores" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="scores">Affective Scores</TabsTrigger>
-          <TabsTrigger value="remarks">Assessment Remarks</TabsTrigger>
+        <TabsList className="mb-4 md:mb-6">
+          <TabsTrigger value="scores">Scores</TabsTrigger>
+          <TabsTrigger value="remarks">Remarks</TabsTrigger>
         </TabsList>
 
         {/* ══════════════════════════════════════════════════════

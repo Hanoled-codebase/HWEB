@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -18,12 +18,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { cn } from "@/lib/utils";
+import { WorkspaceSwitch } from "@/components/dashboard/WorkspaceSwitch";
 import type { MobileNavItem, MobileShellConfig } from "./mobile-config";
+
+type PageTitle = { path: string; title: string } | null;
 
 type MobileMenuContextValue = {
   config: MobileShellConfig;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
+  /** Title a page handed to the top bar (an entity name like "JSS1A"), only for the path that set it. */
+  pageTitle: string | null;
+  setPageTitle: Dispatch<SetStateAction<PageTitle>>;
 };
 
 const MobileMenuContext = createContext<MobileMenuContextValue | null>(null);
@@ -37,6 +43,21 @@ export function useMobileMenu() {
 /** Like useMobileMenu, but null outside a provider (config not resolved yet). */
 export function useOptionalMobileMenu() {
   return useContext(MobileMenuContext);
+}
+
+/**
+ * On phones the top bar is the page's only title. A page whose real title is data
+ * (a class, a learner, a subject) hands it up here and hides its own H1 below md.
+ * Safe to call outside the phone shell (desktop, loading): it does nothing there.
+ */
+export function useMobilePageTitle(title: string | null | undefined) {
+  const setPageTitle = useContext(MobileMenuContext)?.setPageTitle;
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!setPageTitle || !title) return;
+    setPageTitle({ path: pathname, title });
+    return () => setPageTitle((current) => (current?.path === pathname && current.title === title ? null : current));
+  }, [setPageTitle, title, pathname]);
 }
 
 export function isPathActive(pathname: string, item: { href: string }, basePath: string) {
@@ -62,7 +83,13 @@ export function MobileMenuProvider({
     setMenuOpen(false);
   }
 
-  const value = useMemo(() => ({ config, menuOpen, setMenuOpen }), [config, menuOpen]);
+  const [titleEntry, setPageTitle] = useState<PageTitle>(null);
+  const pageTitle = titleEntry?.path === pathname ? titleEntry.title : null;
+
+  const value = useMemo(
+    () => ({ config, menuOpen, setMenuOpen, pageTitle, setPageTitle }),
+    [config, menuOpen, pageTitle],
+  );
 
   return (
     <MobileMenuContext.Provider value={value}>
@@ -106,7 +133,7 @@ function MobileMenuSheet() {
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="max-h-[90dvh] gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 md:hidden"
+        className="max-h-[90dvh] gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 duration-300 ease-[var(--ease-out-smooth)] md:hidden"
       >
         <SheetTitle className="sr-only">Menu</SheetTitle>
         <SheetDescription className="sr-only">Navigate to any area available to your role</SheetDescription>
@@ -124,6 +151,8 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
   const { organizations, currentOrg, setCurrentOrg } = useOrganization();
   const [query, setQuery] = useState("");
   const [switching, setSwitching] = useState(false);
+  // Log out sits where the thumb rests; one stray tap should not end the session.
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const needle = query.trim().toLowerCase();
   const totalItems = config.sections.reduce((count, section) => count + section.items.length, 0);
@@ -170,9 +199,24 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
           </button>
         </div>
 
+        {/* Staff with more than one hat switch here; the new workspace opens on its home. */}
+        {config.workspaces && !switching && (
+          <div className="px-4 pb-4">
+            <WorkspaceSwitch
+              items={config.workspaces.items.map((item) => item.key)}
+              active={config.workspaces.active}
+              onChange={(key) => {
+                config.workspaces?.onChange(key);
+                if (pathname !== config.basePath) router.push(config.basePath);
+                close();
+              }}
+            />
+          </div>
+        )}
+
         {switching ? (
           <div className="flex-1 space-y-2 overflow-y-auto px-4 pb-4">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Switch school</p>
+            <p className="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Switch school</p>
             {organizations.map((org) => {
               const isCurrent = org.slug === currentOrg?.slug;
               return (
@@ -199,13 +243,6 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
                 </button>
               );
             })}
-            <Link
-              href="/onboarding"
-              onClick={close}
-              className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 px-3 text-sm font-semibold text-blue-700"
-            >
-              <School className="h-5 w-5" /> Create a new school
-            </Link>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
@@ -245,10 +282,10 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
             ) : (
               filtered.map((section) => (
                 <div key={section.title} className="mb-5">
-                  <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     {section.title}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="m-stagger grid grid-cols-3 gap-2">
                     {section.items.map((item) => (
                       <MenuTile
                         key={item.key}
@@ -269,7 +306,7 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
           <div className="mb-3 grid grid-cols-2 gap-2">
             {config.showCbtConsole && (
               <Link
-                href="/cbt/admin"
+                href={currentOrg ? `/cbt/admin?orgSlug=${encodeURIComponent(currentOrg.slug)}` : "/cbt/admin"}
                 onClick={close}
                 className="col-span-2 flex min-h-[48px] items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 active:bg-slate-50"
               >
@@ -279,7 +316,7 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
                 <ChevronRight className="h-4 w-4 text-slate-400" />
               </Link>
             )}
-            {organizations.length > 1 && config.profile !== "student" && (
+            {organizations.length > 1 && config.profile !== "student" && !confirmLogout && (
               <button
                 type="button"
                 onClick={() => setSwitching((v) => !v)}
@@ -288,19 +325,39 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
                 <School className="h-4 w-4 text-slate-500" /> {switching ? "Back" : "Switch school"}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                close();
-                void (config.logout ?? logout)();
-              }}
-              className={cn(
-                "flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-red-600 active:bg-red-50",
-                organizations.length > 1 && config.profile !== "student" ? "bg-red-50/60" : "col-span-2 bg-red-50/60",
-              )}
-            >
-              <LogOut className="h-4 w-4" /> Log out
-            </button>
+            {confirmLogout ? (
+              <div className="col-span-2 grid grid-cols-2 gap-2" role="group" aria-label="Confirm log out">
+                <button
+                  type="button"
+                  onClick={() => setConfirmLogout(false)}
+                  className="flex min-h-[48px] items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 active:bg-slate-50"
+                >
+                  Stay signed in
+                </button>
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => {
+                    close();
+                    void (config.logout ?? logout)();
+                  }}
+                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-red-600 px-3 text-sm font-semibold text-white active:bg-red-700"
+                >
+                  <LogOut className="h-4 w-4" /> Log out
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmLogout(true)}
+                className={cn(
+                  "flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-red-600 active:bg-red-50",
+                  organizations.length > 1 && config.profile !== "student" ? "bg-red-50/60" : "col-span-2 bg-red-50/60",
+                )}
+              >
+                <LogOut className="h-4 w-4" /> Log out
+              </button>
+            )}
           </div>
         </div>
       </>

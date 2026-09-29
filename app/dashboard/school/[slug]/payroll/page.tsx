@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -80,7 +81,7 @@ function formatNaira(amount: string | number) {
 }
 
 export default function PayrollPage() {
-  const { currentOrg, currentMember } = useOrganization();
+  const { currentOrg } = useOrganization();
   const [month, setMonth] = useState(currentMonthString());
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
@@ -102,8 +103,9 @@ export default function PayrollPage() {
   const [staffSearch, setStaffSearch] = useState("");
   const [bulkDefaults, setBulkDefaults] = useState({ defaultBaseSalary: "", allowances: "", deductions: "" });
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const { can } = usePermissions();
+  // Follows what this school lets the viewer's role do (Settings → Staff access).
+  const canRunPayroll = can("payroll.manage");
 
   const fetchRecords = useCallback(async () => {
     if (!currentOrg) return;
@@ -286,23 +288,23 @@ export default function PayrollPage() {
   );
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
+    <div className="space-y-4 md:space-y-6 md:p-6">
+      {/* Header (phones: the top bar names the page; actions stay) */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Banknote className="h-6 w-6 text-violet-600" />
             Payroll &amp; Compensation
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage staff salary records, dynamic bonuses, and session calculations</p>
         </div>
-        {isPrivileged && (
-          <div className="flex gap-2">
+        {canRunPayroll && (
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto">
             <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
               <Users className="h-4 w-4 mr-1" />
               Bulk Generate
             </Button>
-            <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white" onClick={() => setAddOpen(true)}>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Add Record
             </Button>
@@ -312,12 +314,12 @@ export default function PayrollPage() {
 
       {/* Session Projection Summary Banner */}
       {sessionSummary && (
-        <Card className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-indigo-50/50 to-white shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
-                  Annual Session Calculation (3 Terms / 12 Months)
+                <span className="text-sm font-semibold text-slate-700">
+                  This session (3 terms, 12 months)
                 </span>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-extrabold text-slate-900">
@@ -327,16 +329,16 @@ export default function PayrollPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                <div className="bg-white/80 rounded-xl p-2.5 border border-slate-100 shadow-2xs">
-                  <p className="text-slate-400 font-medium">Monthly Outlay</p>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <p className="text-slate-500 font-medium">Monthly Outlay</p>
                   <p className="font-bold text-slate-800 text-sm mt-0.5">{formatNaira(sessionSummary.totalMonthly)}</p>
                 </div>
-                <div className="bg-white/80 rounded-xl p-2.5 border border-slate-100 shadow-2xs">
-                  <p className="text-slate-400 font-medium">Termly Outlay (4 Mo)</p>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <p className="text-slate-500 font-medium">Termly Outlay (4 Mo)</p>
                   <p className="font-bold text-slate-800 text-sm mt-0.5">{formatNaira(sessionSummary.totalTermly)}</p>
                 </div>
-                <div className="bg-white/80 rounded-xl p-2.5 border border-slate-100 shadow-2xs col-span-2 sm:col-span-1">
-                  <p className="text-slate-400 font-medium">Active Staff</p>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 col-span-2 sm:col-span-1">
+                  <p className="text-slate-500 font-medium">Active Staff</p>
                   <p className="font-bold text-slate-800 text-sm mt-0.5">{sessionSummary.staffCount} Members</p>
                 </div>
               </div>
@@ -430,7 +432,7 @@ export default function PayrollPage() {
         <div className="text-center py-16 text-slate-400">
           <Wallet className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No payroll records for {displayMonth}</p>
-          {isPrivileged && (
+          {canRunPayroll && (
             <Button size="sm" variant="outline" className="mt-4" onClick={() => setBulkOpen(true)}>
               Generate Payroll
             </Button>
@@ -447,7 +449,7 @@ export default function PayrollPage() {
                 <th className="text-right px-4 py-3 font-medium text-slate-600 hidden md:table-cell">Deductions</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Net Pay</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
-                {isPrivileged && <th className="px-4 py-3 text-right">Actions</th>}
+                {canRunPayroll && <th className="px-4 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -455,13 +457,13 @@ export default function PayrollPage() {
                 <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-900">{r.member.user.name}</p>
-                    <p className="text-xs text-slate-400 capitalize">{r.member.role}</p>
+                    <p className="text-xs text-slate-500 capitalize">{r.member.role}</p>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-slate-700">{formatNaira(r.baseSalary)}</td>
                   <td className="px-4 py-3 text-right font-mono text-emerald-600 hidden md:table-cell">
                     +{formatNaira(r.allowances)}
                     {r.notes && r.notes.includes("Bonus") && (
-                      <span className="block text-[10px] text-emerald-700 font-sans font-medium">
+                      <span className="block text-xs text-emerald-700 font-sans font-medium">
                         ✨ {r.notes.split("\n").filter((n) => n.includes("Bonus")).pop()}
                       </span>
                     )}
@@ -483,7 +485,7 @@ export default function PayrollPage() {
                       </Badge>
                     )}
                   </td>
-                  {isPrivileged && (
+                  {canRunPayroll && (
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
@@ -554,7 +556,7 @@ export default function PayrollPage() {
                     >
                       <div>
                         <span className="font-medium text-slate-900">{s.user.name}</span>
-                        <span className="text-slate-400 ml-1.5 text-xs capitalize">· {s.role}</span>
+                        <span className="text-slate-500 ml-1.5 text-xs capitalize">· {s.role}</span>
                       </div>
                       {s.teacherProfile?.salaryBase && (
                         <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
@@ -564,7 +566,7 @@ export default function PayrollPage() {
                     </button>
                   ))}
                   {filteredStaff.length === 0 && (
-                    <p className="px-3 py-2 text-sm text-slate-400">No staff found</p>
+                    <p className="px-3 py-2 text-sm text-slate-500">No staff found</p>
                   )}
                 </div>
               )}

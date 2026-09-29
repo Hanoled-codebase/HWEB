@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
+import { WORKSPACE_META, useWorkspace, type WorkspaceKey } from "@/hooks/useWorkspace";
 
 /**
  * One description of "what does this person's phone UI contain", shared by the
@@ -73,6 +74,12 @@ export type MobileShellConfig = {
   tabStyle?: "pill";
   /** A bell that links somewhere (e.g. support tickets) and shows a dot only when there is something new. */
   bell?: { href: string; label: string; dot: boolean };
+  /** Staff with more than one hat (teaching + bursary) switch workspaces from the menu. */
+  workspaces?: {
+    items: Array<{ key: WorkspaceKey; label: string; icon: LucideIcon }>;
+    active: WorkspaceKey;
+    onChange: (key: WorkspaceKey) => void;
+  };
 };
 
 const SECTION_TITLES: Record<string, string> = {
@@ -84,7 +91,21 @@ const SECTION_TITLES: Record<string, string> = {
 };
 const SECTION_ORDER = ["ACADEMICS", "PEOPLE", "FINANCE", "OPERATIONS", "SYSTEM"];
 
-/** Shorter labels for the 64px-wide tab slots. */
+/**
+ * The phone menu groups by job, not by the desktop sidebar's sections: the sidebar
+ * can afford 14 Academics links, a 3-column sheet can't. Order inside a group is
+ * how often a school reaches for it. Anything not listed keeps its sidebar section.
+ */
+const MENU_GROUPS: Array<{ key: string; title: string; keys: string[] }> = [
+  { key: "classroom", title: "Classroom", keys: ["attendance", "spreadsheets", "results", "homework", "timetable", "lesson-notes", "scheme-of-work"] },
+  { key: "people", title: "People", keys: ["students", "teachers", "parents", "admissions", "invites", "staff-attendance", "hr"] },
+  { key: "money", title: "Money", keys: ["record-payment", "payments", "debt", "invoices", "fee-structure", "billing", "scratch-cards", "payroll"] },
+  { key: "school-life", title: "School life", keys: ["messaging", "library-desk", "library", "hostel", "bus-tracking", "clinic"] },
+  { key: "setup", title: "Academic setup", keys: ["classes", "subjects", "result-templates", "affective", "question-bank"] },
+  { key: "settings", title: "Settings & help", keys: ["settings", "access", "features", "support"] },
+];
+
+/** Shorter labels for the tab slots (about 58px of text at 360px wide, 54px at 320). */
 const TAB_LABELS: Record<string, string> = {
   spreadsheets: "Sheets",
   attendance: "Register",
@@ -95,17 +116,19 @@ const TAB_LABELS: Record<string, string> = {
   debt: "Debts",
   "scheme-of-work": "Schemes",
   "lesson-notes": "Notes",
+  "record-payment": "Record",
+  "library-desk": "Desk",
 };
 
 /** What each role reaches for first, in thumb order. Home is always slot one. */
 const TAB_PREFERENCES: Record<Exclude<MobileProfile, "student">, string[]> = {
   owner: ["students", "payments", "messaging"],
   admin: ["students", "payments", "messaging"],
-  hod: ["students", "spreadsheets", "timetable"],
+  hod: ["spreadsheets", "scheme-of-work", "lesson-notes"],
   "class-teacher": ["attendance", "students", "spreadsheets"],
   "subject-teacher": ["spreadsheets", "homework", "timetable"],
-  accountant: ["payments", "fee-structure", "debt"],
-  librarian: ["library", "students", "timetable"],
+  accountant: ["record-payment", "debt", "payments"],
+  librarian: ["library-desk", "library", "students"],
   parent: ["students", "results", "invoices"],
   member: ["timetable", "students", "messaging"],
 };
@@ -137,23 +160,23 @@ function getInitials(name?: string, fallback = "H") {
 /**
  * Same precedence as the dashboard home (`app/dashboard/school/[slug]/page.tsx`):
  * whichever home a person is shown is the profile their tab bar is tuned to.
+ * For staff that is their active workspace, so a teacher who also keeps the
+ * bursary gets bursary tabs while in the bursary and teaching tabs otherwise.
  */
 export function resolveProfile(input: {
   role?: string;
-  isAccountant: boolean;
-  isHOD: boolean;
-  isLibrarian: boolean;
+  workspace: WorkspaceKey | null;
   isClassTeacher: boolean;
   isSubjectTeacher: boolean;
 }): Exclude<MobileProfile, "student"> {
   if (input.role === "parent") return "parent";
-  if (input.isAccountant) return "accountant";
-  if (input.isHOD) return "hod";
-  if (input.isLibrarian) return "librarian";
-  if (input.role === "member" && input.isClassTeacher) return "class-teacher";
-  if (input.role === "member" && input.isSubjectTeacher) return "subject-teacher";
   if (input.role === "owner") return "owner";
   if (input.role === "admin") return "admin";
+  if (input.workspace === "finance") return "accountant";
+  if (input.workspace === "library") return "librarian";
+  if (input.workspace === "department") return "hod";
+  if (input.isClassTeacher) return "class-teacher";
+  if (input.isSubjectTeacher) return "subject-teacher";
   return "member";
 }
 
@@ -161,7 +184,8 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
   const { currentOrg, currentMember } = useOrganization();
   const { user } = useAuth();
   const { visibleNavItems, role } = useSchoolNavItems();
-  const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher } = usePermissions();
+  const { isClassTeacher, isSubjectTeacher } = usePermissions();
+  const { available: workspaceKeys, active: workspace, setActive: setWorkspace } = useWorkspace();
 
   return useMemo(() => {
     if (!currentOrg || !currentMember || !user) return null;
@@ -169,9 +193,7 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
     const basePath = `/dashboard/school/${currentOrg.slug}`;
     const profile = resolveProfile({
       role,
-      isAccountant: Boolean(isAccountant),
-      isHOD: Boolean(isHOD),
-      isLibrarian: Boolean(isLibrarian),
+      workspace,
       isClassTeacher: Boolean(isClassTeacher),
       isSubjectTeacher: Boolean(isSubjectTeacher),
     });
@@ -204,21 +226,40 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
       }),
     ];
 
-    const sections: MobileNavSection[] = SECTION_ORDER.flatMap((sectionKey) => {
-      const items = visibleNavItems
-        .filter((item) => item.section === sectionKey && item.key !== "overview")
-        .map((item) => ({
-          key: item.key,
-          label: profile === "parent" && item.key === "students" ? "Children" : item.title,
-          href: item.url,
-          icon: item.icon,
-        }));
-      return items.length ? [{ title: SECTION_TITLES[sectionKey] ?? sectionKey, items }] : [];
+    const toMenuItem = (item: (typeof visibleNavItems)[number]): MobileNavItem => ({
+      key: item.key,
+      label: profile === "parent" && item.key === "students" ? "Children" : item.title,
+      href: item.url,
+      icon: item.icon,
     });
+    // The active workspace's tools lead the menu.
+    const leadGroup = profile === "accountant" ? "money" : profile === "librarian" ? "school-life" : null;
+    const groups = leadGroup
+      ? [...MENU_GROUPS.filter((group) => group.key === leadGroup), ...MENU_GROUPS.filter((group) => group.key !== leadGroup)]
+      : MENU_GROUPS;
+    const grouped = new Set(MENU_GROUPS.flatMap((group) => group.keys));
+    const sections: MobileNavSection[] = [
+      ...groups.flatMap((group) => {
+        const items = group.keys.flatMap((key) => {
+          const item = byKey.get(key);
+          return item ? [toMenuItem(item)] : [];
+        });
+        return items.length ? [{ title: group.title, items }] : [];
+      }),
+      // Destinations added to the sidebar later still reach the phone, under their sidebar section.
+      ...SECTION_ORDER.flatMap((sectionKey) => {
+        const items = visibleNavItems
+          .filter((item) => item.section === sectionKey && item.key !== "overview" && !grouped.has(item.key))
+          .map(toMenuItem);
+        return items.length ? [{ title: SECTION_TITLES[sectionKey] ?? sectionKey, items }] : [];
+      }),
+    ];
 
     return {
       profile,
-      roleLabel: ROLE_LABELS[profile],
+      // A class teacher who also teaches other classes is told both.
+      roleLabel:
+        profile === "class-teacher" && isSubjectTeacher ? "Class & Subject Teacher" : ROLE_LABELS[profile],
       basePath,
       tabs,
       sections,
@@ -231,6 +272,14 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
         subline: [currentOrg.category, currentOrg.subscription?.plan].filter(Boolean).join(" · "),
       },
       showCbtConsole: profile !== "parent",
+      workspaces:
+        workspace && workspaceKeys.length > 1
+          ? {
+              items: workspaceKeys.map((key) => ({ key, ...WORKSPACE_META[key] })),
+              active: workspace,
+              onChange: setWorkspace,
+            }
+          : undefined,
     };
   }, [
     currentOrg,
@@ -238,9 +287,9 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
     user,
     visibleNavItems,
     role,
-    isAccountant,
-    isHOD,
-    isLibrarian,
+    workspace,
+    workspaceKeys,
+    setWorkspace,
     isClassTeacher,
     isSubjectTeacher,
   ]);

@@ -232,7 +232,7 @@ export default function TeacherSubjectPage() {
                           </span>
                         </div>
                       ) : (
-                        <p className="mt-2 text-sm text-slate-400">
+                        <p className="mt-2 text-sm text-slate-500">
                           No spreadsheet has been created yet for this class and
                           subject.
                         </p>

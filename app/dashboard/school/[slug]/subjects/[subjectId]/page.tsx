@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
@@ -158,11 +159,13 @@ export default function SubjectDetailPage() {
       )
     : [];
 
+  useMobilePageTitle(data?.subject?.name);
+
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
-        {/* Back button */}
-        <div>
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 md:gap-6 md:px-6 md:py-4 lg:px-8">
+        {/* Back button (phones use the top bar's) */}
+        <div className="hidden md:block">
           <Button
             variant="ghost"
             className="h-10 rounded-xl border border-slate-200 bg-white/80 px-3 text-xs font-semibold text-slate-600 shadow-sm hover:bg-white"
@@ -183,22 +186,22 @@ export default function SubjectDetailPage() {
         ) : data ? (
           <>
             {/* Subject header */}
-            <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 md:flex">
                     <BookOpen className="h-7 w-7" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                      <h1 className="hidden text-2xl font-bold tracking-tight text-slate-900 md:block">
                         {data.subject.name}
                       </h1>
                       {data.subject.isDefault && (
-                        <BadgeCheck className="h-4 w-4 text-amber-400" />
+                        <BadgeCheck className="hidden h-4 w-4 text-blue-600 md:block" aria-hidden="true" />
                       )}
                     </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 md:mt-1.5">
                       {data.subject.code && (
                         <span className="font-mono font-semibold text-slate-700">
                           {data.subject.code}
@@ -207,7 +210,7 @@ export default function SubjectDetailPage() {
                       {data.subject.category && (
                         <Badge
                           variant="outline"
-                          className="rounded-full border-0 bg-slate-50/70 px-2.5 py-0.5 text-[11px] font-medium capitalize text-slate-500"
+                          className="rounded-full border-0 bg-slate-100 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-600"
                         >
                           {data.subject.category}
                         </Badge>
@@ -215,7 +218,7 @@ export default function SubjectDetailPage() {
                       {data.subject.isDefault && (
                         <Badge
                           variant="outline"
-                          className="rounded-full border-0 bg-amber-50/70 px-2.5 py-0.5 text-[11px] font-medium text-amber-600"
+                          className="rounded-full border-0 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
                         >
                           Default
                         </Badge>
@@ -226,9 +229,9 @@ export default function SubjectDetailPage() {
               </div>
 
               {/* Stats row */}
-              <div className="mt-6 grid grid-cols-3 gap-4 border-t border-slate-100/70 pt-6">
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-slate-100/70 pt-4 sm:mt-6 sm:gap-4 sm:pt-6">
                 <div className="rounded-xl bg-slate-50/50 p-3 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium text-slate-500">
                     Teachers
                   </p>
                   <p className="mt-0.5 text-2xl font-bold text-slate-900">
@@ -236,7 +239,7 @@ export default function SubjectDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-xl bg-slate-50/50 p-3 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium text-slate-500">
                     Classes
                   </p>
                   <p className="mt-0.5 text-2xl font-bold text-slate-900">
@@ -244,7 +247,7 @@ export default function SubjectDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-xl bg-slate-50/50 p-3 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-medium text-slate-500">
                     Available
                   </p>
                   <p className="mt-0.5 text-2xl font-bold text-slate-900">
@@ -256,7 +259,7 @@ export default function SubjectDetailPage() {
 
             {/* Assign Teacher section */}
             {isPrivileged && (
-              <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-8">
                 <h2 className="text-sm font-bold text-slate-900">
                   Assign to Teacher & Class
                 </h2>
@@ -266,7 +269,7 @@ export default function SubjectDetailPage() {
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div className="flex-1">
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
                       Teacher
                     </label>
                     <Select
@@ -292,7 +295,7 @@ export default function SubjectDetailPage() {
                   </div>
 
                     <div className="flex-1">
-                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
                         Class
                       </label>
                       <Select
@@ -332,7 +335,7 @@ export default function SubjectDetailPage() {
             )}
 
             {/* Current assignments */}
-            <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-8">
               <h2 className="text-sm font-bold text-slate-900">
                 Current Assignments
               </h2>
@@ -347,7 +350,7 @@ export default function SubjectDetailPage() {
                     <p className="mt-2 text-sm font-medium text-slate-500">
                       No assignments yet
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {isPrivileged
                         ? "Use the form above to assign this subject."
                         : "An admin will assign teachers and classes."}
@@ -367,7 +370,7 @@ export default function SubjectDetailPage() {
                           <p className="truncate text-sm font-semibold text-slate-900">
                             {a.teacherName}
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             {a.className}
                           </p>
                         </div>
@@ -375,10 +378,11 @@ export default function SubjectDetailPage() {
                       {isPrivileged && (
                         <button
                           onClick={() => handleRemoveAssignment(a.id)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:mr-0 md:h-8 md:w-8"
                           title="Remove assignment"
+                          aria-label={`Remove ${a.teacherName ?? "teacher"} from ${a.className}`}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-4 w-4" />
                         </button>
                       )}
                     </div>
@@ -388,7 +392,7 @@ export default function SubjectDetailPage() {
             </section>
 
             {/* View class results section */}
-            <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-8">
               <h2 className="text-sm font-bold text-slate-900">
                 Class Results
               </h2>
@@ -418,7 +422,7 @@ export default function SubjectDetailPage() {
                         <p className="text-sm font-semibold text-slate-900">
                           {c.name}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500">
                           {c.studentCount} student{c.studentCount !== 1 ? "s" : ""}
                           {assignment && (
                             <>

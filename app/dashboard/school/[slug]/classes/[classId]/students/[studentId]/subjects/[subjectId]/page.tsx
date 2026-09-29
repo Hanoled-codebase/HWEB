@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch, isForbiddenError } from "@/lib/api";
 import { parseRouteParam } from "@/lib/spreadsheets";
 import {
@@ -78,17 +79,20 @@ export default function StudentSubjectAssessmentsPage() {
     [subject],
   );
 
+  useMobilePageTitle(subject ? getSubjectName(subject) : null);
+
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)] pb-10">
-      <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
-        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-5 shadow-[0_24px_70px_rgba(37,99,235,0.10)] backdrop-blur sm:p-6">
+    <div className="min-h-full pb-10">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 md:gap-5 md:px-6 md:py-4 lg:px-8">
+        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-4 shadow-[0_24px_70px_rgba(37,99,235,0.10)] sm:p-6">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="mb-4 h-11 w-11 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  aria-label="Back"
+                  className="mb-4 hidden h-11 w-11 rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 md:inline-flex"
                   onClick={() =>
                     router.push(
                       `/dashboard/school/${currentOrg?.slug}/classes/${classId}/students/${studentId}`,
@@ -105,13 +109,13 @@ export default function StudentSubjectAssessmentsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-400">
+                    <p className="hidden text-sm font-semibold uppercase tracking-[0.24em] text-blue-500 md:block">
                       Assessments
                     </p>
-                    <h1 className="mt-2 text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl">
+                    <h1 className="mt-2 hidden text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl md:block">
                       {subject ? getSubjectName(subject) : "Subject"}
                     </h1>
-                    <p className="mt-3 text-sm text-slate-500 sm:text-base">
+                    <p className="text-sm text-slate-600 sm:text-base md:mt-3 md:text-slate-500">
                       {performance
                         ? getStudentFullName(performance.student)
                         : "Student"}{" "}
@@ -122,7 +126,7 @@ export default function StudentSubjectAssessmentsPage() {
               </div>
 
               {!isLoading && subject && (
-                <div className="grid min-w-[220px] gap-3">
+                <div className="grid gap-3 md:min-w-[220px]">
                   <div className="rounded-lg border border-blue-100 bg-white p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
                       Total Score

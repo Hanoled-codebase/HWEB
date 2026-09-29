@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
+import { staffAccessApi } from "@/lib/staff-access";
+import { type TeachingAssignmentInput } from "@/services/api";
+import { editTeachingAssignments, hcoreIds, teachingKey, toHcoreTeaching } from "@/lib/teaching-assignments";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -73,6 +76,7 @@ import {
   Building2,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { EntityHeader, SearchInput } from "@/components/dashboard/shared";
 
@@ -105,6 +109,8 @@ type MemberAssignmentItem = {
   department?: { id?: string; name?: string } | null;
   startDate?: string;
   endDate?: string | null;
+  /** Set once HCORE backs the row; null on rows written before HCORE owned them. */
+  hcoreStatus?: string | null;
 };
 
 type Appraisal = {
@@ -139,6 +145,7 @@ type TeacherProfile = {
   member: {
     id: string;
     role: string;
+    hcoreAffiliationId?: string | null;
     user: MemberUser;
     teachingAssignments?: TeacherAssignment[];
     memberAssignments?: MemberAssignmentItem[];
@@ -245,12 +252,12 @@ export default function HRPage() {
   const [assignDeptId, setAssignDeptId] = useState("");
   const [assignClassId, setAssignClassId] = useState("");
   const [assignSubjectId, setAssignSubjectId] = useState("");
-  const [assignStartDate, setAssignStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [isSavingAssign, setIsSavingAssign] = useState(false);
-  const [allClasses, setAllClasses] = useState<Array<{ id: string; name: string }>>([]);
-  const [allSubjects, setAllSubjects] = useState<Array<{ id: string; name: string; code?: string }>>([]);
+  const [allClasses, setAllClasses] = useState<Array<{ id: string; name: string; hcoreClassGroupId?: string | null }>>([]);
+  const [allSubjects, setAllSubjects] = useState<Array<{ id: string; name: string; code?: string; hcoreSubjectId?: string | null }>>([]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [removeAssignId, setRemoveAssignId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ profile: TeacherProfile; assignment: MemberAssignmentItem } | null>(null);
+  const [isRemovingAssign, setIsRemovingAssign] = useState(false);
 
   const ASSIGNMENT_LABELS: Record<AssignmentTypeOption, string> = {
     SUBJECT_TEACHER: "Subject Teacher",
@@ -537,8 +544,8 @@ export default function HRPage() {
       if (!currentOrg) return;
       try {
         const [cls, subs] = await Promise.all([
-          apiFetch<Array<{ id: string; name: string }>>(`/classes/${currentOrg.slug}`),
-          apiFetch<Array<{ id: string; name: string; code?: string }>>(`/subjects/${currentOrg.slug}`),
+          apiFetch<Array<{ id: string; name: string; hcoreClassGroupId?: string | null }>>(`/classes/${currentOrg.slug}`),
+          apiFetch<Array<{ id: string; name: string; code?: string; hcoreSubjectId?: string | null }>>(`/subjects/${currentOrg.slug}`),
         ]);
         setAllClasses(cls);
         setAllSubjects(subs);
@@ -590,27 +597,84 @@ export default function HRPage() {
   }
 
   // ── Assignment CRUD ────────────────────────────────────────────────
+  // Who holds a duty lives in HCORE, so every product agrees: Accountant,
+  // Librarian and HOD through the staff-roles API (the same path as
+  // Settings → Staff access), class and subject teaching through the
+  // teacher-assignments API. Which departments an HOD leads is Hanoled's own.
+  // After each change Hanoled re-reads the person from HCORE, so the list
+  // below (Hanoled's copy) is current when it reloads.
+
+  // Only classes and subjects linked to HCORE can go into a teaching assignment.
+  const ids = useMemo(() => hcoreIds(allClasses, allSubjects), [allClasses, allSubjects]);
+
+  function affiliationOf(profile: TeacherProfile) {
+    const affiliationId = profile.member.hcoreAffiliationId;
+    if (!affiliationId) {
+      throw new Error("This staff member isn't linked to the school directory yet. Try again in a minute.");
+    }
+    return affiliationId;
+  }
+
+  function hodDepartmentIds(profile: TeacherProfile) {
+    return (profile.member.memberAssignments ?? []).flatMap((a) =>
+      a.type === "HOD" && a.department?.id ? [a.department.id] : [],
+    );
+  }
+
+  // Apply one change to HCORE's set, first carrying over rows only Hanoled
+  // has (written before HCORE owned teaching) so a first edit keeps them.
+  async function editTeaching(
+    org: { id: string; slug: string },
+    profile: TeacherProfile,
+    change: (current: Map<string, TeachingAssignmentInput>) => void,
+  ) {
+    await editTeachingAssignments(org, affiliationOf(profile), (current) => {
+      for (const a of profile.member.memberAssignments ?? []) {
+        const item = a.hcoreStatus ? null : toHcoreTeaching(a, ids);
+        if (item) current.set(teachingKey(item), item);
+      }
+      change(current);
+    });
+  }
+
+  async function reloadProfiles(slug: string) {
+    setProfiles(await apiFetch<TeacherProfile[]>(`/hr/${slug}/teachers`));
+  }
 
   async function onCreateAssignment() {
     if (!currentOrg || !assignTarget) return;
+    const profile = assignTarget;
+    const name = profile.member.user.name;
     setIsSavingAssign(true);
     try {
-      await apiFetch(
-        `/hr/${currentOrg.slug}/members/${assignTarget.memberId}/assignments`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            type: assignType,
-            departmentId: assignDeptId || undefined,
-            classLevelId: assignClassId || undefined,
-            subjectId: assignSubjectId || undefined,
-            startDate: assignStartDate,
-          }),
-        },
-      );
-      const data = await apiFetch<TeacherProfile[]>(`/hr/${currentOrg.slug}/teachers`);
-      setProfiles(data);
-      toast.success("Assignment created");
+      const affiliationId = affiliationOf(profile);
+      if (assignType === "ACCOUNTANT" || assignType === "LIBRARIAN" || assignType === "HOD") {
+        await staffAccessApi.setRole(currentOrg.id, affiliationId, assignType, true);
+        const { roles } = await staffAccessApi.refreshProjection(currentOrg.slug, affiliationId);
+        if (assignType === "HOD" && assignDeptId) {
+          // Leading a department needs the HOD role already in Hanoled's copy.
+          if (!roles) {
+            throw new Error(`${name} is now a Head of Department, but the department couldn't be linked yet. Try again in a minute.`);
+          }
+          await staffAccessApi.setHodDepartments(
+            currentOrg.slug,
+            affiliationId,
+            [...new Set([...hodDepartmentIds(profile), assignDeptId])],
+          );
+        }
+      } else {
+        const classGroupId = ids.classIds.get(assignClassId);
+        const subjectId = assignType === "SUBJECT_TEACHER" ? ids.subjectIds.get(assignSubjectId) : null;
+        if (!classGroupId) throw new Error("Choose a class");
+        if (subjectId === undefined) throw new Error("Choose a subject");
+        const added: TeachingAssignmentInput = { classGroupId, subjectId, assignmentType: assignType };
+        await editTeaching(currentOrg, profile, (current) => {
+          if (current.has(teachingKey(added))) throw new Error(`${name} already has this assignment`);
+          current.set(teachingKey(added), added);
+        });
+      }
+      await reloadProfiles(currentOrg.slug);
+      toast.success(`${ASSIGNMENT_LABELS[assignType]} role given to ${name}`);
       setAssignDialogOpen(false);
       setAssignTarget(null);
     } catch (error: unknown) {
@@ -620,26 +684,38 @@ export default function HRPage() {
     }
   }
 
-  async function onRemoveAssignment(assignmentId: string) {
-    if (!currentOrg || !removeAssignId) return;
+  async function onRemoveAssignment() {
+    if (!currentOrg || !removeTarget) return;
+    const { profile, assignment } = removeTarget;
+    setIsRemovingAssign(true);
     try {
-      const targetMemberId = profiles.find((p) =>
-        p.member.memberAssignments?.some((a) => a.id === assignmentId),
-      )?.memberId;
-      if (!targetMemberId) return;
-      await apiFetch(
-        `/hr/${currentOrg.slug}/members/${targetMemberId}/assignments`,
-        {
-          method: "DELETE",
-          body: JSON.stringify({ assignmentId }),
-        },
-      );
-      const data = await apiFetch<TeacherProfile[]>(`/hr/${currentOrg.slug}/teachers`);
-      setProfiles(data);
+      const affiliationId = affiliationOf(profile);
+      const departmentId = assignment.department?.id;
+      if (assignment.type === "HOD" && departmentId) {
+        // Only this department link ends; they stay Head of Department.
+        await staffAccessApi.setHodDepartments(
+          currentOrg.slug,
+          affiliationId,
+          hodDepartmentIds(profile).filter((id) => id !== departmentId),
+        );
+      } else if (assignment.type === "HOD" || assignment.type === "ACCOUNTANT" || assignment.type === "LIBRARIAN") {
+        await staffAccessApi.setRole(currentOrg.id, affiliationId, assignment.type, false);
+        await staffAccessApi.refreshProjection(currentOrg.slug, affiliationId);
+      } else {
+        // A row HCORE can't hold (its class isn't in the directory) is simply
+        // left out; the refresh then ends it here too.
+        const removed = toHcoreTeaching(assignment, ids);
+        await editTeaching(currentOrg, profile, (current) => {
+          if (removed) current.delete(teachingKey(removed));
+        });
+      }
+      await reloadProfiles(currentOrg.slug);
       toast.success("Assignment removed");
-      setRemoveAssignId(null);
+      setRemoveTarget(null);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to remove assignment");
+    } finally {
+      setIsRemovingAssign(false);
     }
   }
 
@@ -685,8 +761,17 @@ export default function HRPage() {
     return (
       <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3 transition-colors">
         <div
-          className="flex items-start justify-between cursor-pointer select-none"
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
+          className="flex min-h-11 items-start justify-between cursor-pointer select-none"
           onClick={onToggle}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onToggle();
+            }
+          }}
         >
           <div className="flex items-center gap-3">
             <Avatar className="h-11 w-11 border border-slate-100 shrink-0">
@@ -698,7 +783,7 @@ export default function HRPage() {
               <h3 className="font-bold text-slate-900 text-sm truncate capitalize">
                 {member.user.name}
               </h3>
-              <p className="text-xs text-slate-400 truncate mt-0.5">
+              <p className="text-xs text-slate-500 truncate mt-0.5">
                 {member.user.email}
               </p>
             </div>
@@ -715,13 +800,13 @@ export default function HRPage() {
                 {profile.trcnNumber}
               </span>
             )}
-            <button className="text-slate-400 hover:text-slate-600 p-1">
+            <span aria-hidden="true" className="p-1 text-slate-500">
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-            </button>
+            </span>
           </div>
         </div>
 
@@ -749,19 +834,31 @@ export default function HRPage() {
               {memberAssignments.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-[#EEF0FF] text-[#1447E6] text-xs font-medium px-3 py-1.5 rounded-xl block"
+                  className="bg-blue-50 text-blue-700 text-xs font-medium pl-3 pr-1.5 py-1.5 rounded-xl flex items-center justify-between gap-2"
                 >
-                  {ASSIGNMENT_LABELS[a.type]}
-                  {a.department && ` – ${a.department.name}`}
-                  {a.subject && ` – ${a.subject.name}`}
-                  {a.classLevel && ` – ${a.classLevel.name}`}
+                  <span>
+                    {ASSIGNMENT_LABELS[a.type]}
+                    {a.department && ` – ${a.department.name}`}
+                    {a.subject && ` – ${a.subject.name}`}
+                    {a.classLevel && ` – ${a.classLevel.name}`}
+                  </span>
+                  {isPrivileged && (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${ASSIGNMENT_LABELS[a.type]}`}
+                      className="shrink-0 rounded-lg p-0.5 text-[#1447E6]/70 hover:bg-[#1447E6]/10 hover:text-[#1447E6]"
+                      onClick={() => setRemoveTarget({ profile, assignment: a })}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               ))}
               {memberAssignments.length === 0 && teachingAssignments.length > 0 && (
                 teachingAssignments.map((a, i) => (
                   <div
                     key={i}
-                    className="bg-[#EEF0FF] text-[#1447E6] text-xs font-medium px-3 py-1.5 rounded-xl block"
+                    className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-xl block"
                   >
                     Teacher – {a.subject?.name || "Subject"} – {a.classLevel?.name || "Class"}
                   </div>
@@ -797,7 +894,6 @@ export default function HRPage() {
                     setAssignDeptId("");
                     setAssignClassId("");
                     setAssignSubjectId("");
-                    setAssignStartDate(format(new Date(), "yyyy-MM-dd"));
                     setAssignDialogOpen(true);
                   }}
                 >
@@ -817,16 +913,16 @@ export default function HRPage() {
 
   return (
     <div className="space-y-4 pb-28 md:pb-10">
-      <div>
-        <p className="text-xs text-slate-400 font-medium">Manage teacher profiles, appraisals &amp; PD logs.</p>
+      <div className="hidden md:block">
+        <p className="text-sm text-slate-500 font-medium">Manage teacher profiles, appraisals &amp; PD logs.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-11 items-center rounded-2xl bg-slate-100 p-1">
-          <TabsTrigger value="profiles" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Profiles</TabsTrigger>
-          <TabsTrigger value="departments" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Departments</TabsTrigger>
-          <TabsTrigger value="appraisals" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">Appraisals</TabsTrigger>
-          <TabsTrigger value="pdu" className="rounded-xl text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm py-2">PD</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 md:h-11 md:grid-cols-4 md:gap-0">
+          <TabsTrigger value="profiles" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Profiles</TabsTrigger>
+          <TabsTrigger value="departments" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Departments</TabsTrigger>
+          <TabsTrigger value="appraisals" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">Appraisals</TabsTrigger>
+          <TabsTrigger value="pdu" className="flex-1 rounded-xl text-sm font-semibold md:text-xs data-active:bg-white data-active:text-slate-900 data-active:shadow-sm py-2">PD log</TabsTrigger>
         </TabsList>
 
         {/* TAB 1 — TEACHER PROFILES */}
@@ -840,7 +936,7 @@ export default function HRPage() {
           {isPrivileged && (
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full h-12 bg-[#1447E6] hover:bg-[#0f36b8] text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
                   <Plus className="h-4 w-4" />
                   Create Profile
                 </Button>
@@ -1139,7 +1235,7 @@ export default function HRPage() {
                         {dept.description && (
                           <p className="text-sm text-slate-500 mt-1">{dept.description}</p>
                         )}
-                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
                             {profiles.filter((p) =>
@@ -1155,6 +1251,7 @@ export default function HRPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete ${dept.name}`}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
                           onClick={() => setDeptToDelete(dept)}
                         >
@@ -1382,7 +1479,7 @@ export default function HRPage() {
                         <span className="font-semibold text-slate-900">
                           {a.scorePacing}
                         </span>
-                        <span className="text-[10px] text-slate-400">/5</span>
+                        <span className="text-xs text-slate-500">/5</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Eye className="h-4 w-4 text-slate-400" />
@@ -1390,7 +1487,7 @@ export default function HRPage() {
                         <span className="font-semibold text-slate-900">
                           {a.scoreClarity}
                         </span>
-                        <span className="text-[10px] text-slate-400">/5</span>
+                        <span className="text-xs text-slate-500">/5</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <BookOpen className="h-4 w-4 text-slate-400" />
@@ -1398,7 +1495,7 @@ export default function HRPage() {
                         <span className="font-semibold text-slate-900">
                           {a.scorePedagogy}
                         </span>
-                        <span className="text-[10px] text-slate-400">/5</span>
+                        <span className="text-xs text-slate-500">/5</span>
                       </div>
                       <Badge
                         variant="outline"
@@ -1427,7 +1524,7 @@ export default function HRPage() {
                         &ldquo;{a.observerNotes}&rdquo;
                       </p>
                     )}
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
                       <span>by {a.evaluator.user.name}</span>
                       <span>•</span>
                       <span>
@@ -1649,7 +1746,7 @@ export default function HRPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between mt-3">
-                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <span className="text-xs text-slate-500 flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {format(
                           new Date(log.dateCompleted),
@@ -1706,12 +1803,12 @@ export default function HRPage() {
               </Select>
             </div>
 
-            {(assignType === "HOD" || assignType === "SUBJECT_TEACHER") && (
+            {assignType === "HOD" && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Department</label>
                 <Select value={assignDeptId} onValueChange={(v) => setAssignDeptId(v as string)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder="Select department (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
@@ -1730,7 +1827,7 @@ export default function HRPage() {
                     <SelectValue placeholder="Select assigned class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allClasses.map((c) => (
+                    {allClasses.filter((c) => ids.classIds.has(c.id)).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1740,13 +1837,13 @@ export default function HRPage() {
 
             {assignType === "SUBJECT_TEACHER" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Subject</label>
+                <label className="text-sm font-medium text-slate-700">Subject *</label>
                 <Select value={assignSubjectId} onValueChange={(v) => setAssignSubjectId(v as string)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select assigned subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allSubjects.map((s) => (
+                    {allSubjects.filter((s) => ids.subjectIds.has(s.id)).map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}{s.code ? ` (${s.code})` : ""}
                       </SelectItem>
@@ -1764,14 +1861,6 @@ export default function HRPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Start Date</label>
-              <Input
-                type="date"
-                value={assignStartDate}
-                onChange={(e) => setAssignStartDate(e.target.value)}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAssignDialogOpen(false); setAssignTarget(null); }}>
@@ -1786,20 +1875,24 @@ export default function HRPage() {
       </Dialog>
 
       {/* ── Remove Assignment Confirm ───────────────────────────────── */}
-      <Dialog open={!!removeAssignId} onOpenChange={(o) => { if (!o) setRemoveAssignId(null); }}>
+      <Dialog open={!!removeTarget} onOpenChange={(o) => { if (!o) setRemoveTarget(null); }}>
         <DialogContent className="sm:max-w-[380px]">
           <DialogHeader>
             <DialogTitle>Remove Assignment</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove this assignment?
+              {removeTarget
+                ? `Remove ${ASSIGNMENT_LABELS[removeTarget.assignment.type]} from ${removeTarget.profile.member.user.name}?`
+                : ""}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-4">
-            <Button variant="outline" onClick={() => setRemoveAssignId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
             <Button
               variant="destructive"
-              onClick={() => removeAssignId && onRemoveAssignment(removeAssignId)}
+              onClick={onRemoveAssignment}
+              disabled={isRemovingAssign}
             >
+              {isRemovingAssign && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Remove
             </Button>
           </DialogFooter>

@@ -462,24 +462,24 @@ export default function SpreadsheetsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8fbff_48%,#eef2ff_100%)]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-3 py-3 sm:gap-6 sm:px-4 sm:py-4 lg:px-6 lg:py-6">
-        {/* Header Section */}
-        <section className="rounded-xl border border-blue-100/80 bg-white/90 p-4 shadow-[0_24px_70px_rgba(37,99,235,0.10)] backdrop-blur sm:p-5 lg:p-6">
-          <div className="flex flex-col gap-4 md:gap-5">
+    <div className="min-h-full">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6 md:px-4 md:py-4 lg:px-6 lg:py-6">
+        {/* Header Section (phones: the top bar names the page; the list starts right away) */}
+        <section className="md:rounded-xl md:border md:border-blue-100/80 md:bg-white/90 md:p-5 md:shadow-[0_24px_70px_rgba(37,99,235,0.10)] lg:p-6">
+          <div className="flex flex-col gap-3 md:gap-5">
             {/* Welcome & Action Row */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between md:gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-500 sm:text-sm">
+              <div className="hidden min-w-0 flex-1 md:block">
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-500">
                   Scores Workspace
                 </p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:mt-1.5 sm:text-3xl md:text-4xl">
+                <h1 className="mt-1.5 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                   Welcome,{" "}
                   <span className="text-blue-600">
                     {greetingName}
                   </span>
                 </h1>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-500 sm:mt-2 sm:text-base">
+                <p className="mt-2 text-base leading-relaxed text-slate-500">
                   Open a class sheet, jump into the right assessment, and enter
                   scores with fewer taps.
                 </p>
@@ -602,7 +602,7 @@ export default function SpreadsheetsPage() {
 
                           {/* Exam Mode Presets */}
                           <div className="space-y-1.5">
-                            <span className="text-[11px] font-medium text-slate-500">Quick Exam Preset:</span>
+                            <span className="text-xs font-medium text-slate-500">Quick Exam Preset:</span>
                             <div className="flex flex-wrap gap-1.5">
                               <Button
                                 type="button"
@@ -766,15 +766,17 @@ export default function SpreadsheetsPage() {
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-400 sm:left-5 sm:h-5 sm:w-5" />
                 <Input
                   type="search"
-                  placeholder={`Search by class, subject, or status...`}
+                  placeholder="Search class, subject or status"
+                  aria-label="Search spreadsheets"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  className="h-12 rounded-xl border-2 border-blue-200 bg-white pl-10 pr-10 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-blue-200 sm:h-14 sm:pl-12 sm:pr-12 sm:text-base lg:h-16"
+                  className="h-12 rounded-xl border border-slate-200 bg-white pl-10 pr-12 shadow-none focus-visible:border-blue-500 focus-visible:ring-blue-200 sm:h-14 sm:border-2 sm:border-blue-200 sm:pl-12 sm:text-base lg:h-16"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:right-4"
+                    aria-label="Clear search"
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:right-2"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -782,12 +784,6 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div className="flex flex-row items-center justify-between gap-3 sm:mt-2">
-                <div className="flex items-center gap-2 text-blue-950 sm:hidden">
-                  <Filter className="h-4 w-4" />
-                  <span className="text-sm font-semibold tracking-tight">
-                    Filter by
-                  </span>
-                </div>
                 <div className="hidden items-center gap-2 text-blue-950 sm:flex">
                   <span className="text-2xl font-bold tracking-tight lg:text-3xl">
                     Filter
@@ -795,27 +791,31 @@ export default function SpreadsheetsPage() {
                   <Filter className="h-5 w-5" />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex rounded-xl bg-blue-100/80 p-1 shadow-inner">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <div role="group" aria-label="Group sheets by" className="grid flex-1 grid-cols-2 rounded-xl bg-slate-100 p-1 sm:inline-flex sm:flex-none sm:bg-blue-100/80 sm:shadow-inner">
                     <button
                       type="button"
                       onClick={() => setActiveFilter("class")}
-                      className={`min-w-[76px] rounded-lg px-3 py-1.5 text-xs font-semibold transition sm:min-w-28 sm:px-4 sm:py-2 sm:text-sm ${activeFilter === "class"
+                      aria-pressed={activeFilter === "class"}
+                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "class"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-blue-600 hover:bg-blue-200/50"
                         }`}
                     >
-                      Class
+                      <span className="sm:hidden">By class</span>
+                      <span className="hidden sm:inline">Class</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveFilter("subject")}
-                      className={`min-w-[76px] rounded-lg px-3 py-1.5 text-xs font-semibold transition sm:min-w-28 sm:px-4 sm:py-2 sm:text-sm ${activeFilter === "subject"
+                      aria-pressed={activeFilter === "subject"}
+                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "subject"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-blue-600 hover:bg-blue-200/50"
                         }`}
                     >
-                      Subject
+                      <span className="sm:hidden">By subject</span>
+                      <span className="hidden sm:inline">Subject</span>
                     </button>
                   </div>
 
@@ -871,7 +871,7 @@ export default function SpreadsheetsPage() {
               ))}
             </div>
           ) : filteredSheets.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-blue-200 bg-white/95 p-6 text-center shadow-[0_12px_35px_rgba(37,99,235,0.05)] sm:p-8 md:p-12">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center sm:p-8 md:border-blue-200 md:p-12 md:shadow-[0_12px_35px_rgba(37,99,235,0.05)]">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 sm:h-16 sm:w-16">
                 <FileSpreadsheet className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" />
               </div>
@@ -900,7 +900,7 @@ export default function SpreadsheetsPage() {
               className={
                 viewMode === "grid"
                   ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4"
-                  : "space-y-3 sm:space-y-4"
+                  : "overflow-hidden rounded-2xl border border-slate-200 bg-white max-sm:divide-y max-sm:divide-slate-100 sm:space-y-4 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent"
               }
             >
               {filteredSheets.map((sheet) => {
@@ -925,8 +925,10 @@ export default function SpreadsheetsPage() {
                         );
                       }
                     }}
-                    className={`group w-full rounded-xl border border-blue-100 bg-white p-4 text-left shadow-[0_16px_40px_rgba(37,99,235,0.08)] transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_20px_50px_rgba(37,99,235,0.14)] active:scale-[0.98] sm:p-5 ${isGridView ? "flex flex-col" : ""
-                      }`}
+                    className={`group w-full bg-white text-left transition-all active:bg-slate-50 ${isGridView
+                      ? "flex flex-col rounded-xl border border-blue-100 p-4 shadow-[0_16px_40px_rgba(37,99,235,0.08)] sm:p-5"
+                      : "px-4 py-3 sm:rounded-xl sm:border sm:border-blue-100 sm:p-5 sm:shadow-[0_16px_40px_rgba(37,99,235,0.08)]"
+                      } sm:hover:-translate-y-1 sm:hover:border-blue-200 sm:hover:shadow-[0_20px_50px_rgba(37,99,235,0.14)]`}
                   >
                     <div
                       className={
@@ -938,7 +940,7 @@ export default function SpreadsheetsPage() {
                       <div
                         className={`flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100/60 ${isGridView
                           ? "h-12 w-12 sm:h-14 sm:w-14"
-                          : "h-12 w-12 shrink-0 sm:h-14 sm:w-14"
+                          : "h-10 w-10 shrink-0 sm:h-14 sm:w-14"
                           }`}
                         aria-hidden
                       >
@@ -951,9 +953,9 @@ export default function SpreadsheetsPage() {
 
                       <div className="min-w-0 flex-1">
                         <h2
-                          className={`truncate font-bold tracking-tight text-slate-950 group-hover:text-blue-700 ${isGridView
+                          className={`line-clamp-2 break-words font-bold tracking-tight text-slate-950 group-hover:text-blue-700 sm:line-clamp-none sm:truncate ${isGridView
                             ? "text-sm sm:text-base"
-                            : "text-base sm:text-lg lg:text-xl"
+                            : "text-[15px] font-semibold sm:text-lg sm:font-bold lg:text-xl"
                             }`}
                         >
                           {sheetLabel}
@@ -962,7 +964,7 @@ export default function SpreadsheetsPage() {
                         <div className="mt-1 flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className={`shrink-0 px-1.5 py-0 text-[10px] capitalize sm:px-2.5 sm:py-0.5 sm:text-xs ${getStatusClassName(
+                            className={`shrink-0 px-2 py-0 text-xs capitalize sm:px-2.5 sm:py-0.5 ${getStatusClassName(
                               sheet.status,
                             )}`}
                           >
@@ -970,8 +972,7 @@ export default function SpreadsheetsPage() {
                           </Badge>
                           <span className="text-slate-300">&bull;</span>
                           <p
-                            className={`truncate text-slate-500 ${isGridView ? "text-[11px] sm:text-xs" : "text-xs"
-                              }`}
+                            className="truncate text-xs text-slate-500"
                           >
                             {format(new Date(sheet.createdAt), "MMM d, yyyy")}
                           </p>
@@ -986,7 +987,7 @@ export default function SpreadsheetsPage() {
                             setEditTargetId(sheet.id);
                             setIsEditAssessmentsOpen(true);
                           }}
-                          className="hidden items-center justify-center rounded-md text-slate-300 opacity-0 transition hover:bg-blue-50 hover:text-blue-600 focus-visible:opacity-100 group-hover:opacity-100 sm:flex sm:h-9 sm:w-9 sm:border sm:border-blue-100 sm:hover:border-blue-300"
+                          className="flex h-11 w-11 items-center justify-center rounded-md text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 focus-visible:opacity-100 sm:h-9 sm:w-9 sm:border sm:border-blue-100 sm:hover:border-blue-300 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                           title="Edit assessments"
                           aria-label="Edit assessments"
                         >
@@ -1000,7 +1001,7 @@ export default function SpreadsheetsPage() {
                               `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
                             );
                           }}
-                          className={`flex items-center justify-center rounded-full border border-blue-100 bg-white text-blue-700 shadow-sm transition hover:bg-blue-600 hover:text-white ${isGridView ? "h-8 w-8 sm:h-9 sm:w-9" : "h-9 w-9 sm:h-10 sm:w-10"}`}
+                          className={`hidden items-center justify-center rounded-full border border-blue-100 bg-white text-blue-700 shadow-sm transition hover:bg-blue-600 hover:text-white sm:flex ${isGridView ? "sm:h-9 sm:w-9" : "sm:h-10 sm:w-10"}`}
                           aria-label="Open sheet"
                         >
                           <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1015,7 +1016,7 @@ export default function SpreadsheetsPage() {
 
           {/* Sheet Count */}
           {!isLoading && filteredSheets.length > 0 && (
-            <p className="mt-4 text-center text-xs text-slate-400 sm:mt-6 sm:text-sm">
+            <p className="mt-4 text-center text-xs text-slate-500 sm:mt-6 sm:text-sm">
               Showing {filteredSheets.length} of {spreadsheets.length}{" "}
               spreadsheets
             </p>
@@ -1170,7 +1171,7 @@ export default function SpreadsheetsPage() {
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   <Badge
                     variant="outline"
-                    className="border-slate-200 bg-white text-slate-600 text-[10px] sm:text-xs"
+                    className="border-slate-200 bg-white text-slate-600 text-xs sm:text-xs"
                   >
                     Exam: 70 fixed
                   </Badge>

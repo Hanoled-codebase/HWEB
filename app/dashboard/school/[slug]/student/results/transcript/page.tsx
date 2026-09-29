@@ -87,8 +87,8 @@ export default function TranscriptPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Action buttons (hidden on print) */}
-      <div className="flex items-center justify-between print:hidden">
-        <Button variant="ghost" onClick={() => router.back()}>
+      <div className="flex items-center justify-between print:hidden max-md:justify-end">
+        <Button variant="ghost" className="hidden md:inline-flex" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Results
         </Button>
         <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -97,7 +97,7 @@ export default function TranscriptPage() {
       </div>
 
       {/* High-Fidelity Printable Transcript Document */}
-      <Card className="border border-slate-200 shadow-lg rounded-none bg-white p-8 sm:p-12 print:border-0 print:shadow-none print:p-0">
+      <Card className="border border-slate-200 shadow-lg rounded-none bg-white p-4 sm:p-12 print:border-0 print:shadow-none print:p-0">
         <CardContent className="space-y-8 p-0">
           {/* Branded Letterhead */}
           <div className="border-b-2 border-slate-900 pb-6 flex flex-col sm:flex-row items-center sm:justify-between gap-4 text-center sm:text-left">
@@ -109,7 +109,7 @@ export default function TranscriptPage() {
                 Official Academic Transcript
               </p>
               {currentOrg?.address && (
-                <p className="text-xs text-slate-400 mt-0.5">{currentOrg.address}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{currentOrg.address}</p>
               )}
             </div>
             {currentOrg?.logo && (
@@ -124,23 +124,23 @@ export default function TranscriptPage() {
           {/* Student Profile Metadata block */}
           <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4 bg-slate-50 p-4 rounded-lg border border-slate-100 print:bg-transparent print:border-0 print:p-0">
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Student Name</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">Student Name</span>
               <p className="font-semibold text-slate-900 mt-0.5">
                 {data.student.lastName}, {data.student.firstName}
               </p>
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Admission No.</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">Admission No.</span>
               <p className="font-semibold text-slate-900 mt-0.5">
                 {data.student.admissionNumber || "N/A"}
               </p>
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Current Class</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">Current Class</span>
               <p className="font-semibold text-slate-900 mt-0.5">{data.student.classLevel}</p>
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Cumulative GPA</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">Cumulative GPA</span>
               <p className="font-extrabold text-blue-600 mt-0.5 flex items-center gap-1">
                 <Award className="h-4 w-4 text-blue-500" />
                 {data.cgpa.toFixed(2)} / 5.00
@@ -158,7 +158,7 @@ export default function TranscriptPage() {
                 <thead>
                   <tr className="border-b border-slate-300 text-slate-500 font-semibold">
                     <th className="py-2.5">Subject</th>
-                    <th className="py-2.5">Class</th>
+                    <th className="hidden py-2.5 sm:table-cell print:table-cell">Class</th>
                     <th className="py-2.5 text-center">Term</th>
                     <th className="py-2.5 text-center">Score</th>
                     <th className="py-2.5 text-center">Grade</th>
@@ -169,13 +169,13 @@ export default function TranscriptPage() {
                     <tr key={grade.id} className="text-slate-800">
                       <td className="py-3 font-medium">
                         {grade.subjectName}{" "}
-                        <span className="text-xs text-slate-400">({grade.subjectCode})</span>
+                        <span className="text-xs text-slate-500">({grade.subjectCode})</span>
                       </td>
-                      <td className="py-3">{grade.className}</td>
+                      <td className="hidden py-3 sm:table-cell print:table-cell">{grade.className}</td>
                       <td className="py-3 text-center">{grade.term}</td>
                       <td className="py-3 text-center">
-                        {grade.score} / {grade.maxPossible}{" "}
-                        <span className="text-xs text-slate-400">({grade.percentage}%)</span>
+                        <span className="whitespace-nowrap">{grade.score} / {grade.maxPossible}</span>{" "}
+                        <span className="block text-xs text-slate-500 sm:inline">({grade.percentage}%)</span>
                       </td>
                       <td className="py-3 text-center font-bold">{grade.grade}</td>
                     </tr>
@@ -190,7 +190,7 @@ export default function TranscriptPage() {
             <div className="space-y-1">
               <div className="h-0.5 bg-slate-300 w-3/4 mx-auto mb-1" />
               <p className="font-semibold text-slate-700">School Registrar</p>
-              <p className="text-slate-400">Signature & Date</p>
+              <p className="text-slate-500">Signature & Date</p>
             </div>
             <div className="space-y-1">
               <div className="h-0.5 bg-slate-300 w-3/4 mx-auto mb-1" />

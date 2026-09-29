@@ -31,6 +31,9 @@ import {
   Stethoscope,
   Clock,
   Banknote,
+  HandCoins,
+  KeyRound,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -93,8 +96,6 @@ export function useSchoolNavItems() {
     const safeAssignments = (assignments || []).filter(
       (a) => !a.endDate || new Date(a.endDate) > new Date(),
     );
-    const isAccountant = safeAssignments.some((a) => a.type === "ACCOUNTANT");
-    const isLibrarian = safeAssignments.some((a) => a.type === "LIBRARIAN");
     const isHOD = safeAssignments.some((a) => a.type === "HOD");
     const isSubjectTeacher = safeAssignments.some((a) => a.type === "SUBJECT_TEACHER");
     const isClassTeacher = safeAssignments.some((a) => a.type === "CLASS_TEACHER");
@@ -129,20 +130,25 @@ export function useSchoolNavItems() {
       // /enqueue and /queue with isAdmin) — everyone else would just hit a
       // "not available to your role" wall, so don't show the link at all.
       { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged, section: "PEOPLE" },
-      { key: "payments", title: "Payments", url: `${baseUrl}/payments`, icon: CreditCard, show: (isPrivileged || isAccountant || can("payments.record")) && userRole !== "parent", section: "FINANCE" },
-      { key: "billing", title: "Billing", url: `${baseUrl}/billing`, icon: CreditCard, show: isPrivileged || isAccountant, section: "FINANCE" },
-      { key: "fee-structure", title: "Fee Structure", url: `${baseUrl}/fee-structure`, icon: DollarSign, show: isPrivileged || isAccountant || can("fee_structure.edit"), section: "FINANCE" },
+      // Finance follows what this school lets each role do (usePermissions),
+      // not the role name, so a teacher given "record payments" sees exactly that.
+      { key: "record-payment", title: "Record Payment", url: `${baseUrl}/payments/record`, icon: HandCoins, show: can("payments.record") && userRole !== "parent", section: "FINANCE" },
+      { key: "payments", title: "Payments", url: `${baseUrl}/payments`, icon: CreditCard, show: (can("payments.record") || can("fee_status.view")) && userRole !== "parent", section: "FINANCE" },
+      { key: "billing", title: "Billing", url: `${baseUrl}/billing`, icon: CreditCard, show: can("fee_status.view"), section: "FINANCE" },
+      { key: "fee-structure", title: "Fee Structure", url: `${baseUrl}/fee-structure`, icon: DollarSign, show: can("fee_structure.edit"), section: "FINANCE" },
       { key: "invoices", title: "Invoices", url: `${baseUrl}/invoices`, icon: DollarSign, show: userRole === "parent", section: "FINANCE" },
-      { key: "scratch-cards", title: "Scratch Cards", url: `${baseUrl}/scratch-cards`, icon: Ticket, show: isPrivileged || isAccountant, section: "FINANCE" },
-      { key: "debt", title: "Debt Profile", url: `${baseUrl}/debt`, icon: AlertTriangle, show: isPrivileged || isAccountant, section: "FINANCE" },
+      { key: "scratch-cards", title: "Scratch Cards", url: `${baseUrl}/scratch-cards`, icon: Ticket, show: can("scratch_cards.manage"), section: "FINANCE" },
+      { key: "debt", title: "Debt Profile", url: `${baseUrl}/debt`, icon: AlertTriangle, show: can("debt.view"), section: "FINANCE" },
       { key: "hostel", title: "Hostel", url: `${baseUrl}/hostel`, icon: Building2, show: isPrivileged, section: "OPERATIONS" },
       { key: "bus-tracking", title: "Bus Routes", url: `${baseUrl}/bus-tracking`, icon: Bus, show: isPrivileged || (userRole === "parent" && parentHasBusStudent), section: "OPERATIONS" },
+      { key: "library-desk", title: "Library Desk", url: `${baseUrl}/library/desk`, icon: ArrowLeftRight, show: can("library.manage"), section: "OPERATIONS" },
       { key: "library", title: "Library", url: `${baseUrl}/library`, icon: Library, show: isPrivileged || can("library.manage") || userRole === "parent", section: "OPERATIONS" },
       { key: "clinic", title: "Clinic Log", url: `${baseUrl}/clinic`, icon: Stethoscope, show: isPrivileged, section: "OPERATIONS" },
-      { key: "staff-attendance", title: "Staff Attendance", url: `${baseUrl}/staff-attendance`, icon: Clock, show: isPrivileged || isHOD || isAccountant, section: "OPERATIONS" },
-      { key: "payroll", title: "Payroll", url: `${baseUrl}/payroll`, icon: Banknote, show: isPrivileged || isAccountant, section: "FINANCE" },
+      { key: "staff-attendance", title: "Staff Attendance", url: `${baseUrl}/staff-attendance`, icon: Clock, show: can("staff_attendance.view"), section: "OPERATIONS" },
+      { key: "payroll", title: "Payroll", url: `${baseUrl}/payroll`, icon: Banknote, show: can("payroll.manage"), section: "FINANCE" },
       { key: "support", title: "Support", url: `${baseUrl}/support`, icon: MessageSquare, show: true, section: "OPERATIONS" },
       { key: "settings", title: "Settings", url: `${baseUrl}/settings`, icon: Settings, show: isPrivileged, section: "SYSTEM" },
+      { key: "access", title: "Staff Access", url: `${baseUrl}/settings/access`, icon: KeyRound, show: isPrivileged, section: "SYSTEM" },
       { key: "features", title: "Features", url: `${baseUrl}/settings/features`, icon: Settings2, show: isPrivileged, section: "SYSTEM" },
     ];
 

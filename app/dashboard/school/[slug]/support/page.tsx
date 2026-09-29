@@ -267,19 +267,19 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
+        <div className="hidden md:block">
           <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-            {mode === "dev" ? "Contact Dev Team" : "Support Tickets"}
+            {mode === "dev" ? "Hanoled support" : "Support Tickets"}
           </h1>
           <p className="text-slate-500">
             {mode === "dev"
-              ? "Report bugs or request features from the Hanoled development team."
+              ? "Report a problem or ask for a feature. It goes straight to the Hanoled team."
               : "Submit and manage support requests for your school."}
           </p>
         </div>
         <Button
-          className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+          className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"
           onClick={() => setDialogOpen(true)}
         >
           <Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
@@ -289,28 +289,30 @@ export default function SupportPage() {
 
       {/* ── Mode Toggle (Only visible for Admins and Owners) ──────── */}
       {isAdmin && (
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 p-1 w-fit">
+        <div role="group" aria-label="Who the ticket is for" className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50/50 p-1 md:flex md:w-fit md:items-center">
           <button
             type="button"
             onClick={() => setMode("school")}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+            aria-pressed={mode === "school"}
+            className={`min-h-11 rounded-md px-4 text-sm font-medium transition-all md:min-h-9 ${
               mode === "school"
                 ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            School Support
+            Our school
           </button>
           <button
             type="button"
             onClick={() => setMode("dev")}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+            aria-pressed={mode === "dev"}
+            className={`min-h-11 rounded-md px-4 text-sm font-medium transition-all md:min-h-9 ${
               mode === "dev"
                 ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Contact Dev Team
+            Hanoled support
           </button>
         </div>
       )}
@@ -356,7 +358,7 @@ export default function SupportPage() {
                     <p className="text-sm font-semibold text-slate-700">
                       No tickets yet
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       Create a new ticket to get help.
                     </p>
                   </div>
@@ -379,11 +381,11 @@ export default function SupportPage() {
                           <p className="truncate text-sm font-semibold text-slate-800">
                             {ticket.subject}
                           </p>
-                          <p className="mt-1 truncate text-xs text-slate-400">
+                          <p className="mt-1 truncate text-xs text-slate-500">
                             {format(new Date(ticket.createdAt), "MMM d, yyyy")}
                           </p>
                           {isAdmin && ticket.member?.user?.name && (
-                            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                            <p className="mt-0.5 truncate text-xs text-slate-500">
                               {ticket.member.user.name}
                               {ticket.member.role && ` · ${ticket.member.role}`}
                             </p>
@@ -392,7 +394,7 @@ export default function SupportPage() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                "px-2 py-0 text-[11px] font-medium",
+                                "px-2 py-0 text-xs font-medium",
                                 statusCfg.className,
                               )}
                             >
@@ -401,14 +403,14 @@ export default function SupportPage() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                "px-2 py-0 text-[11px] font-medium",
+                                "px-2 py-0 text-xs font-medium",
                                 priorityCfg.className,
                               )}
                             >
                               {priorityCfg.label}
                             </Badge>
                             {ticket.messages && ticket.messages.length > 0 && (
-                              <span className="flex items-center gap-0.5 text-[11px] text-slate-400">
+                              <span className="flex items-center gap-0.5 text-xs text-slate-500">
                                 <MessageSquare className="h-3 w-3" />
                                 {ticket.messages.length}
                               </span>
@@ -445,14 +447,14 @@ export default function SupportPage() {
                     <Badge
                       variant="outline"
                       className={cn(
-                        "shrink-0 px-2 py-0 text-[11px] font-medium",
+                        "shrink-0 px-2 py-0 text-xs font-medium",
                         STATUS_CONFIG[selectedTicket.status].className,
                       )}
                     >
                       {STATUS_CONFIG[selectedTicket.status].label}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-500">
                     Created {format(new Date(selectedTicket.createdAt), "MMM d, yyyy h:mm a")}
                     {selectedTicket.member?.user?.name && ` by ${selectedTicket.member.user.name}`}
                     {selectedTicket.member?.role && ` (${selectedTicket.member.role})`}
@@ -513,7 +515,7 @@ export default function SupportPage() {
                     <p className="text-sm font-semibold text-slate-700">
                       No messages yet
                     </p>
-                    <p className="max-w-xs text-xs text-slate-400">
+                    <p className="max-w-xs text-xs text-slate-500">
                       Send a message to start the conversation with the support team.
                     </p>
                   </div>
@@ -535,7 +537,7 @@ export default function SupportPage() {
                             )}
                           >
                             {(!mine || msg.adminSender) && (
-                              <p className="mb-1 text-[11px] font-semibold text-slate-500">
+                              <p className="mb-1 text-xs font-semibold text-slate-500">
                                 {senderName(msg)}
                               </p>
                             )}
@@ -544,7 +546,7 @@ export default function SupportPage() {
                             </p>
                             <p
                               className={cn(
-                                "mt-1 text-[11px]",
+                                "mt-1 text-xs",
                                 mine ? "text-blue-200" : "text-slate-400",
                               )}
                             >
@@ -590,13 +592,13 @@ export default function SupportPage() {
                     </Button>
                   </form>
                   {selectedTicket.status === "closed" && (
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-xs text-slate-500">
                       This ticket is closed. New messages cannot be sent.
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="border-t border-slate-200 px-5 py-3 text-center text-xs text-slate-400">
+                <div className="border-t border-slate-200 px-5 py-3 text-center text-xs text-slate-500">
                   {mode === "dev"
                     ? "Your report has been sent to the Hanoled dev team. We'll respond here."
                     : "Your ticket has been submitted. A school admin will respond shortly."}
@@ -613,7 +615,7 @@ export default function SupportPage() {
                   <p className="text-base font-semibold text-slate-700">
                     Select a ticket
                   </p>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-slate-500">
                     Choose a ticket from the list or create a new one to get started.
                   </p>
                 </div>

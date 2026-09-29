@@ -184,11 +184,12 @@ export default function StudentLibraryPage() {
   }
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header (phones: the top bar names the page and carries the back target) */}
+      <div className="hidden items-center gap-3 md:flex">
         <Link
           href={`/dashboard/school/${slug}`}
+          aria-label="Back to dashboard"
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 text-slate-600" />
@@ -220,7 +221,7 @@ export default function StudentLibraryPage() {
           <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="h-12 w-12 text-slate-300 mb-3" />
             <p className="text-slate-500 font-medium">No books found</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {search ? "Try a different search term" : "No books in the library yet"}
             </p>
           </div>
@@ -247,13 +248,13 @@ export default function StudentLibraryPage() {
             <CardContent className="flex-1 flex flex-col justify-between gap-3">
               <div className="flex flex-wrap gap-1.5">
                 {book.category && (
-                  <Badge variant="outline" className="text-[11px]">
+                  <Badge variant="outline" className="text-xs">
                     {book.category}
                   </Badge>
                 )}
                 <Badge
                   variant={book.availableCopies > 0 ? "secondary" : "outline"}
-                  className="text-[11px]"
+                  className="text-xs"
                 >
                   {book.availableCopies} / {book.totalCopies} available
                 </Badge>

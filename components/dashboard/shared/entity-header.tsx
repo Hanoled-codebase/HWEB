@@ -6,11 +6,12 @@ interface EntityHeaderProps {
   action?: ReactNode;
 }
 
+// On phones the shell's top bar already names the page, so only the action row shows here.
 export function EntityHeader({ title, subtitle, action }: EntityHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+    <div className="flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
+      <div className="hidden md:block">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           {title}
         </h1>
         <p className="text-slate-500">{subtitle}</p>

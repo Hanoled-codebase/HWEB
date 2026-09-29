@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -41,12 +42,21 @@ import {
 } from "@/components/ui/form";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  ChevronRight,
   Mail,
+  MoreHorizontal,
   Trash2,
   Loader2,
   UserPlus,
   BookOpen,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   EntityHeader,
@@ -187,7 +197,8 @@ export default function TeachersPage() {
           isPrivileged && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                {/* Phones use the bottom Invite bar instead */}
+                <Button className="hidden bg-blue-600 hover:bg-blue-700 md:inline-flex">
                   <UserPlus className="mr-2 h-4 w-4" />
                   Invite Teacher
                 </Button>
@@ -261,92 +272,92 @@ export default function TeachersPage() {
         </p>
       </div>
 
-      {/* Mobile Card View */}
-      <div className="space-y-3 block md:hidden mb-24">
+      {/* Phones: one grouped list; a whole row opens the teacher */}
+      <div className="mb-24 block md:hidden">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
-              <div className="flex items-center gap-3">
+          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-1.5 flex-1">
+                <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-40" />
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : filteredTeachers.length === 0 ? (
-          <div className="bg-white p-8 text-center rounded-2xl border border-slate-100">
-            <p className="text-sm text-slate-500">
-              {searchQuery ? "No teachers match your search." : "No teachers found in this organization."}
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+            <p className="text-sm text-slate-600">
+              {searchQuery ? "No teacher matches that search." : "No teachers yet. Invite your first teacher by email."}
             </p>
           </div>
         ) : (
-          filteredTeachers.map((teacher) => {
-            const assignedClasses = teacher.assignedClasses || [];
-            const teachingAssignments = teacher.teachingAssignments || [];
-            const primaryClass = assignedClasses[0]?.name || assignedClasses[0]?.level || (teachingAssignments[0]?.classLevel?.name);
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {filteredTeachers.map((teacher) => {
+              const assignedClasses = teacher.assignedClasses || [];
+              const teachingAssignments = teacher.teachingAssignments || [];
+              const primaryClass = assignedClasses[0]?.name || assignedClasses[0]?.level || (teachingAssignments[0]?.classLevel?.name);
+              const subjectNames = Array.from(
+                new Set(teachingAssignments.map((a) => a.subject?.name).filter(Boolean)),
+              ) as string[];
+              const meta = [
+                assignedClasses.length > 0 ? `Form teacher · ${primaryClass}` : primaryClass,
+                subjectNames.slice(0, 2).join(", ") + (subjectNames.length > 2 ? ` +${subjectNames.length - 2}` : ""),
+              ].filter(Boolean).join(" · ");
+              const name = teacher.user?.name || "Unnamed teacher";
 
-            return (
-              <div
-                key={teacher.id}
-                onClick={() =>
-                  router.push(
-                    `/dashboard/school/${currentOrg?.slug}/teachers/${teacher.id}`,
-                  )
-                }
-                className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative space-y-3 cursor-pointer active:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-11 w-11 border border-slate-100 shrink-0">
-                      <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold text-xs">
+              return (
+                <li key={teacher.id} className="flex items-center gap-1 pr-2">
+                  <Link
+                    href={`/dashboard/school/${currentOrg?.slug}/teachers/${teacher.id}`}
+                    className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 active:bg-slate-50"
+                  >
+                    <Avatar className="h-10 w-10 shrink-0 border border-slate-100">
+                      <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-700">
                         {getInitials(teacher.user?.name || "")}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-900 text-sm capitalize">
-                        {teacher.user?.name}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold capitalize text-slate-900">{name}</span>
+                      <span className="block truncate text-sm text-slate-500">
+                        {meta || teacher.user?.email || "No class or subject yet"}
                       </span>
-                      <span className="text-xs text-slate-400 capitalize">
-                        {teacher.role}
-                      </span>
-                    </div>
-                  </div>
-
-                  {isPrivileged && currentMember?.id !== teacher.id && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-full"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleRemove(teacher.id);
-                      }}
-                      title="Remove teacher"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-
-                {teacher.user?.email && (
-                  <div className="flex items-center text-xs text-slate-500 pl-1">
-                    <Mail className="h-3.5 w-3.5 mr-2 text-slate-400 shrink-0" />
-                    {teacher.user.email}
-                  </div>
-                )}
-
-                {primaryClass && (
-                  <div className="pt-1">
-                    <span className="inline-flex items-center rounded-full bg-[#EEF0FF] px-3 py-0.5 text-[11px] font-semibold text-[#1447E6]">
-                      {primaryClass}
                     </span>
-                  </div>
-                )}
-              </div>
-            );
-          })
+                  </Link>
+
+                  {isPrivileged && currentMember?.id !== teacher.id ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" aria-label={`Actions for ${name}`} className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500">
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => router.push(`/dashboard/school/${currentOrg?.slug}/teachers/${teacher.id}`)}
+                        >
+                          View profile
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleRemove(teacher.id)}
+                          className="text-red-600 focus:bg-red-50 focus:text-red-700"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remove from school
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <ChevronRight className="mr-2 h-5 w-5 shrink-0 text-slate-300" aria-hidden="true" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
@@ -355,7 +366,7 @@ export default function TeachersPage() {
         <div className="fixed bottom-above-nav inset-x-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent z-30 md:hidden">
           <Button
             onClick={() => setIsDialogOpen(true)}
-            className="w-full h-12 bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
             Invite Teacher
@@ -465,14 +476,14 @@ export default function TeachersPage() {
                                 {uniqueSubjects.slice(0, 3).map((subject) => (
                                   <span
                                     key={subject.id}
-                                    className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700 ring-1 ring-inset ring-blue-100"
+                                    className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100"
                                   >
                                     <BookOpen className="mr-1 h-3 w-3" />
                                     {subject.name}
                                   </span>
                                 ))}
                                 {uniqueSubjects.length > 3 && (
-                                  <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                                  <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
                                     + more
                                   </span>
                                 )}
@@ -481,7 +492,7 @@ export default function TeachersPage() {
                           })()}
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-sm">None</span>
+                        <span className="text-slate-500 text-sm">None</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -491,14 +502,14 @@ export default function TeachersPage() {
                           {teacher.assignedClasses.map((cls, index) => (
                             <span
                               key={String(cls?.id || cls?.name || cls || index)}
-                              className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10"
+                              className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10"
                             >
                               {cls?.name || cls?.level || "Assigned"}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-sm">None</span>
+                        <span className="text-slate-500 text-sm">None</span>
                       )}
                     </TableCell>
                     <TableCell align="right">

@@ -180,7 +180,7 @@ export default function BulkStudentImportModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Bulk Student Onboarding</h2>
-              <p className="text-xs text-slate-400">Import student roster from Excel / CSV spreadsheet</p>
+              <p className="text-xs text-slate-500">Import student roster from Excel / CSV spreadsheet</p>
             </div>
           </div>
           <Button
@@ -200,7 +200,7 @@ export default function BulkStudentImportModal({
           <div className="flex items-center justify-between rounded-xl bg-blue-50/80 p-4 border border-blue-100">
             <div className="space-y-0.5">
               <p className="text-xs font-bold text-[#1447E6]">Need an Excel / CSV Template?</p>
-              <p className="text-[11px] text-slate-600">Download formatted headers (FirstName, LastName, AdmissionNo, Gender, Class)</p>
+              <p className="text-xs text-slate-600">Download formatted headers (FirstName, LastName, AdmissionNo, Gender, Class)</p>
             </div>
             <Button
               type="button"
@@ -230,7 +230,7 @@ export default function BulkStudentImportModal({
                 <p className="text-sm font-bold text-slate-800">
                   {file ? file.name : "Click or drag your student roster file here"}
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">Supports CSV or TXT spreadsheet files</p>
+                <p className="text-xs text-slate-500 mt-0.5">Supports CSV or TXT spreadsheet files</p>
               </div>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function BulkStudentImportModal({
           {parsedRows.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                <span className="font-bold text-slate-700 uppercase tracking-wider text-xs">
                   Roster Preview ({validCount} / {parsedRows.length} Valid Rows)
                 </span>
                 <span className="text-emerald-600 font-semibold">{validCount} Ready to Import</span>
@@ -247,7 +247,7 @@ export default function BulkStudentImportModal({
 
               <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#0B1220] text-white font-semibold text-[11px] sticky top-0">
+                  <thead className="bg-[#0B1220] text-white font-semibold text-xs sticky top-0">
                     <tr>
                       <th className="px-3 py-2">#</th>
                       <th className="px-3 py-2">Student Name</th>
@@ -260,7 +260,7 @@ export default function BulkStudentImportModal({
                   <tbody className="divide-y divide-slate-200 text-slate-700">
                     {parsedRows.map((row, index) => (
                       <tr key={index} className={row.isValid ? "bg-white" : "bg-rose-50/50"}>
-                        <td className="px-3 py-2 font-mono text-[11px] text-slate-400">{index + 1}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-500">{index + 1}</td>
                         <td className="px-3 py-2 font-semibold text-slate-900">
                           {row.firstName} {row.lastName}
                         </td>
@@ -269,11 +269,11 @@ export default function BulkStudentImportModal({
                         <td className="px-3 py-2 font-medium text-blue-900">{row.className || "—"}</td>
                         <td className="px-3 py-2 text-center">
                           {row.isValid ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                               <CheckCircle2 className="h-3 w-3" /> Valid
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-[10px] bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-xs bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                               <AlertCircle className="h-3 w-3" /> {row.errorReason}
                             </span>
                           )}

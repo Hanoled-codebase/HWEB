@@ -264,9 +264,9 @@ export default function SchemeOfWorkPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Scheme of Work
             </h1>
@@ -274,9 +274,9 @@ export default function SchemeOfWorkPage() {
               Plan and manage curriculum delivery per term.
             </p>
           </div>
-          <Button onClick={openCreate} className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm">
-            <Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
-            New Scheme
+          <Button onClick={openCreate} className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4">
+            <Plus className="mr-2 h-4 w-4" />
+            New scheme
           </Button>
         </div>
 
@@ -312,7 +312,7 @@ export default function SchemeOfWorkPage() {
           <Card className="border-dashed border-slate-300">
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
               <BookText className="h-10 w-10 text-slate-300" />
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500">
                 No schemes of work yet.
               </p>
             </CardContent>
@@ -335,7 +335,7 @@ export default function SchemeOfWorkPage() {
                       <p className="text-sm font-semibold text-slate-900 truncate">
                         {item.title}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         {item.classLevel.name} · {item.subject.name}{" "}
                         {item.subject.code && `(${item.subject.code})`} ·{" "}
                         {item.term} · {item.academicYear}
@@ -343,7 +343,7 @@ export default function SchemeOfWorkPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-500">
                       {item.weeks.length} weeks
                     </span>
                     <button
@@ -372,7 +372,7 @@ export default function SchemeOfWorkPage() {
                   <div className="border-t border-slate-100 px-4 py-3 overflow-x-auto">
                     <table className="w-full min-w-[480px] text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-100 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        <tr className="border-b border-slate-100 text-xs font-medium text-slate-500 uppercase tracking-wider">
                           <th className="pb-2 pr-2 w-12">#</th>
                           <th className="pb-2 pr-2">Topic</th>
                           <th className="pb-2 pr-2 hidden md:table-cell">Objectives</th>
@@ -387,7 +387,7 @@ export default function SchemeOfWorkPage() {
                             key={w.week}
                             className="border-b border-slate-50 last:border-0"
                           >
-                            <td className="py-2 pr-2 text-slate-400 font-mono text-xs align-top">
+                            <td className="py-2 pr-2 text-slate-500 font-mono text-xs align-top">
                               {w.week}
                             </td>
                             <td className="py-2 pr-2 font-medium text-slate-700 align-top">

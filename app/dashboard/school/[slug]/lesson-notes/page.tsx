@@ -142,15 +142,15 @@ export default function LessonNotesPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="hidden min-w-0 md:block">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Lesson Notes</h1>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">Standardized lesson plans for every topic.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditItem(null); form.reset(); } }}>
             <DialogTrigger asChild>
-              <Button className="shrink-0 bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"><Plus className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />New Note</Button>
+              <Button className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"><Plus className="mr-2 h-4 w-4" />New lesson note</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -213,13 +213,13 @@ export default function LessonNotesPage() {
         </div>
 
         {loading ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
-        : notes.length === 0 ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-8 text-center sm:py-12"><BookOpen className="h-8 w-8 text-slate-300 sm:h-10 sm:w-10" /><p className="text-xs text-slate-400 sm:text-sm">No lesson notes yet.</p></CardContent></Card>
+        : notes.length === 0 ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-8 text-center sm:py-12"><BookOpen className="h-8 w-8 text-slate-300 sm:h-10 sm:w-10" /><p className="text-xs text-slate-500 sm:text-sm">No lesson notes yet.</p></CardContent></Card>
         : <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {notes.map((n) => (
               <Card key={n.id} className="border-slate-200 shadow-sm flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
-                    <Badge variant="outline" className={cn("rounded-full text-[11px] px-2 py-0", n.status === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700")}>{n.status}</Badge>
+                    <Badge variant="outline" className={cn("rounded-full text-xs px-2 py-0", n.status === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700")}>{n.status}</Badge>
                     <div className="flex gap-1">
                       <button type="button" onClick={() => openEdit(n)} className="text-slate-300 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
                       <button type="button" onClick={() => deleteNote(n.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -230,7 +230,7 @@ export default function LessonNotesPage() {
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-between">
                   <p className="text-xs text-slate-500 line-clamp-3 mb-2">{n.objectives || "No objectives"}</p>
-                  {n.tags?.length > 0 && <div className="flex flex-wrap gap-1">{n.tags.map((t) => <Badge key={t} variant="secondary" className="text-[11px] px-1.5 py-0">{t}</Badge>)}</div>}
+                  {n.tags?.length > 0 && <div className="flex flex-wrap gap-1">{n.tags.map((t) => <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">{t}</Badge>)}</div>}
                 </CardContent>
               </Card>
             ))}

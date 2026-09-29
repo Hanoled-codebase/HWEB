@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
@@ -14,11 +15,9 @@ import {
   RefreshCw,
   Save,
   Search,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
 import {
   SpreadsheetDetail,
@@ -102,16 +102,60 @@ export default function AssessmentEntryPage() {
     return JSON.stringify(localData) !== JSON.stringify(sheet?.data || []);
   }, [localData, sheet?.data]);
 
+  // Scores this teacher has typed but not saved, for the selected assessment only.
+  const unsavedCount = useMemo(() => {
+    if (!selectedAssessment) return 0;
+    const saved = sheet?.data || [];
+    return localData.reduce((count, row, i) => {
+      const before = saved[i]?.values?.[selectedAssessment.originalIndex] ?? "";
+      const after = row.values[selectedAssessment.originalIndex] ?? "";
+      return String(before) === String(after) ? count : count + 1;
+    }, 0);
+  }, [localData, sheet?.data, selectedAssessment]);
+
+  const enteredCount = useMemo(
+    () =>
+      selectedAssessment
+        ? localData.filter((row) => getNumericValue(row, selectedAssessment.originalIndex) !== null).length
+        : 0,
+    [localData, selectedAssessment],
+  );
+
+  // Same order as the attendance register (surname, then first name), so a teacher
+  // copying from the paper register never keys a score against the wrong learner.
+  const orderedRows = useMemo(
+    () =>
+      localData
+        .map((row, index) => ({ row, index }))
+        .sort(
+          (a, b) =>
+            (a.row.student.lastName || "").localeCompare(b.row.student.lastName || "") ||
+            (a.row.student.firstName || "").localeCompare(b.row.student.firstName || ""),
+        ),
+    [localData],
+  );
+
   const filteredData = useMemo(() => {
-    if (!search.trim()) return localData.map((row, i) => ({ row, index: i }));
+    if (!search.trim()) return orderedRows;
     const q = search.toLowerCase();
-    return localData
-      .map((row, i) => ({ row, index: i }))
-      .filter(({ row }) =>
+    return orderedRows.filter(
+      ({ row }) =>
         getStudentName(row.student).toLowerCase().includes(q) ||
         (row.student.admissionNumber || "").toLowerCase().includes(q),
-      );
-  }, [localData, search]);
+    );
+  }, [orderedRows, search]);
+
+  useMobilePageTitle(selectedAssessment?.name);
+
+  // Leaving with typed-but-unsaved scores asks first.
+  useEffect(() => {
+    if (!hasChanges) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasChanges]);
 
   const fetchSheet = useCallback(async () => {
     if (!currentOrg || !sheetId) return;
@@ -293,225 +337,220 @@ export default function AssessmentEntryPage() {
   }
 
   const maxScore = selectedAssessment.total;
+  const total = localData.length;
+  const progress = total > 0 ? Math.round((enteredCount / total) * 100) : 0;
 
   return (
-    // -m-4 offsets the layout's p-4 so the content can bleed edge-to-edge on mobile
-    <div className="-mx-4 -mt-4 flex flex-col bg-[#F5F5FA] pb-28">
-      {/* ── Scrollable content ── */}
-      <div className="px-4 pt-5">
-        {/* Subject / class info */}
-        <div className="mb-1">
-          <p className="text-[15px] font-semibold text-slate-900">
-            {sheet.subject?.name || "Subject"}{" "}
-            <span className="text-slate-400">·</span>{" "}
-            {sheet.classLevel?.name || "Class"}
-          </p>
-        </div>
-
-        {/* Assessment name subtitle */}
-        <p className="mb-3 text-xs font-medium text-slate-500">
-          {selectedAssessment.name}
-        </p>
-
-        {/* Status + max score badges */}
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-            <span className={cn("h-2 w-2 rounded-full", getStatusDotColor(sheet.status))} />
-            {getStatusLabel(sheet.status)}
-          </span>
-          {typeof maxScore === "number" && (
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-              Max score: {maxScore}
-            </span>
-          )}
-        </div>
-
-        {/* Student count */}
-        <div className="mb-3 flex items-center justify-between gap-2 flex-wrap text-sm text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <Users className="h-4 w-4" />
-            <span>{localData.length} {localData.length === 1 ? "student" : "students"}</span>
+    // -mx-4 -mt-4 cancel the layout padding so the sticky header can run edge to edge on phones.
+    <div className="-mx-4 -mt-4 flex flex-col bg-slate-50 pb-32 md:mx-0 md:mt-0 md:pb-0">
+      {/* ── Sticky context: what is being scored, out of what, how far along ── */}
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-3 backdrop-blur-md md:static md:rounded-2xl md:border md:px-5 md:pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="hidden truncate text-lg font-bold text-slate-900 md:block">{selectedAssessment.name}</h1>
+            <p className="truncate text-sm font-semibold text-slate-900 md:font-medium md:text-slate-600">
+              {sheet.subject?.name || "Subject"} <span className="text-slate-400">·</span> {sheet.classLevel?.name || "Class"}
+            </p>
           </div>
-          {canEdit && localData.length > 0 && (
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50/80 px-2.5 py-1 rounded-full border border-indigo-100 font-medium">
-              <Keyboard className="h-3.5 w-3.5" />
-              <span>Use <kbd className="px-1 py-0.5 bg-white rounded border border-indigo-200 shadow-2xs font-sans text-[11px] font-bold">↑</kbd> <kbd className="px-1 py-0.5 bg-white rounded border border-indigo-200 shadow-2xs font-sans text-[11px] font-bold">↓</kbd> or <kbd className="px-1 py-0.5 bg-white rounded border border-indigo-200 shadow-2xs font-sans text-[11px] font-bold">Enter</kbd> to jump between students</span>
-            </div>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {typeof maxScore === "number" && (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+                Out of {maxScore}
+              </span>
+            )}
+            <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+              <span className={cn("h-2 w-2 rounded-full", getStatusDotColor(sheet.status))} />
+              {getStatusLabel(sheet.status)}
+            </span>
+          </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <div className="mt-3 flex items-center gap-3">
+          <div
+            className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={enteredCount}
+            aria-label="Scores entered"
+          >
+            <div className="h-full rounded-full bg-blue-600 transition-[width] duration-300" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-600">
+            {enteredCount}/{total} entered
+          </span>
+        </div>
+
+        <div className="relative mt-3">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search students"
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition"
+            placeholder="Find a learner"
+            aria-label="Find a learner"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 md:text-sm"
           />
         </div>
 
-        {/* Student list */}
+        {canEdit && total > 0 && (
+          <p className="mt-2 hidden items-center gap-1.5 text-xs font-medium text-slate-500 md:flex">
+            <Keyboard className="h-3.5 w-3.5" />
+            <kbd className="rounded border border-slate-200 bg-white px-1 font-sans text-xs font-bold">↑</kbd>
+            <kbd className="rounded border border-slate-200 bg-white px-1 font-sans text-xs font-bold">↓</kbd> or
+            <kbd className="rounded border border-slate-200 bg-white px-1 font-sans text-xs font-bold">Enter</kbd> moves between learners
+          </p>
+        )}
+      </div>
+
+      {/* ── Learners ── */}
+      <div className="px-4 pt-3 md:px-0">
         {filteredData.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400 shadow-sm">
-            {localData.length === 0
-              ? "No students yet. Sync the roster to load students."
-              : "No students match your search."}
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+            {total === 0
+              ? "No learners on this sheet yet. Open Roster controls below and sync the class list."
+              : "No learner matches that search."}
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {filteredData.map(({ row, index: rowIndex }, itemIndex) => {
               const name = getStudentName(row.student);
               const initials = getInitials(name);
-              const score = selectedAssessment
-                ? getNumericValue(row, selectedAssessment.originalIndex)
-                : null;
+              const score = getNumericValue(row, selectedAssessment.originalIndex);
               const scoreDisplay = score !== null ? score : "";
               const atMax = typeof maxScore === "number" && score !== null && score >= maxScore;
               const atMin = score !== null && score <= 0;
+              const isLast = itemIndex === filteredData.length - 1;
 
               return (
-                <div
-                  key={row.student.id || rowIndex}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  {/* Avatar */}
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold uppercase text-slate-600">
-                    {initials}
-                  </div>
-
-                  {/* Name + admission */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-800">
-                      {name}
-                    </p>
-                    {row.student.admissionNumber && (
-                      <p className="mt-0.5 text-xs font-medium text-indigo-500 truncate">
-                        {row.student.admissionNumber}
-                      </p>
+                <li key={row.student.id || rowIndex} className="flex min-h-[64px] items-center gap-3 px-4 py-2">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold uppercase",
+                      score !== null ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600",
                     )}
-                  </div>
+                  >
+                    {score !== null ? <Check className="h-4 w-4" /> : initials}
+                  </span>
 
-                  {/* Score stepper */}
+                  <label htmlFor={`score-${rowIndex}`} className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-semibold text-slate-900">{name}</span>
+                    {row.student.admissionNumber && (
+                      <span className="block truncate text-xs text-slate-500">{row.student.admissionNumber}</span>
+                    )}
+                  </label>
+
                   {canEdit ? (
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
+                        type="button"
                         onClick={() => handleStepScore(rowIndex, -1)}
-                        disabled={!canEdit || atMin}
-                        className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors cursor-pointer"
-                        aria-label="Decrease score"
+                        disabled={atMin}
+                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex"
+                        aria-label={`Decrease score for ${name}`}
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
 
-                      <div className="flex items-baseline sm:gap-0.5 justify-center">
+                      <div className="flex items-baseline gap-1">
                         <input
+                          id={`score-${rowIndex}`}
                           ref={(el) => {
                             inputRefs.current[itemIndex] = el;
                           }}
                           type="number"
+                          inputMode="decimal"
+                          enterKeyHint={isLast ? "done" : "next"}
                           value={scoreDisplay}
                           onChange={(e) => handleScoreChange(rowIndex, e.target.value)}
                           onFocus={(e) => e.target.select()}
                           onKeyDown={(e) => {
                             if (e.key === "ArrowDown" || e.key === "Enter") {
                               e.preventDefault();
-                              if (itemIndex < filteredData.length - 1) {
-                                const nextInput = inputRefs.current[itemIndex + 1];
-                                if (nextInput) {
-                                  nextInput.focus();
-                                  nextInput.select();
-                                }
+                              const nextInput = inputRefs.current[itemIndex + 1];
+                              if (!isLast && nextInput) {
+                                nextInput.focus();
+                                nextInput.select();
+                              } else {
+                                e.currentTarget.blur();
                               }
                             } else if (e.key === "ArrowUp") {
                               e.preventDefault();
-                              if (itemIndex > 0) {
-                                const prevInput = inputRefs.current[itemIndex - 1];
-                                if (prevInput) {
-                                  prevInput.focus();
-                                  prevInput.select();
-                                }
+                              const prevInput = inputRefs.current[itemIndex - 1];
+                              if (itemIndex > 0 && prevInput) {
+                                prevInput.focus();
+                                prevInput.select();
                               }
                             }
                           }}
                           min={0}
                           max={typeof maxScore === "number" ? maxScore : undefined}
                           step="0.01"
-                          className="w-14 sm:w-12 h-9 sm:h-8 bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-xl sm:rounded-lg text-center text-sm font-bold text-slate-800 outline-none transition-all py-1 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-2xs"
+                          className="h-12 w-16 rounded-xl border border-slate-200 bg-slate-50 px-1 text-center text-base font-bold tabular-nums text-slate-900 outline-none transition-colors [appearance:textfield] focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 md:h-10 md:w-14 md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           placeholder="—"
                         />
                         {typeof maxScore === "number" && (
-                          <span className="hidden sm:inline text-xs font-medium text-slate-400">
-                            /{maxScore}
-                          </span>
+                          <span className="w-7 text-xs font-medium tabular-nums text-slate-500">/{maxScore}</span>
                         )}
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => handleStepScore(rowIndex, 1)}
-                        disabled={!canEdit || atMax}
-                        className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors cursor-pointer"
-                        aria-label="Increase score"
+                        disabled={atMax}
+                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex"
+                        aria-label={`Increase score for ${name}`}
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ) : (
-                    <span className="shrink-0 text-sm font-bold text-slate-700">
+                    <span className="shrink-0 text-base font-bold tabular-nums text-slate-800">
                       {score !== null ? (
                         <>
                           {score}
                           {typeof maxScore === "number" && (
-                            <span className="hidden sm:inline text-xs font-medium text-slate-400">/{maxScore}</span>
+                            <span className="text-xs font-medium text-slate-500">/{maxScore}</span>
                           )}
                         </>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-slate-400">—</span>
                       )}
                     </span>
                   )}
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
 
-        {/* ── Roster & spreadsheet controls (collapsible) ── */}
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* ── Roster & sheet controls: rare, so folded away below the work ── */}
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white">
           <button
+            type="button"
             onClick={() => setControlsOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-4 py-4"
+            aria-expanded={controlsOpen}
+            className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left"
           >
-            <div className="text-left">
-              <p className="text-sm font-bold text-slate-800">
-                Roster &amp; spreadsheet controls
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Keep this in sync with the class list
-              </p>
-            </div>
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">Roster controls</span>
+              <span className="mt-0.5 block text-xs text-slate-500">Sync with the class list{isPrivileged ? " or change the sheet status" : ""}</span>
+            </span>
             {controlsOpen ? (
-              <ChevronUp className="h-4 w-4 text-slate-500 shrink-0" />
+              <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
             )}
           </button>
 
           {controlsOpen && (
-            <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
+            <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
               {isPrivileged && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Assessment status
-                  </label>
-                  <Select
-                    value={sheet.status}
-                    onValueChange={(val) =>
-                      handleStatusChange(val as SpreadsheetStatus)
-                    }
-                  >
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white text-sm text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Sheet status</label>
+                  <Select value={sheet.status} onValueChange={(val) => handleStatusChange(val as SpreadsheetStatus)}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-800">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -525,16 +564,13 @@ export default function AssessmentEntryPage() {
 
               {canEdit && (
                 <button
+                  type="button"
                   onClick={handleSyncStudents}
                   disabled={isSyncing}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-60 transition-colors"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-60"
                 >
-                  {isSyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Sync Roster
+                  {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Sync with class list
                 </button>
               )}
             </div>
@@ -542,20 +578,21 @@ export default function AssessmentEntryPage() {
         </div>
       </div>
 
-      {/* ── Fixed bottom save button ── */}
+      {/* ── Save: owns the bottom edge on phones (the tab bar steps aside on this route) ── */}
       {canEdit && (
-        <div className="fixed bottom-0 inset-x-0 bg-slate-50 px-4 pb-6 pt-3 z-20 md:absolute md:bottom-auto md:top-auto md:relative md:px-0 md:pb-0 md:pt-4">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:static md:mt-4 md:border-0 md:bg-transparent md:p-0">
           <button
+            type="button"
             onClick={handleSave}
-            disabled={isSaving}
-            className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-600 text-base font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-70 transition-colors"
+            disabled={isSaving || !hasChanges}
+            className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500 md:h-12 md:w-auto md:px-8"
           >
-            {isSaving ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Save className="h-5 w-5" />
-            )}
-            Save Scores
+            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : hasChanges ? <Save className="h-5 w-5" /> : <Check className="h-5 w-5" />}
+            {isSaving
+              ? "Saving…"
+              : hasChanges
+                ? `Save ${unsavedCount || ""} ${unsavedCount === 1 ? "score" : "scores"}`.replace("  ", " ")
+                : "All scores saved"}
           </button>
         </div>
       )}

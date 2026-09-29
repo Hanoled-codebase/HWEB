@@ -14,10 +14,10 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Settings2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -139,7 +139,7 @@ export default function FeaturesPage() {
         <div className="mx-auto max-w-3xl p-6">
           <DataStateCard
             variant="forbidden"
-            title="Feature flags aren&apos;t available to your role"
+            title="Feature settings aren&apos;t available to your role"
             description="This is managed by the school's admin team."
           />
         </div>
@@ -151,10 +151,10 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Feature Flags & Admin Roles</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage features and administrative permissions for your organization.</p>
+          <h1 className="hidden text-2xl font-bold tracking-tight text-slate-900 md:block">Features &amp; admins</h1>
+          <p className="text-sm text-slate-600 md:mt-1 md:text-slate-500">Turn school features on or off, and choose who else can run the school.</p>
         </div>
 
         {loading ? (
@@ -163,33 +163,19 @@ export default function FeaturesPage() {
           <Card className="border-slate-200 shadow-sm">
             <CardContent className="p-0 divide-y divide-slate-100">
               {Object.entries(FEATURE_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Settings2 className="h-4 w-4 text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{label}</p>
-                      <p className="text-xs text-slate-400">{key}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={features[key] ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleFeature(key, !features[key])}
-                    disabled={toggling === key}
-                    className={cn(
-                      "min-w-[80px]",
-                      features[key] ? "bg-emerald-600 hover:bg-emerald-700" : "",
-                    )}
-                  >
-                    {toggling === key ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : features[key] ? (
-                      "Enabled"
-                    ) : (
-                      "Disabled"
-                    )}
-                  </Button>
-                </div>
+                <label key={key} htmlFor={`feature-${key}`} className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3">
+                  <span className="text-[15px] font-medium text-slate-900 md:text-sm">{label}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {toggling === key && <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" />}
+                    <Switch
+                      id={`feature-${key}`}
+                      checked={Boolean(features[key])}
+                      onCheckedChange={(checked) => toggleFeature(key, checked)}
+                      disabled={toggling === key}
+                      aria-label={label}
+                    />
+                  </span>
+                </label>
               ))}
             </CardContent>
           </Card>
@@ -200,7 +186,7 @@ export default function FeaturesPage() {
         <Card className="border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-amber-500" />
+              <ShieldCheck className="h-5 w-5 text-blue-600" />
               Manage Admin Access
             </CardTitle>
             <CardDescription>
@@ -221,7 +207,7 @@ export default function FeaturesPage() {
                       <FormLabel className="text-sm font-semibold text-slate-800">Grant Admin Role to Member</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="w-full h-10 bg-white border-slate-200 shadow-sm text-sm text-slate-800">
+                          <SelectTrigger className="w-full h-11 bg-white border-slate-200 shadow-sm text-slate-800 md:h-10 md:text-sm">
                             <SelectValue placeholder="Choose a member..." />
                           </SelectTrigger>
                         </FormControl>
@@ -242,7 +228,7 @@ export default function FeaturesPage() {
                 />
                 <Button
                   type="submit"
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold h-10 px-5 shrink-0 shadow-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold h-10 px-5 shrink-0 shadow-sm"
                   disabled={isGranting}
                 >
                   {isGranting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -253,13 +239,13 @@ export default function FeaturesPage() {
 
             {adminMembers.length > 0 && (
               <div className="border-t border-slate-100 pt-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Current Admins</p>
+                <p className="mb-3 text-sm font-semibold text-slate-700">Current admins</p>
                 <div className="space-y-2">
                   {adminMembers.map((admin) => (
-                    <div key={admin.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 border border-slate-100">
-                      <div>
+                    <div key={admin.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 border border-slate-100">
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900">{admin.user.name}</p>
-                        <p className="text-xs text-slate-500">{admin.user.email}</p>
+                        <p className="truncate text-xs text-slate-500">{admin.user.email}</p>
                       </div>
                       <Button
                         variant="outline"

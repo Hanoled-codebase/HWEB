@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -98,8 +99,9 @@ export default function ScratchCardsPage() {
 
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const { can } = usePermissions();
+  // Follows what this school lets the viewer's role do (Settings → Staff access).
+  const canSellCards = can("scratch_cards.manage");
 
   useEffect(() => {
     if (!currentOrg) return;
@@ -122,7 +124,7 @@ export default function ScratchCardsPage() {
   }
 
   async function handleCreateBatch() {
-    if (!currentOrg || !isPrivileged) return;
+    if (!currentOrg || !canSellCards) return;
     if (!term.trim()) {
       toast.error("Term is required");
       return;
@@ -189,7 +191,7 @@ export default function ScratchCardsPage() {
 
   if (!currentOrg || !currentMember) return null;
 
-  if (!isPrivileged) {
+  if (!canSellCards) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
         <div className="bg-slate-100 p-4 rounded-full">
@@ -209,14 +211,15 @@ export default function ScratchCardsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    // Phones: the batches you already have come first, then checking a PIN, then making a new batch.
+    <div className="flex flex-col gap-4 md:block md:space-y-6">
       <EntityHeader
         title="Scratch Cards"
         subtitle="Generate, view, and validate scratch card PINs for student access."
       />
 
       {/* Section 1 — Create Batch */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm max-md:order-3">
         <CardHeader className="bg-slate-50/50">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-blue-500" />
@@ -279,7 +282,7 @@ export default function ScratchCardsPage() {
       </Card>
 
       {/* Section 2 — Batch List */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm max-md:order-1">
         <CardHeader className="bg-slate-50/50">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-500" />
@@ -366,7 +369,7 @@ export default function ScratchCardsPage() {
                                 Cards in this batch
                               </h4>
                               {batch.cards.length === 0 ? (
-                                <p className="text-sm text-slate-400">
+                                <p className="text-sm text-slate-500">
                                   No card data available.
                                 </p>
                               ) : (
@@ -435,7 +438,7 @@ export default function ScratchCardsPage() {
       </Card>
 
       {/* Section 3 — Validate PIN */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm max-md:order-2">
         <CardHeader className="bg-slate-50/50">
           <div className="flex items-center gap-2">
             <Search className="h-5 w-5 text-blue-500" />
@@ -556,7 +559,7 @@ export default function ScratchCardsPage() {
               <tbody className="divide-y divide-slate-100">
                 {printableCards.map((card, idx) => (
                   <tr key={card.serial} className="hover:bg-slate-50">
-                    <td className="px-4 py-2.5 text-slate-400 text-xs">{idx + 1}</td>
+                    <td className="px-4 py-2.5 text-slate-500 text-xs">{idx + 1}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-800">
                       {card.serial}
                     </td>

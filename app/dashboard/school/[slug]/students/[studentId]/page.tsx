@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Fingerprint, Loader2, XCircle, CheckCircle2, Hotel, 
 import { toast } from "sonner";
 
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
+import { ResetPasswordButton } from "@/components/dashboard/ResetPasswordButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ type StudentProfile = {
   id: string;
   firstName: string;
   lastName: string;
+  hcoreLearnerId?: string | null;
   studentType?: string;
   usesBus?: boolean;
   hostelAllocation?: HostelAllocation | null;
@@ -163,12 +165,13 @@ export default function StudentDetailPage() {
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-5 md:px-6 md:py-4 lg:px-8">
+        <div className={canEditProfile ? "flex items-center justify-between gap-3" : "hidden items-center justify-between gap-3 md:flex"}>
+          <div className="flex w-full items-center gap-3 md:w-auto">
+            {/* Phones already have a back target in the top bar */}
             <Button
               variant="ghost"
-              className="h-11 rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white"
+              className="hidden h-11 rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white md:inline-flex"
               onClick={() =>
                 router.push(`/dashboard/school/${currentOrg?.slug}/students`)
               }
@@ -180,7 +183,7 @@ export default function StudentDetailPage() {
             {canEditProfile && (
               <Button
                 variant="ghost"
-                className="h-11 rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white md:w-auto"
                 onClick={() =>
                   router.push(
                     `/dashboard/school/${currentOrg?.slug}/students/${studentId}/edit`,
@@ -191,26 +194,35 @@ export default function StudentDetailPage() {
                 Edit Profile
               </Button>
             )}
+
+            {canEditProfile && currentOrg && studentProfile?.hcoreLearnerId && (
+              <ResetPasswordButton
+                orgId={currentOrg.id}
+                target={{ learnerId: studentProfile.hcoreLearnerId }}
+                personName={`${studentProfile.firstName} ${studentProfile.lastName}`.trim()}
+                signInHint="their admission number"
+              />
+            )}
           </div>
         </div>
 
         {/* Student Type & Accommodation Info */}
         {!profileLoading && studentProfile && (
           <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-wrap items-center gap-3">
+            <CardContent className="p-3 sm:p-5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <UserRound className="h-4 w-4 text-slate-400" />
                   <span className="font-medium">Type:</span>
                 </div>
-                <Badge variant="outline" className={studentProfile.studentType === "boarding" ? "border-purple-200 bg-purple-50 text-purple-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>
+                <Badge variant="outline" className="border-blue-100 bg-blue-50 text-blue-700">
                   <Hotel className="mr-1 h-3 w-3" />
                   {studentProfile.studentType === "boarding" ? "Boarding" : "Day"}
                 </Badge>
 
                 {studentProfile.studentType === "boarding" && studentProfile.hostelAllocation?.room && (
                   <>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 ml-2">
+                    <div className="flex items-center gap-2 text-sm text-slate-600 sm:ml-2">
                       <Hotel className="h-4 w-4 text-slate-400" />
                       <span className="font-medium">Room:</span>
                     </div>
@@ -222,7 +234,7 @@ export default function StudentDetailPage() {
 
                 {studentProfile.usesBus && studentProfile.busAssignment?.route && (
                   <>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 ml-2">
+                    <div className="flex items-center gap-2 text-sm text-slate-600 sm:ml-2">
                       <Bus className="h-4 w-4 text-slate-400" />
                       <span className="font-medium">Bus:</span>
                     </div>
@@ -257,27 +269,34 @@ export default function StudentDetailPage() {
                           {g.firstName} {g.lastName}
                         </p>
                         {g.isPrimary && (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">
-                            <Star className="mr-0.5 h-2.5 w-2.5" />
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs px-1.5 py-0">
+                            <Star className="mr-0.5 h-3 w-3" />
                             Primary
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-3 mt-1 text-xs text-slate-500">
-                        {g.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {g.email}
-                          </span>
-                        )}
+                      {g.relationship && (
+                        <p className="mt-0.5 text-xs capitalize text-slate-500">{g.relationship}</p>
+                      )}
+                      {/* One tap to call or email — the reason anyone opens this on a phone */}
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {g.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
+                          <a
+                            href={`tel:${g.phone.replace(/\s+/g, "")}`}
+                            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 hover:border-blue-200 hover:text-blue-700"
+                          >
+                            <Phone className="h-4 w-4 text-blue-600" />
                             {g.phone}
-                          </span>
+                          </a>
                         )}
-                        {g.relationship && (
-                          <span>{g.relationship}</span>
+                        {g.email && (
+                          <a
+                            href={`mailto:${g.email}`}
+                            className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 hover:border-blue-200 hover:text-blue-700"
+                          >
+                            <Mail className="h-4 w-4 shrink-0 text-blue-600" />
+                            <span className="truncate">{g.email}</span>
+                          </a>
                         )}
                       </div>
                     </div>
@@ -385,7 +404,7 @@ export default function StudentDetailPage() {
               Verify & Unlock
             </Button>
 
-            <p className="text-center text-xs text-slate-400">
+            <p className="text-center text-xs text-slate-500">
               Don&apos;t have a card?{" "}
               <button
                 type="button"

@@ -409,8 +409,8 @@ export default function HomeworkPage() {
   const canManage = isPrivileged || isTeacher;
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4 md:space-y-6">
+      <div className="hidden md:block">
         <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
           Homework & Study Materials
         </h1>
@@ -623,7 +623,7 @@ export default function HomeworkPage() {
                   ? "No assignments match your filters."
                   : "No assignments yet"}
               </span>
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-slate-500">
                 {canManage
                   ? "Create an assignment to get started."
                   : "Check back later for new assignments."}
@@ -704,7 +704,7 @@ export default function HomeworkPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center justify-between text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Due {formatDate(hw.dueDate)}
@@ -747,7 +747,7 @@ export default function HomeworkPage() {
                                   onChange={(e) => setSubmitFileUrl(e.target.value)}
                                   className="bg-white"
                                 />
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-slate-500">
                                   Paste a link to your work (Google Drive, Dropbox, etc.)
                                 </p>
                               </div>
@@ -806,7 +806,7 @@ export default function HomeworkPage() {
                                   <p className="font-medium text-slate-800 truncate">
                                     {sub.student.firstName} {sub.student.lastName}
                                   </p>
-                                  <p className="text-xs text-slate-400">
+                                  <p className="text-xs text-slate-500">
                                     {formatDate(sub.submittedAt)}
                                   </p>
                                 </div>
@@ -823,7 +823,7 @@ export default function HomeworkPage() {
                               </div>
                             ))
                           ) : (
-                            <p className="text-xs text-slate-400 text-center py-2">
+                            <p className="text-xs text-slate-500 text-center py-2">
                               No submissions yet.
                             </p>
                           )}
@@ -952,7 +952,7 @@ export default function HomeworkPage() {
                         onChange={(e) => setMatTags(e.target.value)}
                         className="bg-white"
                       />
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         Comma-separated keywords for easy discovery.
                       </p>
                     </div>
@@ -1013,7 +1013,7 @@ export default function HomeworkPage() {
                   ? "No materials match your filters."
                   : "No study materials yet"}
               </span>
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-slate-500">
                 {canManage
                   ? "Upload a study material to get started."
                   : "Check back later for learning resources."}
@@ -1044,7 +1044,7 @@ export default function HomeworkPage() {
                       {mat.fileType && (
                         <Badge
                           variant="outline"
-                          className="shrink-0 ml-2 border-blue-200 bg-blue-50 text-blue-700 text-[11px] uppercase tracking-wider"
+                          className="shrink-0 ml-2 border-blue-200 bg-blue-50 text-blue-700 text-xs uppercase tracking-wider"
                         >
                           {mat.fileType}
                         </Badge>
@@ -1063,7 +1063,7 @@ export default function HomeworkPage() {
                         {mat.tags.split(",").map((tag, i) => (
                           <span
                             key={i}
-                            className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500"
+                            className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500"
                           >
                             {tag.trim()}
                           </span>
@@ -1071,7 +1071,7 @@ export default function HomeworkPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between text-xs text-slate-400">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
                       <span>
                         {mat.uploader?.user?.name || "Unknown"}
                       </span>

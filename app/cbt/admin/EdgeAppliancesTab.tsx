@@ -216,7 +216,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
           <p className="text-[13px] text-slate-500 max-w-sm mx-auto leading-relaxed mb-2">
             To use offline exams, click <strong>Download Appliance</strong> above, run it on your local server, and pair it using this school's slug:
           </p>
-          <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed mb-6">
+          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed mb-6">
             Only that server needs internet. The computers students sit at only need to be on the same local network as it — not the internet.
           </p>
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 group">
@@ -245,9 +245,9 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
                   </div>
                 </div>
                 {node.status === "REVOKED" ? (
-                  <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100 uppercase">Revoked</span>
+                  <span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full border border-red-100 uppercase">Revoked</span>
                 ) : (
-                  <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-100 uppercase flex items-center gap-1">
+                  <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-100 uppercase flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Active
                   </span>
                 )}
@@ -376,7 +376,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Select cached subject/board/year sets</label>
                 <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
                   {practiceSets.length === 0 ? (
-                    <div className="p-4 text-xs text-slate-400 text-center">Nothing cached yet — have a student or teacher use Practice Simulator online first.</div>
+                    <div className="p-4 text-xs text-slate-500 text-center">Nothing cached yet — have a student or teacher use Practice Simulator online first.</div>
                   ) : (
                     practiceSets.map((s) => {
                       const key = setKey(s);
@@ -384,7 +384,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
                         <label key={key} className="flex items-center gap-2.5 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50">
                           <input type="checkbox" checked={selectedSets.has(key)} onChange={() => toggleSet(key)} className="rounded border-slate-300" />
                           <span className="flex-1 font-medium text-slate-700">{s.subject} · {s.ssceBoard.toUpperCase()} · {s.year}</span>
-                          <span className="text-xs text-slate-400">{s.questionCount} Q</span>
+                          <span className="text-xs text-slate-500">{s.questionCount} Q</span>
                         </label>
                       );
                     })

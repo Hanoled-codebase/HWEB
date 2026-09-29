@@ -10,6 +10,7 @@ import { StudentSidebar } from "@/components/dashboard/StudentSidebar";
 import { HanoledLoader } from "@/components/ui/hanoled-loader";
 
 import { toast } from "sonner";
+import { ShieldAlert } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { StudentMobileLayout } from "@/components/dashboard/StudentMobileLayout";
@@ -68,6 +69,9 @@ function getPageTitle(pathname: string, slug: string) {
     clinic: "Clinic Log",
     "staff-attendance": "Staff Attendance",
     payroll: "Payroll",
+    record: "Record Payment",
+    access: "Staff Access",
+    desk: "Library Desk",
   };
 
   // If the last part is a known name, use it directly
@@ -187,21 +191,31 @@ export default function DashboardLayout({
     }
 
     return (
-      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center absolute inset-0 z-[100]">
-        <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 max-w-md w-full min-w-[300px] mx-auto relative overflow-hidden">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-5">
-            <span className="text-2xl">⚠️</span>
+      <div className="absolute inset-0 z-[100] flex min-h-[100dvh] w-full flex-col items-center justify-center bg-slate-50 p-4 text-center sm:p-6">
+        <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <ShieldAlert className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-            We couldn&apos;t load this organization. You may not have access to it or it doesn&apos;t exist.
+          <h2 className="mb-2 text-xl font-bold text-slate-900">You can&apos;t open this school</h2>
+          <p className="mb-8 text-sm leading-relaxed text-slate-600">
+            This account isn&apos;t a member of it, or the school link is wrong. Pick one of your schools, or sign in with the account the school invited.
           </p>
-          <button 
-            onClick={() => router.push("/onboarding")}
-            className="w-full py-2.5 px-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            Create a new school
-          </button>
+          <div className="grid gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="min-h-12 w-full rounded-xl bg-blue-600 px-4 font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              Go to my schools
+            </button>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="min-h-12 w-full rounded-xl border border-slate-200 px-4 font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+            >
+              Sign in with another account
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -235,7 +249,7 @@ export default function DashboardLayout({
                 </div>
               </header>
               <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-                <div className="mx-auto w-full max-w-[1400px]">
+                <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
                   {children}
                 </div>
               </main>
@@ -252,7 +266,8 @@ export default function DashboardLayout({
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-hidden bg-slate-50">
+        {/* overflow-x-clip, not hidden: hidden makes this a scroll container and breaks position:sticky in pages. */}
+        <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-clip bg-slate-50">
           <StaffMobileFrame>
             {/* Desktop top bar */}
             <header className="sticky top-0 z-10 hidden items-center justify-between border-b border-slate-200 bg-white px-8 py-4 md:flex">
@@ -263,7 +278,7 @@ export default function DashboardLayout({
               <div className="flex items-center gap-3">
                 {currentMember?.role !== "parent" && (
                   <a
-                    href="/cbt/admin"
+                    href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
                     className="flex items-center gap-1.5 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
@@ -282,8 +297,8 @@ export default function DashboardLayout({
 
             <MobileTopBar title={getPageTitle(pathname, slug)} isHome={isHome} />
 
-            <main className="flex-1 overflow-y-auto px-4 pt-4 pb-safe-nav md:p-6 md:pb-6 lg:p-8">
-              <div className="mx-auto w-full max-w-[1400px]">
+            <main className="min-w-0 flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:pb-6 lg:p-8">
+              <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
                 <StaffRouteGuard slug={slug}>
                   {children}
                 </StaffRouteGuard>

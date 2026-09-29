@@ -29,7 +29,15 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   code: z.string().min(6, { message: "Reset code must be 6 characters." }),
-  newPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  // Mirrors HCORE's passwordSchema, which makes the final call on the new password.
+  newPassword: z
+    .string()
+    .min(12, { message: "Password must be at least 12 characters." })
+    .max(128, { message: "Password must be no more than 128 characters." })
+    .refine(
+      (value) => [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(value)).length >= 3,
+      { message: "Use at least three of: lowercase letters, uppercase letters, numbers, and symbols." },
+    ),
 });
 
 function ResetForm() {

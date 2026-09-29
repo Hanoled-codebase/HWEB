@@ -69,7 +69,7 @@ export function CbtGreeting({
         {name || "Welcome"}
       </h2>
       <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-        <span className="inline-flex items-center rounded-full bg-[#F5A623] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#0B1220]">
+        <span className="inline-flex items-center rounded-full bg-[#F5A623] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-[#0B1220]">
           {roleLabel}
         </span>
         {school && <span className="min-w-0 truncate text-xs font-medium text-white/80">{school}</span>}
@@ -104,7 +104,7 @@ export function CbtAccountSheet({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 sm:hidden"
+        className="gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 duration-300 ease-[var(--ease-out-smooth)] sm:hidden"
       >
         <SheetTitle className="sr-only">Account</SheetTitle>
         <SheetDescription className="sr-only">Your account details and sign out</SheetDescription>

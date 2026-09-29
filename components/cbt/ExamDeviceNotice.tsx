@@ -18,7 +18,11 @@ export function ExamDeviceNotice({ onClose }: { onClose?: () => void }) {
       role={onClose ? "alertdialog" : undefined}
       aria-labelledby="exam-device-title"
       aria-describedby="exam-device-body"
-      className="w-full max-w-sm rounded-sm border border-slate-200 bg-white p-6 text-center shadow-xl"
+      className={
+        onClose
+          ? "m-sheet w-full rounded-t-3xl border border-slate-200 bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 text-center shadow-xl sm:max-w-sm sm:rounded-sm sm:pb-6"
+          : "w-full max-w-sm rounded-sm border border-slate-200 bg-white p-6 text-center shadow-xl"
+      }
     >
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
         <Laptop className="h-7 w-7" />
@@ -50,7 +54,15 @@ export function ExamDeviceNotice({ onClose }: { onClose?: () => void }) {
 
   if (onClose) {
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">{card}</div>
+      // Phones: a bottom sheet; tap outside or "Got it" to dismiss.
+      <div
+        className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
+      >
+        {card}
+      </div>
     );
   }
   return <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">{card}</div>;

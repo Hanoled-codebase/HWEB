@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { HCBT_BASE, EDGE_MODE, isForbiddenError } from "@/lib/api";
+import { signOutEverywhere } from "@/lib/sign-out";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
@@ -42,7 +43,7 @@ import {
 } from "lucide-react";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
@@ -65,6 +66,9 @@ export default function AdminDashboard() {
   // from the welcome hub), which would have shown admins the wrong pairing
   // slug to hand to their physical Edge Appliance.
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState(orgSlug);
+  // "Back to Suite" returns to the school this console belongs to, not the generic hub.
+  const suiteHref =
+    resolvedOrgSlug && resolvedOrgSlug !== "hanoled-default" ? `/dashboard/school/${resolvedOrgSlug}` : "/welcome";
   const [orgSubjects, setOrgSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
   const isAdmin = !!currentUser?.isAdmin;
   const [stats, setStats] = useState<any>({
@@ -800,7 +804,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
-      <Toaster position="top-right" richColors />
 
       <CbtMobileTopBar roleLabel={roleLabel} name={displayName} onOpenAccount={() => setAccountOpen(true)} />
       <CbtAccountSheet
@@ -810,8 +813,8 @@ export default function AdminDashboard() {
         email={currentUser?.email}
         roleLabel={roleLabel}
         school={orgName}
-        suiteHref={EDGE_MODE ? undefined : "/welcome"}
-        onSignOut={() => { cbtApi.logout(); window.location.assign("/"); }}
+        suiteHref={EDGE_MODE ? undefined : suiteHref}
+        onSignOut={() => void signOutEverywhere()}
       />
       <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center justify-between gap-2">
@@ -831,7 +834,7 @@ export default function AdminDashboard() {
             </div>
             {!EDGE_MODE && (
               <a
-                href="/welcome"
+                href={suiteHref}
                 className="inline-flex min-h-[44px] items-center whitespace-nowrap text-[13px] font-semibold text-slate-700 bg-white border border-slate-100 hover:bg-slate-50 px-3 sm:px-4 rounded-[10px] transition-all shadow-sm"
               >
                 <span className="sm:hidden">Suite</span>
@@ -839,7 +842,7 @@ export default function AdminDashboard() {
               </a>
             )}
             <button
-              onClick={() => { cbtApi.logout(); window.location.assign("/"); }}
+              onClick={() => void signOutEverywhere()}
               className="min-h-[44px] whitespace-nowrap px-1 text-[13px] font-medium text-slate-500 hover:text-slate-700 transition-all"
             >
               Sign Out
@@ -861,7 +864,7 @@ export default function AdminDashboard() {
               This CBT console is only available to teachers and administrators. Your account doesn&apos;t have examiner-level access for this organization.
             </p>
             <a
-              href={EDGE_MODE ? "/signin/" : "/welcome"}
+              href={EDGE_MODE ? "/signin/" : suiteHref}
               className="w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
             >
               {EDGE_MODE ? "Sign in again" : "Back to Suite"}
@@ -893,7 +896,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                   designerExam.status === "published"
                     ? "bg-green-50 text-green-700 border border-green-150"
                     : "bg-slate-50 text-slate-500 border border-slate-200"
@@ -922,7 +925,7 @@ export default function AdminDashboard() {
                   </button>
                 )}
                 {designerExam.status !== "published" && !isAdmin && (
-                  <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                  <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
                     Draft — awaiting admin approval
                   </span>
                 )}
@@ -1001,7 +1004,7 @@ export default function AdminDashboard() {
 
                         {q.passage && (
                           <div className="bg-slate-50/60 p-3.5 rounded-xl text-xs text-slate-600 mb-3 max-h-28 overflow-y-auto leading-relaxed">
-                            <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Reading Passage</span>
+                            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Reading Passage</span>
                             <MathRenderer text={q.passage} />
                           </div>
                         )}
@@ -1028,7 +1031,7 @@ export default function AdminDashboard() {
                                     : "text-slate-600 bg-slate-50/50"
                                 }`}
                               >
-                                <span className="text-[10px] uppercase opacity-70">
+                                <span className="text-xs uppercase opacity-70">
                                   {["A", "B", "C", "D"][optIdx]}.
                                 </span>
                                 <span className="truncate"><MathRenderer text={opt} /></span>
@@ -1059,7 +1062,7 @@ export default function AdminDashboard() {
                       <Sparkles className="w-4 h-4 text-blue-500" />
                       <h3 className="font-bold text-xs uppercase tracking-wider text-blue-700">SSCE past questions importer</h3>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Quickly query, preview, and load authentic WAEC/NECO questions via our smart API cache proxy.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Quickly query, preview, and load authentic WAEC/NECO questions via our smart API cache proxy.</p>
                   </div>
 
                   <div className="p-5 space-y-4">
@@ -1179,7 +1182,7 @@ export default function AdminDashboard() {
                     {previewQuestionsCount !== null && (
                       <div className="bg-slate-50 border border-slate-250/60 p-3 rounded-xl flex items-start space-x-2.5">
                         <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
                           Found <strong className="text-slate-800">{previewQuestionsCount} questions</strong> available. Click "2. Import Selected" to append {importParams.count} samples to your exam (duplicates will be auto-skipped).
                         </p>
                       </div>
@@ -1194,7 +1197,7 @@ export default function AdminDashboard() {
                       <Upload className="w-4 h-4 text-emerald-600" />
                       <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-700">Import from document</h3>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Upload a PDF, DOCX, or TXT file with pre-typed questions. The system will parse and extract them.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Upload a PDF, DOCX, or TXT file with pre-typed questions. The system will parse and extract them.</p>
                   </div>
 
                   <div className="p-5 space-y-4">
@@ -1204,7 +1207,7 @@ export default function AdminDashboard() {
                           <p className="text-xs font-bold text-emerald-800">
                             ✅ {parsedQuestions.length} questions parsed from "{parsedFileName}"
                           </p>
-                          <p className="text-[10px] text-emerald-600 mt-1">Review below, then import to this exam.</p>
+                          <p className="text-xs text-emerald-600 mt-1">Review below, then import to this exam.</p>
                         </div>
 
                         <div className="max-h-48 overflow-y-auto space-y-2 border border-slate-200 rounded-xl p-3 bg-slate-50">
@@ -1215,7 +1218,7 @@ export default function AdminDashboard() {
                               </p>
                               <div className="flex flex-wrap gap-1.5 mt-1.5">
                                 {q.options.map((opt: string, oi: number) => (
-                                  <span key={oi} className={`px-2 py-0.5 rounded text-[10px] ${oi === q.correctAnswer ? "bg-green-100 text-green-800 font-bold" : "bg-slate-100 text-slate-500"}`}>
+                                  <span key={oi} className={`px-2 py-0.5 rounded text-xs ${oi === q.correctAnswer ? "bg-green-100 text-green-800 font-bold" : "bg-slate-100 text-slate-500"}`}>
                                     {["A","B","C","D"][oi]}. {opt}
                                   </span>
                                 ))}
@@ -1249,10 +1252,10 @@ export default function AdminDashboard() {
                       </>
                     ) : (
                       <>
-                        <p className="text-[10px] text-slate-500 leading-relaxed">
+                        <p className="text-xs text-slate-500 leading-relaxed">
                           Supported formats: <strong>.pdf</strong>, <strong>.docx</strong>, <strong>.txt</strong>
                         </p>
-                        <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                           <strong>Format example:</strong><br />
                           1. What is 2+2?<br />
                           A. 3<br />
@@ -1276,13 +1279,13 @@ export default function AdminDashboard() {
                           {importingDocument ? (
                             <div className="flex flex-col items-center space-y-1.5">
                               <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
-                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Parsing document...</span>
+                              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Parsing document...</span>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center space-y-1.5">
                               <Upload className="w-5 h-5 text-slate-400" />
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Click to upload document</span>
-                              <span className="text-[9px] text-slate-400">PDF, DOCX, or TXT up to 10MB</span>
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Click to upload document</span>
+                              <span className="text-xs text-slate-500">PDF, DOCX, or TXT up to 10MB</span>
                             </div>
                           )}
                         </label>
@@ -1309,7 +1312,7 @@ export default function AdminDashboard() {
                         placeholder="Write the question prompt here... (LaTeX: $x^2 + y^2 = r^2$)"
                         className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
                       />
-                      <p className="text-[9px] text-slate-400 mt-1">Supports LaTeX: <code className="bg-slate-100 px-1 rounded">$...$</code> inline, <code className="bg-slate-100 px-1 rounded">$$...$$</code> block equations</p>
+                      <p className="text-xs text-slate-500 mt-1">Supports LaTeX: <code className="bg-slate-100 px-1 rounded">$...$</code> inline, <code className="bg-slate-100 px-1 rounded">$$...$$</code> block equations</p>
                     </div>
 
                     {/* Reading Passage */}
@@ -1337,9 +1340,10 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => setManualQuestion((prev) => ({ ...prev, imageUrl: "" }))}
-                            className="absolute top-2 right-2 p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                            aria-label="Remove image"
+                            className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center rounded-lg bg-rose-500 text-white shadow-md transition-opacity hover:bg-rose-600 focus-visible:opacity-100 sm:top-2 sm:right-2 sm:h-8 sm:w-8 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
@@ -1363,13 +1367,13 @@ export default function AdminDashboard() {
                           {uploadingImage ? (
                             <div className="flex flex-col items-center space-y-1.5">
                               <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Uploading...</span>
+                              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Uploading...</span>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center space-y-1.5">
                               <Upload className="w-5 h-5 text-slate-400" />
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Click to upload diagram</span>
-                              <span className="text-[9px] text-slate-400">PNG, JPG, GIF, WebP up to 5MB</span>
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Click to upload diagram</span>
+                              <span className="text-xs text-slate-500">PNG, JPG, GIF, WebP up to 5MB</span>
                             </div>
                           )}
                         </label>
@@ -1381,7 +1385,7 @@ export default function AdminDashboard() {
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Answer Choices (Fill All Four)</label>
                       {manualQuestion.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-center space-x-2">
-                          <span className="text-xs font-extrabold text-slate-400 w-5">{["A", "B", "C", "D"][optIdx]}</span>
+                          <span className="text-xs font-extrabold text-slate-500 w-5">{["A", "B", "C", "D"][optIdx]}</span>
                           <input
                             type="text"
                             value={opt}
@@ -1466,7 +1470,7 @@ export default function AdminDashboard() {
         ) : loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-            <p className="text-slate-500 text-sm font-medium">Synchronizing administration systems...</p>
+            <p className="text-slate-500 text-sm font-medium">Loading your exams…</p>
           </div>
         ) : (
           /* MAIN ADMIN DASHBOARD OVERVIEW VIEWS */
@@ -1474,44 +1478,44 @@ export default function AdminDashboard() {
             <CbtGreeting name={displayName} roleLabel={roleLabel} school={orgName} />
 
             {/* Metric cards: fluid responsive grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="m-stagger grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               
               <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
                 <div className="bg-blue-50 p-2 sm:p-3 rounded-xl text-blue-600 w-fit lg:order-2">
                   <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
-                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Total Assessment Templates</p>
+                  <p className="text-xs sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Exams</p>
                   <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.totalExams}</p>
                 </div>
               </div>
 
               <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-emerald-600 w-fit lg:order-2">
+                <div className="bg-blue-50 p-2 sm:p-3 rounded-xl text-blue-600 w-fit lg:order-2">
                   <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
-                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Published Active Exams</p>
+                  <p className="text-xs sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Published</p>
                   <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.publishedExams}</p>
                 </div>
               </div>
 
               <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-violet-50 p-2 sm:p-3 rounded-xl text-violet-600 w-fit lg:order-2">
+                <div className="bg-blue-50 p-2 sm:p-3 rounded-xl text-blue-600 w-fit lg:order-2">
                   <Layers className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
-                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Graded Answer Sheets</p>
+                  <p className="text-xs sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Scripts marked</p>
                   <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.totalSubmissions}</p>
                 </div>
               </div>
 
               <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
-                <div className="bg-amber-50 p-2 sm:p-3 rounded-xl text-amber-600 w-fit lg:order-2">
+                <div className="bg-blue-50 p-2 sm:p-3 rounded-xl text-blue-600 w-fit lg:order-2">
                   <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="lg:order-1 flex flex-col-reverse gap-1 lg:block">
-                  <p className="text-[11px] sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Average Scoring Ratio</p>
+                  <p className="text-xs sm:text-xs leading-snug font-semibold text-slate-500 uppercase tracking-wide sm:tracking-wider">Average score</p>
                   <p className="text-2xl font-black text-slate-800 sm:mt-1 tracking-tight">{stats.avgScore}%</p>
                 </div>
               </div>
@@ -1526,7 +1530,7 @@ export default function AdminDashboard() {
               <div className="hidden sm:flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
                 <button
                   onClick={() => setActiveTab("overview")}
-                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     activeTab === "overview" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1534,7 +1538,7 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   onClick={() => setActiveTab("exams")}
-                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     activeTab === "exams" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1543,7 +1547,7 @@ export default function AdminDashboard() {
                 {isAdmin && (
                 <button
                   onClick={() => setActiveTab("students")}
-                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     activeTab === "students" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1553,7 +1557,7 @@ export default function AdminDashboard() {
                 {isAdmin && (
                   <button
                     onClick={() => setActiveTab("appliances")}
-                    className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                    className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
@@ -1573,7 +1577,7 @@ export default function AdminDashboard() {
 
             {/* TAB 1: OVERVIEW SUMMARY PANEL */}
             {activeTab === "overview" && (
-              <div className="grid grid-cols-1 gap-8">
+              <div className="m-page grid grid-cols-1 gap-8">
                 {/* Quick actions and summaries */}
                 <div className="space-y-6">
                   
@@ -1598,7 +1602,7 @@ export default function AdminDashboard() {
                       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Performance Rankings Preview</h3>
                       <button
                         onClick={() => setActiveTab("students")}
-                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                       >
                         View All
                       </button>
@@ -1611,14 +1615,14 @@ export default function AdminDashboard() {
                         {students.slice(0, 5).map((student, idx) => (
                           <div key={student.studentId} className="flex items-center justify-between p-3.5 hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors cursor-pointer" onClick={() => handleOpenStudentDetail(student)}>
                             <div className="flex items-center space-x-3">
-                              <span className="w-6 h-6 bg-slate-100 rounded-full font-bold text-[10px] text-slate-400 flex items-center justify-center">
+                              <span className="w-6 h-6 bg-slate-100 rounded-full font-bold text-xs text-slate-500 flex items-center justify-center">
                                 #{idx + 1}
                               </span>
                               <div>
                                 <h4 className="text-xs font-bold text-slate-800 capitalize">
                                   {student.info ? `${toTitleCase(student.info.lastName)} ${toTitleCase(student.info.firstName)}` : "Student Candidates ID: " + student.studentId.slice(0,8)}
                                 </h4>
-                                <p className="text-[10px] text-slate-400 mt-0.5">{student.totalExams} Exams completed</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{student.totalExams} Exams completed</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -1640,7 +1644,7 @@ export default function AdminDashboard() {
 
             {/* TAB 2: EXAMS LIST MANAGEMENT */}
             {activeTab === "exams" && (
-              <div className="space-y-4">
+              <div className="m-page space-y-4">
                 <div className="flex items-center space-x-2">
                   <span className="h-1.5 w-1.5 bg-blue-600 rounded-full"></span>
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">CBT Assessment Templates</h3>
@@ -1660,7 +1664,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="m-stagger grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {exams.map((exam) => (
                       <div
                         key={exam.id}
@@ -1678,19 +1682,19 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                           
-                          <p className="text-[13px] italic text-slate-400 mt-3 line-clamp-2 pr-4">
+                          <p className="text-[13px] italic text-slate-500 mt-3 line-clamp-2 pr-4">
                             {exam.description || "no description"}
                           </p>
                           
                           {/* Status Badge */}
                           <div className="mt-4">
                             {exam.status === "published" ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-bold">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                 Published
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                 Draft
                               </span>
@@ -1700,7 +1704,7 @@ export default function AdminDashboard() {
 
                         {/* Bottom row: meta left + edit right */}
                         <div className="flex items-center justify-between mt-6">
-                          <div className="flex items-center gap-4 text-[12px] font-medium text-slate-400">
+                          <div className="flex items-center gap-4 text-[12px] font-medium text-slate-500">
                             <span className="flex items-center gap-1.5">
                               <Layers className="w-4 h-4" />
                               {exam._count?.questions || 0} Q
@@ -1730,7 +1734,7 @@ export default function AdminDashboard() {
 
             {/* TAB 3: CANDIDATE GRADES AUDITOR */}
             {isAdmin && activeTab === "students" && (
-              <div className="space-y-4">
+              <div className="m-page space-y-4">
                 <div className="flex items-center space-x-2">
                   <span className="h-1.5 w-1.5 bg-blue-600 rounded-full"></span>
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate Performance Records</h3>
@@ -1816,7 +1820,7 @@ export default function AdminDashboard() {
                                   {student.info?.className || "Unassigned"}
                                 </p>
                               </div>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold shrink-0 ${
                                 isExcellent
                                   ? "bg-green-50 text-green-700"
                                   : isGood
@@ -1870,8 +1874,8 @@ export default function AdminDashboard() {
 
       {/* CREATE EXAM TEMPLATE FORM MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
             
             <button
               onClick={() => setIsCreateModalOpen(false)}
@@ -1942,7 +1946,7 @@ export default function AdminDashboard() {
                   ))}
                 </select>
                 {!isAdmin && orgSubjects.length === 0 && (
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     No subjects are assigned to you yet. Ask an admin to assign subjects via HCORE.
                   </p>
                 )}
@@ -1952,7 +1956,7 @@ export default function AdminDashboard() {
               {newExamData.examType === "ssce" && (
                 <div className="grid grid-cols-2 gap-4 animate-fade-in bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Board</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Board</label>
                     <select
                       value={newExamData.ssceBoard}
                       onChange={(e) => setNewExamData((prev) => ({ ...prev, ssceBoard: e.target.value }))}
@@ -1963,7 +1967,7 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Year</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Year</label>
                     <input
                       type="number"
                       value={newExamData.ssceYear}
@@ -2045,7 +2049,7 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Select Class</label>
                     {teacherClasses.length === 0 ? (
-                      <p className="text-xs text-slate-400">No classes assigned to you.</p>
+                      <p className="text-xs text-slate-500">No classes assigned to you.</p>
                     ) : (
                       <select
                         value={targetClassId}
@@ -2066,7 +2070,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Select Class</label>
                       {teacherClasses.length === 0 ? (
-                        <p className="text-xs text-slate-400">No classes assigned to you.</p>
+                        <p className="text-xs text-slate-500">No classes assigned to you.</p>
                       ) : (
                         <select
                           value={targetClassId}
@@ -2090,7 +2094,7 @@ export default function AdminDashboard() {
                         {loadingStudents ? (
                           <div className="flex items-center space-x-2 text-xs text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Loading students...</span></div>
                         ) : classStudents.length === 0 ? (
-                          <p className="text-xs text-slate-400">No students in this class.</p>
+                          <p className="text-xs text-slate-500">No students in this class.</p>
                         ) : (
                           <select
                             value={targetStudentId}
@@ -2140,8 +2144,8 @@ export default function AdminDashboard() {
 
       {/* ASSIGN EXAM MODAL */}
       {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
             <button
               onClick={() => setShowAssignModal(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2185,7 +2189,7 @@ export default function AdminDashboard() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Class</label>
                 {teacherClasses.length === 0 ? (
-                  <p className="text-xs text-slate-400">No classes assigned to you.</p>
+                  <p className="text-xs text-slate-500">No classes assigned to you.</p>
                 ) : (
                   <select
                     value={selectedClassId}
@@ -2212,7 +2216,7 @@ export default function AdminDashboard() {
                   {loadingAssignStudents ? (
                     <div className="flex items-center space-x-2 text-xs text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Loading students...</span></div>
                   ) : assignClassStudents.length === 0 ? (
-                    <p className="text-xs text-slate-400">No students in this class.</p>
+                    <p className="text-xs text-slate-500">No students in this class.</p>
                   ) : (
                     <select
                       value={selectedStudentId}
@@ -2261,8 +2265,8 @@ export default function AdminDashboard() {
 
       {/* RESULTS MODAL */}
       {resultsModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => setResultsModal(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2318,18 +2322,18 @@ export default function AdminDashboard() {
             ) : (
               <>
                 {/* Summary stats */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-black text-slate-800">{resultsModal.totalSubmissions}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Submissions</p>
+                <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-4">
+                  <div className="bg-slate-50 rounded-xl p-3 text-center sm:p-4">
+                    <p className="text-2xl font-bold tabular-nums text-slate-800">{resultsModal.totalSubmissions}</p>
+                    <p className="text-xs font-semibold text-slate-500 mt-1 sm:uppercase sm:tracking-widest">Submitted</p>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-black text-slate-800">{resultsModal.averageScore}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Average</p>
+                  <div className="bg-slate-50 rounded-xl p-3 text-center sm:p-4">
+                    <p className="text-2xl font-bold tabular-nums text-slate-800">{resultsModal.averageScore}%</p>
+                    <p className="text-xs font-semibold text-slate-500 mt-1 sm:uppercase sm:tracking-widest">Average</p>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-black text-emerald-700">{resultsModal.passCount}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Passed</p>
+                  <div className="bg-slate-50 rounded-xl p-3 text-center sm:p-4">
+                    <p className="text-2xl font-bold tabular-nums text-emerald-700">{resultsModal.passCount}</p>
+                    <p className="text-xs font-semibold text-slate-500 mt-1 sm:uppercase sm:tracking-widest">Passed</p>
                   </div>
                 </div>
 
@@ -2345,22 +2349,22 @@ export default function AdminDashboard() {
                       <div key={r.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 truncate">{r.studentName}</p>
-                          <p className="text-[11px] text-slate-500">{r.admissionNumber || r.studentId.slice(0, 8)}</p>
+                          <p className="text-xs text-slate-500">{r.admissionNumber || r.studentId.slice(0, 8)}</p>
                         </div>
                         <div className="flex items-center gap-4">
                           {r.cheatingStatus === "cheating" && (
-                            <span className="text-[10px] font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="text-xs font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               Cheated
                             </span>
                           )}
                           <div className="text-right">
                             <p className="text-sm font-extrabold text-slate-800">{r.score}/{r.totalMarks}</p>
-                            <p className={`text-[11px] font-bold ${r.cheatingStatus === "cheating" ? "text-rose-600" : r.passed ? "text-emerald-600" : "text-rose-600"}`}>
+                            <p className={`text-xs font-bold ${r.cheatingStatus === "cheating" ? "text-rose-600" : r.passed ? "text-emerald-600" : "text-rose-600"}`}>
                               {r.percentage}% {r.cheatingStatus === "cheating" ? "Disqualified" : r.passed ? "Pass" : "Fail"}
                             </p>
                           </div>
                           {r.timeTaken && (
-                            <div className="text-[11px] text-slate-400 text-right min-w-[60px]">
+                            <div className="text-xs text-slate-500 text-right min-w-[60px]">
                               <p>{Math.floor(r.timeTaken / 60)}m {r.timeTaken % 60}s</p>
                             </div>
                           )}
@@ -2387,8 +2391,8 @@ export default function AdminDashboard() {
 
       {/* PASSKEY MODAL */}
       {passkeyModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => setPasskeyModal(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2469,7 +2473,7 @@ export default function AdminDashboard() {
                 {passkeyModal.passkeyMode === "unique" && passkeyModal.students.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         {passkeyModal.students.length} Student Codes
                       </p>
                       <button
@@ -2477,7 +2481,7 @@ export default function AdminDashboard() {
                           passkeyModal.students.map((s) => `${s.lastName} ${s.firstName} (${s.admissionNumber}): ${s.code}`).join("\n"),
                           "Student code list"
                         )}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#1447E6] hover:text-[#1139c2]"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1447E6] hover:text-[#1139c2]"
                       >
                         <Copy className="w-3 h-3" />
                         <span>Copy All</span>
@@ -2488,7 +2492,7 @@ export default function AdminDashboard() {
                         <div key={s.studentId} className="flex items-center justify-between gap-3 px-4 py-2.5">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-700 truncate">{s.lastName} {s.firstName}</p>
-                            <p className="text-[10px] text-slate-400">{s.admissionNumber}</p>
+                            <p className="text-xs text-slate-500">{s.admissionNumber}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono text-sm font-bold text-[#0B1220] tracking-widest">{s.code}</span>
@@ -2521,8 +2525,8 @@ export default function AdminDashboard() {
 
       {/* STUDENT DETAIL MODAL */}
       {studentDetail && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
             <button
               onClick={() => { setStudentDetail(null); setSelectedExamResult(null); setViewingQuestions(false); }}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
@@ -2558,7 +2562,7 @@ export default function AdminDashboard() {
                       }`}>
                         <div className="flex justify-between items-start mb-2">
                           <p className="text-sm font-bold text-slate-800">Q{idx + 1}. {q.text}</p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             q.isCorrect ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
                           }`}>
                             {q.isCorrect ? `+${q.marks}` : `0/${q.marks}`}
@@ -2576,7 +2580,7 @@ export default function AdminDashboard() {
                           ))}
                         </div>
                         {q.explanation && (
-                          <p className="text-[11px] text-slate-500 mt-1 pt-2 border-t border-slate-200/60">
+                          <p className="text-xs text-slate-500 mt-1 pt-2 border-t border-slate-200/60">
                             {q.explanation}
                           </p>
                         )}
@@ -2600,17 +2604,17 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-slate-50 rounded-xl p-4 text-center">
                     <p className="text-2xl font-black text-slate-800">{studentDetail.totalExams}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Exams Taken</p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Exams Taken</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4 text-center">
                     <p className="text-2xl font-black text-slate-800">{studentDetail.averageScore}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Average</p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Average</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4 text-center">
                     <p className={`text-2xl font-black ${studentDetail.trend >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                       {studentDetail.trend >= 0 ? "+" : ""}{studentDetail.trend}%
                     </p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Trend</p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Trend</p>
                   </div>
                 </div>
 
@@ -2630,19 +2634,19 @@ export default function AdminDashboard() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800 truncate">{exam.examTitle}</p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-xs text-slate-500">
                             {new Date(exam.submittedAt).toLocaleDateString()} · {Math.floor(exam.timeTaken / 60)}m {exam.timeTaken % 60}s
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
                           {exam.cheatingStatus === "cheating" && (
-                            <span className="text-[10px] font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="text-xs font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               Cheated
                             </span>
                           )}
                           <div className="text-right">
                             <p className="text-sm font-extrabold text-slate-800">{exam.score}/{exam.totalMarks}</p>
-                            <p className={`text-[11px] font-bold ${exam.cheatingStatus === "cheating" ? "text-rose-600" : exam.passed ? "text-emerald-600" : "text-rose-600"}`}>
+                            <p className={`text-xs font-bold ${exam.cheatingStatus === "cheating" ? "text-rose-600" : exam.passed ? "text-emerald-600" : "text-rose-600"}`}>
                               {exam.percentage}%{exam.cheatingStatus === "cheating" ? " (DQ)" : ""}
                             </p>
                           </div>

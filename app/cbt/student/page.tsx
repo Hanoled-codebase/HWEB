@@ -4,16 +4,16 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cbtApi } from "@/lib/api-cbt";
 import { EDGE_MODE } from "@/lib/api";
-import { logoutAction } from "@/app/actions/auth";
-import { clearAuthTokens } from "@/lib/auth-tokens";
+import { signOutEverywhere } from "@/lib/sign-out";
 import { useExamStore } from "@/store/exam";
+import { startSyncWorker } from "@/lib/cbt-sync";
 import { useExamDeviceStatus, isExamCapableScreen } from "@/hooks/useExamDevice";
 import { ExamDeviceNotice, ExamDeviceBanner } from "@/components/cbt/ExamDeviceNotice";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
 import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History, Key } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 
 interface PastResult {
@@ -57,6 +57,9 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [startingExamId, setStartingExamId] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
+  // The learner's own school, once known: "Back to Suite" returns there instead of the generic hub.
+  const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
+  const suiteHref = schoolSlug ? `/dashboard/school/${schoolSlug}` : "/welcome";
 
   // Selected Exam for Start Modal
   const [selectedExam, setSelectedExam] = useState<AssignedExam | null>(null);
@@ -75,6 +78,10 @@ export default function StudentDashboard() {
   const [fetchingPracticeSubjects, setFetchingPracticeSubjects] = useState(false);
   const [fetchingPracticeYears, setFetchingPracticeYears] = useState(false);
   const [initializingPractice, setInitializingPractice] = useState(false);
+
+  // An exam submitted offline sends the student here, so keep flushing the
+  // offline queue on this page too, not only inside the exam room.
+  useEffect(() => startSyncWorker(), []);
 
   // Fetch subjects list dynamically for practice tab
   useEffect(() => {
@@ -208,16 +215,12 @@ export default function StudentDashboard() {
   // Handle Complete Sign Out
   const handleSignOut = async () => {
     try {
-      await cbtApi.logout().catch(() => {});
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("hanoled_student_school_slug");
-        localStorage.removeItem("hanoled_auth_user");
-      }
-      clearAuthTokens();
-      await logoutAction();
+      localStorage.removeItem("hanoled_student_school_slug");
+      localStorage.removeItem("hanoled_auth_user");
     } catch {
-      window.location.href = "/signin";
+      // Storage unavailable (private mode): nothing was saved there.
     }
+    await signOutEverywhere();
   };
 
   // Load Data
@@ -254,6 +257,7 @@ export default function StudentDashboard() {
         }
 
         const targetSlug = activeSlug && activeSlug !== "hanoled-default" ? activeSlug : "jobinhood";
+        if (activeSlug && activeSlug !== "hanoled-default") setSchoolSlug(activeSlug);
 
         // Fetch assigned exams
         const examsData = await cbtApi.getAssignedExams(targetSlug);
@@ -357,7 +361,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0B1220] flex flex-col font-sans">
-      <Toaster position="top-right" richColors />
       {showDeviceNotice && <ExamDeviceNotice onClose={() => setShowDeviceNotice(false)} />}
 
       {/* Header with Canonical Logo — brand + actions stay on one row on
@@ -371,7 +374,7 @@ export default function StudentDashboard() {
         name={studentName}
         roleLabel="Student"
         school={schoolName}
-        suiteHref={EDGE_MODE ? undefined : "/welcome"}
+        suiteHref={EDGE_MODE ? undefined : suiteHref}
         onSignOut={handleSignOut}
       />
       <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
@@ -394,7 +397,7 @@ export default function StudentDashboard() {
             <div className="flex items-center space-x-2 shrink-0">
               {!EDGE_MODE && (
                 <a
-                  href="/welcome"
+                  href={suiteHref}
                   className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 min-h-[44px] min-w-[44px] p-2 sm:min-h-0 sm:min-w-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
                   title="Back to Suite"
                 >
@@ -444,7 +447,7 @@ export default function StudentDashboard() {
         ) : loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-            <p className="text-slate-500 text-sm font-medium">Synchronizing student portal records...</p>
+            <p className="text-slate-500 text-sm font-medium">Loading your exams…</p>
           </div>
         ) : (
           <div className="space-y-5 sm:space-y-8">
@@ -490,7 +493,7 @@ export default function StudentDashboard() {
 
             {/* TAB CONTENT: Assigned Exams */}
             {activeTab === "assigned" && (
-              <div className="space-y-8">
+              <div className="m-page space-y-8">
                 {/* 1. School Assigned Exams */}
                 <div>
                   <div className="flex items-center space-x-2 mb-4">
@@ -503,7 +506,7 @@ export default function StudentDashboard() {
                       No active class exams are currently assigned to you.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="m-stagger grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {schoolExams.map((exam) => (
                         <ExamCard
                           key={exam.id}
@@ -529,7 +532,7 @@ export default function StudentDashboard() {
                       No SSCE practice exams are currently available.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="m-stagger grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {ssceExams.map((exam) => (
                         <ExamCard
                           key={exam.id}
@@ -547,7 +550,7 @@ export default function StudentDashboard() {
 
             {/* TAB CONTENT: Practice Simulator Form */}
             {activeTab === "practice" && (
-              <div className="max-w-2xl mx-auto bg-white rounded-sm shadow-sm overflow-hidden animate-fade-in">
+              <div className="m-page max-w-2xl mx-auto bg-white rounded-sm shadow-sm overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-6 text-white">
                   <div className="flex items-center space-x-2">
                     <PlayCircle className="w-5 h-5 text-amber-300 animate-pulse" />
@@ -592,7 +595,7 @@ export default function StudentDashboard() {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">2. Choose Subject</label>
                     {fetchingPracticeSubjects ? (
-                      <div className="flex items-center space-x-2 py-2 text-slate-400 text-xs">
+                      <div className="flex items-center space-x-2 py-2 text-slate-500 text-xs">
                         <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                         <span>Loading study parameters...</span>
                       </div>
@@ -641,12 +644,12 @@ export default function StudentDashboard() {
                     {practiceYearMode === "specific" && (
                       <div className="animate-fade-in">
                         {fetchingPracticeYears ? (
-                          <div className="flex items-center space-x-2 py-2 text-slate-400 text-xs">
+                          <div className="flex items-center space-x-2 py-2 text-slate-500 text-xs">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             <span>Loading subject timelines...</span>
                           </div>
                         ) : yearsList.length === 0 ? (
-                          <p className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded-sm">
+                          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-sm">
                             Please choose a subject first to fetch available academic years.
                           </p>
                         ) : (
@@ -719,7 +722,7 @@ export default function StudentDashboard() {
 
             {/* TAB CONTENT: History */}
             {activeTab === "history" && (
-              <div className="space-y-4">
+              <div className="m-page space-y-4">
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-slate-600"></span>
                   <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">Past Attempts</h2>
@@ -816,11 +819,11 @@ export default function StudentDashboard() {
                                 {result.exam.title}
                               </h3>
                               {isPending ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 bg-amber-50 text-amber-700 border border-amber-100">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 bg-amber-50 text-amber-700 border border-amber-100">
                                   <span>PENDING</span>
                                 </span>
                               ) : (
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-[10px] font-bold shrink-0 ${
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 ${
                                   isPassed
                                     ? "bg-green-50 text-green-700 border border-green-100"
                                     : "bg-rose-50 text-rose-700 border border-rose-100"
@@ -831,7 +834,7 @@ export default function StudentDashboard() {
                               )}
                             </div>
 
-                            <span className={`inline-flex mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-sm border ${
+                            <span className={`inline-flex mt-2 text-xs font-bold px-2.5 py-0.5 rounded-sm border ${
                               result.exam.examType === "school"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
                                 : "bg-indigo-50 text-indigo-700 border-indigo-100"
@@ -840,17 +843,17 @@ export default function StudentDashboard() {
                             </span>
 
                             {isPending ? (
-                              <div className="mt-4 bg-amber-50/60 rounded-sm p-3 border border-amber-100 text-[11px] font-semibold text-amber-800 leading-snug">
+                              <div className="mt-4 bg-amber-50/60 rounded-sm p-3 border border-amber-100 text-xs font-semibold text-amber-800 leading-snug">
                                 Submitted — your teacher hasn't released the results yet.
                               </div>
                             ) : (
                               <div className="grid grid-cols-2 gap-3 mt-4">
                                 <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</p>
+                                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Score</p>
                                   <p className="text-base font-black text-slate-800 mt-0.5">{result.score} / {result.totalMarks}</p>
                                 </div>
                                 <div className="bg-slate-50 rounded-sm p-3 border border-slate-100">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Percentage</p>
+                                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Percentage</p>
                                   <p className={`text-base font-black mt-0.5 ${
                                     isPassed ? "text-emerald-700" : "text-rose-700"
                                   }`}>
@@ -896,8 +899,8 @@ export default function StudentDashboard() {
 
       {/* Exam Instructions / Start Modal */}
       {isStartModalOpen && selectedExam && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-sm max-w-lg w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:p-8 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
+          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-sm max-w-lg w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:p-8 relative">
             <h3 className="text-xl font-bold text-slate-800 mb-2">Exam Rules & Guidelines</h3>
             <p className="text-slate-500 text-xs mb-6">Exam: <strong className="text-slate-700">{selectedExam.title}</strong></p>
 
@@ -906,7 +909,7 @@ export default function StudentDashboard() {
                 <Clock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">Time Limit: {selectedExam.duration} Minutes</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">The timer starts as soon as you load the screen. Once started, it cannot be paused.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">The timer starts as soon as you load the screen. Once started, it cannot be paused.</p>
                 </div>
               </div>
 
@@ -914,7 +917,7 @@ export default function StudentDashboard() {
                 <FileText className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">{selectedExam.totalQuestions} Multiple-Choice Questions</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Answer all questions carefully. The pass mark is set to {selectedExam.passMark}%.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Answer all questions carefully. The pass mark is set to {selectedExam.passMark}%.</p>
                 </div>
               </div>
 
@@ -922,7 +925,7 @@ export default function StudentDashboard() {
                 <Info className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-rose-800">Browser Security Notice</h4>
-                  <p className="text-[11px] text-rose-500 mt-0.5">Do not close the page, reload, or navigate away. Your answers are auto-saved locally, but dropping connection will risk automatic submission.</p>
+                  <p className="text-xs text-rose-500 mt-0.5">Do not close the page, reload, or navigate away. Your answers are auto-saved locally, but dropping connection will risk automatic submission.</p>
                 </div>
               </div>
             </div>
@@ -947,7 +950,7 @@ export default function StudentDashboard() {
                   }`}
                 />
                 {passkeyError && (
-                  <p className="text-[11px] font-semibold text-[#F04438] mt-1.5">{passkeyError}</p>
+                  <p className="text-xs font-semibold text-[#F04438] mt-1.5">{passkeyError}</p>
                 )}
               </div>
             )}
