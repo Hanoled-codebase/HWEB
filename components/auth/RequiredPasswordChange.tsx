@@ -59,6 +59,11 @@ export function RequiredPasswordChange({
               Sign in again
             </button>
           )}
+          {state.reference && (
+            <span className="block mt-1 text-[11px] sm:text-xs">
+              Reference: <span className="font-mono select-all break-all">{state.reference}</span>
+            </span>
+          )}
         </div>
       )}
 

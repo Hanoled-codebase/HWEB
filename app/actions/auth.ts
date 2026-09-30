@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAMES, exposeTokensToBrowser, sessionCookieClearTargets, sessionCookieOptions } from '@/lib/session-cookies';
+import { signInFailure } from '@/lib/sign-in-errors';
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
@@ -66,7 +67,7 @@ type HcoreSignInResponse = {
 export type SignInResult =
   | { success: true; redirectUrl: string; hcoreToken?: string; hcbtToken?: string | null }
   | { passwordChangeRequired: true; changeToken: string; context: SignInContext }
-  | { error: string; expired?: boolean };
+  | { error: string; reference?: string; expired?: boolean };
 
 // Everything after HCORE accepts the credentials: session cookies, the HCBT
 // session exchange, allowed platforms and where to land.
@@ -190,22 +191,23 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
       }),
     });
 
-    const data = await res.json();
+    // A server fault may not answer in JSON; signInFailure copes with null.
+    const data = await res.json().catch(() => null);
 
     if (!res.ok) {
       // Correct password, but one the person didn't choose: HCORE issued no
       // session, only a token for the "choose a new password" step.
-      if (data.code === 'PASSWORD_CHANGE_REQUIRED' && data.changeToken) {
+      if (data?.code === 'PASSWORD_CHANGE_REQUIRED' && data.changeToken) {
         return {
           passwordChangeRequired: true,
           changeToken: data.changeToken,
           context: { identifierType, identifier, organizationSlugOrId, callbackUrl },
         };
       }
-      return { error: data.error || 'Login failed' };
+      return signInFailure(res, data, 'Something went wrong signing in. Please try again.');
     }
 
-    return await finishSignIn(data, { identifierType, identifier, organizationSlugOrId, callbackUrl });
+    return await finishSignIn(data ?? {}, { identifierType, identifier, organizationSlugOrId, callbackUrl });
   } catch (err: any) {
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }
@@ -234,13 +236,16 @@ export async function completePasswordChangeAction(_prevState: SignInResult | nu
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ changeToken, newPassword, audience: 'hcore-api' }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      return { error: data.error || 'Could not set your new password', expired: data.code === 'INVALID_CHANGE_TOKEN' };
+      return {
+        ...signInFailure(res, data, 'Something went wrong setting your new password. Please try again.'),
+        expired: data?.code === 'INVALID_CHANGE_TOKEN',
+      };
     }
 
-    return await finishSignIn(data, context);
+    return await finishSignIn(data ?? {}, context);
   } catch {
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }
