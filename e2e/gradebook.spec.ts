@@ -1,0 +1,29 @@
+import { expect, mockRequests, signIn, test } from "./support";
+
+test.describe("a subject teacher's gradebook", () => {
+  test("enters CA 2 scores for the class and saves them", async ({ page }) => {
+    await signIn(page, "teacher");
+    await expect(page).toHaveURL(/\/welcome$/);
+    // CA 2 is the second assessment (index 1) on the Mathematics JSS 1A sheet.
+    await page.goto("/dashboard/school/greenfield/spreadsheets/sheet-maths/assessment/1");
+
+    // Each learner's score box (the +/- buttons beside it are named after them too).
+    const score = (name: string) => page.getByRole("spinbutton", { name });
+    await score("Ada Obi").fill("18");
+    // A score above the assessment's total is capped at it (CA 2 is out of 20).
+    await score("Kemi Bello").fill("25");
+    await expect(score("Kemi Bello")).toHaveValue("20");
+
+    await page.getByRole("button", { name: "Save 2 scores" }).click();
+    await expect(page.getByText("CA 2 saved successfully")).toBeVisible();
+
+    const saved = (await mockRequests()).find(
+      (r) => r.backend === "hsms" && r.method === "PATCH" && r.path === "/spreadsheets/greenfield/sheet-maths",
+    );
+    const rows = (saved?.body.data ?? []) as Array<{ student: { id: string }; values: Array<string | number | null> }>;
+    const ca2 = Object.fromEntries(rows.map((row) => [row.student.id, Number(row.values[1])]));
+    expect(ca2).toEqual({ "stu-ada": 18, "stu-kemi": 20 });
+    // CA 1 scores already on the sheet are kept.
+    expect(rows.map((row) => Number(row.values[0]))).toEqual([17, 15]);
+  });
+});
