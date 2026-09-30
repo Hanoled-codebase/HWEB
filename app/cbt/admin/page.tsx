@@ -49,6 +49,7 @@ import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
 import AccountsTab from "./AccountsTab";
+import LateSubmissionsPanel from "./LateSubmissionsPanel";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -1593,6 +1594,8 @@ export default function AdminDashboard() {
               <div className="m-page grid grid-cols-1 gap-8">
                 {/* Quick actions and summaries */}
                 <div className="space-y-6">
+                  {/* Late offline submissions need an admin's decision (cloud only). */}
+                  {isAdmin && !EDGE_MODE && <LateSubmissionsPanel orgSlug={resolvedOrgSlug} />}
                   
                   {/* Greeting */}
                   <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">

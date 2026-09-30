@@ -21,6 +21,17 @@ interface QuestionData { text: string; options: string[]; correctAnswer: number;
 interface SubmitData { answers: Array<{ questionId: string; selectedOption: number }>; currentVersion?: number; }
 interface AssignData { classLevelId?: string; studentId?: string; }
 
+export interface LateSubmission {
+  id: string;
+  attemptId: string;
+  exam: { id: string; title: string; questionCount: number };
+  student: { id: string; name: string | null; admissionNumber: string | null };
+  answered: number;
+  deadlineAt: string | null;
+  deviceSubmittedAt: string | null;
+  receivedAt: string;
+}
+
 // ── API Methods ─────────────────────────────────────────────────────────
 
 export const cbtApi = {
@@ -98,6 +109,13 @@ export const cbtApi = {
   getAdminStats: (orgSlug: string) => fetchCbt(`/admin/stats?orgSlug=${orgSlug}`),
   getAdminExams: (orgSlug: string) => fetchCbt(`/admin/exams?orgSlug=${orgSlug}`),
   getAdminStudents: (orgSlug: string) => fetchCbt(`/admin/students?orgSlug=${orgSlug}`),
+  // Offline attempts that arrived after their upload window, awaiting an admin's decision.
+  getLateSubmissions: (orgSlug: string) => fetchCbt<LateSubmission[]>(`/admin/late-submissions?orgSlug=${orgSlug}`),
+  decideLateSubmission: (orgSlug: string, id: string, decision: "accept" | "dismiss") =>
+    fetchCbt<{ status: string; score?: number; totalMarks?: number; percentage?: number }>(
+      `/admin/late-submissions/${id}/${decision}?orgSlug=${orgSlug}`,
+      { method: "POST", showErrorToast: false },
+    ),
   // HCBT staff, for the password-reset screen; organizationId names the school in HCORE.
   getAccounts: (orgSlug: string) =>
     fetchCbt<{ organizationId: string; staff: Array<{ personId: string; name: string; email: string | null; roles: string[] }> }>(

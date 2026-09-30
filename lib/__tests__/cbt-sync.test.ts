@@ -101,12 +101,61 @@ describe("offline submission sync", () => {
   });
 
   it("keeps a submission the server rejects instead of deleting it", async () => {
-    fetchMock.mockResolvedValue(reply(401, { code: "OFFLINE_LEASE_INVALID", error: "Invalid or expired offline attempt lease" }));
+    fetchMock.mockResolvedValue(reply(403, { code: "OFFLINE_LEASE_REVOKED", error: "Offline lease is no longer valid" }));
 
     await flush([queued()]);
 
-    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith("item-1", expect.stringContaining("OFFLINE_LEASE_INVALID"));
+    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith(
+      "item-1",
+      expect.stringContaining("OFFLINE_LEASE_REVOKED"),
+      expect.objectContaining({ code: "OFFLINE_LEASE_REVOKED" }),
+    );
     expect(mocks.offline.removeSyncItem).not.toHaveBeenCalled();
+  });
+
+  it("hands a submission that is too late to sync to the school for review", async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(401, { code: "OFFLINE_LEASE_INVALID", error: "Invalid or expired offline attempt lease" }))
+      .mockResolvedValueOnce(reply(200, { status: "awaiting_review" }));
+    const item = queued();
+
+    await flush([item]);
+
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe("https://cbt.test/api/student/exam-1/offline/late");
+    expect(JSON.parse(init.body)).toEqual({
+      attemptId: "attempt-1",
+      leaseToken: "lease-token",
+      operations: item.operations,
+      submittedAt: item.submittedAt,
+    });
+    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith(
+      "item-1",
+      expect.stringContaining("OFFLINE_LEASE_INVALID"),
+      { code: "OFFLINE_LEASE_INVALID", sentForReview: true },
+    );
+    expect(mocks.offline.removeSyncItem).not.toHaveBeenCalled();
+  });
+
+  it("clears a reviewed submission once the school accepts it", async () => {
+    fetchMock.mockResolvedValue(reply(200, { status: "accepted" }));
+    const waiting = queued({ failed: { at: "2026-09-30T10:00:00.000Z", reason: "401", sentForReview: true } });
+
+    await flush([waiting]);
+    await vi.waitFor(() => expect(mocks.offline.removeSyncItem).toHaveBeenCalledWith("item-1"));
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://cbt.test/api/student/exam-1/offline/late");
+  });
+
+  it("tries the review again later when the network drops", async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(401, { code: "OFFLINE_LEASE_INVALID", error: "expired" }))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await flush([queued()]);
+
+    expect(mocks.offline.incrementRetry).toHaveBeenCalledWith("item-1");
+    expect(mocks.offline.markSyncFailed).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -142,14 +191,14 @@ describe("offline submission sync", () => {
 
     await flush([queued()]);
 
-    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith("item-1", expect.stringContaining("missing operation 1"));
+    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith("item-1", expect.stringContaining("missing operation 1"), expect.anything());
   });
 
   it("keeps an item queued without a lease as failed and never sends it", async () => {
     await flush([queued({ leaseToken: "" })]);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith("item-1", "Queued without an offline lease");
+    expect(mocks.offline.markSyncFailed).toHaveBeenCalledWith("item-1", "Queued without an offline lease", expect.anything());
   });
 
   it("leaves items already marked failed alone", async () => {
