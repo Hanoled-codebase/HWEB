@@ -20,6 +20,9 @@ const appOnlyHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The end-to-end tests run their own dev server against fake APIs; its
+  // build output goes elsewhere so it never mixes with a normal `next dev`.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // Dev server only (ignored in production builds): lets the app be opened as
   // 127.0.0.1 as well as localhost, e.g. to get a clean origin for CORS testing.
   allowedDevOrigins: ["127.0.0.1"],

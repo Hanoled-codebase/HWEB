@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Edge appliance UI build output (gitignored).
     "edge-ui/out/**",
     "edge-ui/.next/**",
+    // End-to-end test build and reports (playwright.config.ts).
+    ".next-e2e/**",
+    "test-results/**",
+    "playwright-report/**",
+    "blob-report/**",
   ]),
 ]);
 
