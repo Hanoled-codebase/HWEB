@@ -105,12 +105,19 @@ export default function ItemAnalysisPanel({ examId }: { examId: string }) {
                         </p>
                         <div className="shrink-0 text-right">
                           <p className="text-sm font-bold tabular-nums text-[#0B1220]">{percent(item.difficulty)}</p>
-                          <p className="text-[11px] text-slate-500">got it right</p>
+                          <p className="text-[11px] text-slate-500">{item.type === "theory" ? "average mark" : "got it right"}</p>
                         </div>
                       </div>
                       {item.discrimination !== null && (
                         <p className="mt-0.5 text-[11px] text-slate-500">
                           Separates strong from weak students: {separation(item.discrimination)}
+                        </p>
+                      )}
+                      {item.type === "theory" && (
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Theory question
+                          {item.awaitingMarking ? ` · ${item.awaitingMarking} still to mark` : ""}
+                          {item.blank ? ` · ${item.blank} left blank` : ""}
                         </p>
                       )}
                       {item.flags.map((flag) => (

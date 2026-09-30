@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 
 export interface Question {
   id: string;
+  // objective: pick one of `options`. theory: a typed answer a teacher marks.
+  type?: "objective" | "theory";
   text: string;
   options: string[];
   marks: number;
@@ -31,15 +33,23 @@ export interface ExamSession {
   };
 }
 
+/** The chosen option index (objective) or typed text (theory); null if not answered. */
+export type AnswerValue = number | string | null;
+
 export interface ExamState {
   session: ExamSession | null;
-  answers: Record<string, number | null>; // questionId -> selectedOptionIndex
+  answers: Record<string, AnswerValue>; // questionId -> answer
   practiceResult: any | null;
   setSession: (session: ExamSession) => void;
-  setAnswer: (questionId: string, optionIndex: number) => void;
+  setAnswer: (questionId: string, value: number | string) => void;
   setPracticeResult: (result: any) => void;
   clearSession: () => void;
-  getFormattedAnswers: () => { questionId: string; selectedOption: number | null }[];
+  getFormattedAnswers: () => { questionId: string; selectedOption: number | null; textAnswer?: string | null }[];
+}
+
+/** Whether a question has an answer worth counting (typed text must not be blank). */
+export function isAnswered(value: AnswerValue | undefined): boolean {
+  return typeof value === "number" || (typeof value === "string" && value.trim() !== "");
 }
 
 export const useExamStore = create<ExamState>()(
@@ -55,18 +65,19 @@ export const useExamStore = create<ExamState>()(
         });
         set({ session, answers: initialAnswers });
       },
-      setAnswer: (questionId, optionIndex) =>
+      setAnswer: (questionId, value) =>
         set((state) => ({
-          answers: { ...state.answers, [questionId]: optionIndex },
+          answers: { ...state.answers, [questionId]: value },
         })),
       setPracticeResult: (practiceResult) => set({ practiceResult }),
       clearSession: () => set({ session: null, answers: {} }),
       getFormattedAnswers: () => {
         const { answers } = get();
-        return Object.entries(answers).map(([questionId, selectedOption]) => ({
-          questionId,
-          selectedOption,
-        }));
+        return Object.entries(answers).map(([questionId, value]) =>
+          typeof value === "string"
+            ? { questionId, selectedOption: null, textAnswer: value }
+            : { questionId, selectedOption: value },
+        );
       },
     }),
     {

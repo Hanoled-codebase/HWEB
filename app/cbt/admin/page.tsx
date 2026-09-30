@@ -52,6 +52,7 @@ import AccountsTab from "./AccountsTab";
 import { MAX_OPTIONS, MIN_OPTIONS, optionLabel } from "@/lib/cbt-options";
 import LateSubmissionsPanel from "./LateSubmissionsPanel";
 import ItemAnalysisPanel from "./ItemAnalysisPanel";
+import MarkingPanel from "./MarkingPanel";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -116,11 +117,13 @@ export default function AdminDashboard() {
 
   // Manual Question Creator State
   const [manualQuestion, setManualQuestion] = useState({
+    type: "objective" as "objective" | "theory",
     text: "",
     options: ["", "", "", ""],
     correctAnswer: 0,
     marks: 1,
     explanation: "",
+    markingGuide: "",
     imageUrl: "",
     passage: ""
   });
@@ -268,6 +271,18 @@ export default function AdminDashboard() {
       toast.error("Failed to load results: " + err.message);
     } finally {
       setLoadingResults(false);
+    }
+  };
+
+  // After a theory mark is saved: pick up the students' new scores quietly.
+  const refreshResults = async () => {
+    const examId = resultsModal?.examId;
+    if (!examId) return;
+    try {
+      const data = await cbtApi.getAdminExamResultsOverview(examId, orgSlug);
+      setResultsModal((prev) => (prev && prev.examId === examId ? { ...data, examId } : prev));
+    } catch {
+      // The marks are saved; the list just stays as it was until reopened.
     }
   };
 
@@ -614,7 +629,8 @@ export default function AdminDashboard() {
       toast.error("Question text is required");
       return;
     }
-    if (manualQuestion.options.some((o) => !o.trim())) {
+    const isTheory = manualQuestion.type === "theory";
+    if (!isTheory && manualQuestion.options.some((o) => !o.trim())) {
       toast.error("Fill in every choice, or remove the empty ones");
       return;
     }
@@ -622,9 +638,11 @@ export default function AdminDashboard() {
     setAddingManualQuestion(true);
     try {
       const payload = {
+        type: manualQuestion.type,
         text: manualQuestion.text,
-        options: manualQuestion.options,
-        correctAnswer: manualQuestion.correctAnswer,
+        ...(isTheory
+          ? { markingGuide: manualQuestion.markingGuide.trim() || null }
+          : { options: manualQuestion.options, correctAnswer: manualQuestion.correctAnswer }),
         marks: Number(manualQuestion.marks),
         explanation: manualQuestion.explanation || null,
         imageUrl: manualQuestion.imageUrl || null,
@@ -634,16 +652,18 @@ export default function AdminDashboard() {
       await cbtApi.addQuestion(designerExam.id, payload);
       toast.success("Manual question added successfully!");
 
-      // Reset Form and reload questions
-      setManualQuestion({
+      // Reset Form and reload questions; keep the question type for the next one.
+      setManualQuestion((prev) => ({
+        type: prev.type,
         text: "",
         options: ["", "", "", ""],
         correctAnswer: 0,
-        marks: 1,
+        marks: prev.type === "theory" ? prev.marks : 1,
         explanation: "",
+        markingGuide: "",
         imageUrl: "",
         passage: ""
-      });
+      }));
       const detail = await cbtApi.getExam(designerExam.id);
       setDesignerQuestions(detail.questions || []);
     } catch (err: any) {
@@ -1024,6 +1044,15 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
+                        {q.type === "theory" && (
+                          <div className="mb-3 rounded-lg border border-[#1447E6]/20 bg-[#1447E6]/5 p-3 text-xs text-[#0B1220]">
+                            <p className="font-semibold">Theory · typed answer, marked by a teacher · {q.marks} {q.marks === 1 ? "mark" : "marks"}</p>
+                            {q.markingGuide && (
+                              <p className="mt-1 text-slate-600"><strong>Marking guide:</strong> {q.markingGuide}</p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
                           {q.options.map((opt: string, optIdx: number) => {
                             const isCorrect = optIdx === q.correctAnswer;
@@ -1307,6 +1336,32 @@ export default function AdminDashboard() {
                   </h3>
 
                   <form onSubmit={handleAddManualQuestion} className="space-y-4">
+                    {/* Question type. Theory answers need a teacher to mark them, so
+                        they're for school exams online, not practice or the appliance. */}
+                    {!EDGE_MODE && designerExam?.examType !== "ssce" && (
+                      <div role="radiogroup" aria-label="Question type" className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                        {([
+                          ["objective", "Multiple choice"],
+                          ["theory", "Theory (typed answer)"],
+                        ] as const).map(([type, label]) => (
+                          <button
+                            key={type}
+                            type="button"
+                            role="radio"
+                            aria-checked={manualQuestion.type === type}
+                            onClick={() =>
+                              setManualQuestion((prev) => ({ ...prev, type, marks: type === "theory" && prev.marks < 2 ? 5 : prev.marks }))
+                            }
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                              manualQuestion.type === type ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-500 hover:text-[#0B1220]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Question text */}
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Question Text</label>
@@ -1386,6 +1441,7 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Option inputs: 2 to 6 choices, A to F */}
+                    {manualQuestion.type === "objective" && (
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
                         Answer Choices ({MIN_OPTIONS}–{MAX_OPTIONS})
@@ -1435,9 +1491,28 @@ export default function AdminDashboard() {
                         </button>
                       )}
                     </div>
+                    )}
+
+                    {/* Theory: what earns the marks, for whoever marks it */}
+                    {manualQuestion.type === "theory" && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                          Marking Guide (Teachers Only)
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={manualQuestion.markingGuide}
+                          onChange={(e) => setManualQuestion((prev) => ({ ...prev, markingGuide: e.target.value }))}
+                          placeholder="Points a full answer should make, and how many marks each earns."
+                          className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">Students never see this. It sits beside each answer when you mark.</p>
+                      </div>
+                    )}
 
                     {/* Correct index and mark grid */}
                     <div className="grid grid-cols-2 gap-4">
+                      {manualQuestion.type === "objective" && (
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Correct Option</label>
                         <select
@@ -1450,13 +1525,14 @@ export default function AdminDashboard() {
                           ))}
                         </select>
                       </div>
+                      )}
 
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Marks Allocation</label>
                         <input
                           type="number"
                           min={1}
-                          max={10}
+                          max={manualQuestion.type === "theory" ? 100 : 10}
                           value={manualQuestion.marks}
                           onChange={(e) => setManualQuestion((prev) => ({ ...prev, marks: Number(e.target.value) }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
@@ -1471,7 +1547,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={manualQuestion.explanation}
                         onChange={(e) => setManualQuestion((prev) => ({ ...prev, explanation: e.target.value }))}
-                        placeholder="Why is this answer correct? Displays after submit."
+                        placeholder={manualQuestion.type === "theory" ? "A model answer or tip. Students see it once results are released." : "Why is this answer correct? Displays after submit."}
                         className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
                       />
                     </div>
@@ -2372,6 +2448,15 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : (
               <>
+                {resultsModal.results.length > 0 && (
+                  <MarkingPanel
+                    key={resultsModal.examId}
+                    examId={resultsModal.examId}
+                    locked={Boolean(resultsModal.exam?.resultsReleased)}
+                    onMarked={refreshResults}
+                  />
+                )}
+
                 {/* Summary stats */}
                 <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-4">
                   <div className="bg-slate-50 rounded-xl p-3 text-center sm:p-4">
@@ -2406,6 +2491,11 @@ export default function AdminDashboard() {
                           {r.cheatingStatus === "cheating" && (
                             <span className="text-xs font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               Cheated
+                            </span>
+                          )}
+                          {r.awaitingMarking > 0 && (
+                            <span className="text-xs font-semibold text-[#0B1220] bg-[#F5A623]/15 px-2 py-0.5 rounded-full">
+                              {r.awaitingMarking} to mark
                             </span>
                           )}
                           <div className="text-right">

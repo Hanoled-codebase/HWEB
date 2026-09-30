@@ -17,7 +17,9 @@ async function fetchCbt<T = any>(endpoint: string, options: ApiOptions = {}): Pr
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface ExamData { title: string; duration: number; [key: string]: JsonValue; }
-interface QuestionData { text: string; options: string[]; correctAnswer: number; [key: string]: JsonValue; }
+// A multiple-choice question has options and a correct answer; a theory one
+// (type "theory") has neither and may carry a markingGuide.
+interface QuestionData { text: string; type?: "objective" | "theory"; options?: string[]; correctAnswer?: number; [key: string]: JsonValue | undefined; }
 interface SubmitData { answers: Array<{ questionId: string; selectedOption: number }>; currentVersion?: number; }
 interface AssignData { classLevelId?: string; studentId?: string; }
 
@@ -32,6 +34,26 @@ export interface LateSubmission {
   receivedAt: string;
 }
 
+export interface MarkingSheet {
+  awaitingMarking: number;
+  questions: Array<{
+    questionId: string;
+    text: string;
+    marks: number;
+    markingGuide: string | null;
+    awaitingMarking: number;
+    scripts: Array<{
+      resultId: string;
+      studentName: string;
+      admissionNumber: string | null;
+      textAnswer: string | null;
+      marks: number;
+      marked: boolean;
+      comment: string | null;
+    }>;
+  }>;
+}
+
 export type ItemFlag = "TOO_HARD" | "TOO_EASY" | "CHECK_ANSWER_KEY" | "WEAK_DISCRIMINATION";
 
 export interface ItemAnalysis {
@@ -41,10 +63,12 @@ export interface ItemAnalysis {
   items: Array<{
     questionId: string;
     number: number;
+    type?: "objective" | "theory";
+    awaitingMarking?: number;
     text: string;
     options: string[];
     correctAnswer: number;
-    correct: number;
+    correct: number | null;
     blank: number;
     choiceCounts: number[];
     difficulty: number | null;
@@ -143,6 +167,13 @@ export const cbtApi = {
       `/admin/accounts?orgSlug=${orgSlug}`,
     ),
   getAdminExamResultsOverview: (examId: string, orgSlug: string) => fetchCbt(`/admin/exam/${examId}/results?orgSlug=${orgSlug}`),
+  // Theory answers to mark, grouped by question.
+  getMarkingSheet: (examId: string) => fetchCbt<MarkingSheet>(`/exams/${examId}/marking`, { showErrorToast: false }),
+  markAnswer: (examId: string, resultId: string, questionId: string, body: { marks: number; comment?: string | null }) =>
+    fetchCbt<{ resultId: string; score: number; totalMarks: number; percentage: number; awaitingMarking: number }>(
+      `/exams/${examId}/results/${resultId}/answers/${questionId}/mark`,
+      { method: "PUT", body: JSON.stringify(body), showErrorToast: false },
+    ),
   // How each question performed (Hcbt shared/item-analysis).
   getItemAnalysis: (examId: string) => fetchCbt<ItemAnalysis>(`/exams/${examId}/item-analysis`, { showErrorToast: false }),
   getClasses: (orgSlug: string) => fetchCbt(`/admin/classes?orgSlug=${orgSlug}`),

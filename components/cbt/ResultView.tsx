@@ -17,6 +17,7 @@ const CBT_BACKEND_URL = HCBT_BASE;
 interface AnswerCorrection {
   question: {
     id: string;
+    type?: "objective" | "theory";
     text: string;
     options: string[];
     correctAnswer: number;
@@ -26,6 +27,8 @@ interface AnswerCorrection {
     passage?: string | null;
   };
   selectedOption: number | null;
+  textAnswer?: string | null; // theory
+  markerComment?: string | null; // theory: the teacher's comment
   isCorrect: boolean;
   marksObtained: number;
 }
@@ -54,12 +57,14 @@ export function ResultView({ result }: ResultViewProps) {
 
   const [activeFilter, setActiveFilter] = useState<"all" | "passed" | "failed">("all");
 
-  const passedCount = answers.filter((a) => a.isCorrect).length;
-  const failedCount = answers.length - passedCount;
+  // Right and wrong only apply to multiple-choice; theory answers earn marks.
+  const isObjective = (ans: AnswerCorrection) => ans.question.type !== "theory";
+  const passedCount = answers.filter((a) => isObjective(a) && a.isCorrect).length;
+  const failedCount = answers.filter(isObjective).length - passedCount;
 
   const filteredAnswers = answers.filter((ans) => {
-    if (activeFilter === "passed") return ans.isCorrect;
-    if (activeFilter === "failed") return !ans.isCorrect;
+    if (activeFilter === "passed") return isObjective(ans) && ans.isCorrect;
+    if (activeFilter === "failed") return isObjective(ans) && !ans.isCorrect;
     return true;
   });
 
@@ -200,7 +205,7 @@ export function ResultView({ result }: ResultViewProps) {
             <div
               key={ans.question.id}
               className={`bg-white p-6 rounded-sm border transition-all shadow-sm ${
-                ans.isCorrect ? "border-slate-200 hover:border-emerald-200" : "border-rose-100 hover:border-rose-200"
+                ans.isCorrect || ans.question.type === "theory" ? "border-slate-200 hover:border-emerald-200" : "border-rose-100 hover:border-rose-200"
               }`}
             >
               <div className="flex justify-between items-start gap-3 mb-5">
@@ -211,12 +216,38 @@ export function ResultView({ result }: ResultViewProps) {
                   </h4>
                 </div>
                 
-                <span className={`px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 whitespace-nowrap ${
-                  ans.isCorrect ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
-                }`}>
-                  {ans.isCorrect ? "Correct" : "Incorrect"} • {ans.marksObtained}/{ans.question.marks}
-                </span>
+                {ans.question.type === "theory" ? (
+                  <span className="px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 whitespace-nowrap bg-[#1447E6]/10 text-[#0B1220] border border-[#1447E6]/20">
+                    Theory • {ans.marksObtained}/{ans.question.marks}
+                  </span>
+                ) : (
+                  <span className={`px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 whitespace-nowrap ${
+                    ans.isCorrect ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
+                  }`}>
+                    {ans.isCorrect ? "Correct" : "Incorrect"} • {ans.marksObtained}/{ans.question.marks}
+                  </span>
+                )}
               </div>
+
+              {/* Theory: what the student wrote and the teacher's comment */}
+              {ans.question.type === "theory" && (
+                <div className="space-y-3 mb-5">
+                  <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
+                    <span className="block mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Your answer</span>
+                    {ans.textAnswer ? (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#0B1220]">{ans.textAnswer}</p>
+                    ) : (
+                      <p className="text-sm text-slate-500">You left this blank, so it scored zero.</p>
+                    )}
+                  </div>
+                  {ans.markerComment && (
+                    <div className="rounded-sm border border-[#1447E6]/20 bg-[#1447E6]/5 p-4">
+                      <span className="block mb-1 text-xs font-bold uppercase tracking-wider text-[#1447E6]">Teacher&apos;s comment</span>
+                      <p className="text-sm text-[#0B1220]">{ans.markerComment}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Reading Passage */}
               {ans.question.passage && (
@@ -274,7 +305,7 @@ export function ResultView({ result }: ResultViewProps) {
               </div>
 
               {/* Unanswered Banner */}
-              {!ans.isCorrect && ans.selectedOption === null && (
+              {ans.question.type !== "theory" && !ans.isCorrect && ans.selectedOption === null && (
                 <div className="bg-rose-50/30 border border-rose-100 rounded-sm p-3 text-left mb-5 flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <p className="text-xs font-bold text-rose-600">

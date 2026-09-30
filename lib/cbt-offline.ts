@@ -47,6 +47,7 @@ export interface OfflineOperation {
   type: 'ANSWER_SET' | 'SUBMIT_INTENT';
   questionId?: string;
   selectedOption?: number;
+  text?: string; // ANSWER_SET on a theory question
   payload?: { cheating: boolean };
   clientTimestamp: string;
 }
@@ -56,7 +57,7 @@ export interface SyncQueueItem {
   examId: string;
   attemptId: string;
   leaseToken: string;
-  answers: Record<string, number>;
+  answers: Record<string, number | string>; // option index, or typed text for theory
   // Built once at enqueue time so every retry resends the same operation IDs,
   // which is what lets the server deduplicate them.
   operations?: OfflineOperation[];
@@ -168,17 +169,17 @@ function uuid(): string {
  * Sequences continue from the last one the server acknowledged.
  */
 export function buildSubmitOperations(
-  answers: Record<string, number>,
+  answers: Record<string, number | string>,
   cheating: boolean,
   lastSyncedSequence: number,
   submittedAt: string,
 ): OfflineOperation[] {
-  const operations: OfflineOperation[] = Object.entries(answers).map(([questionId, selectedOption], index) => ({
+  const operations: OfflineOperation[] = Object.entries(answers).map(([questionId, value], index) => ({
     operationId: uuid(),
     sequence: lastSyncedSequence + index + 1,
     type: 'ANSWER_SET',
     questionId,
-    selectedOption,
+    ...(typeof value === 'string' ? { text: value } : { selectedOption: value }),
     clientTimestamp: submittedAt,
   }));
   operations.push({
@@ -255,7 +256,7 @@ export async function retrySyncItem(id: string): Promise<void> {
 const AUTOSAVE_KEY_PREFIX = 'hcbt_answers_';
 
 /** Save in-progress answers to localStorage as a fast fallback */
-export function autoSaveAnswers(examId: string, answers: Record<string, number>): void {
+export function autoSaveAnswers(examId: string, answers: Record<string, number | string>): void {
   try {
     localStorage.setItem(`${AUTOSAVE_KEY_PREFIX}${examId}`, JSON.stringify(answers));
   } catch {
@@ -264,7 +265,7 @@ export function autoSaveAnswers(examId: string, answers: Record<string, number>)
 }
 
 /** Recover auto-saved answers */
-export function recoverAnswers(examId: string): Record<string, number> | null {
+export function recoverAnswers(examId: string): Record<string, number | string> | null {
   try {
     const raw = localStorage.getItem(`${AUTOSAVE_KEY_PREFIX}${examId}`);
     return raw ? JSON.parse(raw) : null;
