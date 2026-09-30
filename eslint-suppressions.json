@@ -362,11 +362,6 @@
       "count": 2
     }
   },
-  "app/payment/verify/page.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/cbt/ExamCard.tsx": {
     "react/no-unescaped-entities": {
       "count": 1
@@ -453,11 +448,6 @@
   "edge-ui/app/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
-    }
-  },
-  "edge-ui/app/signin/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
     }
   },
   "hooks/use-mobile.ts": {

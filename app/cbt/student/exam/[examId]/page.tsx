@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useExamId } from "@/lib/route-params";
 import { cbtApi } from "@/lib/api-cbt";
-import { useExamStore } from "@/store/exam";
+import { useExamStore, isAnswered, type AnswerValue } from "@/store/exam";
 import { useExamDeviceStatus } from "@/hooks/useExamDevice";
 import { ExamDeviceNotice } from "@/components/cbt/ExamDeviceNotice";
 import {
@@ -35,11 +35,11 @@ import { toast } from "sonner";
 const MAX_TAB_SWITCHES = 3;
 const PROCTOR_WARNING_DURATION = 5;
 
-/** Strip null values from the answers record for offline storage */
-function compactAnswers(raw: Record<string, number | null>): Record<string, number> {
-  const result: Record<string, number> = {};
+/** Strip unanswered questions from the answers record for offline storage */
+function compactAnswers(raw: Record<string, AnswerValue>): Record<string, number | string> {
+  const result: Record<string, number | string> = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (v !== null && v !== undefined) result[k] = v;
+    if (isAnswered(v)) result[k] = v as number | string;
   }
   return result;
 }
@@ -85,6 +85,15 @@ function ActiveExam() {
   const [proctorMessage, setProctorMessage] = useState("");
   const [proctorViolation, setProctorViolation] = useState(false);
   const [proctorTimer, setProctorTimer] = useState(PROCTOR_WARNING_DURATION);
+
+  // Full-screen lock: leaving full screen counts like leaving the tab.
+  // Browsers only enter full screen from a click, so the paper stays covered
+  // until the student presses the button. Where the browser can't (or won't)
+  // go full screen, the exam carries on rather than locking them out.
+  const fullscreenEnabled = examId !== "practice" && typeof document !== "undefined" && Boolean(document.fullscreenEnabled);
+  const [inFullscreen, setInFullscreen] = useState(() => typeof document !== "undefined" && Boolean(document.fullscreenElement));
+  const [fullscreenRefused, setFullscreenRefused] = useState(false);
+  const leavingRef = useRef(false); // the exam is over: leaving full screen now isn't a violation
 
   const initializedRef = useRef(false);
   const isReportingRef = useRef(false);
@@ -198,6 +207,39 @@ function ActiveExam() {
     };
   }, [examId, session, handleTabSwitch]);
 
+  useEffect(() => {
+    if (!fullscreenEnabled || !session) return;
+    const onChange = () => {
+      const active = Boolean(document.fullscreenElement);
+      setInFullscreen(active);
+      if (!active && !leavingRef.current) handleTabSwitch();
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [fullscreenEnabled, session, handleTabSwitch]);
+
+  // Leaving this page (submitted, auto-failed, or navigated away) ends the lock.
+  useEffect(
+    () => () => {
+      leavingRef.current = true;
+      if (typeof document !== "undefined" && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    },
+    [],
+  );
+
+  const enterFullscreen = () => {
+    let settled = false;
+    document.documentElement.requestFullscreen().then(
+      () => { settled = true; },
+      () => { settled = true; setFullscreenRefused(true); },
+    );
+    // Some kiosk and in-app browsers neither enter full screen nor refuse;
+    // don't leave the student stuck behind the cover.
+    setTimeout(() => {
+      if (!settled && !document.fullscreenElement) setFullscreenRefused(true);
+    }, 3000);
+  };
+
   // Start the background sync worker and auto-recover saved answers
   useEffect(() => {
     const cleanup = startSyncWorker();
@@ -213,14 +255,15 @@ function ActiveExam() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
-  const handleSelectOption = (optionIndex: number) => {
+  // An option index for a multiple-choice question, typed text for a theory one.
+  const handleAnswer = (value: number | string) => {
     if (!session) return;
     const currentQuestion = session.questions[currentIdx];
     if (!currentQuestion) return;
-    setAnswer(currentQuestion.id, optionIndex);
+    setAnswer(currentQuestion.id, value);
     // Auto-save every answer change to localStorage
     if (examId !== 'practice') {
-      const updatedAnswers = { ...compactAnswers(answers), [currentQuestion.id]: optionIndex };
+      const updatedAnswers = compactAnswers({ ...answers, [currentQuestion.id]: value });
       autoSaveAnswers(examId, updatedAnswers);
     }
   };
@@ -380,7 +423,7 @@ function ActiveExam() {
     );
   }
 
-  const answeredCount = Object.values(answers).filter((v) => v !== null && v !== undefined).length;
+  const answeredCount = Object.values(answers).filter(isAnswered).length;
   const flaggedCount = Object.values(flaggedQuestions).filter(Boolean).length;
   const remainingCount = totalQuestions - answeredCount;
 
@@ -435,8 +478,8 @@ function ActiveExam() {
           <QuestionCard
             question={currentQuestion}
             index={currentIdx}
-            selectedOptionIndex={currentQuestion ? (answers[currentQuestion.id] ?? null) : null}
-            onSelectOption={handleSelectOption}
+            value={currentQuestion ? (answers[currentQuestion.id] ?? null) : null}
+            onAnswer={handleAnswer}
             totalQuestions={totalQuestions}
           />
 
@@ -514,10 +557,10 @@ function ActiveExam() {
             <div className="grid grid-cols-5 gap-2.5 max-h-[260px] overflow-y-auto p-1">
               {session.questions.map((q, idx) => {
                 const isSelected = currentIdx === idx;
-                const isAnswered = answers[q.id] !== null && answers[q.id] !== undefined;
+                const answered = isAnswered(answers[q.id]);
                 const isFlagged = flaggedQuestions[q.id];
                 let blockClass = "bg-slate-800/60 border-transparent text-slate-500 hover:bg-slate-700/60 hover:text-slate-300";
-                if (isAnswered) blockClass = "bg-blue-500/15 border-blue-500/25 text-blue-400 hover:bg-blue-500/25";
+                if (answered) blockClass = "bg-blue-500/15 border-blue-500/25 text-blue-400 hover:bg-blue-500/25";
                 if (isFlagged) blockClass = "bg-amber-500/20 border-amber-500/40 text-amber-400 hover:bg-amber-500/30";
                 if (isSelected) blockClass = "bg-blue-500 text-white border-blue-500 outline-2 outline-blue-500 outline-offset-1";
                 return (
@@ -554,6 +597,29 @@ function ActiveExam() {
         </div>
       )}
 
+      {/* Full-screen lock */}
+      {fullscreenEnabled && !inFullscreen && !fullscreenRefused && !submitting && !proctorWarning && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#0B1220]/95">
+          <div className="max-w-md w-full rounded-sm border border-[#1447E6]/40 bg-[#0B1220] p-8 text-center shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">This exam runs in full screen</h3>
+            <p className="text-sm text-slate-300 mb-2 leading-relaxed">
+              Leaving full screen during the exam counts as leaving the exam screen
+              {tabSwitchCount > 0
+                ? `. ${MAX_TAB_SWITCHES - tabSwitchCount} more and your exam is automatically failed.`
+                : ", the same as switching tabs."}
+            </p>
+            <p className="text-xs text-slate-400 mb-6">Your time is already running.</p>
+            <button
+              type="button"
+              onClick={enterFullscreen}
+              className="w-full bg-[#1447E6] hover:bg-[#1447E6]/90 text-white text-sm font-bold py-3 px-4 rounded-sm"
+            >
+              {tabSwitchCount > 0 ? "Return to full screen" : "Enter full screen"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Proctoring Warning Overlay */}
       {proctorWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl">
@@ -561,7 +627,7 @@ function ActiveExam() {
             <div className="w-16 h-16 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-5">
               <EyeOff className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Tab Switch Detected</h3>
+            <h3 className="text-lg font-bold text-white mb-2">You Left the Exam Screen</h3>
             <p className="text-sm text-slate-300 mb-6 leading-relaxed">{proctorMessage}</p>
             <div className="bg-slate-950 rounded-sm p-5 border border-slate-800 mb-4">
               <p className="text-3xl font-extrabold text-amber-400">{proctorTimer}</p>

@@ -40,6 +40,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   HardDrive,
+  KeyRound,
 } from "lucide-react";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
@@ -47,13 +48,18 @@ import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
+import AccountsTab from "./AccountsTab";
+import { MAX_OPTIONS, MIN_OPTIONS, optionLabel } from "@/lib/cbt-options";
+import LateSubmissionsPanel from "./LateSubmissionsPanel";
+import ItemAnalysisPanel from "./ItemAnalysisPanel";
+import MarkingPanel from "./MarkingPanel";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const orgSlug = searchParams.get("orgSlug") || "hanoled-default";
 
   // Navigation
-  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students" | "appliances">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students" | "accounts" | "appliances">("overview");
 
   // Core Data States
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -71,6 +77,10 @@ export default function AdminDashboard() {
     resolvedOrgSlug && resolvedOrgSlug !== "hanoled-default" ? `/dashboard/school/${resolvedOrgSlug}` : "/welcome";
   const [orgSubjects, setOrgSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
   const isAdmin = !!currentUser?.isAdmin;
+  // Erasing someone's personal data is HCORE's directory.write, which CBT admins don't hold.
+  const canErasePersonalData = ["ORG_OWNER", "OWNER", "ORG_ADMIN", "DIRECTORY_ADMIN"].some((role) =>
+    (currentUser?.roles ?? []).includes(role),
+  );
   const [stats, setStats] = useState<any>({
     totalExams: 0,
     publishedExams: 0,
@@ -111,11 +121,13 @@ export default function AdminDashboard() {
 
   // Manual Question Creator State
   const [manualQuestion, setManualQuestion] = useState({
+    type: "objective" as "objective" | "theory",
     text: "",
     options: ["", "", "", ""],
     correctAnswer: 0,
     marks: 1,
     explanation: "",
+    markingGuide: "",
     imageUrl: "",
     passage: ""
   });
@@ -263,6 +275,18 @@ export default function AdminDashboard() {
       toast.error("Failed to load results: " + err.message);
     } finally {
       setLoadingResults(false);
+    }
+  };
+
+  // After a theory mark is saved: pick up the students' new scores quietly.
+  const refreshResults = async () => {
+    const examId = resultsModal?.examId;
+    if (!examId) return;
+    try {
+      const data = await cbtApi.getAdminExamResultsOverview(examId, orgSlug);
+      setResultsModal((prev) => (prev && prev.examId === examId ? { ...data, examId } : prev));
+    } catch {
+      // The marks are saved; the list just stays as it was until reopened.
     }
   };
 
@@ -609,17 +633,20 @@ export default function AdminDashboard() {
       toast.error("Question text is required");
       return;
     }
-    if (manualQuestion.options.some((o) => !o.trim())) {
-      toast.error("Please fill in all four options");
+    const isTheory = manualQuestion.type === "theory";
+    if (!isTheory && manualQuestion.options.some((o) => !o.trim())) {
+      toast.error("Fill in every choice, or remove the empty ones");
       return;
     }
 
     setAddingManualQuestion(true);
     try {
       const payload = {
+        type: manualQuestion.type,
         text: manualQuestion.text,
-        options: manualQuestion.options,
-        correctAnswer: manualQuestion.correctAnswer,
+        ...(isTheory
+          ? { markingGuide: manualQuestion.markingGuide.trim() || null }
+          : { options: manualQuestion.options, correctAnswer: manualQuestion.correctAnswer }),
         marks: Number(manualQuestion.marks),
         explanation: manualQuestion.explanation || null,
         imageUrl: manualQuestion.imageUrl || null,
@@ -629,16 +656,18 @@ export default function AdminDashboard() {
       await cbtApi.addQuestion(designerExam.id, payload);
       toast.success("Manual question added successfully!");
 
-      // Reset Form and reload questions
-      setManualQuestion({
+      // Reset Form and reload questions; keep the question type for the next one.
+      setManualQuestion((prev) => ({
+        type: prev.type,
         text: "",
         options: ["", "", "", ""],
         correctAnswer: 0,
-        marks: 1,
+        marks: prev.type === "theory" ? prev.marks : 1,
         explanation: "",
+        markingGuide: "",
         imageUrl: "",
         passage: ""
-      });
+      }));
       const detail = await cbtApi.getExam(designerExam.id);
       setDesignerQuestions(detail.questions || []);
     } catch (err: any) {
@@ -1019,6 +1048,15 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
+                        {q.type === "theory" && (
+                          <div className="mb-3 rounded-lg border border-[#1447E6]/20 bg-[#1447E6]/5 p-3 text-xs text-[#0B1220]">
+                            <p className="font-semibold">Theory · typed answer, marked by a teacher · {q.marks} {q.marks === 1 ? "mark" : "marks"}</p>
+                            {q.markingGuide && (
+                              <p className="mt-1 text-slate-600"><strong>Marking guide:</strong> {q.markingGuide}</p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
                           {q.options.map((opt: string, optIdx: number) => {
                             const isCorrect = optIdx === q.correctAnswer;
@@ -1032,7 +1070,7 @@ export default function AdminDashboard() {
                                 }`}
                               >
                                 <span className="text-xs uppercase opacity-70">
-                                  {["A", "B", "C", "D"][optIdx]}.
+                                  {optionLabel(optIdx)}.
                                 </span>
                                 <span className="truncate"><MathRenderer text={opt} /></span>
                               </div>
@@ -1219,7 +1257,7 @@ export default function AdminDashboard() {
                               <div className="flex flex-wrap gap-1.5 mt-1.5">
                                 {q.options.map((opt: string, oi: number) => (
                                   <span key={oi} className={`px-2 py-0.5 rounded text-xs ${oi === q.correctAnswer ? "bg-green-100 text-green-800 font-bold" : "bg-slate-100 text-slate-500"}`}>
-                                    {["A","B","C","D"][oi]}. {opt}
+                                    {optionLabel(oi)}. {opt}
                                   </span>
                                 ))}
                               </div>
@@ -1302,6 +1340,32 @@ export default function AdminDashboard() {
                   </h3>
 
                   <form onSubmit={handleAddManualQuestion} className="space-y-4">
+                    {/* Question type. Theory answers need a teacher to mark them, so
+                        they're for school exams online, not practice or the appliance. */}
+                    {!EDGE_MODE && designerExam?.examType !== "ssce" && (
+                      <div role="radiogroup" aria-label="Question type" className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                        {([
+                          ["objective", "Multiple choice"],
+                          ["theory", "Theory (typed answer)"],
+                        ] as const).map(([type, label]) => (
+                          <button
+                            key={type}
+                            type="button"
+                            role="radio"
+                            aria-checked={manualQuestion.type === type}
+                            onClick={() =>
+                              setManualQuestion((prev) => ({ ...prev, type, marks: type === "theory" && prev.marks < 2 ? 5 : prev.marks }))
+                            }
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                              manualQuestion.type === type ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-500 hover:text-[#0B1220]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Question text */}
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Question Text</label>
@@ -1380,12 +1444,15 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    {/* Option inputs */}
+                    {/* Option inputs: 2 to 6 choices, A to F */}
+                    {manualQuestion.type === "objective" && (
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Answer Choices (Fill All Four)</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Answer Choices ({MIN_OPTIONS}–{MAX_OPTIONS})
+                      </label>
                       {manualQuestion.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-center space-x-2">
-                          <span className="text-xs font-extrabold text-slate-500 w-5">{["A", "B", "C", "D"][optIdx]}</span>
+                          <span className="text-xs font-extrabold text-slate-500 w-5">{optionLabel(optIdx)}</span>
                           <input
                             type="text"
                             value={opt}
@@ -1394,15 +1461,62 @@ export default function AdminDashboard() {
                               newOpts[optIdx] = e.target.value;
                               setManualQuestion((prev) => ({ ...prev, options: newOpts }));
                             }}
-                            placeholder={`Choice ${["A", "B", "C", "D"][optIdx]}...`}
+                            placeholder={`Choice ${optionLabel(optIdx)}...`}
                             className="flex-1 text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
                           />
+                          {manualQuestion.options.length > MIN_OPTIONS && (
+                            <button
+                              type="button"
+                              aria-label={`Remove choice ${optionLabel(optIdx)}`}
+                              onClick={() =>
+                                setManualQuestion((prev) => {
+                                  const options = prev.options.filter((_, i) => i !== optIdx);
+                                  // Keep the same choice marked correct; if it was removed, fall back to A.
+                                  const correctAnswer =
+                                    prev.correctAnswer === optIdx ? 0 : prev.correctAnswer > optIdx ? prev.correctAnswer - 1 : prev.correctAnswer;
+                                  return { ...prev, options, correctAnswer };
+                                })
+                              }
+                              className="p-1.5 text-slate-400 hover:text-[#F04438]"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       ))}
+                      {manualQuestion.options.length < MAX_OPTIONS && (
+                        <button
+                          type="button"
+                          onClick={() => setManualQuestion((prev) => ({ ...prev, options: [...prev.options, ""] }))}
+                          className="flex items-center space-x-1 text-xs font-semibold text-[#1447E6] hover:underline"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add choice {optionLabel(manualQuestion.options.length)}</span>
+                        </button>
+                      )}
                     </div>
+                    )}
+
+                    {/* Theory: what earns the marks, for whoever marks it */}
+                    {manualQuestion.type === "theory" && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                          Marking Guide (Teachers Only)
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={manualQuestion.markingGuide}
+                          onChange={(e) => setManualQuestion((prev) => ({ ...prev, markingGuide: e.target.value }))}
+                          placeholder="Points a full answer should make, and how many marks each earns."
+                          className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">Students never see this. It sits beside each answer when you mark.</p>
+                      </div>
+                    )}
 
                     {/* Correct index and mark grid */}
                     <div className="grid grid-cols-2 gap-4">
+                      {manualQuestion.type === "objective" && (
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Correct Option</label>
                         <select
@@ -1410,19 +1524,19 @@ export default function AdminDashboard() {
                           onChange={(e) => setManualQuestion((prev) => ({ ...prev, correctAnswer: Number(e.target.value) }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
                         >
-                          <option value={0}>Choice A</option>
-                          <option value={1}>Choice B</option>
-                          <option value={2}>Choice C</option>
-                          <option value={3}>Choice D</option>
+                          {manualQuestion.options.map((_, optIdx) => (
+                            <option key={optIdx} value={optIdx}>Choice {optionLabel(optIdx)}</option>
+                          ))}
                         </select>
                       </div>
+                      )}
 
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Marks Allocation</label>
                         <input
                           type="number"
                           min={1}
-                          max={10}
+                          max={manualQuestion.type === "theory" ? 100 : 10}
                           value={manualQuestion.marks}
                           onChange={(e) => setManualQuestion((prev) => ({ ...prev, marks: Number(e.target.value) }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
@@ -1437,7 +1551,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={manualQuestion.explanation}
                         onChange={(e) => setManualQuestion((prev) => ({ ...prev, explanation: e.target.value }))}
-                        placeholder="Why is this answer correct? Displays after submit."
+                        placeholder={manualQuestion.type === "theory" ? "A model answer or tip. Students see it once results are released." : "Why is this answer correct? Displays after submit."}
                         className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
                       />
                     </div>
@@ -1554,6 +1668,17 @@ export default function AdminDashboard() {
                   Grade Auditor
                 </button>
                 )}
+                {/* Resets happen in HCORE, so not on the offline appliance. */}
+                {isAdmin && !EDGE_MODE && (
+                  <button
+                    onClick={() => setActiveTab("accounts")}
+                    className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === "accounts" ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-500 hover:text-[#0B1220]"
+                    }`}
+                  >
+                    Sign-in Help
+                  </button>
+                )}
                 {isAdmin && (
                   <button
                     onClick={() => setActiveTab("appliances")}
@@ -1580,6 +1705,8 @@ export default function AdminDashboard() {
               <div className="m-page grid grid-cols-1 gap-8">
                 {/* Quick actions and summaries */}
                 <div className="space-y-6">
+                  {/* Late offline submissions need an admin's decision (cloud only). */}
+                  {isAdmin && !EDGE_MODE && <LateSubmissionsPanel orgSlug={resolvedOrgSlug} />}
                   
                   {/* Greeting */}
                   <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">
@@ -1843,6 +1970,9 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* SIGN-IN HELP TAB — admin only, online only */}
+            {isAdmin && !EDGE_MODE && activeTab === "accounts" && <AccountsTab orgSlug={resolvedOrgSlug} canErase={canErasePersonalData} />}
+
             {/* EDGE APPLIANCES TAB — admin only */}
             {isAdmin && activeTab === "appliances" && (
               EDGE_MODE
@@ -1865,6 +1995,7 @@ export default function AdminDashboard() {
             ...(isAdmin
               ? [
                   { key: "students" as const, label: "Grades", icon: ShieldCheck },
+                  ...(EDGE_MODE ? [] : [{ key: "accounts" as const, label: "Accounts", icon: KeyRound }]),
                   { key: "appliances" as const, label: "Devices", icon: HardDrive },
                 ]
               : []),
@@ -2321,6 +2452,15 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : (
               <>
+                {resultsModal.results.length > 0 && (
+                  <MarkingPanel
+                    key={resultsModal.examId}
+                    examId={resultsModal.examId}
+                    locked={Boolean(resultsModal.exam?.resultsReleased)}
+                    onMarked={refreshResults}
+                  />
+                )}
+
                 {/* Summary stats */}
                 <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-4">
                   <div className="bg-slate-50 rounded-xl p-3 text-center sm:p-4">
@@ -2357,6 +2497,11 @@ export default function AdminDashboard() {
                               Cheated
                             </span>
                           )}
+                          {r.awaitingMarking > 0 && (
+                            <span className="text-xs font-semibold text-[#0B1220] bg-[#F5A623]/15 px-2 py-0.5 rounded-full">
+                              {r.awaitingMarking} to mark
+                            </span>
+                          )}
                           <div className="text-right">
                             <p className="text-sm font-extrabold text-slate-800">{r.score}/{r.totalMarks}</p>
                             <p className={`text-xs font-bold ${r.cheatingStatus === "cheating" ? "text-rose-600" : r.passed ? "text-emerald-600" : "text-rose-600"}`}>
@@ -2374,6 +2519,7 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+                {resultsModal.results.length > 0 && <ItemAnalysisPanel key={resultsModal.examId} examId={resultsModal.examId} />}
               </>
             )}
 

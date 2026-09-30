@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useOrganization } from "@/hooks/useOrganization";
+import { DataRetentionCard } from "@/components/dashboard/DataRetentionCard";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -442,6 +443,8 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        {isAdmin && <DataRetentionCard orgId={currentOrg.id} />}
 
         {/* Access Control Information */}
         <Card className="shadow-sm border-slate-200">

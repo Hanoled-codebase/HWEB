@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Server, Download, ShieldOff, CheckCircle2, Clock, Info, Copy, BookOpen } from "lucide-react";
-import { cbtApi } from "@/lib/api-cbt";
+import { cbtApi, type EdgePlatform } from "@/lib/api-cbt";
 
 export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string; exams: any[] }) {
   const [nodes, setNodes] = useState<any[]>([]);
@@ -10,7 +10,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [platforms, setPlatforms] = useState<Record<string, boolean>>({});
-  const [platform, setPlatform] = useState<"mac" | "win">("mac");
+  const [platform, setPlatform] = useState<EdgePlatform>("mac");
 
   // Export modal state
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -45,10 +45,13 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
         setPlatforms(data);
         // Prefer whichever build the visitor's own OS would use, falling
         // back to whatever's actually available on the server.
-        const detected = navigator.userAgent.includes("Windows") ? "win" : "mac";
-        if (data[detected]) setPlatform(detected as "mac" | "win");
-        else if (data.mac) setPlatform("mac");
-        else if (data.win) setPlatform("win");
+        const agent = navigator.userAgent;
+        const detected: EdgePlatform = agent.includes("Windows") ? "win" : agent.includes("Linux") ? "linux" : "mac";
+        if (data[detected]) setPlatform(detected);
+        else {
+          const first = (["win", "mac", "linux"] as const).find((p) => data[p]);
+          if (first) setPlatform(first);
+        }
       })
       .catch(() => {});
   }, []);
@@ -141,6 +144,12 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
   const handleDownloadAppliance = async () => {
     setDownloading(true);
     try {
+      // A published release downloads straight from where it's hosted.
+      const link = await cbtApi.getEdgeApplianceLink(platform).catch(() => ({ url: null }));
+      if (link.url) {
+        window.location.assign(link.url);
+        return;
+      }
       const blob = await cbtApi.downloadEdgeAppliance(platform);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -177,11 +186,12 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
             {availablePlatformCount > 1 && (
               <select
                 value={platform}
-                onChange={(e) => setPlatform(e.target.value as "mac" | "win")}
+                onChange={(e) => setPlatform(e.target.value as EdgePlatform)}
                 className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 min-h-[44px] sm:min-h-0 focus:outline-none focus:ring-2 focus:ring-slate-300 shrink-0"
               >
                 {platforms.mac && <option value="mac">macOS</option>}
                 {platforms.win && <option value="win">Windows</option>}
+                {platforms.linux && <option value="linux">Linux</option>}
               </select>
             )}
             <button
@@ -190,7 +200,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
               className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap min-w-[9.5rem] min-h-[44px] sm:min-h-0"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />
-              {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${platform === "win" ? "Windows" : "macOS"})` : ""}`}
+              {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${{ win: "Windows", mac: "macOS", linux: "Linux" }[platform]})` : ""}`}
             </button>
             <button
               onClick={openPracticeModal}

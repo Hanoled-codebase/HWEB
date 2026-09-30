@@ -47,6 +47,7 @@ export interface OfflineOperation {
   type: 'ANSWER_SET' | 'SUBMIT_INTENT';
   questionId?: string;
   selectedOption?: number;
+  text?: string; // ANSWER_SET on a theory question
   payload?: { cheating: boolean };
   clientTimestamp: string;
 }
@@ -56,7 +57,7 @@ export interface SyncQueueItem {
   examId: string;
   attemptId: string;
   leaseToken: string;
-  answers: Record<string, number>;
+  answers: Record<string, number | string>; // option index, or typed text for theory
   // Built once at enqueue time so every retry resends the same operation IDs,
   // which is what lets the server deduplicate them.
   operations?: OfflineOperation[];
@@ -65,7 +66,28 @@ export interface SyncQueueItem {
   retries: number;
   // Set when the server rejected the submission outright. The item is kept, not
   // deleted, so the student's answers are never thrown away.
-  failed?: { at: string; reason: string };
+  failed?: SyncFailure;
+}
+
+export interface SyncFailure {
+  at: string;
+  reason: string;
+  /** HCBT's error code, e.g. OFFLINE_LEASE_INVALID when the upload window closed. */
+  code?: string;
+  /** Too late to sync, so handed to the school to accept or dismiss. */
+  sentForReview?: boolean;
+}
+
+// Lets screens that list the queue refresh when the sync worker changes it.
+const QUEUE_EVENT = 'hcbt:sync-queue-changed';
+
+function queueChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUEUE_EVENT));
+}
+
+export function onQueueChanged(callback: () => void): () => void {
+  window.addEventListener(QUEUE_EVENT, callback);
+  return () => window.removeEventListener(QUEUE_EVENT, callback);
 }
 
 // ── IndexedDB Helpers ──────────────────────────────────────────────────
@@ -147,17 +169,17 @@ function uuid(): string {
  * Sequences continue from the last one the server acknowledged.
  */
 export function buildSubmitOperations(
-  answers: Record<string, number>,
+  answers: Record<string, number | string>,
   cheating: boolean,
   lastSyncedSequence: number,
   submittedAt: string,
 ): OfflineOperation[] {
-  const operations: OfflineOperation[] = Object.entries(answers).map(([questionId, selectedOption], index) => ({
+  const operations: OfflineOperation[] = Object.entries(answers).map(([questionId, value], index) => ({
     operationId: uuid(),
     sequence: lastSyncedSequence + index + 1,
     type: 'ANSWER_SET',
     questionId,
-    selectedOption,
+    ...(typeof value === 'string' ? { text: value } : { selectedOption: value }),
     clientTimestamp: submittedAt,
   }));
   operations.push({
@@ -175,6 +197,7 @@ export async function enqueueAttempt(item: Omit<SyncQueueItem, 'id' | 'retries'>
   const id = uuid();
   const entry: SyncQueueItem = { ...item, id, retries: 0 };
   await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.put(entry));
+  queueChanged();
   return id;
 }
 
@@ -183,9 +206,15 @@ export async function getPendingSyncs(): Promise<SyncQueueItem[]> {
   return txPromise(STORE_SYNC_QUEUE, 'readonly', (store) => store.getAll());
 }
 
-/** Remove a successfully synced item */
+/** Items the server wouldn't take, kept so the answers aren't lost. */
+export async function getFailedSyncs(): Promise<SyncQueueItem[]> {
+  return (await getPendingSyncs()).filter((item) => item.failed);
+}
+
+/** Remove a successfully synced item (or one the student chose to delete) */
 export async function removeSyncItem(id: string): Promise<void> {
   await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.delete(id));
+  queueChanged();
 }
 
 /** Increment retry count for a failed sync */
@@ -198,11 +227,27 @@ export async function incrementRetry(id: string): Promise<void> {
 }
 
 /** Stop retrying an item the server rejected, but keep its answers. */
-export async function markSyncFailed(id: string, reason: string): Promise<void> {
+export async function markSyncFailed(
+  id: string,
+  reason: string,
+  details: Pick<SyncFailure, 'code' | 'sentForReview'> = {},
+): Promise<void> {
   const item = await txPromise<SyncQueueItem>(STORE_SYNC_QUEUE, 'readonly', (store) => store.get(id));
   if (item) {
-    item.failed = { at: new Date().toISOString(), reason };
+    item.failed = { at: new Date().toISOString(), reason, ...details };
     await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.put(item));
+    queueChanged();
+  }
+}
+
+/** Put a failed item back in line, e.g. after the school fixed what blocked it. */
+export async function retrySyncItem(id: string): Promise<void> {
+  const item = await txPromise<SyncQueueItem>(STORE_SYNC_QUEUE, 'readonly', (store) => store.get(id));
+  if (item) {
+    delete item.failed;
+    item.retries = 0;
+    await txPromise(STORE_SYNC_QUEUE, 'readwrite', (store) => store.put(item));
+    queueChanged();
   }
 }
 
@@ -211,7 +256,7 @@ export async function markSyncFailed(id: string, reason: string): Promise<void> 
 const AUTOSAVE_KEY_PREFIX = 'hcbt_answers_';
 
 /** Save in-progress answers to localStorage as a fast fallback */
-export function autoSaveAnswers(examId: string, answers: Record<string, number>): void {
+export function autoSaveAnswers(examId: string, answers: Record<string, number | string>): void {
   try {
     localStorage.setItem(`${AUTOSAVE_KEY_PREFIX}${examId}`, JSON.stringify(answers));
   } catch {
@@ -220,7 +265,7 @@ export function autoSaveAnswers(examId: string, answers: Record<string, number>)
 }
 
 /** Recover auto-saved answers */
-export function recoverAnswers(examId: string): Record<string, number> | null {
+export function recoverAnswers(examId: string): Record<string, number | string> | null {
   try {
     const raw = localStorage.getItem(`${AUTOSAVE_KEY_PREFIX}${examId}`);
     return raw ? JSON.parse(raw) : null;

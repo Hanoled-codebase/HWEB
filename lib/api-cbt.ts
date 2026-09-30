@@ -17,9 +17,67 @@ async function fetchCbt<T = any>(endpoint: string, options: ApiOptions = {}): Pr
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface ExamData { title: string; duration: number; [key: string]: JsonValue; }
-interface QuestionData { text: string; options: string[]; correctAnswer: number; [key: string]: JsonValue; }
+// A multiple-choice question has options and a correct answer; a theory one
+// (type "theory") has neither and may carry a markingGuide.
+interface QuestionData { text: string; type?: "objective" | "theory"; options?: string[]; correctAnswer?: number; [key: string]: JsonValue | undefined; }
 interface SubmitData { answers: Array<{ questionId: string; selectedOption: number }>; currentVersion?: number; }
 interface AssignData { classLevelId?: string; studentId?: string; }
+
+export interface LateSubmission {
+  id: string;
+  attemptId: string;
+  exam: { id: string; title: string; questionCount: number };
+  student: { id: string; name: string | null; admissionNumber: string | null };
+  answered: number;
+  deadlineAt: string | null;
+  deviceSubmittedAt: string | null;
+  receivedAt: string;
+}
+
+export interface MarkingSheet {
+  awaitingMarking: number;
+  questions: Array<{
+    questionId: string;
+    text: string;
+    marks: number;
+    markingGuide: string | null;
+    awaitingMarking: number;
+    scripts: Array<{
+      resultId: string;
+      studentName: string;
+      admissionNumber: string | null;
+      textAnswer: string | null;
+      marks: number;
+      marked: boolean;
+      comment: string | null;
+    }>;
+  }>;
+}
+
+export type ItemFlag = "TOO_HARD" | "TOO_EASY" | "CHECK_ANSWER_KEY" | "WEAK_DISCRIMINATION";
+
+export interface ItemAnalysis {
+  candidates: number;
+  excludedForCheating: number;
+  groupSize: number;
+  items: Array<{
+    questionId: string;
+    number: number;
+    type?: "objective" | "theory";
+    awaitingMarking?: number;
+    text: string;
+    options: string[];
+    correctAnswer: number;
+    correct: number | null;
+    blank: number;
+    choiceCounts: number[];
+    difficulty: number | null;
+    discrimination: number | null;
+    flags: ItemFlag[];
+  }>;
+}
+
+export type EdgePlatform = "mac" | "win" | "linux";
 
 // ── API Methods ─────────────────────────────────────────────────────────
 
@@ -34,8 +92,11 @@ export const cbtApi = {
     fetchCbt(`/edge-nodes/practice-packs/export`, { method: "POST", body: JSON.stringify({ selections }) }),
   // Which platform builds actually exist on the server (e.g. { mac: true, win: true }).
   getEdgeAppliancePlatforms: () => fetchCbt<Record<string, boolean>>(`/edge-nodes/download/platforms`),
-  // Binary download — bypasses fetchCbt's JSON parsing, returns a Blob.
-  downloadEdgeAppliance: async (platform: "mac" | "win" = "mac"): Promise<Blob> => {
+  // The published installer or build for a platform, if a release is out.
+  getEdgeApplianceLink: (platform: EdgePlatform) =>
+    fetchCbt<{ url: string | null; file?: string; sha256?: string; version?: string }>(`/edge-nodes/download/link?platform=${platform}`),
+  // Binary download from this server — bypasses fetchCbt's JSON parsing, returns a Blob.
+  downloadEdgeAppliance: async (platform: EdgePlatform = "mac"): Promise<Blob> => {
     const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, authFetchInit("hcbt"));
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -98,7 +159,34 @@ export const cbtApi = {
   getAdminStats: (orgSlug: string) => fetchCbt(`/admin/stats?orgSlug=${orgSlug}`),
   getAdminExams: (orgSlug: string) => fetchCbt(`/admin/exams?orgSlug=${orgSlug}`),
   getAdminStudents: (orgSlug: string) => fetchCbt(`/admin/students?orgSlug=${orgSlug}`),
+  // Offline attempts that arrived after their upload window, awaiting an admin's decision.
+  getLateSubmissions: (orgSlug: string) => fetchCbt<LateSubmission[]>(`/admin/late-submissions?orgSlug=${orgSlug}`),
+  decideLateSubmission: (orgSlug: string, id: string, decision: "accept" | "dismiss") =>
+    fetchCbt<{ status: string; score?: number; totalMarks?: number; percentage?: number }>(
+      `/admin/late-submissions/${id}/${decision}?orgSlug=${orgSlug}`,
+      { method: "POST", showErrorToast: false },
+    ),
+  // What HCBT holds about a candidate (learnerId) or staff member (personId), for a data request.
+  exportPersonalData: (orgSlug: string, who: { learnerId: string } | { personId: string } | { affiliationId: string }) =>
+    fetchCbt<Record<string, unknown>>(
+      `/admin/people/export?${new URLSearchParams({ orgSlug, ...who }).toString()}`,
+      { showErrorToast: false },
+    ),
+  // HCBT staff, for the password-reset screen; organizationId names the school in HCORE.
+  getAccounts: (orgSlug: string) =>
+    fetchCbt<{ organizationId: string; staff: Array<{ personId: string; name: string; email: string | null; roles: string[] }> }>(
+      `/admin/accounts?orgSlug=${orgSlug}`,
+    ),
   getAdminExamResultsOverview: (examId: string, orgSlug: string) => fetchCbt(`/admin/exam/${examId}/results?orgSlug=${orgSlug}`),
+  // Theory answers to mark, grouped by question.
+  getMarkingSheet: (examId: string) => fetchCbt<MarkingSheet>(`/exams/${examId}/marking`, { showErrorToast: false }),
+  markAnswer: (examId: string, resultId: string, questionId: string, body: { marks: number; comment?: string | null }) =>
+    fetchCbt<{ resultId: string; score: number; totalMarks: number; percentage: number; awaitingMarking: number }>(
+      `/exams/${examId}/results/${resultId}/answers/${questionId}/mark`,
+      { method: "PUT", body: JSON.stringify(body), showErrorToast: false },
+    ),
+  // How each question performed (Hcbt shared/item-analysis).
+  getItemAnalysis: (examId: string) => fetchCbt<ItemAnalysis>(`/exams/${examId}/item-analysis`, { showErrorToast: false }),
   getClasses: (orgSlug: string) => fetchCbt(`/admin/classes?orgSlug=${orgSlug}`),
   getOrgSubjects: (orgSlug: string) => fetchCbt(`/admin/subjects?orgSlug=${orgSlug}`),
   getTeacherClasses: (orgSlug: string) => fetchCbt(`/admin/teacher-classes?orgSlug=${orgSlug}`),
@@ -197,6 +285,9 @@ export const cbtApi = {
 
   // ── Auth ─────────────────────────────────────────────────────────────
   login: (identifier: string, password: string) => fetchCbt("/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  // Appliance only: the second half of a sign-in with a school-set password.
+  changePassword: (changeToken: string, newPassword: string) =>
+    fetchCbt("/auth/change-password", { method: "POST", body: JSON.stringify({ changeToken, newPassword }), showErrorToast: false }),
   logout: (options: ApiOptions = {}) => fetchCbt("/auth/logout", { ...options, method: "POST" }),
   getProfile: () => fetchCbt("/auth/profile"),
   checkAuth: async () => {

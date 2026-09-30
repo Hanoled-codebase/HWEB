@@ -7,6 +7,7 @@ import { EDGE_MODE } from "@/lib/api";
 import { signOutEverywhere } from "@/lib/sign-out";
 import { useExamStore } from "@/store/exam";
 import { startSyncWorker } from "@/lib/cbt-sync";
+import { UnsentSubmissions } from "@/components/cbt/UnsentSubmissions";
 import { useExamDeviceStatus, isExamCapableScreen } from "@/hooks/useExamDevice";
 import { ExamDeviceNotice, ExamDeviceBanner } from "@/components/cbt/ExamDeviceNotice";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
@@ -324,6 +325,12 @@ export default function StudentDashboard() {
     }
     setPasskeyError(null);
 
+    // The exam room runs in full screen, and a browser only enters it from a
+    // click, so ask on this one; the exam page covers itself until it's on.
+    if (document.fullscreenEnabled && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+
     setStartingExamId(selectedExam.id);
     toast.info(`Initializing "${selectedExam.title}"... Please do not close this window.`);
 
@@ -350,6 +357,7 @@ export default function StudentDashboard() {
       } else {
         toast.error(err.message || "Could not start exam. Please try again.");
       }
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       setStartingExamId(null);
     }
   };
@@ -453,6 +461,7 @@ export default function StudentDashboard() {
           <div className="space-y-5 sm:space-y-8">
             <CbtGreeting name={studentName} roleLabel="Student" school={schoolName} />
             {examDevice === "blocked" && <ExamDeviceBanner />}
+            <UnsentSubmissions />
 
             {/* Tab Navigation Switches */}
             <div className="hidden sm:flex space-x-1 bg-slate-200/60 p-1.5 rounded-sm border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">

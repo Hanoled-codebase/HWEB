@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
 import { ResetPasswordButton } from "@/components/dashboard/ResetPasswordButton";
+import { PersonalDataButton } from "@/components/dashboard/PersonalDataButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,6 +202,19 @@ export default function StudentDetailPage() {
                 target={{ learnerId: studentProfile.hcoreLearnerId }}
                 personName={`${studentProfile.firstName} ${studentProfile.lastName}`.trim()}
                 signInHint="their admission number"
+              />
+            )}
+
+            {canEditProfile && currentOrg && studentProfile?.hcoreLearnerId && (
+              <PersonalDataButton
+                orgId={currentOrg.id}
+                orgSlug={currentOrg.slug}
+                personName={`${studentProfile.firstName} ${studentProfile.lastName}`.trim()}
+                target={{ learnerId: studentProfile.hcoreLearnerId }}
+                hsms={{ studentId: studentProfile.id }}
+                hcbt={{ learnerId: studentProfile.hcoreLearnerId }}
+                canErase={currentMember?.role === "owner" || currentMember?.role === "admin"}
+                onErased={() => router.push(`/dashboard/school/${currentOrg.slug}/students`)}
               />
             )}
           </div>

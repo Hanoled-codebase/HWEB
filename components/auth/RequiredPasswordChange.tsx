@@ -5,15 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, KeyRound, Loader2 } from 'lucide-react';
 import { completePasswordChangeAction, type SignInContext } from '@/app/actions/auth';
 import { setAuthTokens } from '@/lib/auth-tokens';
-
-// Mirrors HCORE's passwordSchema; HCORE makes the final call.
-function passwordRules(value: string) {
-  const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(value)).length;
-  return [
-    { label: 'At least 12 characters', met: value.length >= 12 },
-    { label: 'Three of: lowercase, capitals, numbers, symbols', met: kinds >= 3 },
-  ];
-}
+import { passwordRules } from '@/lib/password-policy';
 
 const inputClass =
   'w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-xs sm:text-sm text-[#0B1220] placeholder-slate-400 transition-all';
@@ -35,8 +27,8 @@ export function RequiredPasswordChange({
   const router = useRouter();
   const [state, formAction, pending] = useActionState(completePasswordChangeAction, null);
   const [password, setPassword] = useState('');
-  const rules = passwordRules(password);
   const isStudent = context.identifierType === 'ADMISSION_NUMBER';
+  const rules = passwordRules(password, isStudent ? 'learner' : 'staff');
 
   useEffect(() => {
     if (state && 'success' in state) {
