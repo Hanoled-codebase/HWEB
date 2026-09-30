@@ -62,6 +62,8 @@ const USERS = {
 };
 
 const CHILD = { id: "stu-ada", firstName: "Ada", lastName: "Obi", admissionNumber: "GF/2026/001" };
+// The same child, as the HSMS student profile the pupil sees.
+const PUPIL = { ...CHILD, classLevel: { id: "jss1a", name: "JSS 1A" } };
 
 const EXAM = {
   id: "0f5f1a52-0000-4000-8000-0000000000e1",
@@ -153,12 +155,22 @@ const ROUTES = {
       ? [200, { id: user.principalId, displayName: user.displayName, primaryEmail: user.identifier, status: "ACTIVE", loginIdentifiers: [] }]
       : [401, { error: "Unauthorized" }]],
     ["GET", /^\/v1\/me\/contexts$/, (_req, _m, _b, user) => (user ? [200, contexts(user)] : [401, { error: "Unauthorized" }])],
-    ["GET", /^\/v1\/directory\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => (user ? [200, member(user)] : [401, { error: "Unauthorized" }])],
+    ["GET", /^\/v1\/directory\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
     ["POST", /^\/v1\/auth\/logout$/, () => [200, { ok: true }]],
   ],
   hsms: [
-    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => (user ? [200, member(user)] : [401, { error: "Unauthorized" }])],
-    ["GET", /^\/organizations\/greenfield\/student-profile$/, () => [404, { error: "Not a student" }]],
+    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
+    ["GET", /^\/organizations\/greenfield\/student-profile$/, (_req, _m, _b, user) => (user?.learnerId
+      ? [200, { student: PUPIL, org: ORG }]
+      : [404, { error: "Not a student" }])],
+    // Like the real HSMS: exams live in HCBT, so this dashboard never lists any.
+    ["GET", /^\/student\/greenfield\/dashboard$/, () => [200, {
+      student: PUPIL,
+      stats: { totalAssessments: 0, averagePercentage: null, pendingExams: 0, attendancePercent: null },
+      todayTimetable: [],
+      pendingExams: [],
+    }]],
+    ["GET", /^\/greenfield\/study-materials$/, () => [200, []]],
     ["GET", /^\/notifications/, () => [200, { notifications: [], unreadCount: 0 }]],
     ["GET", /^\/billing\/greenfield\/parent-fee-summary$/, () => [200, feeSummary()]],
     ["POST", /^\/payments\/init\/greenfield$/, (_req, _m, body) => [200, {
@@ -216,6 +228,14 @@ function signIn(user) {
     learnerId: user.learnerId ?? null,
     studentId: user.learnerId ?? null,
   };
+}
+
+// Pupils and exam candidates aren't school staff or parents: both member
+// profiles refuse them, and Hweb falls back to the HSMS student profile.
+function memberProfile(user) {
+  if (!user) return [401, { error: "Unauthorized" }];
+  if (user.learnerId) return [404, { error: "Not a member of this school" }];
+  return [200, member(user)];
 }
 
 function member(user) {
