@@ -124,7 +124,7 @@ export const api = {
     }),
 
   // Admin reset: a one-time temporary password the person must replace at sign-in.
-  resetPassword: (orgId: string, target: { learnerId: string } | { affiliationId: string }) =>
+  resetPassword: (orgId: string, target: { learnerId: string } | { affiliationId: string } | { personId: string }) =>
     request<{ temporaryPassword: string }>(HCORE_BASE, `/v1/organizations/${orgId}/password-resets`, {
       method: 'POST',
       body: JSON.stringify(target),

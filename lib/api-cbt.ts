@@ -98,6 +98,11 @@ export const cbtApi = {
   getAdminStats: (orgSlug: string) => fetchCbt(`/admin/stats?orgSlug=${orgSlug}`),
   getAdminExams: (orgSlug: string) => fetchCbt(`/admin/exams?orgSlug=${orgSlug}`),
   getAdminStudents: (orgSlug: string) => fetchCbt(`/admin/students?orgSlug=${orgSlug}`),
+  // HCBT staff, for the password-reset screen; organizationId names the school in HCORE.
+  getAccounts: (orgSlug: string) =>
+    fetchCbt<{ organizationId: string; staff: Array<{ personId: string; name: string; email: string | null; roles: string[] }> }>(
+      `/admin/accounts?orgSlug=${orgSlug}`,
+    ),
   getAdminExamResultsOverview: (examId: string, orgSlug: string) => fetchCbt(`/admin/exam/${examId}/results?orgSlug=${orgSlug}`),
   getClasses: (orgSlug: string) => fetchCbt(`/admin/classes?orgSlug=${orgSlug}`),
   getOrgSubjects: (orgSlug: string) => fetchCbt(`/admin/subjects?orgSlug=${orgSlug}`),
@@ -197,6 +202,9 @@ export const cbtApi = {
 
   // ── Auth ─────────────────────────────────────────────────────────────
   login: (identifier: string, password: string) => fetchCbt("/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  // Appliance only: the second half of a sign-in with a school-set password.
+  changePassword: (changeToken: string, newPassword: string) =>
+    fetchCbt("/auth/change-password", { method: "POST", body: JSON.stringify({ changeToken, newPassword }), showErrorToast: false }),
   logout: (options: ApiOptions = {}) => fetchCbt("/auth/logout", { ...options, method: "POST" }),
   getProfile: () => fetchCbt("/auth/profile"),
   checkAuth: async () => {

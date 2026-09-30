@@ -40,6 +40,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   HardDrive,
+  KeyRound,
 } from "lucide-react";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
@@ -47,13 +48,14 @@ import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
+import AccountsTab from "./AccountsTab";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const orgSlug = searchParams.get("orgSlug") || "hanoled-default";
 
   // Navigation
-  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students" | "appliances">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "exams" | "students" | "accounts" | "appliances">("overview");
 
   // Core Data States
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -1554,6 +1556,17 @@ export default function AdminDashboard() {
                   Grade Auditor
                 </button>
                 )}
+                {/* Resets happen in HCORE, so not on the offline appliance. */}
+                {isAdmin && !EDGE_MODE && (
+                  <button
+                    onClick={() => setActiveTab("accounts")}
+                    className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === "accounts" ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-500 hover:text-[#0B1220]"
+                    }`}
+                  >
+                    Sign-in Help
+                  </button>
+                )}
                 {isAdmin && (
                   <button
                     onClick={() => setActiveTab("appliances")}
@@ -1843,6 +1856,9 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* SIGN-IN HELP TAB — admin only, online only */}
+            {isAdmin && !EDGE_MODE && activeTab === "accounts" && <AccountsTab orgSlug={resolvedOrgSlug} />}
+
             {/* EDGE APPLIANCES TAB — admin only */}
             {isAdmin && activeTab === "appliances" && (
               EDGE_MODE
@@ -1865,6 +1881,7 @@ export default function AdminDashboard() {
             ...(isAdmin
               ? [
                   { key: "students" as const, label: "Grades", icon: ShieldCheck },
+                  ...(EDGE_MODE ? [] : [{ key: "accounts" as const, label: "Accounts", icon: KeyRound }]),
                   { key: "appliances" as const, label: "Devices", icon: HardDrive },
                 ]
               : []),

@@ -450,11 +450,6 @@
       "count": 1
     }
   },
-  "edge-ui/app/signin/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
   "hooks/use-mobile.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1
