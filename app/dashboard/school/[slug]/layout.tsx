@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { ShieldAlert } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import { StudentMobileLayout } from "@/components/dashboard/StudentMobileLayout";
+import { StudentMobileFrame, StudentMobileTopBar } from "@/components/dashboard/StudentMobileFrame";
 import { StaffRouteGuard } from "@/components/dashboard/StaffRouteGuard";
 import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
 import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProvider";
@@ -223,22 +223,19 @@ export default function DashboardLayout({
 
   if (!currentOrg || !user) return null;
 
-  // Dedicated split layout for Student profile
+  // Student shell: one copy of the page for every width. The phone bars are
+  // md:hidden and the desktop header hidden below md, like the staff shell.
+  // Rendering children once per shell mounted every student page twice and
+  // doubled its API calls.
   if (isStudent) {
     return (
       <TooltipProvider>
-        {/* Mobile student view */}
-        <div className="md:hidden">
-          <StudentMobileLayout>
-            {children}
-          </StudentMobileLayout>
-        </div>
-        {/* Desktop student view */}
-        <div className="hidden md:block">
-          <SidebarProvider>
-            <StudentSidebar />
-            <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative overflow-x-hidden">
-              <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center border-b bg-white/85 backdrop-blur-md px-6">
+        <SidebarProvider>
+          <StudentSidebar />
+          <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative md:overflow-x-hidden">
+            <StudentMobileFrame>
+              {/* Desktop top bar */}
+              <header className="sticky top-0 z-10 hidden h-14 shrink-0 items-center border-b bg-white/85 backdrop-blur-md px-6 md:flex">
                 <div className="flex w-full items-center justify-between">
                   <div className="flex items-center gap-2">
                     <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
@@ -248,14 +245,20 @@ export default function DashboardLayout({
                   </div>
                 </div>
               </header>
-              <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+
+              <StudentMobileTopBar />
+
+              {/* pb-safe-nav (tab bar clearance) is plain CSS that outranks Tailwind padding, so desktop needs ! to drop it. */}
+              <main className="flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:!pb-6 lg:p-8 lg:!pb-8">
                 <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
                   {children}
                 </div>
               </main>
-            </SidebarInset>
-          </SidebarProvider>
-        </div>
+
+              <MobileTabBar />
+            </StudentMobileFrame>
+          </SidebarInset>
+        </SidebarProvider>
       </TooltipProvider>
     );
   }
