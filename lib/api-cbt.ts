@@ -166,6 +166,12 @@ export const cbtApi = {
       `/admin/late-submissions/${id}/${decision}?orgSlug=${orgSlug}`,
       { method: "POST", showErrorToast: false },
     ),
+  // What HCBT holds about a candidate (learnerId) or staff member (personId), for a data request.
+  exportPersonalData: (orgSlug: string, who: { learnerId: string } | { personId: string } | { affiliationId: string }) =>
+    fetchCbt<Record<string, unknown>>(
+      `/admin/people/export?${new URLSearchParams({ orgSlug, ...who }).toString()}`,
+      { showErrorToast: false },
+    ),
   // HCBT staff, for the password-reset screen; organizationId names the school in HCORE.
   getAccounts: (orgSlug: string) =>
     fetchCbt<{ organizationId: string; staff: Array<{ personId: string; name: string; email: string | null; roles: string[] }> }>(

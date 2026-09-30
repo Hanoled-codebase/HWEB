@@ -1,6 +1,9 @@
 import { request, HCORE_BASE, HSMS_BASE, HCBT_BASE } from '../lib/api';
 
 /** One class/subject teaching duty as HCORE stores it; ids are HCORE ids. */
+/** One person, by whichever HCORE id the caller holds: learnerId, affiliationId or personId. */
+export type PersonTarget = { learnerId: string } | { affiliationId: string } | { personId: string };
+
 export type TeachingAssignmentInput = {
   classGroupId: string;
   subjectId: string | null;
@@ -124,10 +127,36 @@ export const api = {
     }),
 
   // Admin reset: a one-time temporary password the person must replace at sign-in.
-  resetPassword: (orgId: string, target: { learnerId: string } | { affiliationId: string } | { personId: string }) =>
+  resetPassword: (orgId: string, target: PersonTarget) =>
     request<{ temporaryPassword: string }>(HCORE_BASE, `/v1/organizations/${orgId}/password-resets`, {
       method: 'POST',
       body: JSON.stringify(target),
+      showErrorToast: false,
+    }),
+
+  // Data-protection requests (HCORE modules/privacy). The person is named by
+  // learnerId (students), affiliationId (staff, parents) or personId.
+  exportPersonalData: (orgId: string, target: PersonTarget) =>
+    request<Record<string, unknown>>(HCORE_BASE, `/v1/organizations/${orgId}/data-requests/export`, {
+      method: 'POST',
+      body: JSON.stringify(target),
+      showErrorToast: false,
+    }),
+
+  erasePersonalData: (orgId: string, target: PersonTarget, reason?: string) =>
+    request<{ erased: true; scope: 'organization' | 'full' }>(HCORE_BASE, `/v1/organizations/${orgId}/data-requests/erase`, {
+      method: 'POST',
+      body: JSON.stringify({ ...target, confirm: 'ERASE', ...(reason ? { reason } : {}) }),
+      showErrorToast: false,
+    }),
+
+  getPrivacySettings: (orgId: string) =>
+    request<{ leaverRetentionYears: number | null }>(HCORE_BASE, `/v1/organizations/${orgId}/privacy-settings`, { showErrorToast: false }),
+
+  updatePrivacySettings: (orgId: string, leaverRetentionYears: number | null) =>
+    request<{ leaverRetentionYears: number | null }>(HCORE_BASE, `/v1/organizations/${orgId}/privacy-settings`, {
+      method: 'PUT',
+      body: JSON.stringify({ leaverRetentionYears }),
       showErrorToast: false,
     }),
 

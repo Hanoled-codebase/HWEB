@@ -77,6 +77,10 @@ export default function AdminDashboard() {
     resolvedOrgSlug && resolvedOrgSlug !== "hanoled-default" ? `/dashboard/school/${resolvedOrgSlug}` : "/welcome";
   const [orgSubjects, setOrgSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
   const isAdmin = !!currentUser?.isAdmin;
+  // Erasing someone's personal data is HCORE's directory.write, which CBT admins don't hold.
+  const canErasePersonalData = ["ORG_OWNER", "OWNER", "ORG_ADMIN", "DIRECTORY_ADMIN"].some((role) =>
+    (currentUser?.roles ?? []).includes(role),
+  );
   const [stats, setStats] = useState<any>({
     totalExams: 0,
     publishedExams: 0,
@@ -1967,7 +1971,7 @@ export default function AdminDashboard() {
             )}
 
             {/* SIGN-IN HELP TAB — admin only, online only */}
-            {isAdmin && !EDGE_MODE && activeTab === "accounts" && <AccountsTab orgSlug={resolvedOrgSlug} />}
+            {isAdmin && !EDGE_MODE && activeTab === "accounts" && <AccountsTab orgSlug={resolvedOrgSlug} canErase={canErasePersonalData} />}
 
             {/* EDGE APPLIANCES TAB — admin only */}
             {isAdmin && activeTab === "appliances" && (

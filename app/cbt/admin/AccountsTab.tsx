@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Search, UserRound, Users } from "lucide-react";
 import { cbtApi } from "@/lib/api-cbt";
 import { toTitleCase } from "@/lib/utils";
+import { PersonalDataButton } from "@/components/dashboard/PersonalDataButton";
 import { ResetPasswordButton } from "@/components/dashboard/ResetPasswordButton";
 
 type Staff = { personId: string; name: string; email: string | null; roles: string[] };
@@ -26,8 +27,9 @@ const resetButtonClass =
  * dashboard: an admin gives a student or staff member a temporary password
  * (shown once) that they replace at their next sign-in. The reset happens in
  * HCORE, which also keeps administrators' accounts for the owner alone.
+ * Data-protection requests (download or erase someone's data) start here too.
  */
-export default function AccountsTab({ orgSlug }: { orgSlug: string }) {
+export default function AccountsTab({ orgSlug, canErase }: { orgSlug: string; canErase: boolean }) {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -155,13 +157,27 @@ export default function AccountsTab({ orgSlug }: { orgSlug: string }) {
                     <p className="truncate text-sm font-semibold text-[#0B1220]">{name}</p>
                     <p className="font-mono text-xs text-slate-500">{s.admissionNumber}</p>
                   </div>
-                  <ResetPasswordButton
-                    orgId={organizationId}
-                    target={{ learnerId: s.id }}
-                    personName={name}
-                    signInHint={`their admission number (${s.admissionNumber})`}
-                    className={resetButtonClass}
-                  />
+                  <div className="flex shrink-0 gap-2">
+                    <ResetPasswordButton
+                      orgId={organizationId}
+                      target={{ learnerId: s.id }}
+                      personName={name}
+                      signInHint={`their admission number (${s.admissionNumber})`}
+                      className={resetButtonClass}
+                    />
+                    {organizationId && (
+                      <PersonalDataButton
+                        orgId={organizationId}
+                        orgSlug={orgSlug}
+                        personName={name}
+                        target={{ learnerId: s.id }}
+                        hcbt={{ learnerId: s.id }}
+                        canErase={canErase}
+                        onErased={() => setStudents((rows) => rows.filter((row) => row.id !== s.id))}
+                        className={resetButtonClass}
+                      />
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -186,13 +202,27 @@ export default function AccountsTab({ orgSlug }: { orgSlug: string }) {
                     {s.email ? ` · ${s.email}` : ""}
                   </p>
                 </div>
-                <ResetPasswordButton
-                  orgId={organizationId}
-                  target={{ personId: s.personId }}
-                  personName={s.name}
-                  signInHint={s.email ? `their email (${s.email})` : undefined}
-                  className={resetButtonClass}
-                />
+                <div className="flex shrink-0 gap-2">
+                  <ResetPasswordButton
+                    orgId={organizationId}
+                    target={{ personId: s.personId }}
+                    personName={s.name}
+                    signInHint={s.email ? `their email (${s.email})` : undefined}
+                    className={resetButtonClass}
+                  />
+                  {organizationId && (
+                    <PersonalDataButton
+                      orgId={organizationId}
+                      orgSlug={orgSlug}
+                      personName={s.name}
+                      target={{ personId: s.personId }}
+                      hcbt={{ personId: s.personId }}
+                      canErase={canErase}
+                      onErased={() => setStaff((rows) => rows.filter((row) => row.personId !== s.personId))}
+                      className={resetButtonClass}
+                    />
+                  )}
+                </div>
               </li>
             ))}
           </ul>

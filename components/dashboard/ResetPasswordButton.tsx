@@ -12,9 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { api } from "@/services/api";
+import { api, type PersonTarget } from "@/services/api";
 
-type ResetTarget = { learnerId: string } | { affiliationId: string } | { personId: string };
+type ResetTarget = PersonTarget;
 
 /**
  * Lets a school admin give someone a temporary password (HCORE shows it once)
