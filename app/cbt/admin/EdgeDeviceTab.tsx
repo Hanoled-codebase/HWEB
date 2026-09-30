@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Server, RefreshCw, ShieldCheck, LockOpen, Lock, PlayCircle, BookOpen, Users,
-  CheckCircle2, XCircle, Loader2, Link2, ScrollText, Cloud,
+  CheckCircle2, XCircle, Loader2, Link2, ScrollText, Cloud, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetchInit } from "@/lib/auth-tokens";
@@ -27,6 +27,17 @@ async function edgeApi<T = any>(path: string, init: { method?: string; body?: un
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || (typeof data.error === "string" ? data.error : "") || res.statusText);
   return data as T;
+}
+
+/** GET /api/edge/update — see Hcbt/edge/src/updater.js. */
+interface UpdateStatus {
+  currentVersion: string;
+  platform: string;
+  canInstall: boolean;
+  available: { version: string; notes: string | null; size: number | null } | null;
+  staged: { version: string } | null;
+  lastCheckAt: string | null;
+  lastError: string | null;
 }
 
 const STATE_STYLE: Record<string, string> = {
@@ -93,20 +104,23 @@ export default function EdgeDeviceTab() {
   const [emergency, setEmergency] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [pair, setPair] = useState({ cloudBaseUrl: "https://cbt-api.hanoled.com", organizationSlug: "" });
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
 
   const load = useCallback(async () => {
-    const [s, r, p, pp, a] = await Promise.allSettled([
+    const [s, r, p, pp, a, u] = await Promise.allSettled([
       edgeApi("/api/edge/status"),
       edgeApi("/api/edge/roster/status"),
       edgeApi("/api/edge/packages"),
       edgeApi("/api/edge/practice-packs"),
       edgeApi("/api/edge/audit"),
+      edgeApi<UpdateStatus>("/api/edge/update"),
     ]);
     if (s.status === "fulfilled") setStatus(s.value);
     if (r.status === "fulfilled") setRoster(r.value);
     if (p.status === "fulfilled") setPackages(p.value.packages);
     if (pp.status === "fulfilled") setPacks(pp.value.packs);
     if (a.status === "fulfilled") setAudit(a.value);
+    if (u.status === "fulfilled") setUpdate(u.value);
   }, []);
 
   useEffect(() => {
@@ -354,6 +368,76 @@ export default function EdgeDeviceTab() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {update && (
+          <Card title="Updates" icon={<Download className="w-4 h-4" />}>
+            <p className="text-sm text-[#0B1220]">
+              This appliance runs version <strong>{update.currentVersion}</strong> ({update.platform}).
+            </p>
+            {update.staged ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-[#0B1220]">Version {update.staged.version} is downloaded and checked.</p>
+                <p className="text-xs text-slate-500">
+                  Installing restarts the appliance for about a minute. It won&apos;t start while any exam is in progress.
+                </p>
+                <button
+                  disabled={busy === "update-install" || !update.canInstall}
+                  onClick={() =>
+                    run("update-install", async () => {
+                      await edgeApi("/api/edge/update/install", { method: "POST", body: {} });
+                      return `Installing ${update.staged?.version}. This page reconnects when the appliance is back.`;
+                    })
+                  }
+                  className={btnPrimary}
+                  title={update.canInstall ? undefined : "Only an installed appliance can update itself"}
+                >
+                  {busy === "update-install" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Install {update.staged.version} and restart
+                </button>
+              </div>
+            ) : update.available ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-[#0B1220]">
+                  Version {update.available.version} is available
+                  {update.available.size ? ` (${Math.round(update.available.size / 1_000_000)} MB)` : ""}.
+                </p>
+                {update.available.notes && <p className="text-xs text-slate-500">{update.available.notes}</p>}
+                <button
+                  disabled={busy === "update-download"}
+                  onClick={() =>
+                    run("update-download", async () => {
+                      await edgeApi("/api/edge/update/download", { method: "POST", body: {} });
+                      return "Update downloaded and checked against Hanoled's signature.";
+                    })
+                  }
+                  className={btnPrimary}
+                >
+                  {busy === "update-download" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Download update
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">
+                {update.lastCheckAt ? `Up to date as of ${new Date(update.lastCheckAt).toLocaleString()}.` : "Not checked yet."}
+              </p>
+            )}
+            {update.lastError && <p className="mt-2 text-xs text-[#F04438]">{update.lastError}</p>}
+            <button
+              disabled={busy === "update-check" || !status.paired}
+              onClick={() =>
+                run("update-check", async () => {
+                  const next = await edgeApi<UpdateStatus>("/api/edge/update/check", { method: "POST", body: {} });
+                  return next.available ? `Version ${next.available.version} is available.` : "This appliance is up to date.";
+                })
+              }
+              className={`${btnGhost} mt-3`}
+              title={status.paired ? undefined : "Pair this device first"}
+            >
+              {busy === "update-check" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Check for updates
+            </button>
+          </Card>
+        )}
+
         <Card title="Practice packs" icon={<BookOpen className="w-4 h-4" />}>
           <p className="text-xs text-slate-500 leading-relaxed mb-3">
             Frozen SSCE/JAMB past questions for the Practice Simulator and for importing into exams — no internet needed after import.

@@ -77,6 +77,8 @@ export interface ItemAnalysis {
   }>;
 }
 
+export type EdgePlatform = "mac" | "win" | "linux";
+
 // ── API Methods ─────────────────────────────────────────────────────────
 
 export const cbtApi = {
@@ -90,8 +92,11 @@ export const cbtApi = {
     fetchCbt(`/edge-nodes/practice-packs/export`, { method: "POST", body: JSON.stringify({ selections }) }),
   // Which platform builds actually exist on the server (e.g. { mac: true, win: true }).
   getEdgeAppliancePlatforms: () => fetchCbt<Record<string, boolean>>(`/edge-nodes/download/platforms`),
-  // Binary download — bypasses fetchCbt's JSON parsing, returns a Blob.
-  downloadEdgeAppliance: async (platform: "mac" | "win" = "mac"): Promise<Blob> => {
+  // The published installer or build for a platform, if a release is out.
+  getEdgeApplianceLink: (platform: EdgePlatform) =>
+    fetchCbt<{ url: string | null; file?: string; sha256?: string; version?: string }>(`/edge-nodes/download/link?platform=${platform}`),
+  // Binary download from this server — bypasses fetchCbt's JSON parsing, returns a Blob.
+  downloadEdgeAppliance: async (platform: EdgePlatform = "mac"): Promise<Blob> => {
     const res = await fetch(`${HCBT_BASE}/api/edge-nodes/download?platform=${platform}`, authFetchInit("hcbt"));
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
