@@ -325,6 +325,12 @@ export default function StudentDashboard() {
     }
     setPasskeyError(null);
 
+    // The exam room runs in full screen, and a browser only enters it from a
+    // click, so ask on this one; the exam page covers itself until it's on.
+    if (document.fullscreenEnabled && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+
     setStartingExamId(selectedExam.id);
     toast.info(`Initializing "${selectedExam.title}"... Please do not close this window.`);
 
@@ -351,6 +357,7 @@ export default function StudentDashboard() {
       } else {
         toast.error(err.message || "Could not start exam. Please try again.");
       }
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       setStartingExamId(null);
     }
   };

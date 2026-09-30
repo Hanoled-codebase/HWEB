@@ -32,6 +32,27 @@ export interface LateSubmission {
   receivedAt: string;
 }
 
+export type ItemFlag = "TOO_HARD" | "TOO_EASY" | "CHECK_ANSWER_KEY" | "WEAK_DISCRIMINATION";
+
+export interface ItemAnalysis {
+  candidates: number;
+  excludedForCheating: number;
+  groupSize: number;
+  items: Array<{
+    questionId: string;
+    number: number;
+    text: string;
+    options: string[];
+    correctAnswer: number;
+    correct: number;
+    blank: number;
+    choiceCounts: number[];
+    difficulty: number | null;
+    discrimination: number | null;
+    flags: ItemFlag[];
+  }>;
+}
+
 // ── API Methods ─────────────────────────────────────────────────────────
 
 export const cbtApi = {
@@ -122,6 +143,8 @@ export const cbtApi = {
       `/admin/accounts?orgSlug=${orgSlug}`,
     ),
   getAdminExamResultsOverview: (examId: string, orgSlug: string) => fetchCbt(`/admin/exam/${examId}/results?orgSlug=${orgSlug}`),
+  // How each question performed (Hcbt shared/item-analysis).
+  getItemAnalysis: (examId: string) => fetchCbt<ItemAnalysis>(`/exams/${examId}/item-analysis`, { showErrorToast: false }),
   getClasses: (orgSlug: string) => fetchCbt(`/admin/classes?orgSlug=${orgSlug}`),
   getOrgSubjects: (orgSlug: string) => fetchCbt(`/admin/subjects?orgSlug=${orgSlug}`),
   getTeacherClasses: (orgSlug: string) => fetchCbt(`/admin/teacher-classes?orgSlug=${orgSlug}`),

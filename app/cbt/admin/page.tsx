@@ -49,7 +49,9 @@ import { Logo } from "@/components/ui/Logo";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
 import AccountsTab from "./AccountsTab";
+import { MAX_OPTIONS, MIN_OPTIONS, optionLabel } from "@/lib/cbt-options";
 import LateSubmissionsPanel from "./LateSubmissionsPanel";
+import ItemAnalysisPanel from "./ItemAnalysisPanel";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -613,7 +615,7 @@ export default function AdminDashboard() {
       return;
     }
     if (manualQuestion.options.some((o) => !o.trim())) {
-      toast.error("Please fill in all four options");
+      toast.error("Fill in every choice, or remove the empty ones");
       return;
     }
 
@@ -1035,7 +1037,7 @@ export default function AdminDashboard() {
                                 }`}
                               >
                                 <span className="text-xs uppercase opacity-70">
-                                  {["A", "B", "C", "D"][optIdx]}.
+                                  {optionLabel(optIdx)}.
                                 </span>
                                 <span className="truncate"><MathRenderer text={opt} /></span>
                               </div>
@@ -1222,7 +1224,7 @@ export default function AdminDashboard() {
                               <div className="flex flex-wrap gap-1.5 mt-1.5">
                                 {q.options.map((opt: string, oi: number) => (
                                   <span key={oi} className={`px-2 py-0.5 rounded text-xs ${oi === q.correctAnswer ? "bg-green-100 text-green-800 font-bold" : "bg-slate-100 text-slate-500"}`}>
-                                    {["A","B","C","D"][oi]}. {opt}
+                                    {optionLabel(oi)}. {opt}
                                   </span>
                                 ))}
                               </div>
@@ -1383,12 +1385,14 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    {/* Option inputs */}
+                    {/* Option inputs: 2 to 6 choices, A to F */}
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Answer Choices (Fill All Four)</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Answer Choices ({MIN_OPTIONS}–{MAX_OPTIONS})
+                      </label>
                       {manualQuestion.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-center space-x-2">
-                          <span className="text-xs font-extrabold text-slate-500 w-5">{["A", "B", "C", "D"][optIdx]}</span>
+                          <span className="text-xs font-extrabold text-slate-500 w-5">{optionLabel(optIdx)}</span>
                           <input
                             type="text"
                             value={opt}
@@ -1397,11 +1401,39 @@ export default function AdminDashboard() {
                               newOpts[optIdx] = e.target.value;
                               setManualQuestion((prev) => ({ ...prev, options: newOpts }));
                             }}
-                            placeholder={`Choice ${["A", "B", "C", "D"][optIdx]}...`}
+                            placeholder={`Choice ${optionLabel(optIdx)}...`}
                             className="flex-1 text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
                           />
+                          {manualQuestion.options.length > MIN_OPTIONS && (
+                            <button
+                              type="button"
+                              aria-label={`Remove choice ${optionLabel(optIdx)}`}
+                              onClick={() =>
+                                setManualQuestion((prev) => {
+                                  const options = prev.options.filter((_, i) => i !== optIdx);
+                                  // Keep the same choice marked correct; if it was removed, fall back to A.
+                                  const correctAnswer =
+                                    prev.correctAnswer === optIdx ? 0 : prev.correctAnswer > optIdx ? prev.correctAnswer - 1 : prev.correctAnswer;
+                                  return { ...prev, options, correctAnswer };
+                                })
+                              }
+                              className="p-1.5 text-slate-400 hover:text-[#F04438]"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       ))}
+                      {manualQuestion.options.length < MAX_OPTIONS && (
+                        <button
+                          type="button"
+                          onClick={() => setManualQuestion((prev) => ({ ...prev, options: [...prev.options, ""] }))}
+                          className="flex items-center space-x-1 text-xs font-semibold text-[#1447E6] hover:underline"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add choice {optionLabel(manualQuestion.options.length)}</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Correct index and mark grid */}
@@ -1413,10 +1445,9 @@ export default function AdminDashboard() {
                           onChange={(e) => setManualQuestion((prev) => ({ ...prev, correctAnswer: Number(e.target.value) }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2 rounded-xl"
                         >
-                          <option value={0}>Choice A</option>
-                          <option value={1}>Choice B</option>
-                          <option value={2}>Choice C</option>
-                          <option value={3}>Choice D</option>
+                          {manualQuestion.options.map((_, optIdx) => (
+                            <option key={optIdx} value={optIdx}>Choice {optionLabel(optIdx)}</option>
+                          ))}
                         </select>
                       </div>
 
@@ -2394,6 +2425,7 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+                {resultsModal.results.length > 0 && <ItemAnalysisPanel key={resultsModal.examId} examId={resultsModal.examId} />}
               </>
             )}
 

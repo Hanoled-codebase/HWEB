@@ -11,6 +11,7 @@ interface QuestionCardProps {
 }
 
 import { HCBT_BASE } from "@/lib/api";
+import { optionLabel } from "@/lib/cbt-options";
 
 const CBT_BACKEND_URL = HCBT_BASE;
 
@@ -21,7 +22,6 @@ export function QuestionCard({
   onSelectOption,
   totalQuestions,
 }: QuestionCardProps) {
-  const labels = ["A", "B", "C", "D"];
 
   return (
     <div className="bg-slate-800/80 p-7 rounded-sm border border-slate-700/50 shadow-sm space-y-8">
@@ -99,7 +99,7 @@ export function QuestionCard({
                   ? "bg-blue-500 text-white"
                   : "bg-slate-700 text-slate-300"
               }`}>
-                {labels[optIdx]}
+                {optionLabel(optIdx)}
               </span>
 
               {/* Option text */}

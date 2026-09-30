@@ -10,6 +10,7 @@ function formatOption(text: string): string {
 }
 
 import { HCBT_BASE } from "@/lib/api";
+import { optionLabel } from "@/lib/cbt-options";
 
 const CBT_BACKEND_URL = HCBT_BASE;
 
@@ -50,7 +51,6 @@ export function ResultView({ result }: ResultViewProps) {
   const { score, totalMarks, percentage, timeTaken, exam, answers, cheatingStatus, tabSwitchCount } = result;
   const isCheating = cheatingStatus === "cheating";
   const passed = !isCheating && percentage >= exam.passMark;
-  const labels = ["A", "B", "C", "D"];
 
   const [activeFilter, setActiveFilter] = useState<"all" | "passed" | "failed">("all");
 
@@ -263,7 +263,7 @@ export function ResultView({ result }: ResultViewProps) {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className="w-6 h-6 rounded-sm bg-white shadow-sm border border-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0">
-                          {labels[optIdx]}
+                          {optionLabel(optIdx)}
                         </span>
                         <span className="leading-snug"><MathRenderer text={formatOption(opt)} /></span>
                       </div>
