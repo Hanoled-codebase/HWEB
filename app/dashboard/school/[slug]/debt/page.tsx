@@ -137,8 +137,8 @@ export default function DebtPage() {
         )}
 
         <div className="flex items-center gap-4 border-b border-slate-200 pb-2">
-          <button type="button" onClick={() => setTab("debtors")} aria-pressed={tab === "debtors"} className={cn("-mb-2 flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors md:min-h-0 md:pb-2", tab === "debtors" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700")}>Top Debtors</button>
-          <button type="button" onClick={() => { setTab("invoices"); fetchInvoices(); }} aria-pressed={tab === "invoices"} className={cn("-mb-2 flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors md:min-h-0 md:pb-2", tab === "invoices" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700")}>All Invoices</button>
+          <button type="button" onClick={() => setTab("debtors")} aria-pressed={tab === "debtors"} className={cn("-mb-2 flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors md:pointer-fine:min-h-0 md:pb-2", tab === "debtors" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700")}>Top Debtors</button>
+          <button type="button" onClick={() => { setTab("invoices"); fetchInvoices(); }} aria-pressed={tab === "invoices"} className={cn("-mb-2 flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors md:pointer-fine:min-h-0 md:pb-2", tab === "invoices" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700")}>All Invoices</button>
         </div>
 
         {tab === "debtors" && (

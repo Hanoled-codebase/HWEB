@@ -51,7 +51,6 @@ type StudentAcademicRecordProps = {
   student: StudentPerformanceResponse["student"];
   subjects: StudentPerformanceSubject[];
   attendance?: AttendanceInfo;
-  eyebrow?: string;
   description?: string;
   actionLabel?: string;
   emptyTitle?: string;
@@ -430,7 +429,6 @@ export function StudentAcademicRecord({
   student,
   subjects,
   attendance,
-  eyebrow = "Academic Record",
   description = "Track subject performance, assessment breakdown, and the latest score updates in one place.",
   actionLabel = "View Academic Record",
   emptyTitle = "No subjects recorded yet",
@@ -459,10 +457,7 @@ export function StudentAcademicRecord({
             </Avatar>
 
             <div className="min-w-0">
-              <p className="hidden text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 md:block">
-                {eyebrow}
-              </p>
-              <h1 className="mt-2 hidden truncate text-3xl font-bold tracking-tight text-slate-900 md:block lg:text-4xl">
+              <h1 className="hidden truncate text-3xl font-bold tracking-tight text-slate-900 md:block lg:text-4xl">
                 {studentName}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 md:mt-3 md:gap-y-2">

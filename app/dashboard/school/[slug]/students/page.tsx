@@ -63,6 +63,10 @@ type BusAssignment = {
   route: { id: string; name: string } | null;
 };
 
+// Desktop table columns: name, admission no., class, gender, day/boarding, actions.
+const STUDENT_ROW_COLUMNS =
+  "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_2.75rem]";
+
 type StudentRecord = {
   id: string;
   firstName: string;
@@ -445,25 +449,36 @@ export default function StudentsPage() {
           </div>
         </section>
 
-        {/* ── Student list: one grouped list on phones, cards on desktop ── */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white max-md:divide-y max-md:divide-slate-100 md:space-y-3 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
+        {/* ── Student list: one grouped list at every width. Phones: name + one meta line.
+             Tablets: badges under the name. Desktop (lg): table columns, ~56px a row. ── */}
+        <section
+          aria-label={isParent ? "Children" : "Students"}
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 md:rounded-3xl md:shadow-sm"
+        >
+          {!isLoading && filteredStudents.length > 0 && (
+            <div aria-hidden="true" className={`hidden items-center gap-4 bg-slate-50/80 px-5 py-2.5 text-xs font-medium text-slate-500 lg:grid ${STUDENT_ROW_COLUMNS}`}>
+              <span className="pl-14">Name</span>
+              <span>Admission no.</span>
+              <span>Class</span>
+              <span>Gender</span>
+              <span>Day / boarding</span>
+              <span />
+            </div>
+          )}
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="px-4 py-3 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-5"
-              >
+              <div key={i} className="px-4 py-3 md:px-5 md:py-4 lg:py-3">
                 <div className="flex items-center gap-3 md:gap-4">
-                  <Skeleton className="h-10 w-10 rounded-full md:h-14 md:w-14" />
+                  <Skeleton className="h-10 w-10 rounded-full md:h-12 md:w-12 lg:h-10 lg:w-10" />
                   <div className="flex-1 space-y-1.5 md:space-y-2">
-                    <Skeleton className="h-4 w-32 md:h-5 md:w-40" />
-                    <Skeleton className="h-3 w-24 md:h-4 md:w-28" />
+                    <Skeleton className="h-4 w-32 md:w-40" />
+                    <Skeleton className="h-3 w-24 md:w-28 lg:hidden" />
                   </div>
                 </div>
               </div>
             ))
           ) : filteredStudents.length === 0 ? (
-            <div className="p-8 text-center md:rounded-3xl md:border md:border-dashed md:border-slate-200 md:bg-white md:p-14 md:shadow-sm">
+            <div className="p-8 text-center md:p-14">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 md:h-16 md:w-16 md:rounded-2xl">
                 <GraduationCap className="h-5 w-5 md:h-7 md:w-7" />
               </div>
@@ -484,75 +499,97 @@ export default function StudentsPage() {
             filteredStudents.map((student: StudentRecord) => {
               const href = `/dashboard/school/${currentOrg?.slug}/students/${student.id}`;
               const fullName = `${student.firstName} ${student.middleName ? `${student.middleName} ` : ""}${student.lastName}`;
+              const dayOrBoarding = student.studentType ? (student.studentType === "boarding" ? "Boarding" : "Day") : null;
               return (
                 <div
                   key={student.id}
-                  className="group relative flex w-full items-center gap-2 bg-white pr-2 transition-shadow md:gap-4 md:rounded-2xl md:border md:border-slate-200 md:p-5 md:shadow-sm md:hover:shadow-md"
+                  className={`group relative flex w-full items-center gap-2 pr-2 transition-colors md:gap-3 md:pr-4 lg:grid lg:gap-4 lg:px-5 lg:hover:bg-slate-50/70 ${STUDENT_ROW_COLUMNS}`}
                 >
                   <Link
                     href={href}
-                    className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 active:bg-slate-50 md:min-h-0 md:gap-4 md:p-0 md:active:bg-transparent"
+                    className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 active:bg-slate-50 md:gap-4 md:py-4 md:pl-5 lg:col-span-5 lg:grid lg:min-h-14 lg:grid-cols-subgrid lg:items-center lg:py-2.5 lg:pl-0 lg:active:bg-transparent"
                   >
-                    <Avatar className="h-10 w-10 shrink-0 border border-blue-100 md:h-14 md:w-14">
-                      <AvatarImage
-                        src={student.profileImage || student.profilePic}
-                        alt=""
-                      />
-                      <AvatarFallback className="bg-blue-50 text-xs font-semibold text-blue-700 md:text-sm">
-                        {getInitials(student.firstName, student.lastName)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
+                      <Avatar className="h-10 w-10 shrink-0 border border-blue-100 md:h-12 md:w-12 lg:h-10 lg:w-10">
+                        <AvatarImage
+                          src={student.profileImage || student.profilePic}
+                          alt=""
+                        />
+                        <AvatarFallback className="bg-blue-50 text-xs font-semibold text-blue-700 md:text-sm lg:text-xs">
+                          {getInitials(student.firstName, student.lastName)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-[15px] font-semibold capitalize text-slate-900 group-hover:text-blue-700 md:text-base md:font-bold">
-                        {fullName}
-                      </h2>
-                      {/* Phones: plain meta line. Desktop: badges. */}
-                      <p className="mt-0.5 truncate text-sm text-slate-500 md:hidden">
-                        {student.admissionNumber || "No admission no."}
-                        <span className="mx-1 text-slate-300">·</span>
-                        {student.classLevel ? (
-                          student.classLevel.name
-                        ) : (
-                          <span className="font-medium text-amber-700">Not in a class</span>
-                        )}
-                      </p>
-                      <div className="mt-1.5 hidden flex-wrap items-center gap-2 md:flex">
-                        <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
-                          {student.admissionNumber || "No ID"}
-                        </Badge>
-                        {student.classLevel ? (
-                          <Badge variant="outline" className="text-xs">
-                            {student.classLevel.name}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-xs text-amber-700">
-                            Unassigned
-                          </Badge>
-                        )}
-                        {student.gender && (
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {student.gender}
-                          </Badge>
-                        )}
-                        {student.studentType && (
+                      <div className="min-w-0 flex-1">
+                        <h2 className="truncate text-[15px] font-semibold capitalize text-slate-900 group-hover:text-blue-700 md:text-base lg:text-sm">
+                          {fullName}
+                        </h2>
+                        {/* Phones: plain meta line. Tablets: badges. Desktop: the columns beside. */}
+                        <p className="mt-0.5 truncate text-sm text-slate-500 md:hidden">
+                          {student.admissionNumber || "No admission no."}
+                          <span className="mx-1 text-slate-300">·</span>
+                          {student.classLevel ? (
+                            student.classLevel.name
+                          ) : (
+                            <span className="font-medium text-amber-700">Not in a class</span>
+                          )}
+                        </p>
+                        <div className="mt-1.5 hidden flex-wrap items-center gap-2 md:flex lg:hidden">
                           <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
-                            <Hotel className="mr-1 h-3 w-3" />
-                            {student.studentType === "boarding" ? "Boarding" : "Day"}
+                            {student.admissionNumber || "No ID"}
                           </Badge>
-                        )}
-                        {student.usesBus && student.busAssignment?.route && (
-                          <Badge variant="outline" className="text-xs">
-                            <Bus className="mr-1 h-3 w-3" />
-                            {student.busAssignment.route.name}
-                          </Badge>
-                        )}
+                          {student.classLevel ? (
+                            <Badge variant="outline" className="text-xs">
+                              {student.classLevel.name}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-xs text-amber-700">
+                              Unassigned
+                            </Badge>
+                          )}
+                          {student.gender && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {student.gender}
+                            </Badge>
+                          )}
+                          {dayOrBoarding && (
+                            <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
+                              <Hotel className="mr-1 h-3 w-3" />
+                              {dayOrBoarding}
+                            </Badge>
+                          )}
+                          {student.usesBus && student.busAssignment?.route && (
+                            <Badge variant="outline" className="text-xs">
+                              <Bus className="mr-1 h-3 w-3" />
+                              {student.busAssignment.route.name}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <span className="hidden truncate text-sm tabular-nums text-slate-600 lg:block">
+                      {student.admissionNumber || <span className="text-slate-400">No admission no.</span>}
+                    </span>
+                    <span className="hidden truncate text-sm text-slate-700 lg:block">
+                      {student.classLevel?.name || <span className="font-medium text-amber-700">Not in a class</span>}
+                    </span>
+                    <span className="hidden truncate text-sm capitalize text-slate-600 lg:block">
+                      {student.gender || <span className="text-slate-400">—</span>}
+                    </span>
+                    <span className="hidden min-w-0 items-center gap-1.5 text-sm text-slate-600 lg:flex">
+                      <span className="truncate">{dayOrBoarding || <span className="text-slate-400">—</span>}</span>
+                      {student.usesBus && student.busAssignment?.route && (
+                        <span className="flex min-w-0 items-center gap-1 text-slate-500" title={`Bus: ${student.busAssignment.route.name}`}>
+                          <Bus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          <span className="sr-only">Bus:</span>
+                          <span className="truncate">{student.busAssignment.route.name}</span>
+                        </span>
+                      )}
+                    </span>
                     {!isPrivileged && <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 md:hidden" aria-hidden="true" />}
                   </Link>
 
-                  {/* Actions: a menu for privileged roles, an arrow for others (desktop) */}
+                  {/* Actions: a menu for privileged roles, an arrow for others (tablet and desktop) */}
                   {isPrivileged ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger
@@ -560,7 +597,7 @@ export default function StudentsPage() {
                           <Button
                             variant="ghost"
                             aria-label={`Actions for ${fullName}`}
-                            className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500 hover:bg-blue-50 md:border md:border-slate-200 md:hover:border-blue-200"
+                            className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500 hover:bg-blue-50 md:border md:border-slate-200 md:hover:border-blue-200 lg:h-9 lg:w-9"
                           >
                             <MoreHorizontal className="h-5 w-5" />
                           </Button>
@@ -594,8 +631,8 @@ export default function StudentsPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
-                    <div aria-hidden="true" className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition group-hover:border-blue-200 group-hover:text-blue-600 md:flex">
-                      <ArrowRight className="h-5 w-5" />
+                    <div aria-hidden="true" className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition group-hover:border-blue-200 group-hover:text-blue-600 md:flex lg:h-9 lg:w-9">
+                      <ArrowRight className="h-4 w-4" />
                     </div>
                   )}
                 </div>

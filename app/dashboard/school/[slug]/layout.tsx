@@ -10,7 +10,7 @@ import { StudentSidebar } from "@/components/dashboard/StudentSidebar";
 import { HanoledLoader } from "@/components/ui/hanoled-loader";
 
 import { toast } from "sonner";
-import { ShieldAlert } from "lucide-react";
+import { Menu, ShieldAlert } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { StudentMobileFrame, StudentMobileTopBar } from "@/components/dashboard/StudentMobileFrame";
@@ -146,6 +146,18 @@ export default function DashboardLayout({
   // synchronously in an effect); "still initializing" is derived below.
   const [initializedSlug, setInitializedSlug] = useState<string | null>(null);
   const lastLoadedSlug = useRef<string | null>(null);
+  // Tablet nav drawer (md to lg). Remembering the page it was opened on closes
+  // it on navigation without an effect; rotating past lg closes it too.
+  const [navOpenedOn, setNavOpenedOn] = useState<string | null>(null);
+  const navOpen = navOpenedOn === pathname;
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const onChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setNavOpenedOn(null);
+    };
+    wide.addEventListener("change", onChange);
+    return () => wide.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     if (!isInitialized && !authLoading) {
@@ -268,21 +280,30 @@ export default function DashboardLayout({
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar />
+        <AppSidebar drawerOpen={navOpen} onDrawerOpenChange={(open) => setNavOpenedOn(open ? pathname : null)} />
         {/* overflow-x-clip, not hidden: hidden makes this a scroll container and breaks position:sticky in pages. */}
         <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-clip bg-slate-50">
           <StaffMobileFrame>
-            {/* Desktop top bar */}
-            <header className="sticky top-0 z-10 hidden items-center justify-between border-b border-slate-200 bg-white px-8 py-4 md:flex">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="font-medium">School Operations Dashboard</span>
+            {/* Tablet and desktop top bar (phones use MobileTopBar). Below lg it opens the nav drawer. */}
+            <header className="sticky top-0 z-10 hidden items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 md:flex lg:px-8 lg:py-4">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setNavOpenedOn(pathname)}
+                  aria-label="Open navigation"
+                  aria-expanded={navOpen}
+                  className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
+                >
+                  <Menu className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <span className="truncate text-sm font-semibold capitalize text-slate-900 lg:hidden">{currentOrg.name}</span>
+                <span className="hidden whitespace-nowrap text-sm font-medium text-slate-600 lg:inline">School Operations Dashboard</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2 lg:gap-3">
                 {currentMember?.role !== "parent" && (
                   <a
                     href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
-                    className="flex items-center gap-1.5 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                    className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 pointer-coarse:min-h-11"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
                     CBT Console
@@ -290,7 +311,7 @@ export default function DashboardLayout({
                 )}
                 <a
                   href="/welcome"
-                  className="rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  className="flex items-center whitespace-nowrap rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 pointer-coarse:min-h-11"
                 >
                   Suite Hub
                 </a>

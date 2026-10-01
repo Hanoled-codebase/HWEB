@@ -196,13 +196,14 @@ export function getStatusClassName(status: SpreadsheetStatus) {
 }
 
 import { toTitleCase } from "@/lib/utils";
+import { greetingName } from "@/lib/greeting-name";
 
 export function getDisplayName(name: string | undefined) {
   if (!name) {
     return "Teacher";
   }
 
-  return toTitleCase(name.split(" ")[0] || name);
+  return toTitleCase(greetingName(name) || name);
 }
 
 export function getInitials(name: string | undefined) {

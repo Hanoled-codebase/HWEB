@@ -187,7 +187,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as EdgePlatform)}
-                className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 min-h-[44px] sm:min-h-0 focus:outline-none focus:ring-2 focus:ring-slate-300 shrink-0"
+                className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-2 min-h-[44px] sm:pointer-fine:min-h-0 focus:outline-none focus:ring-2 focus:ring-slate-300 shrink-0"
               >
                 {platforms.mac && <option value="mac">macOS</option>}
                 {platforms.win && <option value="win">Windows</option>}
@@ -197,14 +197,14 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
             <button
               onClick={handleDownloadAppliance}
               disabled={downloading || availablePlatformCount === 0}
-              className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap min-w-[9.5rem] min-h-[44px] sm:min-h-0"
+              className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap min-w-[9.5rem] min-h-[44px] sm:pointer-fine:min-h-0"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />
               {downloading ? "Downloading..." : `Download Appliance${availablePlatformCount === 1 ? ` (${{ win: "Windows", mac: "macOS", linux: "Linux" }[platform]})` : ""}`}
             </button>
             <button
               onClick={openPracticeModal}
-              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap min-w-[9.5rem] min-h-[44px] sm:min-h-0"
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none whitespace-nowrap min-w-[9.5rem] min-h-[44px] sm:pointer-fine:min-h-0"
             >
               <BookOpen className="w-3.5 h-3.5 shrink-0" />
               Build Practice Pack
@@ -281,7 +281,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
                     setIsExportOpen(true);
                   }}
                   disabled={node.status === "REVOKED"}
-                  className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 min-h-[44px] sm:min-h-0 rounded-lg transition flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 min-h-[44px] sm:pointer-fine:min-h-0 rounded-lg transition flex items-center justify-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Export Exam
@@ -289,7 +289,7 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
                 <button
                   onClick={() => handleRevoke(node.id)}
                   disabled={node.status === "REVOKED"}
-                  className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 text-xs font-bold py-2 px-3 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-lg transition"
+                  className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 text-xs font-bold py-2 px-3 min-h-[44px] min-w-[44px] sm:pointer-fine:min-h-0 sm:pointer-fine:min-w-0 flex items-center justify-center rounded-lg transition"
                   title="Revoke Node"
                 >
                   <ShieldOff className="w-3.5 h-3.5" />

@@ -524,10 +524,7 @@ export default function ResultsPage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         <div className="hidden flex-col items-start justify-between gap-5 md:flex md:flex-row md:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
-              {currentMember?.role === "parent" ? "Parent Portal" : "Results Portal"}
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
               Published Results
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
@@ -979,7 +976,6 @@ export default function ResultsPage() {
                     selectedGroup.student as StudentPerformanceResponse["student"]
                   }
                   subjects={performanceSubjects}
-                  eyebrow="Academic Record"
                   description="A visual summary of the published subject performance for this student, including assessment progress and recorded scores."
                   actionLabel="View Academic Record"
                   emptyTitle="No subject records available"

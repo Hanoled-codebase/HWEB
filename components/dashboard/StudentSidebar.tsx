@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -39,6 +40,8 @@ export function StudentSidebar() {
   const pathname = usePathname();
   const { currentOrg, currentStudent, organizations } = useOrganization();
   const { user, logout } = useAuth();
+  // Tablets show this sidebar as a drawer; picking a page closes it.
+  const { setOpenMobile } = useSidebar();
 
   if (!currentOrg || !user) {
     return (
@@ -136,12 +139,12 @@ export function StudentSidebar() {
                   <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-blue-600 z-10" />
                 )}
                 <SidebarMenuButton
-                  render={<Link href={item.url} />}
+                  render={<Link href={item.url} onClick={() => setOpenMobile(false)} />}
                   tooltip={item.title}
                   className={
                     isActive
-                      ? "bg-blue-50/80 text-blue-700 font-medium"
-                      : "text-sidebar-foreground/70"
+                      ? "bg-blue-50/80 text-blue-700 font-medium pointer-coarse:h-11"
+                      : "text-sidebar-foreground/70 pointer-coarse:h-11"
                   }
                 >
                   <item.icon className="h-4 w-4" />

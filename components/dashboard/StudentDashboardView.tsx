@@ -186,7 +186,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
       </div>
 
       {/* Stats Cards - desktop */}
-      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4">
+      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="shadow-sm border border-slate-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold text-slate-500">

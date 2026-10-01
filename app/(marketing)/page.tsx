@@ -229,7 +229,7 @@ export default function LandingPage() {
             {/* Left Box (Text) */}
             <div className="space-y-8 lg:pr-10">
               <div className="space-y-6">
-                <h1 className="text-[1.75rem] font-bold leading-[1.15] text-slate-900 sm:text-4xl md:text-5xl lg:text-[3.5rem]">
+                <h1 className="text-[1.75rem] font-bold leading-[1.15] text-slate-900 sm:text-4xl md:text-5xl lg:text-[2.75rem] xl:text-[3.5rem]">
                   <span className="inline-flex items-center gap-3">
                     <span className="text-[#1447E6]">Hanoled</span>
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-[#0B1220] sm:h-10 sm:w-10 lg:h-12 lg:w-12">
@@ -514,8 +514,8 @@ export default function LandingPage() {
                   <div key={idx} className="flex gap-3">
                     <sec.icon className="h-5 w-5 text-[#1447E6] shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">{sec.title}</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{sec.desc}</p>
+                      <h4 className="text-sm font-bold text-slate-800">{sec.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{sec.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -552,7 +552,7 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-4 max-w-6xl mx-auto">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
             {onboardingSteps.map((step, idx) => (
               <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm relative flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div className="text-3xl font-black text-[#1447E6]/20 absolute top-4 right-4">{step.step}</div>

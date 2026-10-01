@@ -28,6 +28,7 @@ import {
   type HomeStat,
   type HomeTool,
 } from "./HomeKit";
+import { greetingName } from "@/lib/greeting-name";
 
 type Primary = { key: string; label: string; hint: string; icon: LucideIcon };
 
@@ -97,7 +98,7 @@ export function RoleHome({ stats = [] }: { stats?: HomeStat[] }) {
     return { key, label: key === "spreadsheets" ? "Grade sheets" : item.title, href: item.url, icon: HERO_ICONS[key] ?? item.icon };
   });
 
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = greetingName(user?.name) || "there";
 
   return (
     <div className="space-y-7">

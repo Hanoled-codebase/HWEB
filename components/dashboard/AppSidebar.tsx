@@ -19,11 +19,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { School, LogOut, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Desktop sidebar (md and up; phones use the bottom-sheet menu in components/dashboard/mobile).
+ * Staff sidebar. From lg (1024px) it is always open; on tablets (md to lg) the same panel is a
+ * drawer the layout's menu button opens, so pages get the full width. Phones use the
+ * bottom-sheet menu in components/dashboard/mobile.
  * Only the daily-work destinations live here. Finance, staff, facilities and admin tools are
  * launched from the Overview page ("More for your school"), so the list stays short.
  */
@@ -47,11 +50,13 @@ function NavGroup({
   items,
   pathname,
   onHover,
+  onNavigate,
 }: {
   title?: string;
   items: SchoolNavItem[];
   pathname: string;
   onHover: (url: string) => void;
+  onNavigate?: () => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -70,9 +75,10 @@ function NavGroup({
             key={item.key}
             href={item.url}
             onMouseEnter={() => onHover(item.url)}
+            onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-[background-color,color,scale] duration-150 active:scale-[0.98]",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-[background-color,color,scale] duration-150 active:scale-[0.98] pointer-coarse:min-h-11",
               isActive ? "bg-blue-50 font-semibold text-blue-700" : "font-medium text-slate-600 hover:bg-slate-50",
             )}
           >
@@ -85,7 +91,14 @@ function NavGroup({
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({
+  drawerOpen = false,
+  onDrawerOpenChange,
+}: {
+  /** Tablet drawer (below lg); ignored from lg up, where the sidebar is always shown. */
+  drawerOpen?: boolean;
+  onDrawerOpenChange?: (open: boolean) => void;
+} = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentOrg, currentMember, organizations } = useOrganization();
@@ -175,8 +188,8 @@ export function AppSidebar() {
   const needle = search.trim().toLowerCase();
   const results = needle ? visibleNavItems.filter((item) => item.title.toLowerCase().includes(needle)) : null;
 
-  return (
-    <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+  const panel = (onNavigate?: () => void) => (
+    <>
       {/* School switcher: the school, your role, and the account menu behind one control */}
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -305,7 +318,7 @@ export function AppSidebar() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Find anything..."
             aria-label="Find a page"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-sm pointer-coarse:min-h-11 outline-none placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
           />
         </div>
       </div>
@@ -314,30 +327,42 @@ export function AppSidebar() {
       <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-2" aria-label="School navigation">
         {results ? (
           results.length ? (
-            <NavGroup title="Results" items={results} pathname={pathname} onHover={prefetchRoute} />
+            <NavGroup title="Results" items={results} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
           ) : (
             <div className="px-3 py-6 text-center text-sm text-slate-400">No matches</div>
           )
         ) : (
           <>
-            <NavGroup items={pick(PRIMARY)} pathname={pathname} onHover={prefetchRoute} />
+            <NavGroup items={pick(PRIMARY)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
             {/* The active workspace's tools come first. */}
-            {activeGroup && <NavGroup title={activeGroup.title} items={activeGroup.items} pathname={pathname} onHover={prefetchRoute} />}
-            <NavGroup title="Academics" items={pick(ACADEMICS)} pathname={pathname} onHover={prefetchRoute} />
-            <NavGroup title="People" items={pick(PEOPLE)} pathname={pathname} onHover={prefetchRoute} />
-            <NavGroup title="Communication" items={pick(COMMUNICATION)} pathname={pathname} onHover={prefetchRoute} />
+            {activeGroup && <NavGroup title={activeGroup.title} items={activeGroup.items} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />}
+            <NavGroup title="Academics" items={pick(ACADEMICS)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
+            <NavGroup title="People" items={pick(PEOPLE)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
+            <NavGroup title="Communication" items={pick(COMMUNICATION)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
             {otherGroups.map((group) => (
-              <NavGroup key={group.workspace} title={group.title} items={group.items} pathname={pathname} onHover={prefetchRoute} />
+              <NavGroup key={group.workspace} title={group.title} items={group.items} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
             ))}
-            <NavGroup title="More" items={extras} pathname={pathname} onHover={prefetchRoute} />
+            <NavGroup title="More" items={extras} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
           </>
         )}
       </nav>
 
       {/* Bottom utility */}
       <div className="border-t border-slate-100 px-2 py-2">
-        <NavGroup items={pick(BOTTOM)} pathname={pathname} onHover={prefetchRoute} />
+        <NavGroup items={pick(BOTTOM)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">{panel()}</aside>
+      <Sheet open={drawerOpen} onOpenChange={(open) => onDrawerOpenChange?.(open)}>
+        <SheetContent side="left" showCloseButton={false} className="gap-0 bg-white p-0 data-[side=left]:w-72 lg:hidden">
+          <SheetTitle className="sr-only">School navigation</SheetTitle>
+          {panel(() => onDrawerOpenChange?.(false))}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

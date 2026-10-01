@@ -88,9 +88,10 @@ export default function AboutPage() {
               <p>
                 For years, school administrators spent countless hours manually compiling report cards, tracking down tuition debt on paper registers, and manually typing out results for broadcast.
               </p>
-              <div className="bg-[#f8f9fc] border-l-4 border-[#1447E6] p-6 rounded-r-2xl text-slate-700 italic my-8">
+              <blockquote className="relative my-8 rounded-2xl bg-[#EEF0FF] p-6 pt-7 text-slate-700 italic">
+                <span aria-hidden="true" className="absolute -top-0.5 left-6 h-1.5 w-14 rounded-full bg-[#1447E6]" />
                 "We spent months in staffrooms, bursar offices, and principal desks listening to the exact challenges school teams face every term. The result is an all-in-one platform."
-              </div>
+              </blockquote>
               <p>
                 Today, Hanoled powers forward-thinking schools, saving hundreds of administrative hours every academic session and providing parents with transparent, real-time insights into their children's education.
               </p>

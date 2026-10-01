@@ -67,10 +67,6 @@ export default function ContactPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#1447E6]/20 bg-[#1447E6]/5 px-4 py-1.5 shadow-sm transform rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <span className="text-sm font-bold text-[#1447E6]">Get in Touch</span>
-            </div>
-            
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
                 Let&apos;s talk about <span className="text-[#1447E6]">your school</span>

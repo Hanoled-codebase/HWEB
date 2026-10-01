@@ -131,12 +131,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <MobileMenuProvider config={mobileConfig}>
     <div className="flex h-screen flex-col bg-muted/30 md:flex-row">
       <MobileTopBar title={currentTitle} isHome={pathname === "/admin"} />
-      <aside className="hidden w-60 flex-col border-r border-border bg-white md:flex">
-        <div className="border-b border-border px-4 py-4">
-          <HanoledLogo size="sm" href="/admin" />
-          <p className="mt-1 text-xs text-muted-foreground">admin.hanoled.com</p>
+      {/* md to lg: a labelled icon rail (six destinations fit a tablet held upright); lg and up: the full sidebar. */}
+      <aside className="hidden w-20 shrink-0 flex-col border-r border-border bg-white md:flex lg:w-60">
+        <div className="flex justify-center border-b border-border px-2 py-4 lg:block lg:px-4">
+          <div className="lg:hidden"><HanoledLogo size="sm" href="/admin" iconOnly /></div>
+          <div className="hidden lg:block">
+            <HanoledLogo size="sm" href="/admin" />
+            <p className="mt-1 text-xs text-muted-foreground">admin.hanoled.com</p>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-2 lg:p-3" aria-label="Platform">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
@@ -144,20 +148,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors lg:flex-row lg:gap-2.5 lg:rounded-md lg:px-3 lg:py-2 lg:text-sm lg:font-normal pointer-coarse:min-h-11 ${
                   active
                     ? "bg-primary/10 font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" strokeWidth={2} />
+                <Icon className="h-5 w-5 lg:h-4 lg:w-4" strokeWidth={2} />
                 {item.label}
               </Link>
             )
           })}
         </nav>
-        <div className="border-t border-border p-4">
-          <div className="mb-3 flex items-center gap-2.5">
+        <div className="border-t border-border p-2 lg:p-4">
+          <div className="mb-3 hidden items-center gap-2.5 lg:flex">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
               {admin.name.charAt(0)}
             </div>
@@ -166,8 +171,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="truncate text-xs text-muted-foreground">{admin.role.replace("_", " ")}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={logout}>
-            <LogOut className="h-3.5 w-3.5" /> Logout
+          <Button variant="outline" size="sm" className="w-full gap-1.5 px-0 text-xs lg:px-4" onClick={logout} aria-label="Log out">
+            <LogOut className="h-3.5 w-3.5" /> <span className="hidden lg:inline">Logout</span>
           </Button>
         </div>
       </aside>

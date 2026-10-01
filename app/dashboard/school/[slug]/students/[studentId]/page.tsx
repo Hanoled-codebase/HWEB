@@ -331,7 +331,6 @@ export default function StudentDetailPage() {
             student={performance.student}
             subjects={performance.subjects}
             attendance={attendance || undefined}
-            eyebrow="Student Record"
             description="A full academic snapshot for this learner, including subject performance and assessment breakdowns."
             actionLabel="Jump to Subjects"
             emptyTitle="No subject records available"

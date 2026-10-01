@@ -59,6 +59,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { getSpreadsheetLabel } from "@/lib/spreadsheets";
 import { toTitleCase } from "@/lib/utils";
+import { greetingName } from "@/lib/greeting-name";
 
 type SpreadsheetSummary = {
   id: string;
@@ -111,7 +112,7 @@ function getDisplayName(name: string | undefined) {
   if (!name) {
     return "Teacher";
   }
-  return toTitleCase(name.split(" ")[0] || name);
+  return toTitleCase(greetingName(name) || name);
 }
 
 function getStatusClassName(status: SpreadsheetSummary["status"]) {
@@ -447,7 +448,7 @@ export default function SpreadsheetsPage() {
     }
   }
 
-  const greetingName = getDisplayName(currentMember?.user?.name);
+  const displayName = getDisplayName(currentMember?.user?.name);
 
   if (!isStaff) {
     return (
@@ -470,13 +471,10 @@ export default function SpreadsheetsPage() {
             {/* Welcome & Action Row */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between md:gap-4">
               <div className="hidden min-w-0 flex-1 md:block">
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-500">
-                  Scores Workspace
-                </p>
-                <h1 className="mt-1.5 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                   Welcome,{" "}
                   <span className="text-blue-600">
-                    {greetingName}
+                    {displayName}
                   </span>
                 </h1>
                 <p className="mt-2 text-base leading-relaxed text-slate-500">
@@ -797,7 +795,7 @@ export default function SpreadsheetsPage() {
                       type="button"
                       onClick={() => setActiveFilter("class")}
                       aria-pressed={activeFilter === "class"}
-                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "class"
+                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:pointer-fine:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "class"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-blue-600 hover:bg-blue-200/50"
                         }`}
@@ -809,7 +807,7 @@ export default function SpreadsheetsPage() {
                       type="button"
                       onClick={() => setActiveFilter("subject")}
                       aria-pressed={activeFilter === "subject"}
-                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "subject"
+                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:pointer-fine:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "subject"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-blue-600 hover:bg-blue-200/50"
                         }`}
