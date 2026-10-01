@@ -465,11 +465,6 @@
       "count": 1
     }
   },
-  "hooks/useInView.ts": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "hooks/useNotifications.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1

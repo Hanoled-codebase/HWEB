@@ -6,6 +6,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { BrandRibbon } from "@/components/landing/BrandRibbon";
+import { InView } from "@/components/landing/InView";
+import { DrawnCheck, HeroUnderline, RiseWords } from "@/components/landing/motion";
 import {
   SchoolAdminIllustration,
   AcademicManagementIllustration,
@@ -18,7 +21,6 @@ import {
   ArrowUpRight,
   Building2,
   ChevronDown,
-  CheckCircle2,
   Shield,
   Lock,
   Server,
@@ -26,23 +28,6 @@ import {
   HelpCircle,
   Loader2,
 } from "lucide-react";
-
-function BrandRibbon() {
-  return (
-    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md">
-      <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
-        {Array.from({ length: 15 }).map((_, index) => (
-          <span key={index} className="whitespace-nowrap flex items-center gap-6">
-            Hanoled.io
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-            Hanoled
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const platformAreas = [
   {
@@ -231,33 +216,34 @@ export default function LandingPage() {
             <div className="space-y-8 lg:pr-2">
               <div className="space-y-6">
                 <h1 className="text-[1.75rem] font-bold leading-[1.15] text-slate-900 sm:text-4xl md:text-5xl lg:text-[2.5rem] xl:text-[3.25rem]">
-                  <span className="inline-flex items-center gap-3">
-                    <span className="text-[#1447E6]">Hanoled</span>
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-[#0B1220] sm:h-10 sm:w-10 lg:h-12 lg:w-12">
-                      <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                  <RiseWords>
+                    <span className="inline-flex items-center gap-3">
+                      <span className="text-[#1447E6]">Hanoled</span>
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-[#0B1220] sm:h-10 sm:w-10 lg:h-12 lg:w-12">
+                        <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                      </span>
                     </span>
-                  </span>
-                  <br />
-                  The ultimate school management system!
+                    <br />
+                    The ultimate school management system!
+                  </RiseWords>
                 </h1>
 
-                {/* Wavy accent line under title */}
-                <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px]">
-                  <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
-                </svg>
+                {/* Wavy accent line under title: writes itself once the headline has risen */}
+                <HeroUnderline className="" />
 
-                <p className="text-lg leading-relaxed text-slate-500">
+                <p className="mk-follow text-lg leading-relaxed text-slate-500" style={{ ["--d" as string]: "460ms" }}>
                   A modern platform built specifically for West African schools that brings administrators, teachers, and parents together. Empower parents to monitor their wards&rsquo; academic performance and fee statuses in real-time.
                 </p>
               </div>
 
               <Button
                 asChild
-                className="h-14 rounded-full bg-[#1447E6] px-8 text-base font-bold text-white transition-all hover:bg-[#0b33b3] hover:shadow-lg hover:-translate-y-1"
+                className="mk-follow h-14 rounded-full bg-[#1447E6] px-8 text-base font-bold text-white transition-all hover:bg-[#0b33b3] hover:shadow-lg hover:-translate-y-1"
+                style={{ ["--d" as string]: "560ms" }}
               >
                 <Link href="#contact-quote">
                   Book a Custom Demo
-                  <ArrowUpRight className="ml-2 h-5 w-5" />
+                  <ArrowUpRight className="mk-arrow ml-2 h-5 w-5" />
                 </Link>
               </Button>
             </div>
@@ -279,12 +265,12 @@ export default function LandingPage() {
                   fill
                   priority
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 450px"
-                  className="object-cover rounded-[3rem] shadow-2xl z-10"
+                  className="mk-unveil object-cover rounded-[3rem] shadow-2xl z-10"
                   style={{ objectPosition: "center top" }}
                 />
 
                 {/* Top-right Chip on mobile, bottom-right on larger screens */}
-                <div className="absolute -top-3 right-3 sm:-bottom-4 sm:right-6 sm:top-auto z-20 flex items-center gap-2 rounded-full bg-[#1447E6] pl-2.5 pr-3.5 py-1.5 sm:pl-3 sm:pr-4 sm:py-2 text-white shadow-xl shadow-[#1447E6]/30">
+                <div className="mk-follow absolute -top-3 right-3 sm:-bottom-4 sm:right-6 sm:top-auto z-20 flex items-center gap-2 rounded-full bg-[#1447E6] pl-2.5 pr-3.5 py-1.5 sm:pl-3 sm:pr-4 sm:py-2 text-white shadow-xl shadow-[#1447E6]/30" style={{ ["--d" as string]: "1050ms" }}>
                   <div className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full bg-white/20">
                     <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   </div>
@@ -354,7 +340,7 @@ export default function LandingPage() {
                 Empower your teachers to deploy digital testing effortlessly. Hanoled computer-based testing comes equipped with standard past questions, anti-cheating rules, and instant grading tools.
               </p>
 
-              <ul className="space-y-4">
+              <InView as="ul" className="space-y-4">
                 {[
                   "Timed exams (1–360 mins) with practice modules pulled from WAEC, NECO, and JAMB banks across 13+ subjects.",
                   "Bulk question upload from PDF, DOCX, or TXT documents with smart question/answer extraction.",
@@ -362,15 +348,15 @@ export default function LandingPage() {
                   "Built-in proctoring checks including tab-switch locks with a 3-strike policy and auto-submit behavior."
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-[#F5A623] shrink-0 mt-0.5" />
+                    <DrawnCheck index={idx} className="h-6 w-6 text-[#F5A623] shrink-0 mt-0.5" />
                     <span className="text-slate-600 text-sm sm:text-base font-semibold">{item}</span>
                   </li>
                 ))}
-              </ul>
+              </InView>
             </div>
 
             {/* Diagram: computer-based exam screen */}
-            <div className="w-full mx-auto rounded-[2rem] bg-[#f8f9fc] border border-slate-100 p-6 sm:p-10">
+            <InView className="w-full mx-auto rounded-[2rem] bg-[#f8f9fc] border border-slate-100 p-6 sm:p-10">
               <svg viewBox="0 0 480 340" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 {/* Monitor stand */}
                 <rect x="210" y="292" width="60" height="14" rx="6" fill="#CBD5E1" />
@@ -391,8 +377,8 @@ export default function LandingPage() {
                 <circle cx="82" cy="147" r="7" fill="#E2E8F0" />
 
                 <rect x="64" y="170" width="352" height="30" rx="10" fill="#1447E6" fillOpacity="0.08" stroke="#1447E6" strokeWidth="2" />
-                <circle cx="82" cy="185" r="7" fill="#1447E6" />
-                <path d="M78.5 185l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <circle className="mk-seq-pop" style={{ ["--d" as string]: "150ms" }} cx="82" cy="185" r="7" fill="#1447E6" />
+                <path className="mk-seq-draw" style={{ ["--d" as string]: "420ms" }} pathLength={1} d="M78.5 185l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
 
                 <rect x="64" y="208" width="352" height="30" rx="10" fill="white" stroke="#E2E8F0" strokeWidth="2" />
                 <circle cx="82" cy="223" r="7" fill="#E2E8F0" />
@@ -406,17 +392,19 @@ export default function LandingPage() {
                 <path d="M384 15v5l4 3" stroke="#0B1220" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <rect x="398" y="15" width="34" height="10" rx="5" fill="#0B1220" fillOpacity="0.7" />
 
-                {/* Anti-cheat / verified badge */}
-                <circle cx="420" cy="270" r="30" fill="#1447E6" stroke="white" strokeWidth="4" />
-                <path d="M420 254l14 4.5v10c0 9-6 15.5-14 18.5-8-3-14-9.5-14-18.5v-10z" fill="white" />
-                <path d="M414.5 270l3.8 3.8L427 264" stroke="#1447E6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                {/* Anti-cheat / verified badge: stamps on once the answer is ticked */}
+                <g className="mk-seq-pop" style={{ ["--d" as string]: "760ms" }}>
+                  <circle cx="420" cy="270" r="30" fill="#1447E6" stroke="white" strokeWidth="4" />
+                  <path d="M420 254l14 4.5v10c0 9-6 15.5-14 18.5-8-3-14-9.5-14-18.5v-10z" fill="white" />
+                  <path className="mk-seq-draw" style={{ ["--d" as string]: "1080ms" }} pathLength={1} d="M414.5 270l3.8 3.8L427 264" stroke="#1447E6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </g>
 
-                {/* Ascending-line motif accent */}
-                <path d="M8 320 Q 30 300, 52 312 T 96 296" stroke="#F5A623" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <circle cx="8" cy="320" r="4" fill="#F5A623" />
-                <circle cx="96" cy="296" r="4" fill="#F5A623" />
+                {/* Ascending-line motif accent: the growth curve draws last */}
+                <path className="mk-seq-draw" style={{ ["--d" as string]: "1300ms" }} pathLength={1} d="M8 320 Q 30 300, 52 312 T 96 296" stroke="#F5A623" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <circle className="mk-seq-pop" style={{ ["--d" as string]: "1300ms" }} cx="8" cy="320" r="4" fill="#F5A623" />
+                <circle className="mk-seq-pop" style={{ ["--d" as string]: "1800ms" }} cx="96" cy="296" r="4" fill="#F5A623" />
               </svg>
-            </div>
+            </InView>
           </div>
         </section>
 
@@ -553,17 +541,17 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
+          <InView className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto" style={{ ["--mk-rest" as string]: "rgb(20 71 230 / 0.2)" }}>
             {onboardingSteps.map((step, idx) => (
               <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm relative flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="text-3xl font-black text-[#1447E6]/20 absolute top-4 right-4">{step.step}</div>
+                <div className="mk-wave text-3xl font-black text-[#1447E6]/20 absolute top-4 right-4" style={{ ["--i" as string]: idx }}>{step.step}</div>
                 <div className="space-y-3 mt-6">
                   <h3 className="text-base font-bold text-slate-800 leading-snug">{step.title}</h3>
                   <p className="text-xs font-medium leading-relaxed text-slate-500">{step.desc}</p>
                 </div>
               </div>
             ))}
-          </div>
+          </InView>
         </section>
 
         {/* FAQ SECTION */}
@@ -618,9 +606,9 @@ export default function LandingPage() {
             </div>
 
             {isSubmitted ? (
-              <div className="flex flex-col items-center text-center p-8 bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl relative z-10 space-y-4">
+              <div data-motion="in" className="m-pop flex flex-col items-center text-center p-8 bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl relative z-10 space-y-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#12B76A] text-white shadow-md">
-                  <CheckCircle2 className="h-8 w-8" />
+                  <DrawnCheck className="h-8 w-8" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">Request Received!</h3>
@@ -707,7 +695,7 @@ export default function LandingPage() {
           >
             <Link href="/contact">
               Get Started
-              <ArrowUpRight className="ml-2 h-5 w-5" />
+              <ArrowUpRight className="mk-arrow ml-2 h-5 w-5" />
             </Link>
           </Button>
         </section>
