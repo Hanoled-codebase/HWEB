@@ -35,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useOptionalMobileMenu } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { HomeGreeting, PrimaryAction, SectionTitle, ToolGrid, type HomeTool } from "@/components/dashboard/mobile/HomeKit";
+import { greetingName } from "@/lib/greeting-name";
 
 /**
  * The Head of Department's workspace: how far every class in the department
@@ -79,7 +80,7 @@ export function DepartmentHome({ switcher }: { switcher?: ReactNode }) {
   const query = useQuery({ ...departmentQueries.overview(slug), enabled: Boolean(slug), staleTime: 30_000 });
   const nav = useMemo(() => new Map(visibleNavItems.map((item) => [item.key, item])), [visibleNavItems]);
   const base = `/dashboard/school/${slug}`;
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = greetingName(user?.name) || "there";
 
   if (!currentOrg) return null;
 

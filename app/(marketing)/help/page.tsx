@@ -118,7 +118,7 @@ export default function HelpCenterPage() {
                   <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600">
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600">
                     {cat.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-500">

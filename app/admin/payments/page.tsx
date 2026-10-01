@@ -185,7 +185,7 @@ export default function PaymentsPage() {
             <thead>
               <tr className="border-b bg-slate-50">
                 <th className="text-left px-4 py-3 font-medium text-slate-600">School</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Term</th>
+                <th className="hidden text-left px-4 py-3 font-medium text-slate-600 xl:table-cell">Term</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Billed</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Paid</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Owed</th>
@@ -196,11 +196,17 @@ export default function PaymentsPage() {
             <tbody>
               {records.map(r => (
                 <tr key={r.id} className={`border-b hover:bg-slate-50 ${r.daysOverdue > 7 ? "bg-red-50/50" : ""}`}>
-                  <td className="px-4 py-3 font-medium">{r.schoolName}</td>
-                  <td className="px-4 py-3 text-slate-600">{r.term}</td>
-                  <td className="px-4 py-3 text-right">₦{r.amountBilled.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right">₦{r.amountPaid.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right font-medium text-red-600">₦{r.balanceOwed.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {r.schoolName}
+                    <span className="mt-0.5 block text-xs font-normal text-slate-500 xl:hidden">{r.term}</span>
+                  </td>
+                  <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">{r.term}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">₦{r.amountBilled.toLocaleString()}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">₦{r.amountPaid.toLocaleString()}</td>
+                  {/* Alert red only when something is owed; a settled bill reads as a dash, not "₦0" in red. */}
+                  <td className={`whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums ${r.balanceOwed > 0 ? "text-red-600" : "text-slate-400"}`}>
+                    {r.balanceOwed > 0 ? `₦${r.balanceOwed.toLocaleString()}` : "—"}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <Badge className={badgeColor(r.status)}>{r.status}</Badge>
                   </td>

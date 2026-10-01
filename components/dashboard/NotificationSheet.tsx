@@ -94,7 +94,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Notifications"
-        className={`relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none cursor-pointer ${triggerClassName ?? ""}`}
+        className={`relative flex h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none cursor-pointer ${triggerClassName ?? ""}`}
       >
         <Bell className="h-4 w-4 text-slate-700" />
         {unreadCount > 0 && (

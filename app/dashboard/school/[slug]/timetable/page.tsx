@@ -378,7 +378,7 @@ export default function TimetablePage() {
                   key={s.id}
                   onClick={() => setSelectedSchedule(s)}
                   aria-pressed={isSelected}
-                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all md:min-h-0 md:px-3 md:py-1 md:text-xs ${
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all md:pointer-fine:min-h-0 md:px-3 md:py-1 md:text-xs ${
                     isSelected
                       ? "border border-blue-600 bg-blue-600 text-white"
                       : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"

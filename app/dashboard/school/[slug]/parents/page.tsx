@@ -352,7 +352,7 @@ export default function ParentsPage() {
       {/* Desktop Table View */}
       <div className="hidden md:block">
       <TableContainer>
-        <Table className="min-w-[760px]">
+        <Table className="min-w-[680px]">
           <TableHeader className="bg-slate-50">
             <TableRow>
               <TableHead>Parent Name</TableHead>
@@ -392,7 +392,7 @@ export default function ParentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border border-slate-200">
-                        <AvatarFallback className="bg-amber-50 text-amber-700 font-medium">
+                        <AvatarFallback className="bg-blue-50 text-blue-700 font-medium">
                           {getInitials(parent.user?.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -406,7 +406,7 @@ export default function ParentsPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[260px]">
+                  <TableCell className="min-w-[200px]">
                     <div className="flex min-w-0 items-center text-slate-600">
                       <Mail className="h-3 w-3 mr-2 shrink-0 text-slate-400" />
                       <span className="truncate">{parent.user?.email}</span>

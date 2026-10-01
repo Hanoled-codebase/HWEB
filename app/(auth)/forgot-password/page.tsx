@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
     return (
       <Card className="shadow-lg border-slate-200">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-semibold text-center text-slate-900">Check your email</CardTitle>
+          <h1 data-slot="card-title" className="font-heading text-2xl leading-snug font-semibold text-center text-slate-900">Check your email</h1>
           <CardDescription className="text-center text-slate-500">
             We sent a password reset code to <span className="font-medium text-slate-900">{emailStr}</span>.
           </CardDescription>
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
   return (
     <Card className="shadow-lg border-slate-200">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold text-center text-slate-900">Forgot password?</CardTitle>
+        <h1 data-slot="card-title" className="font-heading text-2xl leading-snug font-semibold text-center text-slate-900">Forgot password?</h1>
         <CardDescription className="text-center text-slate-500">
           Enter your email address to receive a password reset code
         </CardDescription>

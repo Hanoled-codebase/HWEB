@@ -1693,7 +1693,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-xs min-h-[48px] sm:min-h-0 py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-xs min-h-[48px] sm:pointer-fine:min-h-0 py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Exam Template</span>

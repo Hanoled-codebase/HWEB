@@ -406,7 +406,7 @@ export default function StudentDashboard() {
               {!EDGE_MODE && (
                 <a
                   href={suiteHref}
-                  className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 min-h-[44px] min-w-[44px] p-2 sm:min-h-0 sm:min-w-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
+                  className="text-xs font-semibold text-slate-600 hover:text-[#1447E6] bg-white border border-slate-200 hover:bg-slate-50 min-h-[44px] min-w-[44px] p-2 sm:pointer-fine:min-h-0 sm:pointer-fine:min-w-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors inline-flex items-center justify-center"
                   title="Back to Suite"
                 >
                   <ChevronLeft className="w-4 h-4 sm:mr-1.5" />
@@ -415,7 +415,7 @@ export default function StudentDashboard() {
               )}
               <button
                 onClick={handleSignOut}
-                className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 min-h-[44px] px-3 sm:min-h-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
+                className="text-xs font-semibold text-[#F04438] hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 min-h-[44px] px-3 sm:pointer-fine:min-h-0 sm:px-3.5 sm:py-1.5 rounded-sm transition-colors cursor-pointer"
               >
                 Sign Out
               </button>

@@ -31,6 +31,7 @@ import {
   ToolGrid,
   type HomeTool,
 } from "@/components/dashboard/mobile/HomeKit";
+import { greetingName } from "@/lib/greeting-name";
 
 /**
  * The librarian's workspace: requests waiting at the desk, books that are
@@ -60,7 +61,7 @@ export function LibraryHome({ switcher }: { switcher?: ReactNode }) {
   const query = useQuery({ ...libraryQueries.desk(slug), enabled: Boolean(slug), staleTime: 15_000 });
   const nav = useMemo(() => new Map(visibleNavItems.map((item) => [item.key, item])), [visibleNavItems]);
   const base = `/dashboard/school/${slug}`;
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = greetingName(user?.name) || "there";
 
   async function act(loan: DeskLoan, action: Action) {
     setBusy(`${loan.id}:${action}`);

@@ -175,8 +175,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
 
       {/* Desktop welcome header */}
       <div className="hidden md:block">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 capitalize">
-          Welcome back, {firstName}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome back, <span className="capitalize">{firstName}</span>
         </h1>
         {data.student.classLevel?.name && (
           <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 mt-2">
@@ -186,7 +186,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
       </div>
 
       {/* Stats Cards - desktop */}
-      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4">
+      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="shadow-sm border border-slate-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold text-slate-500">

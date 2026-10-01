@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { invoiceStatusLabel, termLabel } from "@/lib/finance";
 import {
   DollarSign, Loader2, ExternalLink, CheckCircle2, GraduationCap,
   History, Bus, AlertCircle, CreditCard, Wallet,
@@ -407,7 +408,7 @@ export default function ParentInvoicesPage() {
                                 <div className="min-w-0 flex-1 space-y-2">
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-slate-900 text-sm">
-                                      {inv.academicTerm}
+                                      {termLabel(inv.academicTerm)}
                                     </span>
                                     <Badge
                                       variant="outline"
@@ -420,7 +421,7 @@ export default function ParentInvoicesPage() {
                                             : "border-rose-200 bg-rose-50 text-rose-700",
                                       )}
                                     >
-                                      {isPaid ? "PAID" : inv.status}
+                                      {invoiceStatusLabel(isPaid ? "PAID" : inv.status)}
                                     </Badge>
                                   </div>
                                   <div className="divide-y divide-slate-100">

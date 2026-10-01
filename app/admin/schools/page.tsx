@@ -146,12 +146,12 @@ export default function AdminSchools() {
             <thead>
               <tr className="border-b bg-slate-50">
                 <th className="text-left px-4 py-3 font-medium text-slate-600">School</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Location</th>
+                <th className="hidden text-left px-4 py-3 font-medium text-slate-600 xl:table-cell">Location</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Students</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Revenue</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600">Payment</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Owed</th>
-                <th className="text-center px-4 py-3 font-medium text-slate-600">Hosted</th>
+                <th className="hidden text-center px-4 py-3 font-medium text-slate-600 xl:table-cell">Hosted</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Actions</th>
               </tr>
             </thead>
@@ -159,24 +159,26 @@ export default function AdminSchools() {
               {schools.map(s => (
                 <tr key={s.id} className="border-b hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/schools/${s.id}`} className="font-medium text-blue-600 hover:underline">
+                    <Link href={`/admin/schools/${s.id}`} className="font-medium text-blue-600 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">
                       {s.name}
                     </Link>
+                    {/* Below xl the location rides under the name so the row keeps its actions on screen. */}
+                    <span className="mt-0.5 block text-xs text-slate-500 xl:hidden">{s.city || "—"}{s.state ? `, ${s.state}` : ""}</span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{s.city || "—"}{s.state ? `, ${s.state}` : ""}</td>
-                  <td className="px-4 py-3 text-right">{s.studentCount}</td>
-                  <td className="px-4 py-3 text-right">₦{s.expectedRevenue.toLocaleString()}</td>
+                  <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">{s.city || "—"}{s.state ? `, ${s.state}` : ""}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{s.studentCount}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">₦{s.expectedRevenue.toLocaleString()}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge className={badgeColor(s.paymentStatus)}>{s.paymentStatus}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right font-medium text-red-600">
+                  <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-red-600">
                     {s.amountOwed > 0 ? `₦${s.amountOwed.toLocaleString()}` : "—"}
                   </td>
-                  <td className="px-4 py-3 text-center">{hostedBadge(s.hosted)}</td>
+                  <td className="hidden px-4 py-3 text-center xl:table-cell">{hostedBadge(s.hosted)}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/schools/${s.id}`}>
-                      <Button variant="outline" size="sm">View</Button>
-                    </Link>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/admin/schools/${s.id}`}>View</Link>
+                    </Button>
                   </td>
                 </tr>
               ))}

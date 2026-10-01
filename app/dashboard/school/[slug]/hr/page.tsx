@@ -914,7 +914,8 @@ export default function HRPage() {
   return (
     <div className="space-y-4 pb-28 md:pb-10">
       <div className="hidden md:block">
-        <p className="text-sm text-slate-500 font-medium">Manage teacher profiles, appraisals &amp; PD logs.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Human Resources</h1>
+        <p className="mt-1 text-sm text-slate-500 font-medium">Manage teacher profiles, appraisals &amp; PD logs.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -927,6 +928,8 @@ export default function HRPage() {
 
         {/* TAB 1 — TEACHER PROFILES */}
         <TabsContent value="profiles" className="pt-4 space-y-4">
+          {/* Phones: search, then a full-width create button. Tablet and up: one row, button at its natural size. */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <SearchInput
             value={profileSearch}
             onChange={setProfileSearch}
@@ -936,7 +939,7 @@ export default function HRPage() {
           {isPrivileged && (
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 md:h-10 md:w-auto md:shrink-0 md:rounded-xl md:px-5">
                   <Plus className="h-4 w-4" />
                   Create Profile
                 </Button>
@@ -1091,6 +1094,7 @@ export default function HRPage() {
                 </DialogContent>
               </Dialog>
             )}
+          </div>
 
           {isLoadingProfiles ? (
             <div className="space-y-4">

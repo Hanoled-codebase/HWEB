@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { greetingName } from "@/lib/greeting-name";
 
 type View = "people" | "permissions" | "departments";
 
@@ -305,7 +306,7 @@ function RoleEditor({
   const [pending, setPending] = useState<DutyRole | null>(null);
   const [confirmLast, setConfirmLast] = useState<DutyRole | null>(null);
   const admin = isAdmin(member);
-  const firstName = member.name.split(" ")[0] || member.name;
+  const firstName = greetingName(member.name) || member.name;
   const summary = teachingSummary(member);
 
   async function toggle(role: DutyRole, grant: boolean, confirmed = false) {
@@ -455,7 +456,7 @@ function LeadsPicker({ member, slug }: { member: StaffMember; slug: string }) {
   const [saving, setSaving] = useState(false);
   const chosen = draft ?? current;
   const dirty = draft !== null && !sameSet(draft, current);
-  const firstName = member.name.split(" ")[0] || member.name;
+  const firstName = greetingName(member.name) || member.name;
 
   async function save() {
     setSaving(true);

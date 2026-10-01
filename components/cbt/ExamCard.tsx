@@ -190,7 +190,7 @@ export function ExamCard({
             <button
               disabled={isStarting}
               onClick={() => onInitiateStart(exam)}
-              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm transition-all duration-200 w-full sm:w-auto min-h-[48px] sm:min-h-0 ${
+              className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-sm transition-all duration-200 w-full sm:w-auto min-h-[48px] sm:pointer-fine:min-h-0 ${
                 isStarting
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-sm"
                   : isStarted

@@ -175,7 +175,8 @@ export default function MessagingPage() {
     <div className="min-h-full bg-slate-50/60 pb-28 md:pb-10">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 p-0 md:p-6 lg:p-8">
         <div className="hidden md:block">
-          <p className="text-sm text-slate-500 font-medium">Send messages and manage templates.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Messaging</h1>
+          <p className="mt-1 text-sm text-slate-500 font-medium">Send messages and manage templates.</p>
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">

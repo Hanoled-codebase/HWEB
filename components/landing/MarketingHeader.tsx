@@ -116,7 +116,7 @@ export function MarketingHeader() {
     <div className="m-glass sticky top-0 z-50 pt-3 pb-2 px-3 sm:px-6 lg:px-8">
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-[1.75rem] border border-slate-100 bg-white px-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:h-20 sm:rounded-[2rem] sm:px-6 py-2.5 sm:py-0">
         {/* Left Nav (desktop) */}
-        <nav className="hidden flex-1 items-center gap-0.5 xl:flex">
+        <nav className="hidden flex-1 items-center gap-0.5 lg:flex">
           <FeaturesNavItem />
           <NavLink href="/contact" label="Contact Us" />
         </nav>
@@ -132,7 +132,7 @@ export function MarketingHeader() {
         </div>
 
         {/* Right Nav + CTAs (desktop) */}
-        <div className="hidden flex-1 items-center justify-end gap-2 xl:flex">
+        <div className="hidden flex-1 items-center justify-end gap-2 lg:flex">
           <nav className="flex items-center gap-0.5">
             {rightNavItems.map((item) => (
               <NavLink key={item.href} {...item} />
@@ -157,8 +157,9 @@ export function MarketingHeader() {
         {/* Mobile Toggle Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 xl:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 lg:hidden"
           aria-label="Toggle Navigation Menu"
+          aria-expanded={mobileMenuOpen}
         >
           <span key={mobileMenuOpen ? "close" : "open"} className="m-pop flex">{mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</span>
         </button>
@@ -166,7 +167,7 @@ export function MarketingHeader() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="m-pop mx-auto mt-2 max-h-[calc(100vh-6rem)] max-w-7xl overflow-y-auto overscroll-contain rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-xl xl:hidden" style={{ ["--origin" as string]: "top right" }}>
+        <div className="m-pop mx-auto mt-2 max-h-[calc(100vh-6rem)] max-w-7xl overflow-y-auto overscroll-contain rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-xl lg:hidden" style={{ ["--origin" as string]: "top right" }}>
           <nav className="m-stagger flex flex-col gap-1">
             {allNavItems.map((item) => {
               const isActive = isActivePath(pathname, item.href);
@@ -175,7 +176,7 @@ export function MarketingHeader() {
                   <Link
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                    className={`flex min-h-11 items-center rounded-xl px-4 text-sm font-medium transition-colors ${
                       isActive
                         ? "bg-[#0B1220] text-white font-semibold"
                         : "text-slate-700 hover:bg-slate-50 hover:text-[#1447E6]"
@@ -192,7 +193,7 @@ export function MarketingHeader() {
                             key={sub.href}
                             href={sub.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                            className={`flex min-h-11 items-center rounded-xl px-4 text-sm font-medium transition-colors ${
                               subActive
                                 ? "text-[#1447E6] font-semibold"
                                 : "text-slate-500 hover:bg-slate-50 hover:text-[#1447E6]"
@@ -211,14 +212,14 @@ export function MarketingHeader() {
               <Link
                 href="/signin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full rounded-xl border border-slate-200 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
                 Sign In
               </Link>
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] py-2.5 text-center text-sm font-bold text-white shadow-md hover:bg-[#0b33b3]"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] text-sm font-bold text-white shadow-md hover:bg-[#0b33b3]"
               >
                 <span>Get Started</span>
                 <ArrowRight className="h-4 w-4" />

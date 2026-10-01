@@ -270,10 +270,7 @@ export default function SubjectClassResultsPage() {
           ) : data ? (
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-400">
-                  Subject Performance
-                </p>
-                <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-950">
                   {data.subject.name} - {data.classLevel.name}
                 </h1>
                 <div className="mt-4 flex flex-wrap items-center gap-2">

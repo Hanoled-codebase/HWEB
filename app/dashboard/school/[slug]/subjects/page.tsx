@@ -180,7 +180,7 @@ export default function SubjectsPage() {
         <button
           onClick={() => setActiveCategory(null)}
           aria-pressed={!activeCategory}
-          className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition md:min-h-0 md:px-3 md:py-1 md:text-xs ${
+          className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition md:pointer-fine:min-h-0 md:px-3 md:py-1 md:text-xs ${
             !activeCategory
               ? "bg-blue-600 text-white shadow-sm"
               : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 md:bg-slate-50/70 md:ring-0"
@@ -196,7 +196,7 @@ export default function SubjectsPage() {
               key={key}
               onClick={() => setActiveCategory(key)}
               aria-pressed={activeCategory === key}
-              className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-medium transition md:min-h-0 md:px-3 md:py-1 md:text-xs ${
+              className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-medium transition md:pointer-fine:min-h-0 md:px-3 md:py-1 md:text-xs ${
                 activeCategory === key
                   ? "bg-blue-600 text-white shadow-sm"
                   : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 md:bg-slate-50/70 md:ring-0"
@@ -304,7 +304,7 @@ export default function SubjectsPage() {
                               handleDelete(subject.id, subject.name, subject.isDefault);
                             }}
                             aria-label={`Remove ${subject.name}`}
-                            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:mr-0 md:h-auto md:w-auto md:px-2 md:py-1 md:text-xs md:font-medium"
+                            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:mr-0 md:w-auto md:px-2 md:text-xs md:font-medium md:pointer-fine:h-auto md:pointer-fine:py-1"
                           >
                             <Trash2 className="h-4 w-4 md:hidden" />
                             <span className="hidden md:inline">Remove</span>

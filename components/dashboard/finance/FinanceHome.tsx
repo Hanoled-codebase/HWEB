@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOptionalMobileMenu } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { HomeGreeting, PrimaryAction, SectionTitle, ToolGrid, type HomeTool } from "@/components/dashboard/mobile/HomeKit";
+import { greetingName } from "@/lib/greeting-name";
 
 /**
  * The bursary workspace home: what came in, what is still owed and by whom,
@@ -79,7 +80,7 @@ export function FinanceHome({ switcher }: { switcher?: ReactNode }) {
   const nav = useMemo(() => new Map(visibleNavItems.map((item) => [item.key, item])), [visibleNavItems]);
   const base = `/dashboard/school/${slug}`;
   const recordHref = nav.has("record-payment") ? `${base}/payments/record` : null;
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = greetingName(user?.name) || "there";
 
   if (!currentOrg) return null;
 
@@ -502,7 +503,7 @@ function Debtors({
       <SectionTitle
         aside={
           debtHref && total > debtors.length ? (
-            <Link href={debtHref} className="inline-flex min-h-[44px] items-center font-semibold text-blue-700 md:min-h-0">
+            <Link href={debtHref} className="inline-flex min-h-[44px] items-center font-semibold text-blue-700 md:pointer-fine:min-h-0">
               All {total}
             </Link>
           ) : undefined
@@ -578,7 +579,7 @@ function LatestPayments({
   const allHref = nav.get("payments")?.url;
   const title = "Latest payments";
   const aside = allHref && payments.length > 0 && (
-    <Link href={allHref} className="inline-flex min-h-[44px] items-center font-semibold text-blue-700 md:min-h-0">
+    <Link href={allHref} className="inline-flex min-h-[44px] items-center font-semibold text-blue-700 md:pointer-fine:min-h-0">
       See all
     </Link>
   );

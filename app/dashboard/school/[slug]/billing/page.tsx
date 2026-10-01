@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { termLabel } from "@/lib/finance";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch } from "@/lib/api";
 import { 
@@ -306,7 +307,7 @@ export default function BillingPage() {
                         <span className="capitalize font-medium">{tx.channel}</span>
                         {tx.invoice?.student && (
                           <span className="text-slate-400 block">
-                            {tx.invoice.student.firstName} {tx.invoice.student.lastName} ({tx.invoice.academicTerm})
+                            {tx.invoice.student.firstName} {tx.invoice.student.lastName} ({termLabel(tx.invoice.academicTerm)})
                           </span>
                         )}
                       </td>

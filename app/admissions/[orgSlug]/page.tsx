@@ -14,7 +14,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Card, CardContent, CardHeader, CardDescription,
 } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -79,7 +79,7 @@ export default function PublicAdmissionPage() {
           <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
             <School className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-xl">Apply for Admission</CardTitle>
+          <h1 data-slot="card-title" className="font-heading text-xl leading-snug font-semibold">Apply for Admission</h1>
           <CardDescription>Submit your application to join our school.</CardDescription>
         </CardHeader>
         <CardContent>
