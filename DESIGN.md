@@ -133,11 +133,14 @@ Three widths, one navigation language each: phones (< 768) use the mobile shell 
 
 - **Staff shell:** `AppSidebar` renders one panel twice: a sticky `lg:flex` aside, and a left `Sheet` (288px) opened by the 44px menu button in the top bar (`lg:hidden`). On tablets the top bar shows the school name where the sidebar would; from lg it reads "School Operations Dashboard". The drawer closes on navigation by remembering the page it was opened on (no effect), and closes when the viewport crosses 1024px (rotation).
 - **Student shell:** the shadcn `Sidebar` switches to its sheet below 1024px (`SIDEBAR_DRAWER_BREAKPOINT`; desktop container is `lg:block`/`lg:flex`). Its header `SidebarTrigger` opens it; links close it.
-- **Platform admin:** six destinations fit a labelled icon rail (`w-20`, icon over an 11px label) from md to lg, the full 240px sidebar from lg.
+- **Platform admin:** six destinations fit a labelled icon rail (`w-20`, icon over an 11px label) from md to lg, the full 240px sidebar from lg. Its KPI strip runs 2 → 3 → 5 across (`xl`) so naira totals never clip.
 - **Touch floors follow the pointer, not the width:** `pointer-coarse:min-h-11` (and `min-w-11` on `Button`) on `Button`, `Input`, `SelectTrigger`, sidebar links and search, header actions, the bell and marketing nav/footer links. Mouse users keep the dense desktop sizes; a touch tablet never gets a 36px target.
 - **Grids reflow on the content width, not the device:** stat rows run 2 → 3 → all-on-one-row (`xl`, `--stat-count`); tool launchers use `repeat(auto-fill,minmax(8.5rem,1fr))`; a stat tile drops its icon below a 10rem container (`@container`). Layouts that sit beside the 256px sidebar at lg (704px of content) are checked at that width too.
 - **Desktop lists are tables:** Students is one bordered list at every width; from lg each row is a subgrid of columns (name, admission no., class, gender, day/boarding, actions) under a quiet header row, ~56px a row. The whole row stays one link; actions stay in the 44px "…" menu.
 - **Greetings use `greetingName()`** (`lib/greeting-name.ts`): a titled name keeps its title with the surname ("Dr Eze", "Mrs Obi"), never a bare "Dr".
+- **A phone drop of a touch floor is for mouse users only:** pages that shrink a 44px control at sm/md write `md:pointer-fine:min-h-0` (or `pointer-fine:h-8`), never a bare `md:min-h-0`, so a touch tablet keeps the 44px target. Icon-only buttons (edit, delete, ±) carry an `aria-label` naming the thing they act on.
+- **Wide tables on tablets drop secondary columns, not actions:** below xl, location/term/hosting fold under the row's name (`xl:hidden` line) and their columns hide (`hidden xl:table-cell`); the actions column always stays on screen.
+- **Stored keys never reach the screen:** invoice statuses go through `invoiceStatusLabel()` ("Part paid") and terms through `termLabel()` ("1st Term 2026/2027") in `lib/finance.ts`. A settled balance is a dash, not "₦0" in Alert red.
 
 ## Marketing at tablet widths
 

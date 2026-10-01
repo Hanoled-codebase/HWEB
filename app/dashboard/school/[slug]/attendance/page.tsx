@@ -380,7 +380,7 @@ function RegisterView({
                         aria-checked={on}
                         onClick={() => setMarks((prev) => ({ ...prev, [student.id]: option }))}
                         className={cn(
-                          "min-h-[44px] rounded-lg border text-xs font-semibold transition-colors duration-100 sm:min-h-[36px]",
+                          "min-h-[44px] rounded-lg border text-xs font-semibold transition-colors duration-100 sm:pointer-fine:min-h-[36px]",
                           on ? STATUS_META[option].on : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                         )}
                       >

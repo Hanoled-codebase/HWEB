@@ -41,3 +41,7 @@ Pass. The phone shell, palette lock and token system are product-specific and co
 - 0 sideways overflow on every route at every width.
 - 0 undersized targets on phones across all roles; one H1 per phone screen; bottom sheets, tab bar and safe areas hold.
 - The palette lock in `globals.css` maps Tailwind defaults onto the brand ramp, so stray `emerald-*`/`indigo-*` still render on-brand.
+
+## Follow-up sweep (same day)
+
+Every dashboard route (50 admin, 11 teacher, 9 accountant, 9 parent, 8 pupil, CBT, 8 platform-admin) at 390 / 820 / 1180 / 1440 with list fixtures: 0 sideways overflow anywhere. Fixed in this pass: student record action row overlapping on phones; Add/Edit student showing two titles and two back buttons on phones; raw `PARTIALLY_PAID` and `2026/2027-TERM1` on invoices, debt and billing; HR and Messaging missing their page title from md up; HR "Create profile" stretched across desktop; parents table avatars in gold and table wider than a tablet; results donut label colliding with its ring; eyebrows on three subject/assessment pages; 14px unlabelled edit/delete icons on lesson notes and homework, 32-36px controls on question bank, register and score entry on touch tablets; platform admin KPI totals clipping and tables pushing actions off-screen on tablets; "Welcome Back" capitalisation. Removed the X/LinkedIn footer icons that linked to `#`. Home hero holds three lines from 1024 to 1920px.

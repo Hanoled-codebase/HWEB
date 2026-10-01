@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { invoiceStatusLabel, termLabel } from "@/lib/finance";
 import {
   DollarSign, Loader2, ExternalLink, CheckCircle2, AlertCircle,
 } from "lucide-react";
@@ -127,7 +128,7 @@ export default function StudentInvoicesPage() {
                     {/* Header: Term name + badge */}
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-slate-900">
-                        {inv.academicTerm}
+                        {termLabel(inv.academicTerm)}
                       </h3>
                       <Badge
                         variant="outline"
@@ -140,7 +141,7 @@ export default function StudentInvoicesPage() {
                               : "border-rose-200 bg-rose-50 text-rose-700",
                         )}
                       >
-                        {inv.status}
+                        {invoiceStatusLabel(inv.status)}
                       </Badge>
                     </div>
 

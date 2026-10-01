@@ -195,13 +195,8 @@ function ProgressRing({
           {value}
         </p>
 
-        {/* Decorative target */}
-        <Target
-          className={cn(
-            "mt-2 text-slate-300",
-            compact ? "h-3 w-3" : "h-3.5 w-3.5",
-          )}
-        />
+        {/* Decorative target: dropped in the compact ring so "Avg. score" stays inside the arc. */}
+        {!compact && <Target className="mt-2 h-3.5 w-3.5 text-slate-300" />}
 
         {/* "Avg. score" — short label that fits inside even the compact ring */}
         <p

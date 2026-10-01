@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { invoiceStatusLabel, termLabel } from "@/lib/finance";
 import {
   DollarSign, AlertTriangle, CheckCircle2, Users, Eye, Download,
 } from "lucide-react";
@@ -175,7 +176,7 @@ export default function DebtPage() {
                   <div key={inv.id} className="flex items-center gap-2.5 px-3 py-2.5 text-xs sm:gap-4 sm:px-4 sm:py-3 sm:text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-slate-900">{inv.student.firstName} {inv.student.lastName}</p>
-                      <p className="text-xs text-slate-500">{inv.term} · {inv.student.classLevel?.name || "—"}</p>
+                      <p className="text-xs text-slate-500">{termLabel(inv.term)} · {inv.student.classLevel?.name || "—"}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-semibold">₦{inv.total.toLocaleString()}</p>
@@ -185,7 +186,7 @@ export default function DebtPage() {
                       inv.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                       : inv.status === "PARTIALLY_PAID" ? "border-amber-200 bg-amber-50 text-amber-700"
                       : "border-rose-200 bg-rose-50 text-rose-700"
-                    )}>{inv.status}</Badge>
+                    )}>{invoiceStatusLabel(inv.status)}</Badge>
                   </div>
                 ))}
               </div>
@@ -209,13 +210,13 @@ export default function DebtPage() {
                 <div className="divide-y divide-slate-100">
                   {studentInvoices.invoices?.map((inv: any) => (
                     <div key={inv.id} className="py-2 flex items-center justify-between text-sm">
-                      <span className="text-slate-600">{inv.academicTerm}</span>
+                      <span className="text-slate-600">{termLabel(inv.academicTerm)}</span>
                       <span className="font-medium">₦{inv.items?.reduce((s: number, i: any) => s + Number(i.amount), 0).toLocaleString()}</span>
                       <Badge variant="outline" className={cn("rounded-full text-xs",
                         inv.status === "PAID" ? "text-emerald-700 border-emerald-200"
                         : inv.status === "PARTIALLY_PAID" ? "text-amber-700 border-amber-200"
                         : "text-rose-700 border-rose-200"
-                      )}>{inv.status}</Badge>
+                      )}>{invoiceStatusLabel(inv.status)}</Badge>
                     </div>
                   ))}
                 </div>

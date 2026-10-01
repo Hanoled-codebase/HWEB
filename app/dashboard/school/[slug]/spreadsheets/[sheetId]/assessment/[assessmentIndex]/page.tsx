@@ -447,7 +447,7 @@ export default function AssessmentEntryPage() {
                         type="button"
                         onClick={() => handleStepScore(rowIndex, -1)}
                         disabled={atMin}
-                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex"
+                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex pointer-coarse:h-11 pointer-coarse:w-11"
                         aria-label={`Decrease score for ${name}`}
                       >
                         <Minus className="h-3.5 w-3.5" />
@@ -499,7 +499,7 @@ export default function AssessmentEntryPage() {
                         type="button"
                         onClick={() => handleStepScore(rowIndex, 1)}
                         disabled={atMax}
-                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex"
+                        className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 md:flex pointer-coarse:h-11 pointer-coarse:w-11"
                         aria-label={`Increase score for ${name}`}
                       >
                         <Plus className="h-3.5 w-3.5" />

@@ -63,6 +63,10 @@ type StudentGuardian = {
   studentId: string;
 };
 
+// Reset password / Personal data: half a row each on phones, their natural width from md.
+const ACCOUNT_ACTION =
+  "h-11 w-full min-w-0 rounded-2xl border border-slate-200 bg-white/80 px-3 text-[#0B1220] shadow-sm hover:bg-white md:w-auto md:px-4";
+
 export default function StudentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -168,7 +172,8 @@ export default function StudentDetailPage() {
     <div className="min-h-full bg-slate-50/60 pb-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-5 md:px-6 md:py-4 lg:px-8">
         <div className={canEditProfile ? "flex items-center justify-between gap-3" : "hidden items-center justify-between gap-3 md:flex"}>
-          <div className="flex w-full items-center gap-3 md:w-auto">
+          {/* Phones: Edit on its own row, the two account actions side by side beneath it. */}
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:items-center md:gap-3">
             {/* Phones already have a back target in the top bar */}
             <Button
               variant="ghost"
@@ -184,7 +189,7 @@ export default function StudentDetailPage() {
             {canEditProfile && (
               <Button
                 variant="ghost"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white md:w-auto"
+                className="col-span-2 h-11 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 text-slate-700 shadow-sm hover:bg-white md:w-auto"
                 onClick={() =>
                   router.push(
                     `/dashboard/school/${currentOrg?.slug}/students/${studentId}/edit`,
@@ -202,6 +207,7 @@ export default function StudentDetailPage() {
                 target={{ learnerId: studentProfile.hcoreLearnerId }}
                 personName={`${studentProfile.firstName} ${studentProfile.lastName}`.trim()}
                 signInHint="their admission number"
+                className={ACCOUNT_ACTION}
               />
             )}
 
@@ -215,6 +221,7 @@ export default function StudentDetailPage() {
                 hcbt={{ learnerId: studentProfile.hcoreLearnerId }}
                 canErase={currentMember?.role === "owner" || currentMember?.role === "admin"}
                 onErased={() => router.push(`/dashboard/school/${currentOrg.slug}/students`)}
+                className={ACCOUNT_ACTION}
               />
             )}
           </div>

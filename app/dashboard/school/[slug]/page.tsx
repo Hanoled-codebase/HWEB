@@ -215,8 +215,8 @@ export default function DashboardOverviewPage() {
 
         {/* Desktop */}
         <div className="hidden md:block">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 capitalize">
-            Welcome back, {firstName}
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Welcome back, <span className="capitalize">{firstName}</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">
             {assignedStudents.length > 0

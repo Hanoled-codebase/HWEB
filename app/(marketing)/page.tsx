@@ -225,11 +225,12 @@ export default function LandingPage() {
             <span className="text-2xl">+</span>
           </div>
 
-          <div className="relative z-10 grid gap-12 lg:grid-cols-2 lg:items-center">
+          {/* From 1024px the headline gets the wider column so it holds three lines, not five. */}
+          <div className="relative z-10 grid gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-center">
             {/* Left Box (Text) */}
-            <div className="space-y-8 lg:pr-10">
+            <div className="space-y-8 lg:pr-2">
               <div className="space-y-6">
-                <h1 className="text-[1.75rem] font-bold leading-[1.15] text-slate-900 sm:text-4xl md:text-5xl lg:text-[2.75rem] xl:text-[3.5rem]">
+                <h1 className="text-[1.75rem] font-bold leading-[1.15] text-slate-900 sm:text-4xl md:text-5xl lg:text-[2.5rem] xl:text-[3.25rem]">
                   <span className="inline-flex items-center gap-3">
                     <span className="text-[#1447E6]">Hanoled</span>
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-[#0B1220] sm:h-10 sm:w-10 lg:h-12 lg:w-12">
@@ -270,7 +271,7 @@ export default function LandingPage() {
               </div>
 
               {/* Main Image Container */}
-              <div className="relative h-[350px] sm:h-[450px] lg:h-[550px] w-full max-w-[450px]">
+              <div className="relative h-[350px] sm:h-[450px] lg:h-[480px] xl:h-[550px] w-full max-w-[450px]">
                 <div className="absolute inset-x-8 bottom-0 h-20 rounded-[50%] bg-[#1447E6]/20 blur-2xl" />
                 <Image
                   src="/landing-student-hero.png"

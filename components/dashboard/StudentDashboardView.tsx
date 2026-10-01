@@ -175,8 +175,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
 
       {/* Desktop welcome header */}
       <div className="hidden md:block">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 capitalize">
-          Welcome back, {firstName}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome back, <span className="capitalize">{firstName}</span>
         </h1>
         {data.student.classLevel?.name && (
           <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 mt-2">
