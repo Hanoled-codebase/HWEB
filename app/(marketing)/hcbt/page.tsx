@@ -11,6 +11,8 @@ import {
   AnyDeviceIllustration,
   AntiCheatIllustration,
 } from "@/components/landing/ModuleIllustrations";
+import { HeroUnderline, RiseWords } from "@/components/landing/motion";
+import { InView } from "@/components/landing/InView";
 
 export const metadata: Metadata = {
   title: "HCBT / Exam Engine – Hanoled",
@@ -76,13 +78,13 @@ export default function HcbtPage() {
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
-                <span className="text-[#1447E6]">HCBT</span> — Computer-Based Testing, <br />
-                made simple
+                <RiseWords>
+                  <span className="text-[#1447E6]">HCBT</span> — Computer-Based Testing, <br />
+                  made simple
+                </RiseWords>
               </h1>
-              {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
-                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
-              </svg>
+              {/* Wavy accent line under title: writes itself once the headline has risen */}
+              <HeroUnderline />
             </div>
 
             <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
@@ -96,7 +98,7 @@ export default function HcbtPage() {
                 href="/#contact-quote"
                 className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1447E6] px-8 font-bold text-white transition-all hover:bg-[#0b33b3] hover:-translate-y-1 hover:shadow-lg shadow-[#1447E6]/30"
               >
-                Request a Demo <ArrowRight className="h-5 w-5" />
+                Request a Demo <ArrowRight className="mk-arrow-x h-5 w-5" />
               </Link>
             </div>
           </div>
@@ -113,7 +115,7 @@ export default function HcbtPage() {
             </p>
           </div>
           
-          <div className="grid gap-6 md:grid-cols-3">
+          <InView className="grid gap-6 md:grid-cols-3" style={{ ["--mk-rest" as string]: "rgb(20 71 230 / 0.05)", ["--mk-wave" as string]: "rgb(20 71 230 / 0.3)" }}>
             {[
               {
                 step: "01",
@@ -130,12 +132,12 @@ export default function HcbtPage() {
                 title: "Students Take It",
                 desc: "Students log in, start the exam on any device, and get instant results when they submit.",
               },
-            ].map((item) => (
+            ].map((item, i) => (
               <div
                 key={item.step}
                 className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md overflow-hidden"
               >
-                <span className="absolute -right-4 -top-4 text-8xl font-black text-[#1447E6]/5 group-hover:text-[#1447E6]/10 transition-colors">
+                <span className="mk-wave absolute -right-4 -top-4 text-8xl font-black text-[#1447E6]/5 group-hover:text-[#1447E6]/10 transition-colors" style={{ ["--i" as string]: i }}>
                   {item.step}
                 </span>
                 <div className="relative z-10">
@@ -151,7 +153,7 @@ export default function HcbtPage() {
                 </div>
               </div>
             ))}
-          </div>
+          </InView>
         </section>
 
         {/* Capabilities Grid */}
@@ -207,7 +209,7 @@ export default function HcbtPage() {
                   href="/#contact-quote"
                   className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 font-bold text-[#1447E6] transition-all hover:bg-slate-100 hover:-translate-y-1 hover:shadow-lg"
                 >
-                  Book a Demo <ArrowRight className="h-5 w-5" />
+                  Book a Demo <ArrowRight className="mk-arrow-x h-5 w-5" />
                 </Link>
               </div>
             </div>

@@ -67,7 +67,20 @@ Not yet brought into this world: the `article/[slug]` blog template (already bra
 
 ## Motion
 
-Added across the homepage (and reusable anywhere else): `components/landing/Reveal.tsx` + `hooks/useInView.ts` (IntersectionObserver, transform/opacity only, fires once, `prefers-reduced-motion`-aware) for scroll-triggered fade+rise on each major section; a one-time staged sequence on the HCBT exam diagram (answer selected -> graded -> growth-curve draws in) using the `seq-*` keyframes in `app/globals.css`; and form feedback states (shake + red field rings on validation error, animated success panel, button press/hover feedback) on the homepage quote form. No new dependency — CSS keyframes plus native browser APIs only.
+Thesis: **"ticked off, on the rise."** The Hanoled mark's ascending diagonal reads as both a tick and a growth curve, so the marketing site's motion draws that one stroke instead of fading generic blocks in. One authored moment per page (the hero), small purposeful echoes below it, and stillness everywhere else. CSS keyframes plus native browser APIs only, no animation library; everything animates `translate`/`scale`/`opacity`/`clip-path`/`stroke-dashoffset`/`color`.
+
+- **Hero headline** (`RiseWords` in `components/landing/motion.tsx`): every word rises out of its own baseline mask, in reading order (42ms apart). Keeps the heading's markup; coloured spans and line breaks survive, inline badges rise as one piece. Used on every marketing H1 except the legal pages.
+- **Gold underline** (`HeroUnderline`): the wave under the headline writes itself left to right once the words have risen. Growth Gold's single appearance in the hero.
+- **Hero follow-through**: the rest of the hero (copy, buttons, chips) rises 10px after the headline, never with it. Pieces that share a column with the H1 opt in with `.mk-follow` and `--d` (their beat in ms).
+- **Home photo unveil** (`.mk-unveil`): the student photo is uncovered from the bottom edge upward, the logo's rising stroke at photo scale.
+- **Ticks** (`DrawnCheck` inside `InView`): checklists draw their ticks one after another (140ms apart) the first time the list scrolls in. Home HCBT list, admissions benefits, security practices, and the success panels on the quote and support forms.
+- **Step wave** (`.mk-wave` + `--i` inside `InView`): a blue highlight travels once through numbered steps (01 -> 02 -> 03), then each number settles back to its resting colour. Each container sets `--mk-rest` (the number's own colour) and optionally `--mk-wave`; both keyframe ends are explicit so the colour never swings through another hue.
+- **Exam diagram** (`.mk-seq-pop` / `.mk-seq-draw` with `--d`, inside `InView`): the answer is selected and ticked, the paper is stamped verified, then the gold growth curve draws. A small story, told once.
+- **CTA arrows** (`.mk-arrow` for the up-right arrow, `.mk-arrow-x` for the plain arrow): step 2-3px along their direction on hover and keyboard focus.
+- **Card grids** below the hero rise as they scroll in, scroll-driven (`animation-timeline: view()`, off the main thread, skipped where unsupported). Whole sections never animate.
+- **Name strip** (`BrandRibbon`): drifts sideways at 48s per loop; pauses off screen and under the pointer.
+
+Rules: every effect rests on the finished state (`backwards` fill, or a `data-motion="pending"` state that only JS sets), so no-JS, a failed script and `prefers-reduced-motion: reduce` all show the page complete. Under reduced motion nothing moves except the shared `m-*` pop/rise utilities, which become short fades. `InView` sets `data-motion` straight on the element (no React state, no re-render) and fires once. Add new motion here only when it explains a state or a relationship; no fade-up on every section.
 
 ## Colors
 

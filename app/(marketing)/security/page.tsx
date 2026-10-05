@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
   Database,
   Lock,
   RefreshCw,
@@ -13,6 +12,8 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { DrawnCheck, RiseWords } from "@/components/landing/motion";
+import { InView } from "@/components/landing/InView";
 
 export const metadata: Metadata = {
   title: "Security – Hanoled",
@@ -81,8 +82,10 @@ export default function SecurityPage() {
               <Shield className="h-4 w-4" /> Security
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Your school&apos;s data is{" "}
-              <span className="text-[#1447E6]">our top priority</span>
+              <RiseWords>
+                Your school&apos;s data is{" "}
+                <span className="text-[#1447E6]">our top priority</span>
+              </RiseWords>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-500">
               Hanoled is built from the ground up with security in mind.
@@ -123,19 +126,19 @@ export default function SecurityPage() {
             <h2 className="text-3xl font-bold text-slate-900">
               Security best practices we follow
             </h2>
-            <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
-              {practices.map((practice) => (
+            <InView className="mt-10 grid gap-4 text-left sm:grid-cols-2">
+              {practices.map((practice, i) => (
                 <div
                   key={practice}
                   className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm border border-slate-100"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#1447E6]" />
+                  <DrawnCheck index={i} className="mt-0.5 h-5 w-5 shrink-0 text-[#1447E6]" />
                   <span className="text-sm font-medium text-slate-700">
                     {practice}
                   </span>
                 </div>
               ))}
-            </div>
+            </InView>
           </div>
         </section>
 
@@ -154,7 +157,7 @@ export default function SecurityPage() {
                 href="/contact"
                 className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-all hover:bg-[#0b33b3] shadow-lg shadow-[#1447E6]/30"
               >
-                Contact Us <ArrowRight className="h-4 w-4" />
+                Contact Us <ArrowRight className="mk-arrow-x h-4 w-4" />
               </Link>
             </div>
           </div>

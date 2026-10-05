@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
   Headphones,
   Loader2,
   Mail,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { DrawnCheck, RiseWords } from "@/components/landing/motion";
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
@@ -48,7 +48,9 @@ export default function SupportPage() {
               <Headphones className="h-4 w-4" /> Support
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Submit a Support Ticket
+              <RiseWords>
+                Submit a Support Ticket
+              </RiseWords>
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
               Having an issue or need assistance? Fill in the form below and our
@@ -62,8 +64,8 @@ export default function SupportPage() {
             {/* Form */}
             <div className="lg:col-span-3">
               {isSubmitted ? (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-12 text-center">
-                  <CheckCircle2 className="mx-auto h-12 w-12 text-[#1447E6]" />
+                <div data-motion="in" className="m-pop rounded-2xl border border-blue-200 bg-blue-50/50 p-12 text-center">
+                  <DrawnCheck className="mx-auto h-12 w-12 text-[#1447E6]" />
                   <h2 className="mt-4 text-2xl font-bold text-slate-900">
                     Ticket Submitted!
                   </h2>
@@ -75,7 +77,7 @@ export default function SupportPage() {
                     href="/"
                     className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0b33b3]"
                   >
-                    Back to Home <ArrowRight className="h-4 w-4" />
+                    Back to Home <ArrowRight className="mk-arrow-x h-4 w-4" />
                   </Link>
                 </div>
               ) : (

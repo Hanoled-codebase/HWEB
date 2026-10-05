@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { BrandRibbon } from "@/components/landing/BrandRibbon";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,23 +15,6 @@ import {
   FileSpreadsheet,
   Users
 } from "lucide-react";
-
-function BrandRibbon() {
-  return (
-    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md">
-      <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
-        {Array.from({ length: 15 }).map((_, index) => (
-          <span key={index} className="whitespace-nowrap flex items-center gap-6">
-            Hanoled.io
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-            Hanoled
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const articleData = {
   "centralized-directory": {

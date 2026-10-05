@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
   ClipboardList,
   Globe,
   Mail,
@@ -11,6 +10,8 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { DrawnCheck, RiseWords } from "@/components/landing/motion";
+import { InView } from "@/components/landing/InView";
 
 export const metadata: Metadata = {
   title: "Admissions Portal – Hanoled",
@@ -85,7 +86,9 @@ export default function AdmissionsPortalPage() {
             </div>
             
             <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
-              Online admissions, <span className="text-[#1447E6]">zero paperwork</span>
+              <RiseWords>
+                Online admissions, <span className="text-[#1447E6]">zero paperwork</span>
+              </RiseWords>
             </h1>
 
             <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
@@ -98,7 +101,7 @@ export default function AdmissionsPortalPage() {
                 href="/#contact-quote"
                 className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#0B1220] px-8 font-bold text-white transition-all hover:bg-[#1447E6] hover:-translate-y-1 hover:shadow-lg"
               >
-                Get Started <ArrowRight className="h-5 w-5" />
+                Get Started <ArrowRight className="mk-arrow-x h-5 w-5" />
               </Link>
             </div>
           </div>
@@ -118,7 +121,7 @@ export default function AdmissionsPortalPage() {
             </p>
           </div>
           
-          <div className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <InView className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4" style={{ ["--mk-rest" as string]: "var(--color-slate-100)", ["--mk-wave" as string]: "rgb(20 71 230 / 0.28)" }}>
             {/* Wavy Connector Line (Hidden on mobile) */}
             <div className="hidden lg:block absolute top-1/2 left-0 w-full h-8 -translate-y-1/2 pointer-events-none z-0">
                <svg width="100%" height="100%" viewBox="0 0 1000 40" preserveAspectRatio="none" className="text-slate-200 stroke-current stroke-[3px]" fill="none" strokeDasharray="8 8">
@@ -133,7 +136,7 @@ export default function AdmissionsPortalPage() {
                   key={step.title}
                   className="group relative flex flex-col rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md overflow-hidden z-10"
                 >
-                  <span className="absolute -right-4 -top-4 text-8xl font-black text-slate-100 group-hover:text-slate-200 transition-colors">
+                  <span className="mk-wave absolute -right-4 -top-4 text-8xl font-black text-slate-100 group-hover:text-slate-200 transition-colors" style={{ ["--i" as string]: i }}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   
@@ -151,7 +154,7 @@ export default function AdmissionsPortalPage() {
                 </div>
               );
             })}
-          </div>
+          </InView>
         </section>
 
         {/* Benefits */}
@@ -160,21 +163,21 @@ export default function AdmissionsPortalPage() {
             <h2 className="text-3xl font-bold text-slate-900">
               Why schools love it
             </h2>
-            <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
-              {benefits.map((benefit) => (
+            <InView className="mt-10 grid gap-4 text-left sm:grid-cols-2">
+              {benefits.map((benefit, i) => (
                 <div
                   key={benefit}
                   className="flex items-center gap-4 rounded-[1.5rem] bg-[#f8f9fc] p-5 border border-slate-100 hover:-translate-y-0.5 transition-transform"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1447E6]/10 text-[#1447E6]">
-                    <CheckCircle2 className="h-6 w-6" />
+                    <DrawnCheck index={i} className="h-6 w-6" />
                   </div>
                   <span className="text-sm font-semibold text-slate-700">
                     {benefit}
                   </span>
                 </div>
               ))}
-            </div>
+            </InView>
           </div>
         </section>
 
@@ -199,7 +202,7 @@ export default function AdmissionsPortalPage() {
                   href="/#contact-quote"
                   className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1447E6] px-8 font-bold text-white transition-all hover:bg-[#0b33b3] hover:-translate-y-1 hover:shadow-lg shadow-[#1447E6]/30"
                 >
-                  Book a Demo <ArrowRight className="h-5 w-5" />
+                  Book a Demo <ArrowRight className="mk-arrow-x h-5 w-5" />
                 </Link>
               </div>
             </div>
