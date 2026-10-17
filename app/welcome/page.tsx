@@ -22,6 +22,9 @@ export default async function WelcomePortal() {
   }
 
   let allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
+  // Set inside the try below, followed after it: redirect() works by throwing,
+  // so calling it inside the try would be caught and ignored.
+  let candidateRedirect: string | null = null;
 
   // If cookie is missing or empty, fetch real active subscriptions directly from HCORE
   try {
@@ -37,9 +40,12 @@ export default async function WelcomePortal() {
       const isCandidate =
         primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ||
         primaryOrg?.products?.HSMS?.roles?.includes("STUDENT");
+      const isCandidate =
+        primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ||
+        primaryOrg?.products?.HSMS?.roles?.includes("STUDENT");
       if (isCandidate) {
         const orgSlug = primaryOrg?.slug || "";
-        redirect(orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student");
+        candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
       }
 
       if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
@@ -50,10 +56,13 @@ export default async function WelcomePortal() {
           .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
           .join(",");
       }
+    } else {
+      console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
     }
   } catch (e) {
     console.error("Failed to fetch subscriptions in /welcome:", e);
   }
+  if (candidateRedirect) redirect(candidateRedirect);
 
   if (!allowedPlatforms) {
     allowedPlatforms = "HSMS,HCBT";

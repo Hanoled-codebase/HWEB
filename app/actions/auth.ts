@@ -118,6 +118,8 @@ async function finishSignIn(
           (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
         );
       }
+    } else {
+      console.error(`[probe] loginAction contexts not ok: ${meRes.status}`);
     }
   } catch (e) {
     console.error('Context fetch error in loginAction:', e);
