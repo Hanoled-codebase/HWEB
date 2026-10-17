@@ -86,6 +86,8 @@ interface OrgState {
   error: string | null;
   fetchOrgs: () => Promise<void>;
   setCurrentOrg: (slug: string) => Promise<void>;
+  /** Merge fields (e.g. a freshly uploaded logo) into the active school. */
+  updateCurrentOrg: (patch: Partial<Organization>) => void;
   clear: () => void;
 }
 
@@ -113,6 +115,33 @@ function normalizeOrganization(
 
 type AccessPolicy = NonNullable<Member["access"]>;
 const ACCESS_CACHE_PREFIX = "hanoled.access.";
+
+/**
+ * A school's profile image and contact details live on HSMS (the public pages
+ * and the PDF reports read them there). HCORE's context list only carries
+ * id/name/slug/subscription, so a logo uploaded in Settings never reached the
+ * sidebar, the school switcher or the report headers without this extra read.
+ * Best-effort: a failure just leaves the HCORE fields untouched.
+ */
+type OrgBranding = Pick<Organization, "logo" | "email" | "phone" | "address">;
+
+async function fetchOrgBranding(slug: string): Promise<OrgBranding | null> {
+  try {
+    const org = await request<Partial<Organization>>(HSMS_BASE, `/organizations/${slug}`, {
+      showErrorToast: false,
+    });
+    return { logo: org.logo, email: org.email, phone: org.phone, address: org.address };
+  } catch {
+    return null;
+  }
+}
+
+/** Drop undefined/null so a missing HSMS field can't overwrite a known value. */
+function definedOnly<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined && value !== null),
+  ) as Partial<T>;
+}
 
 /**
  * The school's role permissions as last seen on this device. When HSMS can't
@@ -149,8 +178,17 @@ export const useOrganization = create<OrgState>((set, get) => ({
       set({ isLoading: true, error: null });
       const res = await request<any>(HCORE_BASE, "/v1/me/contexts");
       const orgs = res.organizations || [];
+      const normalized = orgs.map(normalizeOrganization);
+      // HCORE owns identity, HSMS owns the school's logo/contact details, so
+      // pull the branding for each school once, in parallel, and merge it in.
+      const withBranding = await Promise.all(
+        normalized.map(async (org: Organization) => {
+          const branding = await fetchOrgBranding(org.slug);
+          return branding ? { ...org, ...definedOnly(branding) } : org;
+        }),
+      );
       set({
-        organizations: orgs.map(normalizeOrganization),
+        organizations: withBranding,
         isLoading: false,
         hasFetchedOrganizations: true,
       });
@@ -185,18 +223,19 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // brand new to the org, is expected to reject here) and merged in
       // below rather than trusted as a replacement for HCORE's role/identity
       // data.
-      const [contextResult, memberResult, hsmsMemberResult] = await Promise.allSettled([
+      const [contextResult, memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
         needsContextFetch
           ? request<any>(HCORE_BASE, "/v1/me/contexts")
           : Promise.resolve(null),
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
         request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
+        fetchOrgBranding(slug),
       ]);
 
       if (needsContextFetch) {
         if (contextResult.status === "fulfilled" && contextResult.value) {
-          const fetchOrgs = contextResult.value.organizations || [];
-          const normalizedOrgs = fetchOrgs.map(normalizeOrganization);
+          const contextOrgs = contextResult.value.organizations || [];
+          const normalizedOrgs = contextOrgs.map(normalizeOrganization);
           set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
           org = normalizedOrgs.find((o: Organization) => o.slug === slug);
         } else if (contextResult.status === "rejected") {
@@ -217,6 +256,12 @@ export const useOrganization = create<OrgState>((set, get) => ({
           counts: { students: 0, teachers: 0, parents: 0 },
         };
       }
+
+      // Merge the school's HSMS branding (logo, contact details) regardless of
+      // which branch resolves the org below, so the sidebar, switcher and report
+      // headers all show the logo a school uploaded in Settings.
+      const branding = brandingResult.status === "fulfilled" ? brandingResult.value : null;
+      if (branding) org = { ...org, ...definedOnly(branding) };
 
       // First try member profile (for admin/teacher/parent users)
       if (memberResult.status === "fulfilled") {
@@ -291,6 +336,18 @@ export const useOrganization = create<OrgState>((set, get) => ({
       });
     }
   },
+
+  updateCurrentOrg: (patch: Partial<Organization>) =>
+    set((state) => {
+      if (!state.currentOrg) return state;
+      const slug = state.currentOrg.slug;
+      return {
+        currentOrg: { ...state.currentOrg, ...patch },
+        organizations: state.organizations.map((org) =>
+          org.slug === slug ? { ...org, ...patch } : org,
+        ),
+      };
+    }),
 
   clear: () => set({
     organizations: [],
