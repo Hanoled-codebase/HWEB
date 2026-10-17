@@ -74,7 +74,9 @@ export function HanoledLogo({
   const content = (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       <HanoledIcon className={`${iconSizes[size]} ${iconColorClasses[variant]} shrink-0`} />
-      {!iconOnly && (
+      {iconOnly ? (
+        href && <span className="sr-only">Hanoled</span>
+      ) : (
         <span className={`font-bold tracking-tight ${textColorClasses[variant]} ${textSizes[size]}`}>
           Hanoled
         </span>
@@ -84,7 +86,7 @@ export function HanoledLogo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center focus:outline-none">
+      <Link href={href} className="inline-flex items-center focus:outline-none pointer-coarse:min-h-11">
         {content}
       </Link>
     );

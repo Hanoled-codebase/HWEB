@@ -5,6 +5,7 @@ import { ChevronRight, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 import { EmptyNote, HomeGreeting, SectionTitle, ToolGrid, type HomeTool } from "./HomeKit";
+import { greetingName } from "@/lib/greeting-name";
 
 export type ParentResultGroup = {
   student: { id: string; firstName: string; lastName: string };
@@ -46,7 +47,7 @@ export function ParentHome({
   return (
     <div className="space-y-7">
       <HomeGreeting
-        name={user?.name?.split(" ")[0] || "there"}
+        name={greetingName(user?.name) || "there"}
         detail={students.length === 1 ? "1 child linked" : `${students.length} children linked`}
       />
 

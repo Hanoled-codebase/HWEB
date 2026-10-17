@@ -14,6 +14,9 @@ export const PEOPLE = {
   pupil: { tab: "Student / Candidate", identifier: "GF/2026/001", password: "ada-2026" },
   candidate: { tab: "Staff / Admin", identifier: "chidi.candidate@greenfield.test", password: "Candidate-2026" },
   newTeacher: { tab: "Staff / Admin", identifier: "new.teacher@greenfield.test", password: "School-Issued-1" },
+  accountant: { tab: "Staff / Admin", identifier: "bursar@greenfield.test", password: "Greenfield-Bursar-2026" },
+  teacher: { tab: "Staff / Admin", identifier: "maths.teacher@greenfield.test", password: "Greenfield-Maths-2026" },
+  admin: { tab: "Staff / Admin", identifier: "admin@greenfield.test", password: "Greenfield-Admin-2026" },
 };
 
 /** Fills and sends the sign-in form. */

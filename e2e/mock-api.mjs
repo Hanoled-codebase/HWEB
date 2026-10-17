@@ -49,6 +49,40 @@ const USERS = {
     learnerId: "0f5f1a52-0000-4000-8000-0000000000c2",
     products: { HCBT: { status: "ACTIVE", roles: ["CANDIDATE"] } },
   },
+  accountant: {
+    principalId: "0f5f1a52-0000-4000-8000-0000000000d2",
+    identifierType: "EMAIL",
+    identifier: "bursar@greenfield.test",
+    password: "Greenfield-Bursar-2026",
+    displayName: "Mrs Funke Adeyemi",
+    roles: ["ACCOUNTANT"],
+    assignments: [{ id: "as-bursar", type: "ACCOUNTANT" }],
+    products: { HSMS: { status: "ACTIVE", roles: ["ACCOUNTANT"] } },
+  },
+  teacher: {
+    principalId: "0f5f1a52-0000-4000-8000-0000000000d3",
+    identifierType: "EMAIL",
+    identifier: "maths.teacher@greenfield.test",
+    password: "Greenfield-Maths-2026",
+    displayName: "Mr Adebayo Okafor",
+    roles: ["TEACHER"],
+    assignments: [{
+      id: "as-maths-jss1a", type: "SUBJECT_TEACHER",
+      classLevelId: "jss1a", classLevelName: "JSS 1A", subjectId: "maths", subjectName: "Mathematics",
+      classLevel: { id: "jss1a", name: "JSS 1A" }, subject: { id: "maths", name: "Mathematics" },
+    }],
+    products: { HSMS: { status: "ACTIVE", roles: ["TEACHER"] } },
+  },
+  admin: {
+    principalId: "0f5f1a52-0000-4000-8000-0000000000d4",
+    identifierType: "EMAIL",
+    identifier: "admin@greenfield.test",
+    password: "Greenfield-Admin-2026",
+    displayName: "Dr Amaka Eze",
+    roles: ["SCHOOL_ADMIN"],
+    memberRole: "admin",
+    products: { HSMS: { status: "ACTIVE", roles: ["SCHOOL_ADMIN"] }, HCBT: { status: "ACTIVE", roles: ["CBT_ADMIN"] } },
+  },
   newTeacher: {
     principalId: "0f5f1a52-0000-4000-8000-0000000000d1",
     identifierType: "EMAIL",
@@ -62,6 +96,21 @@ const USERS = {
 };
 
 const CHILD = { id: "stu-ada", firstName: "Ada", lastName: "Obi", admissionNumber: "GF/2026/001" };
+// The same child, as the HSMS student profile the pupil sees.
+const PUPIL = { ...CHILD, classLevel: { id: "jss1a", name: "JSS 1A" } };
+// The same child, as the bursary sees them: ₦100,000 still owed on one bill.
+const OWING = {
+  id: CHILD.id,
+  name: `${CHILD.firstName} ${CHILD.lastName}`,
+  admissionNumber: CHILD.admissionNumber,
+  className: "JSS 1A",
+  balance: 100000,
+  invoices: [{
+    id: "inv-first-term", term: "2026/2027-TERM1", status: "PARTIALLY_PAID", dueDate: "2026-10-15T00:00:00.000Z",
+    total: 155000, paid: 55000, balance: 100000,
+    items: [{ description: "Tuition", amount: 135000 }, { description: "Books", amount: 20000 }],
+  }],
+};
 
 const EXAM = {
   id: "0f5f1a52-0000-4000-8000-0000000000e1",
@@ -81,7 +130,7 @@ const QUESTIONS = [
 
 let state;
 function reset() {
-  state = { requests: [], tokens: new Map(), submitted: null };
+  state = { requests: [], tokens: new Map(), submitted: null, gradebook: null };
 }
 reset();
 
@@ -133,6 +182,22 @@ function results() {
   }];
 }
 
+function gradebook() {
+  return {
+    id: "sheet-maths",
+    title: "Mathematics - JSS 1A",
+    status: "pending",
+    classLevel: { id: "jss1a", name: "JSS 1A" },
+    subject: { id: "maths", name: "Mathematics" },
+    assessments: [{ name: "CA 1", total: 20 }, { name: "CA 2", total: 20 }, { name: "Exam", total: 60 }],
+    columns: ["CA 1", "CA 2", "Exam"],
+    data: state.gradebook ?? [
+      { student: CHILD, values: [17, null, null] },
+      { student: { id: "stu-kemi", firstName: "Kemi", lastName: "Bello", admissionNumber: "GF/2026/002" }, values: [15, null, null] },
+    ],
+  };
+}
+
 // [method, path pattern, handler(req, match, body, user) => [status, body]]
 const ROUTES = {
   hcore: [
@@ -153,12 +218,32 @@ const ROUTES = {
       ? [200, { id: user.principalId, displayName: user.displayName, primaryEmail: user.identifier, status: "ACTIVE", loginIdentifiers: [] }]
       : [401, { error: "Unauthorized" }]],
     ["GET", /^\/v1\/me\/contexts$/, (_req, _m, _b, user) => (user ? [200, contexts(user)] : [401, { error: "Unauthorized" }])],
-    ["GET", /^\/v1\/directory\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => (user ? [200, member(user)] : [401, { error: "Unauthorized" }])],
+    ["GET", /^\/v1\/directory\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
     ["POST", /^\/v1\/auth\/logout$/, () => [200, { ok: true }]],
+    // A school admin gives someone a temporary password (shown once).
+    ["POST", /^\/v1\/organizations\/([^/]+)\/password-resets$/, (_req, match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Only a school admin can reset passwords" }];
+      if (match[1] !== ORG.id || body.learnerId !== USERS.pupil.learnerId) return [404, { error: "No such person at this school" }];
+      return [200, { temporaryPassword: "K7M2QX9PHD" }];
+    }],
   ],
   hsms: [
-    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => (user ? [200, member(user)] : [401, { error: "Unauthorized" }])],
-    ["GET", /^\/organizations\/greenfield\/student-profile$/, () => [404, { error: "Not a student" }]],
+    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
+    ["GET", /^\/organizations\/greenfield\/student-profile$/, (_req, _m, _b, user) => (user?.learnerId
+      ? [200, { student: PUPIL, org: ORG }]
+      : [404, { error: "Not a student" }])],
+    // Like the real HSMS: exams live in HCBT, so this dashboard never lists any.
+    ["GET", /^\/student\/greenfield\/dashboard$/, () => [200, {
+      student: PUPIL,
+      stats: { totalAssessments: 0, averagePercentage: null, pendingExams: 0, attendancePercent: null },
+      todayTimetable: [],
+      pendingExams: [],
+    }]],
+    ["GET", /^\/greenfield\/study-materials$/, () => [200, []]],
+    // Ada's record, as staff open it from the students list.
+    ["GET", /^\/students\/greenfield\/stu-ada$/, () => [200, { ...CHILD, hcoreLearnerId: USERS.pupil.learnerId }]],
+    ["GET", /^\/students\/greenfield\/stu-ada\/results$/, () => [200, { student: PUPIL, subjects: [] }]],
+    ["GET", /^\/students\/greenfield\/stu-ada\/guardians$/, () => [200, []]],
     ["GET", /^\/notifications/, () => [200, { notifications: [], unreadCount: 0 }]],
     ["GET", /^\/billing\/greenfield\/parent-fee-summary$/, () => [200, feeSummary()]],
     ["POST", /^\/payments\/init\/greenfield$/, (_req, _m, body) => [200, {
@@ -166,7 +251,31 @@ const ROUTES = {
       reference: "HAN-1790000000000-abcd1234",
     }]],
     ["GET", /^\/__checkout/, () => [200, { checkout: "Paystack test checkout" }]],
+    // The bursary: finding who owes, and recording money taken at the school.
+    ["GET", /^\/finance\/greenfield\/open-invoices$/, (req) => {
+      const q = new URL(req.url, "http://localhost").searchParams.get("q")?.toLowerCase() ?? "";
+      const matches = `${CHILD.firstName} ${CHILD.lastName} ${CHILD.admissionNumber}`.toLowerCase().includes(q);
+      return [200, { students: matches ? [OWING] : [] }];
+    }],
+    ["POST", /^\/finance\/greenfield\/invoices\/([^/]+)\/payments$/, (_req, match, body) => {
+      const invoice = OWING.invoices.find((i) => i.id === match[1]);
+      if (!invoice) return [404, { error: "Bill not found" }];
+      if (body.amount > invoice.balance) return [400, { error: "More than is owed", details: { balance: invoice.balance } }];
+      const paid = invoice.paid + body.amount;
+      const balance = invoice.total - paid;
+      return [201, {
+        payment: { id: "pay-2", reference: body.reference || "RCPT-0002", amount: body.amount, channel: body.channel, createdAt: new Date().toISOString() },
+        invoice: { id: invoice.id, term: invoice.term, status: balance === 0 ? "PAID" : "PARTIALLY_PAID", total: invoice.total, paid, balance },
+        student: { id: OWING.id, name: OWING.name, admissionNumber: OWING.admissionNumber },
+      }];
+    }],
     ["GET", /^\/spreadsheets\/greenfield\/results$/, () => [200, results()]],
+    // The Mathematics JSS 1A gradebook the maths teacher keeps.
+    ["GET", /^\/spreadsheets\/greenfield\/sheet-maths$/, () => [200, gradebook()]],
+    ["PATCH", /^\/spreadsheets\/greenfield\/sheet-maths$/, (_req, _m, body) => {
+      state.gradebook = body.data;
+      return [200, gradebook()];
+    }],
     ["GET", /^\/spreadsheets\/greenfield\/notifications$/, () => [200, []]],
   ],
   hcbt: [
@@ -218,8 +327,16 @@ function signIn(user) {
   };
 }
 
+// Pupils and exam candidates aren't school staff or parents: both member
+// profiles refuse them, and Hweb falls back to the HSMS student profile.
+function memberProfile(user) {
+  if (!user) return [401, { error: "Unauthorized" }];
+  if (user.learnerId) return [404, { error: "Not a member of this school" }];
+  return [200, member(user)];
+}
+
 function member(user) {
-  const role = user.roles.includes("PARENT") ? "parent" : "member";
+  const role = user.memberRole ?? (user.roles.includes("PARENT") ? "parent" : "member");
   return {
     id: `member-${user.principalId}`,
     role,
@@ -227,7 +344,7 @@ function member(user) {
     user: { id: user.principalId, name: user.displayName, email: user.identifier },
     assignedStudents: role === "parent" ? [CHILD] : [],
     assignedClasses: [],
-    memberAssignments: [],
+    memberAssignments: user.assignments ?? [],
   };
 }
 

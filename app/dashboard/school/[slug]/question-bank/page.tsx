@@ -289,8 +289,8 @@ export default function QuestionBankPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-0.5">
-                  <button type="button" onClick={() => openEdit(q)} aria-label="Edit question" className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 md:h-8 md:w-8"><Pencil className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => deleteQuestion(q.id)} aria-label="Delete question" className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 md:h-8 md:w-8"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => openEdit(q)} aria-label="Edit question" className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 md:pointer-fine:h-8 md:pointer-fine:w-8"><Pencil className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => deleteQuestion(q.id)} aria-label="Delete question" className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 md:pointer-fine:h-8 md:pointer-fine:w-8"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
             ))}

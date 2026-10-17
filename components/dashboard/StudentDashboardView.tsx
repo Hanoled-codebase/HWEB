@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch } from "@/lib/api";
+import { cbtApi } from "@/lib/api-cbt";
+import { examStartHref, pendingSchoolExams } from "@/lib/student-pending-exams";
+import type { AssignedExam } from "@/components/cbt/ExamCard";
 import {
   Card,
   CardContent,
@@ -53,13 +56,7 @@ type DashboardData = {
     teacher?: string | null;
     room?: string | null;
   }>;
-  pendingExams: Array<{
-    id: string;
-    title: string;
-    duration: number;
-    totalQuestions: number;
-    passMark: number;
-  }>;
+  pendingExams: AssignedExam[];
 };
 
 type StudyMaterial = {
@@ -87,12 +84,14 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
       try {
         setLoading(true);
         setError(null);
-        const result = await apiFetch<DashboardData>(
-          `/student/${orgSlug}/dashboard`
-        );
-        setData(result);
-
-        const [classMaterials, generalMaterials] = await Promise.all([
+        // The dashboard, HCBT's assigned exams and the study materials don't
+        // depend on each other, so they load together. A school without HCBT
+        // (or an HCBT outage) just shows no pending exams.
+        const [result, assigned, classMaterials, generalMaterials] = await Promise.all([
+          apiFetch<DashboardData>(`/student/${orgSlug}/dashboard`),
+          cbtApi
+            .getAssignedExams(orgSlug)
+            .catch(() => null) as Promise<{ schoolExams?: AssignedExam[] } | null>,
           currentStudent?.classLevel?.id
             ? apiFetch<StudyMaterial[]>(`/${orgSlug}/study-materials`, {
                 params: { classLevelId: currentStudent.classLevel.id },
@@ -102,6 +101,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             params: { general: true },
           }).catch(() => []),
         ]);
+        const pendingExams = pendingSchoolExams(assigned?.schoolExams ?? []);
+        setData({ ...result, pendingExams, stats: { ...result.stats, pendingExams: pendingExams.length } });
         setStudyMaterials([...classMaterials, ...generalMaterials]);
       } catch (err) {
         setError(
@@ -174,8 +175,8 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
 
       {/* Desktop welcome header */}
       <div className="hidden md:block">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 capitalize">
-          Welcome back, {firstName}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome back, <span className="capitalize">{firstName}</span>
         </h1>
         {data.student.classLevel?.name && (
           <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 mt-2">
@@ -185,7 +186,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
       </div>
 
       {/* Stats Cards - desktop */}
-      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4">
+      <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="shadow-sm border border-slate-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold text-slate-500">
@@ -349,14 +350,14 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
                     </p>
                   </div>
                   <Link
-                    href={`/cbt/student/exam/${exam.id}`}
+                    href={examStartHref(exam.id)}
                     className="shrink-0 ml-3"
                   >
                     <Button
                       size="sm"
                       className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-bold text-xs px-4 py-2 rounded-xl h-9 cursor-pointer shadow-sm"
                     >
-                      Start
+                      {exam.myResult?.status === "started" ? "Resume" : "Start"}
                     </Button>
                   </Link>
                 </div>

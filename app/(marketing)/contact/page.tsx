@@ -9,6 +9,7 @@ import { MarketingFooter } from "@/components/landing/MarketingFooter";
 import { Button } from "@/components/ui/button";
 
 import { HSMS_BASE } from "@/lib/api";
+import { HeroUnderline, RiseWords } from "@/components/landing/motion";
 
 const API_BASE = HSMS_BASE;
 
@@ -67,18 +68,14 @@ export default function ContactPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
           
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#1447E6]/20 bg-[#1447E6]/5 px-4 py-1.5 shadow-sm transform rotate-2 hover:rotate-0 transition-transform cursor-default">
-              <span className="text-sm font-bold text-[#1447E6]">Get in Touch</span>
-            </div>
-            
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
-                Let&apos;s talk about <span className="text-[#1447E6]">your school</span>
+                <RiseWords>
+                  Let&apos;s talk about <span className="text-[#1447E6]">your school</span>
+                </RiseWords>
               </h1>
-              {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
-                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
-              </svg>
+              {/* Wavy accent line under title: writes itself once the headline has risen */}
+              <HeroUnderline />
             </div>
 
             <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">

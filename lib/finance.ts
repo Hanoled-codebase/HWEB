@@ -118,6 +118,22 @@ export function termLabel(term: string | null | undefined) {
   return `${ORDINAL[index] ?? `${match[2]}th`} Term ${match[1]}`;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  PAID: "Paid",
+  PARTIALLY_PAID: "Part paid",
+  UNPAID: "Unpaid",
+  OVERDUE: "Overdue",
+};
+
+/** "PARTIALLY_PAID" → "Part paid": an invoice status in words, never the stored key. */
+export function invoiceStatusLabel(status: string | null | undefined) {
+  if (!status) return "";
+  const known = STATUS_LABELS[status.toUpperCase()];
+  if (known) return known;
+  const words = status.toLowerCase().replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 const CHANNEL_LABELS: Record<string, string> = {
   CASH: "Cash",
   BANK_TRANSFER: "Transfer",

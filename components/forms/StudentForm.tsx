@@ -36,6 +36,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Upload, UserRound, Bus, Hotel } from "lucide-react";
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 
 function getGuardianDefaults(guardian?: {
   firstName?: string;
@@ -364,6 +365,8 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
     }
   }
 
+  useMobilePageTitle(isEditing ? `Edit ${initialData?.firstName || "student"}` : "Add student");
+
   if (!isPrivileged) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -378,7 +381,8 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
+      {/* Phones: the top bar carries the back target and the title (useMobilePageTitle below). */}
+      <div className="hidden items-center gap-4 md:flex">
         <Button
           variant="outline"
           size="icon"

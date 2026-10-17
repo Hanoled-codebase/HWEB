@@ -29,6 +29,7 @@ import { DepartmentHome } from "@/components/dashboard/department/DepartmentHome
 import { LibraryHome } from "@/components/dashboard/library/LibraryHome";
 import { WorkspaceSwitch } from "@/components/dashboard/WorkspaceSwitch";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { greetingName } from "@/lib/greeting-name";
 
 // Only built from assignments whose subject/class id is present (see the
 // `!subject?.id || !classLevel?.id` guards below), so id is always set.
@@ -204,7 +205,7 @@ export default function DashboardOverviewPage() {
 
   if (role === "parent") {
     const assignedStudents = currentMember.assignedStudents || [];
-    const firstName = user.name.split(" ")[0] || user.name;
+    const firstName = greetingName(user.name) || user.name;
 
     return (
       <div className="space-y-6">
@@ -214,8 +215,8 @@ export default function DashboardOverviewPage() {
 
         {/* Desktop */}
         <div className="hidden md:block">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 capitalize">
-            Welcome back, {firstName}
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Welcome back, <span className="capitalize">{firstName}</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">
             {assignedStudents.length > 0
@@ -371,7 +372,7 @@ export default function DashboardOverviewPage() {
     return withSwitch(
       <TeachingHome
         slug={currentOrg.slug}
-        firstName={user.name.split(" ")[0]}
+        firstName={greetingName(user.name)}
         subjectGroups={subjectGroups}
         sheetsByAssignment={sheetsByAssignment}
         isSheetsLoading={isMemberSheetsLoading}
@@ -418,7 +419,7 @@ export default function DashboardOverviewPage() {
       <div className="hidden md:block">
         <AdminDesktopOverview
           slug={currentOrg.slug}
-          firstName={user.name.split(" ")[0]}
+          firstName={greetingName(user.name)}
           orgName={currentOrg.name}
           category={currentOrg.category}
           type={currentOrg.type}

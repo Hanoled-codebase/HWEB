@@ -147,7 +147,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           return (
@@ -157,7 +157,7 @@ export default function AdminDashboard() {
                   <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
                   <Icon className={`h-4 w-4 ${kpi.accent ? "text-[#F5A623]" : "text-primary"}`} />
                 </div>
-                <p className="text-2xl font-bold text-foreground">
+                <p className="text-2xl font-bold tabular-nums text-foreground">
                   {kpi.format === "currency" ? fmtNaira(kpi.value) : kpi.value.toLocaleString()}
                 </p>
               </CardContent>
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
             <Badge variant="secondary" className="bg-muted text-muted-foreground">
               {schools.length} school{schools.length === 1 ? "" : "s"}
             </Badge>
-            <Link href="/admin/schools" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            <Link href="/admin/schools" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline pointer-coarse:min-h-11">
               View all <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
                   schools.map((s) => (
                     <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                       <td className="px-4 py-3">
-                        <Link href={`/admin/schools/${s.id}`} className="font-medium text-primary hover:underline">
+                        <Link href={`/admin/schools/${s.id}`} className="font-medium text-primary hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">
                           {s.name}
                         </Link>
                         <p className="text-xs text-muted-foreground">

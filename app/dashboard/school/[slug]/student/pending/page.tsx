@@ -3,29 +3,24 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { cbtApi } from "@/lib/api-cbt";
+import { examStartHref, pendingSchoolExams } from "@/lib/student-pending-exams";
+import type { AssignedExam } from "@/components/cbt/ExamCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, AlertCircle, PlayCircle } from "lucide-react";
 
-type PendingExam = {
-  id: string;
-  title: string;
-  duration: number;
-  totalQuestions: number;
-};
-
 export default function StudentPendingPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const [exams, setExams] = useState<PendingExam[]>([]);
+  const [exams, setExams] = useState<AssignedExam[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch<PendingExam[]>(`/student/${slug}/pending`)
-      .then(setExams)
+    (cbtApi.getAssignedExams(slug) as Promise<{ schoolExams?: AssignedExam[] }>)
+      .then((assigned) => setExams(pendingSchoolExams(assigned?.schoolExams ?? [])))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [slug]);
@@ -95,12 +90,12 @@ export default function StudentPendingPage() {
                     </div>
                   </div>
                   <Link
-                    href={`/cbt/student/exam/${exam.id}`}
+                    href={examStartHref(exam.id)}
                     className="shrink-0"
                   >
                     <Button className="bg-blue-600 hover:bg-blue-700 text-xs gap-1.5">
                       <PlayCircle className="h-3.5 w-3.5" />
-                      Start Exam
+                      {exam.myResult?.status === "started" ? "Resume Exam" : "Start Exam"}
                     </Button>
                   </Link>
                 </div>

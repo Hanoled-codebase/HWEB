@@ -661,7 +661,8 @@ export default function HomeworkPage() {
                         {canManage && (
                           <button
                             onClick={() => handleDeleteHomework(hw.id)}
-                            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`Delete ${hw.title}`}
+                            className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:pointer-fine:h-8 md:pointer-fine:w-8"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -781,7 +782,7 @@ export default function HomeworkPage() {
                       {canManage && (
                         <button
                           onClick={() => toggleExpand(hw.id)}
-                          className="flex w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors md:pointer-fine:min-h-0"
                         >
                           <span>
                             {hw.submissions?.length || hw._count?.submissions || 0} submission(s)

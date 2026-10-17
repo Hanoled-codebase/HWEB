@@ -92,7 +92,6 @@ export default function ClassStudentSubjectsPage() {
           <StudentAcademicRecord
             student={performance.student}
             subjects={performance.subjects}
-            eyebrow="Student Record"
             description="A full academic snapshot for this learner. Open any subject card to drill into the assessment-level details."
             actionLabel="View Academic Record"
             emptyTitle="No subject records available"

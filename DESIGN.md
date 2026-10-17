@@ -67,7 +67,20 @@ Not yet brought into this world: the `article/[slug]` blog template (already bra
 
 ## Motion
 
-Added across the homepage (and reusable anywhere else): `components/landing/Reveal.tsx` + `hooks/useInView.ts` (IntersectionObserver, transform/opacity only, fires once, `prefers-reduced-motion`-aware) for scroll-triggered fade+rise on each major section; a one-time staged sequence on the HCBT exam diagram (answer selected -> graded -> growth-curve draws in) using the `seq-*` keyframes in `app/globals.css`; and form feedback states (shake + red field rings on validation error, animated success panel, button press/hover feedback) on the homepage quote form. No new dependency — CSS keyframes plus native browser APIs only.
+Thesis: **"ticked off, on the rise."** The Hanoled mark's ascending diagonal reads as both a tick and a growth curve, so the marketing site's motion draws that one stroke instead of fading generic blocks in. One authored moment per page (the hero), small purposeful echoes below it, and stillness everywhere else. CSS keyframes plus native browser APIs only, no animation library; everything animates `translate`/`scale`/`opacity`/`clip-path`/`stroke-dashoffset`/`color`.
+
+- **Hero headline** (`RiseWords` in `components/landing/motion.tsx`): every word rises out of its own baseline mask, in reading order (42ms apart). Keeps the heading's markup; coloured spans and line breaks survive, inline badges rise as one piece. Used on every marketing H1 except the legal pages.
+- **Gold underline** (`HeroUnderline`): the wave under the headline writes itself left to right once the words have risen. Growth Gold's single appearance in the hero.
+- **Hero follow-through**: the rest of the hero (copy, buttons, chips) rises 10px after the headline, never with it. Pieces that share a column with the H1 opt in with `.mk-follow` and `--d` (their beat in ms).
+- **Home photo unveil** (`.mk-unveil`): the student photo is uncovered from the bottom edge upward, the logo's rising stroke at photo scale.
+- **Ticks** (`DrawnCheck` inside `InView`): checklists draw their ticks one after another (140ms apart) the first time the list scrolls in. Home HCBT list, admissions benefits, security practices, and the success panels on the quote and support forms.
+- **Step wave** (`.mk-wave` + `--i` inside `InView`): a blue highlight travels once through numbered steps (01 -> 02 -> 03), then each number settles back to its resting colour. Each container sets `--mk-rest` (the number's own colour) and optionally `--mk-wave`; both keyframe ends are explicit so the colour never swings through another hue.
+- **Exam diagram** (`.mk-seq-pop` / `.mk-seq-draw` with `--d`, inside `InView`): the answer is selected and ticked, the paper is stamped verified, then the gold growth curve draws. A small story, told once.
+- **CTA arrows** (`.mk-arrow` for the up-right arrow, `.mk-arrow-x` for the plain arrow): step 2-3px along their direction on hover and keyboard focus.
+- **Card grids** below the hero rise as they scroll in, scroll-driven (`animation-timeline: view()`, off the main thread, skipped where unsupported). Whole sections never animate.
+- **Name strip** (`BrandRibbon`): drifts sideways at 48s per loop; pauses off screen and under the pointer.
+
+Rules: every effect rests on the finished state (`backwards` fill, or a `data-motion="pending"` state that only JS sets), so no-JS, a failed script and `prefers-reduced-motion: reduce` all show the page complete. Under reduced motion nothing moves except the shared `m-*` pop/rise utilities, which become short fades. `InView` sets `data-motion` straight on the element (no React state, no re-render) and fires once. Add new motion here only when it explains a state or a relationship; no fade-up on every section.
 
 ## Colors
 
@@ -126,6 +139,25 @@ Everything below `md` (768px) in `/dashboard/school/[slug]`, `/admin` and the CB
 - **Lists, not cards, on phones:** one rounded container with hairline dividers; the whole row is a `Link` (not a `div` with `onClick`); row actions and destructive items go in a 44px "…" menu, never a bare trash icon beside the row. Stat tiles collapse to one quiet line (hidden when everything is zero). Save/primary actions for long forms stick above the tab bar (`bottom-above-nav`, or `sticky` inside cards that set `max-md:overflow-visible`). The layout uses `overflow-x-clip` (not `hidden`) so `position: sticky` works inside pages.
 - **Menu groups by job**, not by the sidebar's sections: Classroom, People, Money, School life, Academic setup, Settings & help (`MENU_GROUPS` in `mobile-config.ts`). Log out asks once before signing out.
 - **Toasts** come from the single `ToastProvider` (top-center, below the top bar on phones, brand status colours); pages don't mount their own `<Toaster>`.
+
+## Tablets and touch (signed-in product, md and up)
+
+Three widths, one navigation language each: phones (< 768) use the mobile shell above; tablets held upright (768-1023) get the desktop pages at full width with the nav in a drawer; from 1024 the sidebar is always open.
+
+- **Staff shell:** `AppSidebar` renders one panel twice: a sticky `lg:flex` aside, and a left `Sheet` (288px) opened by the 44px menu button in the top bar (`lg:hidden`). On tablets the top bar shows the school name where the sidebar would; from lg it reads "School Operations Dashboard". The drawer closes on navigation by remembering the page it was opened on (no effect), and closes when the viewport crosses 1024px (rotation).
+- **Student shell:** the shadcn `Sidebar` switches to its sheet below 1024px (`SIDEBAR_DRAWER_BREAKPOINT`; desktop container is `lg:block`/`lg:flex`). Its header `SidebarTrigger` opens it; links close it.
+- **Platform admin:** six destinations fit a labelled icon rail (`w-20`, icon over an 11px label) from md to lg, the full 240px sidebar from lg. Its KPI strip runs 2 → 3 → 5 across (`xl`) so naira totals never clip.
+- **Touch floors follow the pointer, not the width:** `pointer-coarse:min-h-11` (and `min-w-11` on `Button`) on `Button`, `Input`, `SelectTrigger`, sidebar links and search, header actions, the bell and marketing nav/footer links. Mouse users keep the dense desktop sizes; a touch tablet never gets a 36px target.
+- **Grids reflow on the content width, not the device:** stat rows run 2 → 3 → all-on-one-row (`xl`, `--stat-count`); tool launchers use `repeat(auto-fill,minmax(8.5rem,1fr))`; a stat tile drops its icon below a 10rem container (`@container`). Layouts that sit beside the 256px sidebar at lg (704px of content) are checked at that width too.
+- **Desktop lists are tables:** Students is one bordered list at every width; from lg each row is a subgrid of columns (name, admission no., class, gender, day/boarding, actions) under a quiet header row, ~56px a row. The whole row stays one link; actions stay in the 44px "…" menu.
+- **Greetings use `greetingName()`** (`lib/greeting-name.ts`): a titled name keeps its title with the surname ("Dr Eze", "Mrs Obi"), never a bare "Dr".
+- **A phone drop of a touch floor is for mouse users only:** pages that shrink a 44px control at sm/md write `md:pointer-fine:min-h-0` (or `pointer-fine:h-8`), never a bare `md:min-h-0`, so a touch tablet keeps the 44px target. Icon-only buttons (edit, delete, ±) carry an `aria-label` naming the thing they act on.
+- **Wide tables on tablets drop secondary columns, not actions:** below xl, location/term/hosting fold under the row's name (`xl:hidden` line) and their columns hide (`hidden xl:table-cell`); the actions column always stays on screen.
+- **Stored keys never reach the screen:** invoice statuses go through `invoiceStatusLabel()` ("Part paid") and terms through `termLabel()` ("1st Term 2026/2027") in `lib/finance.ts`. A settled balance is a dash, not "₦0" in Alert red.
+
+## Marketing at tablet widths
+
+The full nav shows from lg (1024), the hamburger (44px) below it. The footer is brand-row + four columns from md and five from lg; contact details are `mailto:`/`tel:` links; footer links hover to white (Hanoled Blue on Deep Ink is under 3:1). Four-step rows go 2x2 below lg.
 
 ## HCBT phone view (student, teacher, admin)
 

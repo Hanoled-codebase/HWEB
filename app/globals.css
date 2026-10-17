@@ -723,63 +723,6 @@
   --ring: 226 84% 56%;
 }
 
-/*
- * Marketing-site motion primitives — CSS keyframes only (no JS animation
- * library), transform/opacity/stroke-dashoffset so they stay cheap on
- * low-end mobile GPUs. Used by the HCBT "exam -> study plan" focal sequence
- * and form error/success feedback across app/(marketing).
- */
-@layer utilities {
-  @keyframes seq-fade-up {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes seq-pop-in {
-    0%   { opacity: 0; transform: scale(0.55); }
-    70%  { opacity: 1; transform: scale(1.06); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-  @keyframes seq-draw-line {
-    from { stroke-dashoffset: 140; }
-    to   { stroke-dashoffset: 0; }
-  }
-  @keyframes form-shake {
-    0%, 100% { transform: translateX(0); }
-    20%      { transform: translateX(-6px); }
-    40%      { transform: translateX(5px); }
-    60%      { transform: translateX(-4px); }
-    80%      { transform: translateX(3px); }
-  }
-
-  .animate-seq-fade-up { animation: seq-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .animate-seq-pop-in { animation: seq-pop-in 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .animate-seq-draw-line {
-    stroke-dasharray: 140;
-    animation: seq-draw-line 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .animate-form-shake { animation: form-shake 400ms ease-in-out; }
-
-  .seq-delay-1 { animation-delay: 150ms; }
-  .seq-delay-2 { animation-delay: 500ms; }
-  .seq-delay-3 { animation-delay: 900ms; }
-}
-
-/* Reduced motion: keep state/feedback (opacity, color) legible, drop spatial movement. */
-@media (prefers-reduced-motion: reduce) {
-  .animate-seq-fade-up,
-  .animate-seq-pop-in,
-  .animate-form-shake {
-    animation-duration: 1ms !important;
-    animation-delay: 0ms !important;
-    transform: none !important;
-  }
-  .animate-seq-draw-line {
-    animation-duration: 1ms !important;
-    animation-delay: 0ms !important;
-    stroke-dashoffset: 0 !important;
-  }
-}
-
 /* Mobile app shell: notch / home-indicator safe areas. Requires viewport-fit=cover (see app/layout.tsx). */
 @layer utilities {
   .pt-safe { padding-top: env(safe-area-inset-top); }
@@ -910,23 +853,89 @@
   .m-glass { background-color: rgb(255 255 255 / 0.8); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
 }
 
-/* Marketing: hero enters on load; sections and card grids rise as they scroll into view.
-   Scroll-driven where supported (no JS, runs off the main thread); elsewhere content simply shows. */
-@media (prefers-reduced-motion: no-preference) {
-  .marketing-motion main > section:first-of-type > * > * { animation: m-rise 640ms var(--ease-out-smooth) backwards; }
-  .marketing-motion main > section:first-of-type > * > *:nth-child(2) { animation-delay: 70ms; }
-  .marketing-motion main > section:first-of-type > * > *:nth-child(3) { animation-delay: 140ms; }
-  .marketing-motion main > section:first-of-type > * > *:nth-child(4) { animation-delay: 210ms; }
-  .marketing-motion main > section:first-of-type > * > *:nth-child(n + 5) { animation-delay: 280ms; }
+/* ─────────────────────────────────────────────────────────────────────────────
+   Marketing motion: "ticked off, on the rise".
+   Hanoled's mark is one ascending stroke that reads as a tick and a growth curve, and the
+   marketing site's motion draws that stroke: a hero headline rises word by word out of its
+   baseline and its gold underline writes itself; checklists tick in order; numbered steps light
+   up in turn; the HCBT exam diagram plays answer -> marked -> verified -> growth; CTA arrows
+   step up and to the right. Card grids rise as they scroll in; whole sections stay still.
+   Every effect rests on the finished state, so reduced motion and no-JS show the page complete.
+   Primitives: components/landing/motion.tsx, InView.tsx, BrandRibbon.tsx.
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes mk-word-rise {
+  from { translate: 0 110%; }
+}
+@keyframes mk-undraw {
+  from { stroke-dashoffset: 1.05; }
+}
+@keyframes mk-unveil {
+  from { clip-path: inset(100% 0 0 0 round 3rem); }
+  to { clip-path: inset(0 0 0 0 round 3rem); }
+}
+/* Both ends are explicit (--mk-rest is the number's resting colour): interpolating against a
+   colour-mix(..., transparent) value can swing through an unrelated hue. */
+@keyframes mk-wave {
+  0%, 100% { color: var(--mk-rest); }
+  35% { color: var(--mk-wave, rgb(20 71 230 / 0.85)); }
+}
+@keyframes mk-marquee {
+  to { translate: -50% 0; }
+}
+@keyframes mk-pop {
+  from { opacity: 0; scale: 0.6; }
+}
 
+/* Structure (any motion setting): word masks, and strokes ready to be drawn. */
+.mk-word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.mk-word > span { display: inline-block; }
+.mk-underline path, .mk-tick, .mk-seq-draw { stroke-dasharray: 1 3; }
+.mk-seq-pop { transform-box: fill-box; transform-origin: center; }
+.mk-ribbon-track { display: flex; width: max-content; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero: words rise in reading order, then the gold underline writes itself. */
+  .mk-word > span { animation: mk-word-rise 760ms var(--ease-out-smooth) backwards; animation-delay: calc(var(--w, 0) * 42ms + 60ms); }
+  .mk-underline path { animation: mk-undraw 900ms var(--ease-out-smooth) 560ms backwards; }
+  /* Home: the hero photo is unveiled from the bottom edge up, like the logo's rising stroke. */
+  .mk-unveil { animation: mk-unveil 1100ms var(--ease-out-smooth) 180ms backwards; }
+
+  /* The rest of the hero (copy, buttons, chips) follows the headline instead of competing with it. */
+  .marketing-motion main > section:first-of-type > * > *:not(:has(h1, .mk-unveil)) { animation: m-rise 640ms var(--ease-out-smooth) backwards; animation-delay: 380ms; }
+  .marketing-motion main > section:first-of-type > * > *:not(:has(h1, .mk-unveil)):nth-child(n + 3) { animation-delay: 460ms; }
+  /* Hero pieces that share a column with the headline opt in explicitly (--d sets the beat). */
+  .mk-follow { animation: m-rise 640ms var(--ease-out-smooth) backwards; animation-delay: var(--d, 420ms); }
+
+  /* Card grids below the hero rise as they scroll in (scroll-driven, off the main thread). */
   @supports (animation-timeline: view()) {
-    .marketing-motion main > section:not(:first-of-type),
     .marketing-motion main > section:not(:first-of-type) .grid > * {
       animation: m-scroll-rise linear backwards;
       animation-timeline: view();
       animation-range: entry 0% entry min(38%, 280px);
     }
   }
+
+  /* Checklists tick themselves, in order, when they come into view (<InView>). */
+  [data-motion="pending"] .mk-tick { stroke-dashoffset: 1.05; }
+  [data-motion="in"] .mk-tick { animation: mk-undraw 420ms var(--ease-out-smooth) backwards; animation-delay: calc(var(--i, 0) * 140ms + 120ms); }
+
+  /* Numbered steps: a highlight travels 01 -> 02 -> 03 once, then every number settles back. */
+  [data-motion="in"] .mk-wave { animation: mk-wave 1100ms ease-in-out; animation-delay: calc(var(--i, 0) * 260ms + 150ms); }
+
+  /* HCBT exam diagram: the answer is ticked, the paper is verified, the growth curve draws. */
+  [data-motion="pending"] .mk-seq-draw { stroke-dashoffset: 1.05; }
+  [data-motion="pending"] .mk-seq-pop { opacity: 0; scale: 0.6; }
+  [data-motion="in"] .mk-seq-draw { animation: mk-undraw 640ms var(--ease-out-smooth) backwards; animation-delay: var(--d, 0ms); }
+  [data-motion="in"] .mk-seq-pop { animation: mk-pop 520ms var(--ease-out-smooth) backwards; animation-delay: var(--d, 0ms); }
+
+  /* CTA arrows step along the logo's diagonal on hover and keyboard focus. */
+  .mk-arrow, .mk-arrow-x { transition: translate 220ms var(--ease-out-smooth); }
+  a:hover .mk-arrow, button:hover .mk-arrow, a:focus-visible .mk-arrow, button:focus-visible .mk-arrow { translate: 2px -2px; }
+  a:hover .mk-arrow-x, button:hover .mk-arrow-x, a:focus-visible .mk-arrow-x, button:focus-visible .mk-arrow-x { translate: 3px 0; }
+
+  /* Name strip: a slow drift that stops off screen (BrandRibbon) and under the pointer. */
+  .mk-ribbon-track { animation: mk-marquee 48s linear infinite; }
+  .mk-ribbon:hover .mk-ribbon-track, .mk-ribbon[data-playing="false"] .mk-ribbon-track { animation-play-state: paused; }
 }
 
 @media (prefers-reduced-motion: reduce) {

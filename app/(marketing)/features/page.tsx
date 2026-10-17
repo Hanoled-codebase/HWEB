@@ -14,6 +14,7 @@ import {
   CustomDashboardsIllustration,
   SecurityRolesIllustration,
 } from "@/components/landing/ModuleIllustrations";
+import { HeroUnderline, RiseWords } from "@/components/landing/motion";
 
 export const metadata: Metadata = {
   title: "Features – Hanoled",
@@ -109,13 +110,13 @@ export default function FeaturesPage() {
           <div className="relative z-10 max-w-3xl mx-auto space-y-8 flex flex-col items-center">
             <div className="space-y-4">
               <h1 className="text-[2rem] font-bold leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl">
-                Everything your school needs, <br />
-                <span className="text-[#1447E6]">in one platform</span>
+                <RiseWords>
+                  Everything your school needs, <br />
+                  <span className="text-[#1447E6]">in one platform</span>
+                </RiseWords>
               </h1>
-              {/* Wavy accent line under title */}
-              <svg width="120" height="20" viewBox="0 0 120 20" className="text-[#F5A623] fill-none stroke-current stroke-[4px] mx-auto mt-2">
-                <path d="M0 10 Q 15 0, 30 10 T 60 10 T 90 10 T 120 10" strokeLinecap="round" />
-              </svg>
+              {/* Wavy accent line under title: writes itself once the headline has risen */}
+              <HeroUnderline />
             </div>
 
             <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto font-medium">
@@ -177,7 +178,7 @@ export default function FeaturesPage() {
               href="/#contact-quote"
               className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#1447E6] px-8 font-bold text-white transition-all hover:bg-[#0b33b3] hover:-translate-y-1 hover:shadow-lg shadow-[#1447E6]/30"
             >
-              Book a Custom Demo <ArrowRight className="h-5 w-5" />
+              Book a Custom Demo <ArrowRight className="mk-arrow-x h-5 w-5" />
             </Link>
             <Link
               href="/contact"

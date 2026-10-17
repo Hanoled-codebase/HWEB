@@ -108,9 +108,9 @@ function LoginForm() {
         <HanoledLogo size="lg" variant="blue" iconOnly />
       </div>
 
-      <h2 className="text-2xl font-bold text-center text-slate-900 mb-1">
+      <h1 className="text-2xl font-bold text-center text-slate-900 mb-1">
         Sign in to Hanoled Suite
-      </h2>
+      </h1>
       <p className="text-center text-xs sm:text-sm text-slate-500 mb-6">
         School Management, CBT Examinations, and Staff Portal.
       </p>
@@ -120,7 +120,7 @@ function LoginForm() {
         <button
           type="button"
           onClick={() => setTab('EMAIL')}
-          className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer pointer-coarse:min-h-11 ${
             tab === 'EMAIL'
               ? 'bg-white text-blue-600 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -131,7 +131,7 @@ function LoginForm() {
         <button
           type="button"
           onClick={() => setTab('ADMISSION_NUMBER')}
-          className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer pointer-coarse:min-h-11 ${
             tab === 'ADMISSION_NUMBER'
               ? 'bg-white text-blue-600 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -328,7 +328,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => router.push('/contact')}
-            className="text-blue-600 font-bold hover:underline cursor-pointer"
+            className="text-blue-600 font-bold hover:underline cursor-pointer pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
           >
             Contact Support
           </button>

@@ -219,10 +219,10 @@ export default function LessonNotesPage() {
               <Card key={n.id} className="border-slate-200 shadow-sm flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
-                    <Badge variant="outline" className={cn("rounded-full text-xs px-2 py-0", n.status === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700")}>{n.status}</Badge>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => openEdit(n)} className="text-slate-300 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button type="button" onClick={() => deleteNote(n.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <Badge variant="outline" className={cn("rounded-full text-xs px-2 py-0 capitalize", n.status === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700")}>{n.status}</Badge>
+                    <div className="-mr-2 -mt-2 flex">
+                      <button type="button" onClick={() => openEdit(n)} aria-label={`Edit ${n.topic}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 md:pointer-fine:h-8 md:pointer-fine:w-8"><Pencil className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => deleteNote(n.id)} aria-label={`Delete ${n.topic}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 md:pointer-fine:h-8 md:pointer-fine:w-8"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                   <CardTitle className="text-sm font-semibold mt-1 line-clamp-2">{n.topic}</CardTitle>

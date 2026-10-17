@@ -96,6 +96,15 @@ type TeacherMember = {
   teachingAssignments?: TeacherAssignment[];
 };
 
+/** What this person does at the school, instead of the raw membership role ("member"). */
+function staffRoleLabel(teacher: TeacherMember) {
+  if (teacher.role === "owner") return "School owner";
+  if (teacher.role === "admin") return "School admin";
+  if ((teacher.assignedClasses?.length ?? 0) > 0) return "Form teacher";
+  if ((teacher.teachingAssignments?.length ?? 0) > 0) return "Subject teacher";
+  return "Staff";
+}
+
 export default function TeachersPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
@@ -435,16 +444,20 @@ export default function TeachersPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 border border-slate-200">
-                          <AvatarFallback className="bg-emerald-50 text-emerald-700 font-medium">
+                          <AvatarFallback className="bg-blue-50 text-blue-700 font-medium">
                             {getInitials(teacher.user?.name || "")}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-slate-900 capitalize">
-                            {teacher.user?.name}
-                          </span>
-                          <span className="text-xs text-slate-500 capitalize">
-                            {teacher.role}
+                        <div className="flex min-w-0 flex-col">
+                          <Link
+                            href={`/dashboard/school/${currentOrg?.slug}/teachers/${teacher.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="truncate font-medium capitalize text-slate-900 hover:text-blue-700 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                          >
+                            {teacher.user?.name || "Unnamed teacher"}
+                          </Link>
+                          <span className="text-xs text-slate-500">
+                            {staffRoleLabel(teacher)}
                           </span>
                         </div>
                       </div>
@@ -523,6 +536,7 @@ export default function TeachersPage() {
                             handleRemove(teacher.id);
                           }}
                           title="Remove teacher"
+                          aria-label={`Remove ${teacher.user?.name || "teacher"}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

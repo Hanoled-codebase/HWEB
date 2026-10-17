@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { BrandRibbon } from "@/components/landing/BrandRibbon";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,23 +15,6 @@ import {
   FileSpreadsheet,
   Users
 } from "lucide-react";
-
-function BrandRibbon() {
-  return (
-    <div className="w-full overflow-hidden bg-[#1447E6] py-3 shadow-md">
-      <div className="flex min-w-max items-center gap-6 text-sm font-bold text-white/90">
-        {Array.from({ length: 15 }).map((_, index) => (
-          <span key={index} className="whitespace-nowrap flex items-center gap-6">
-            Hanoled.io
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-            Hanoled
-            <span className="h-1 w-1 rounded-full bg-white/50" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const articleData = {
   "centralized-directory": {
@@ -64,7 +48,8 @@ const articleData = {
         <p>
           The system intelligently maps out hierarchies, ensuring that the <i>School Manager</i> retains top-level oversight, while teachers seamlessly gain control of their specific modular gradebooks.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#F5A623] bg-amber-50 p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="relative my-8 rounded-[1.75rem] bg-amber-50 p-5 pt-6 sm:my-10 sm:rounded-[2rem] sm:p-6 sm:pt-7">
+          <span aria-hidden="true" className="absolute -top-0.5 left-6 h-1.5 w-14 rounded-full bg-[#F5A623]" />
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;Before Hanoled, finding a parent&apos;s updated phone number took hunting through three different files. Now, it&apos;s searchable from the dashboard in seconds.&rdquo;
           </p>
@@ -104,7 +89,8 @@ const articleData = {
         <p>
           What happens when scores are fully compiled? Typically, a messy printout. With Hanoled, compiled dynamic gradebooks instantly generate secure PDF broadsheets and individual report cards that parents see immediately depending on the admin&apos;s release date.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#1447E6] bg-[#EEF0FF] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="relative my-8 rounded-[1.75rem] bg-[#EEF0FF] p-5 pt-6 sm:my-10 sm:rounded-[2rem] sm:p-6 sm:pt-7">
+          <span aria-hidden="true" className="absolute -top-0.5 left-6 h-1.5 w-14 rounded-full bg-[#1447E6]" />
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;I used to take grade sheets home every weekend leading up to exam release. Now I calculate everything within the app and the system generates the broadsheets instantly!&rdquo;
           </p>
@@ -141,7 +127,8 @@ const articleData = {
         <p>
           Knowing that the right eyes are looking at the right data builds enormous trust. Admins have detailed audit logs showing score edits, and parents feel secure knowing that other people don&apos;t have access to their child&apos;s transcript.
         </p>
-        <div className="my-8 rounded-r-[1.75rem] border-l-4 border-[#1447E6] bg-[#EEF0FF] p-5 sm:my-10 sm:rounded-r-[2rem] sm:p-6">
+        <div className="relative my-8 rounded-[1.75rem] bg-[#EEF0FF] p-5 pt-6 sm:my-10 sm:rounded-[2rem] sm:p-6 sm:pt-7">
+          <span aria-hidden="true" className="absolute -top-0.5 left-6 h-1.5 w-14 rounded-full bg-[#1447E6]" />
           <p className="m-0 text-slate-800 font-medium italic">
             &ldquo;Distributing report cards used to be a chaos of paper limits and privacy envelopes. Today, when we hit release, parents unlock only their child&apos;s dashboard via digital authentication.&rdquo;
           </p>

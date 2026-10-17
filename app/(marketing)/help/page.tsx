@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { RiseWords } from "@/components/landing/motion";
 
 export const metadata: Metadata = {
   title: "Help Center – Hanoled",
@@ -85,7 +86,9 @@ export default function HelpCenterPage() {
               <HelpCircle className="h-4 w-4" /> Help Center
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              How can we help?
+              <RiseWords>
+                How can we help?
+              </RiseWords>
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
               Search our knowledge base or browse by category to find answers
@@ -118,7 +121,7 @@ export default function HelpCenterPage() {
                   <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600">
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600">
                     {cat.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-500">
@@ -149,7 +152,7 @@ export default function HelpCenterPage() {
                 href="/support"
                 className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-8 py-3 font-semibold text-white transition-colors hover:bg-[#0F3BC4]"
               >
-                Submit a Ticket <ArrowRight className="h-4 w-4" />
+                Submit a Ticket <ArrowRight className="mk-arrow-x h-4 w-4" />
               </Link>
             </div>
           </div>

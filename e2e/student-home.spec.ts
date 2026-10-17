@@ -1,0 +1,33 @@
+import { expect, mockRequests, signIn, test } from "./support";
+
+const EXAM_TITLE = "JSS 1 Mathematics — First Term Test";
+
+test.describe("a pupil's school dashboard", () => {
+  test("lists the exam HCBT has assigned and opens its start dialog", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/cbt\/student/);
+    await page.goto("/dashboard/school/greenfield");
+
+    // HSMS reports no exams (they live in HCBT); the list comes from HCBT.
+    // (The student layout renders each page for phones and for desktops and
+    // hides one with CSS, so only the visible copy counts.)
+    await expect(page.getByText("1 exam waiting for you").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText(EXAM_TITLE).filter({ visible: true })).toBeVisible();
+    const asked = (await mockRequests()).filter((r) => r.backend === "hcbt").map((r) => `${r.path}${r.search}`);
+    expect(asked).toContain("/api/student/assigned?orgSlug=greenfield");
+
+    // Start goes through the CBT portal's dialog, where passkeys and device checks happen.
+    await page.getByRole("link", { name: "Start" }).filter({ visible: true }).click();
+    await expect(page).toHaveURL(/\/cbt\/student\?examId=0f5f1a52-0000-4000-8000-0000000000e1$/);
+    await expect(page.getByRole("button", { name: "Start Exam Now" })).toBeVisible();
+  });
+
+  test("shows the same exam on the pending exams page", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/cbt\/student/);
+    await page.goto("/dashboard/school/greenfield/student/pending");
+
+    await expect(page.getByText(EXAM_TITLE).filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("All caught up!")).toHaveCount(0);
+  });
+});

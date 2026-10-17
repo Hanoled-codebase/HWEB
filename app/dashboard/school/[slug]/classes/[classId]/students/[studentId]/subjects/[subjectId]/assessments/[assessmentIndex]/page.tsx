@@ -117,10 +117,7 @@ export default function StudentAssessmentScorePage() {
                 </>
               ) : (
                 <>
-                  <p className="hidden text-sm font-semibold uppercase tracking-[0.24em] text-blue-500 md:block">
-                    Assessment Score
-                  </p>
-                  <h1 className="mt-2 hidden text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl md:block">
+                  <h1 className="hidden text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl md:block">
                     {assessment?.name || "Assessment"}
                   </h1>
                   <p className="text-sm text-slate-600 sm:text-base md:mt-3 md:text-slate-500">

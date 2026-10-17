@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronDown, HelpCircle } from "lucide-react";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { RiseWords } from "@/components/landing/motion";
 
 const faqs = [
   {
@@ -126,7 +127,9 @@ export default function FaqsPage() {
               <HelpCircle className="h-4 w-4" /> FAQs
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Frequently Asked Questions
+              <RiseWords>
+                Frequently Asked Questions
+              </RiseWords>
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
               Find quick answers to the most common questions about Hanoled.
@@ -196,13 +199,13 @@ export default function FaqsPage() {
                 href="/support"
                 className="inline-flex items-center gap-2 rounded-full bg-[#1447E6] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0F3BC4]"
               >
-                Submit a Ticket <ArrowRight className="h-4 w-4" />
+                Submit a Ticket <ArrowRight className="mk-arrow-x h-4 w-4" />
               </Link>
               <Link
                 href="/help"
                 className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
               >
-                Help Center <ArrowRight className="h-4 w-4" />
+                Help Center <ArrowRight className="mk-arrow-x h-4 w-4" />
               </Link>
             </div>
           </div>
