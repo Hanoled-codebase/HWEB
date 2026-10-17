@@ -40,9 +40,6 @@ export default async function WelcomePortal() {
       const isCandidate =
         primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ||
         primaryOrg?.products?.HSMS?.roles?.includes("STUDENT");
-      const isCandidate =
-        primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ||
-        primaryOrg?.products?.HSMS?.roles?.includes("STUDENT");
       if (isCandidate) {
         const orgSlug = primaryOrg?.slug || "";
         candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
