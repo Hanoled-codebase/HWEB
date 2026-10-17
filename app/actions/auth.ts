@@ -118,6 +118,23 @@ async function finishSignIn(
           (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
         );
       }
+
+      // Record at sign-in time where a student / exam candidate should be
+      // sent. /welcome then redirects from this cookie without a render-time
+      // HCORE round-trip, which keeps the reveal deterministic.
+      const isCandidate =
+        primaryOrg?.products?.HCBT?.roles?.includes('CANDIDATE') ||
+        primaryOrg?.products?.HSMS?.roles?.includes('STUDENT');
+      if (isCandidate) {
+        const slug = primaryOrg?.slug || '';
+        cookieStore.set('hweb_candidate_redirect', slug ? `/cbt/student?orgSlug=${encodeURIComponent(slug)}` : '/cbt/student', {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 3600 * 24 * 7,
+          path: '/',
+        });
+      }
     } else {
       console.error(`[probe] loginAction contexts not ok: ${meRes.status}`);
     }
@@ -352,6 +369,7 @@ export async function logoutAction() {
   }
   cookieStore.delete('hweb_allowed_platforms');
   cookieStore.delete('hweb_user_role');
+  cookieStore.delete('hweb_candidate_redirect');
   cookieStore.delete('accessToken');
   redirect('/signin');
 }
