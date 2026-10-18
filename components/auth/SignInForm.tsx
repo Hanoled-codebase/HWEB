@@ -134,17 +134,19 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
   const copy = AUDIENCE_COPY[audience];
 
   return (
-    <div className={cardClass}>
-      <div className="flex justify-center mb-4">
-        <HanoledLogo size="lg" variant="blue" iconOnly />
-      </div>
+    <div className={`${cardClass} m-rise`}>
+      <div className="m-stagger">
+        <div className="flex justify-center mb-4">
+          <HanoledLogo size="lg" variant="blue" iconOnly />
+        </div>
 
-      <h1 className="text-2xl font-bold text-center text-slate-900 mb-1">
-        {copy.title}
-      </h1>
-      <p className="text-center text-xs sm:text-sm text-slate-500 mb-6">
-        {copy.subtitle}
-      </p>
+        <h1 className="text-2xl font-bold text-center text-slate-900 mb-1">
+          {copy.title}
+        </h1>
+        <p className="text-center text-xs sm:text-sm text-slate-500 mb-6">
+          {copy.subtitle}
+        </p>
+      </div>
 
       {/* Role Tabs — only the universal page shows them; audience pages pin one */}
       {audience === 'all' && (
@@ -310,6 +312,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
           <input
             type={tab === 'EMAIL' ? 'email' : 'text'}
             name="identifier"
+            autoComplete={tab === 'EMAIL' ? 'email' : 'off'}
             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all font-medium"
             placeholder={tab === 'EMAIL' ? 'staff@school.edu' : 'e.g. GW/2026/001'}
             required
@@ -331,6 +334,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
           <input
             type="password"
             name="password"
+            autoComplete="current-password"
             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all"
             placeholder="••••••••"
             required

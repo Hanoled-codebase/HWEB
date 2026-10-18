@@ -38,14 +38,14 @@ export default function RegisterPage() {
       <div className="absolute top-1/4 -right-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-2000" />
       <div className="absolute -bottom-40 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-4000" />
 
-      <div className="w-full max-w-xl p-10 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white relative z-10">
+      <div className="w-full max-w-xl p-10 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white relative z-10 m-rise">
         <div className="flex justify-center mb-4">
           <HanoledLogo size="lg" variant="blue" iconOnly />
         </div>
 
-        <h2 className="text-2xl font-bold text-center text-slate-900 mb-1">
+        <h1 className="text-2xl font-bold text-center text-slate-900 mb-1">
           Register Your School
-        </h2>
+        </h1>
         <p className="text-center text-sm text-slate-500 mb-7">
           Creates unified HCORE identity and activates 30-day full access to HSMS and HCBT.
         </p>
@@ -113,6 +113,7 @@ export default function RegisterPage() {
             <input
               type="password"
               name="password"
+              autoComplete="new-password"
               minLength={8}
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               placeholder="••••••••"

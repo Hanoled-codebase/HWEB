@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <Card className="shadow-lg border-slate-200">
+      <Card className="shadow-lg border-slate-200 m-rise">
         <CardHeader className="space-y-1">
           <h1 data-slot="card-title" className="font-heading text-2xl leading-snug font-semibold text-center text-slate-900">Check your email</h1>
           <CardDescription className="text-center text-slate-500">
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200">
+    <Card className="shadow-lg border-slate-200 m-rise">
       <CardHeader className="space-y-1">
         <h1 data-slot="card-title" className="font-heading text-2xl leading-snug font-semibold text-center text-slate-900">Forgot password?</h1>
         <CardDescription className="text-center text-slate-500">
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
                 <FormItem>
                   <FormLabel className="text-slate-900">Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="name@example.com" type="email" {...field} />
+                    <Input placeholder="name@example.com" type="email" autoComplete="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
