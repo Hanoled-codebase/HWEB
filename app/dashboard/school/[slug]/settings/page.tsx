@@ -57,7 +57,7 @@ type UploadResponse = {
 };
 
 export default function SettingsPage() {
-  const { currentOrg, currentMember, fetchOrgs } = useOrganization();
+  const { currentOrg, currentMember, fetchOrgs, updateCurrentOrg } = useOrganization();
   const { user } = useAuth();
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -136,8 +136,24 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
 
+      // Reflect the new logo/name in the active school immediately — the
+      // sidebar, school switcher and report headers all read it from the
+      // store, and they'd otherwise keep the pre-edit values until a reload.
+      updateCurrentOrg({
+        logo: logoUrl,
+        name: values.name,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+        address: values.address || undefined,
+        country: values.country || undefined,
+        category: values.category,
+        type: values.type,
+        schoolType: values.type,
+      });
+      setLogoFile(null);
+
       toast.success("School profile updated successfully");
-      await fetchOrgs(); // Refresh orgs list to show new logo/name in sidebar
+      await fetchOrgs(); // Refresh orgs list so the switcher picks up the new logo/name
     } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : "Failed to update profile",

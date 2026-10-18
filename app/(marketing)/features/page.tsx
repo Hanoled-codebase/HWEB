@@ -48,7 +48,7 @@ const features = [
     icon: CommunicationPortalIllustration,
     title: "Communication Portal",
     description:
-      "WhatsApp, Email, and SMS messaging with custom templates. Automatic performance drop alerts sent to parents instantly.",
+      "WhatsApp, Email, and SMS messaging with custom templates (arriving post-launch; parked for the MVP launch). Automatic performance drop alerts sent to parents instantly.",
     color: "bg-[#1447E6]/10 text-[#1447E6]",
   },
   {

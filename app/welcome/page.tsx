@@ -22,9 +22,17 @@ export default async function WelcomePortal() {
   }
 
   let allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
+  // Set at sign-in time (finishSignIn): the action already resolved whether
+  // this person is a student / exam candidate and where they go. Redirecting
+  // from the cookie keeps the reveal deterministic — no render-time HCORE
+  // round-trip can flake it.
+  const candidateCookie = cookieStore.get("hweb_candidate_redirect")?.value;
   // Set inside the try below, followed after it: redirect() works by throwing,
   // so calling it inside the try would be caught and ignored.
   let candidateRedirect: string | null = null;
+  if (candidateCookie) {
+    redirect(candidateCookie);
+  }
 
   // If cookie is missing or empty, fetch real active subscriptions directly from HCORE
   try {
@@ -53,6 +61,8 @@ export default async function WelcomePortal() {
           .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
           .join(",");
       }
+    } else {
+      console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
     }
   } catch (e) {
     console.error("Failed to fetch subscriptions in /welcome:", e);

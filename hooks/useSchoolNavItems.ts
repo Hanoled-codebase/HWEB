@@ -126,10 +126,10 @@ export function useSchoolNavItems() {
       { key: "parents", title: "Parents", url: `${baseUrl}/parents`, icon: Users2, show: isPrivileged || isHOD || can("parents.manage"), section: "PEOPLE" },
       { key: "hr", title: "HR", url: `${baseUrl}/hr`, icon: Users2, show: isPrivileged || isHOD, section: "PEOPLE" },
       { key: "invites", title: "Pending Invites", url: `${baseUrl}/invites`, icon: UserPlus, show: isPrivileged, section: "PEOPLE" },
-      // Only owner/admin can actually send (backend routes/messaging.js gates
-      // /enqueue and /queue with isAdmin) — everyone else would just hit a
-      // "not available to your role" wall, so don't show the link at all.
-      { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged, section: "PEOPLE" },
+      // MESSAGING_PARKED — the broadcast console is parked for the MVP launch,
+      // including its nav entry. Restore this item post-launch (only
+      // owner/admin could send: backend routes/messaging.js gates /enqueue).
+      // { key: "messaging", title: "Messaging", url: `${baseUrl}/messaging`, icon: MessageSquare, show: isPrivileged, section: "PEOPLE" },
       // Finance follows what this school lets each role do (usePermissions),
       // not the role name, so a teacher given "record payments" sees exactly that.
       { key: "record-payment", title: "Record Payment", url: `${baseUrl}/payments/record`, icon: HandCoins, show: can("payments.record") && userRole !== "parent", section: "FINANCE" },
@@ -137,7 +137,10 @@ export function useSchoolNavItems() {
       { key: "billing", title: "Billing", url: `${baseUrl}/billing`, icon: CreditCard, show: can("fee_status.view"), section: "FINANCE" },
       { key: "fee-structure", title: "Fee Structure", url: `${baseUrl}/fee-structure`, icon: DollarSign, show: can("fee_structure.edit"), section: "FINANCE" },
       { key: "invoices", title: "Invoices", url: `${baseUrl}/invoices`, icon: DollarSign, show: userRole === "parent", section: "FINANCE" },
-      { key: "scratch-cards", title: "Scratch Cards", url: `${baseUrl}/scratch-cards`, icon: Ticket, show: can("scratch_cards.manage"), section: "FINANCE" },
+      // SCRATCH_CARD_PARKED — nav entry commented out for the MVP launch.
+      // The feature page still exists (it shows "coming soon"); restore this
+      // line + flip the gate in scratch-cards/page.tsx post-launch.
+      // { key: "scratch-cards", title: "Scratch Cards", url: `${baseUrl}/scratch-cards`, icon: Ticket, show: can("scratch_cards.manage"), section: "FINANCE" },
       { key: "debt", title: "Debt Profile", url: `${baseUrl}/debt`, icon: AlertTriangle, show: can("debt.view"), section: "FINANCE" },
       { key: "hostel", title: "Hostel", url: `${baseUrl}/hostel`, icon: Building2, show: isPrivileged, section: "OPERATIONS" },
       { key: "bus-tracking", title: "Bus Routes", url: `${baseUrl}/bus-tracking`, icon: Bus, show: isPrivileged || (userRole === "parent" && parentHasBusStudent), section: "OPERATIONS" },

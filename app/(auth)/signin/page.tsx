@@ -142,8 +142,13 @@ function LoginForm() {
       </div>
 
       {state && 'error' in state && (
-        <div className="bg-rose-50 text-rose-600 p-3 rounded-lg text-xs sm:text-sm mb-4 flex items-center gap-2 border border-rose-200">
-          {state.error}
+        <div role="alert" className="bg-rose-50 text-rose-600 p-3 rounded-lg text-xs sm:text-sm mb-4 flex flex-col gap-1 border border-rose-200">
+          <span>{state.error}</span>
+          {state.reference && (
+            <span className="text-[11px] sm:text-xs">
+              Reference: <span className="font-mono select-all break-all">{state.reference}</span>
+            </span>
+          )}
         </div>
       )}
 

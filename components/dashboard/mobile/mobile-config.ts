@@ -99,8 +99,10 @@ const SECTION_ORDER = ["ACADEMICS", "PEOPLE", "FINANCE", "OPERATIONS", "SYSTEM"]
 const MENU_GROUPS: Array<{ key: string; title: string; keys: string[] }> = [
   { key: "classroom", title: "Classroom", keys: ["attendance", "spreadsheets", "results", "homework", "timetable", "lesson-notes", "scheme-of-work"] },
   { key: "people", title: "People", keys: ["students", "teachers", "parents", "admissions", "invites", "staff-attendance", "hr"] },
-  { key: "money", title: "Money", keys: ["record-payment", "payments", "debt", "invoices", "fee-structure", "billing", "scratch-cards", "payroll"] },
-  { key: "school-life", title: "School life", keys: ["messaging", "library-desk", "library", "hostel", "bus-tracking", "clinic"] },
+  // SCRATCH_CARD_PARKED — "scratch-cards" out of the Money workspace for the MVP launch; restore post-launch.
+  { key: "money", title: "Money", keys: ["record-payment", "payments", "debt", "invoices", "fee-structure", "billing", "payroll"] },
+  // MESSAGING_PARKED — "messaging" out of School life for the MVP launch; restore post-launch.
+  { key: "school-life", title: "School life", keys: ["library-desk", "library", "hostel", "bus-tracking", "clinic"] },
   { key: "setup", title: "Academic setup", keys: ["classes", "subjects", "result-templates", "affective", "question-bank"] },
   { key: "settings", title: "Settings & help", keys: ["settings", "access", "features", "support"] },
 ];
@@ -122,15 +124,16 @@ const TAB_LABELS: Record<string, string> = {
 
 /** What each role reaches for first, in thumb order. Home is always slot one. */
 const TAB_PREFERENCES: Record<Exclude<MobileProfile, "student">, string[]> = {
-  owner: ["students", "payments", "messaging"],
-  admin: ["students", "payments", "messaging"],
+  // MESSAGING_PARKED — "messaging" parked for the MVP launch; restore post-launch.
+  owner: ["students", "payments"],
+  admin: ["students", "payments"],
   hod: ["spreadsheets", "scheme-of-work", "lesson-notes"],
   "class-teacher": ["attendance", "students", "spreadsheets"],
   "subject-teacher": ["spreadsheets", "homework", "timetable"],
   accountant: ["record-payment", "debt", "payments"],
   librarian: ["library-desk", "library", "students"],
   parent: ["students", "results", "invoices"],
-  member: ["timetable", "students", "messaging"],
+  member: ["timetable", "students"], // MESSAGING_PARKED — "messaging" restored post-launch
 };
 
 const ROLE_LABELS: Record<MobileProfile, string> = {

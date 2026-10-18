@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -87,7 +88,29 @@ type Transaction = {
   };
 };
 
+
+// MVP LAUNCH (PARKED — read me, agent!)
+// The full implementation below is deliberately gated behind PARKED_FOR_MVP
+// while Hanoled goes live with version one. It is NOT dead code: flip the
+// flag to false to restore this surface. Search "MVP_LAUNCH" repo-wide to
+// find every parked feature.
+// ─────────────────────────────────────────────────────────────────────────────
+const PARKED_FOR_MVP = true;
 export default function PaymentsPage() {
+  if (PARKED_FOR_MVP) {
+    return (
+      <ComingSoonCard
+        title="School fees payments are coming soon"
+        blurb="Recording fee payments, receipts and the payments ledger arrives in the next release. Use the bursary's existing process for now."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <PaymentsPageLive />;
+}
+
+function PaymentsPageLive() {
+// ─────────────────────────────────────────────────────────────────────────────
   const { currentOrg, currentMember } = useOrganization();
   const isPrivileged = currentMember?.role === "owner" || currentMember?.role === "admin";
   const [gateway, setGateway] = useState<GatewayData | null>(null);

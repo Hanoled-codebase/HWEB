@@ -46,14 +46,16 @@ const PRIMARY_ACTION: Record<string, Primary[]> = {
 
 /** Tools worth a first-screen slot for each role, in order. */
 const HOME_TOOLS: Record<string, string[]> = {
-  owner: ["students", "payments", "results", "messaging", "admissions", "classes", "timetable", "billing"],
-  admin: ["students", "payments", "results", "messaging", "admissions", "classes", "timetable", "billing"],
-  accountant: ["payments", "fee-structure", "debt", "billing", "payroll", "scratch-cards", "students", "staff-attendance"],
+  // MESSAGING_PARKED — "messaging" parked for the MVP launch; restore post-launch.
+  owner: ["students", "payments", "results", "admissions", "classes", "timetable", "billing"],
+  admin: ["students", "payments", "results", "admissions", "classes", "timetable", "billing"],
+  // SCRATCH_CARD_PARKED — "scratch-cards" removed from the bursary's quick tiles for the MVP launch; restore post-launch.
+  accountant: ["payments", "fee-structure", "debt", "billing", "payroll", "students", "staff-attendance"],
   hod: ["students", "classes", "subjects", "spreadsheets", "timetable", "attendance", "hr", "staff-attendance"],
   librarian: ["library", "students", "timetable", "support"],
-  "class-teacher": ["students", "spreadsheets", "homework", "timetable", "messaging", "lesson-notes"],
+  "class-teacher": ["students", "spreadsheets", "homework", "timetable", "lesson-notes"], // MESSAGING_PARKED — restored post-launch
   "subject-teacher": ["homework", "timetable", "classes", "lesson-notes", "scheme-of-work", "question-bank"],
-  member: ["timetable", "students", "messaging", "support"],
+  member: ["timetable", "students", "support"], // MESSAGING_PARKED — "messaging" restored post-launch
 };
 
 const HERO_ICONS: Partial<Record<string, LucideIcon>> = {

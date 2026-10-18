@@ -390,6 +390,7 @@ function serve(backend) {
         return send(res, origin, 404, { error: `No mock for ${req.method} ${url.pathname}` });
       }
       const [status, payload] = route[2](req, url.pathname.match(route[1]), body, userFor(req));
+      console.log(`[mock] ${backend} ${req.method} ${url.pathname} -> ${status}${userFor(req) ? " auth" : " ANON"}`);
       return send(res, origin, status, payload);
     });
   });

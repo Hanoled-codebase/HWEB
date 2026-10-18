@@ -47,7 +47,8 @@ function getPageTitle(pathname: string, slug: string) {
     parents: "Parents",
     invites: "Pending Invites",
     billing: "Billing & Plans",
-    "scratch-cards": "Scratch Cards",
+    // SCRATCH_CARD_PARKED — title map entry (page is gated "coming soon" for the MVP launch).
+    // "scratch-cards": "Scratch Cards",
     invoices: "Invoices",
     homework: "Homework",
     support: "Support",
@@ -62,7 +63,8 @@ function getPageTitle(pathname: string, slug: string) {
     "lesson-notes": "Lesson Notes",
     "question-bank": "Question Bank",
     admissions: "Admissions",
-    messaging: "Messaging",
+    // MESSAGING_PARKED — title map entry (page is gated "coming soon" for the MVP launch).
+    // messaging: "Messaging",
     settings: "Settings",
     features: "Features",
     new: "Add Student",

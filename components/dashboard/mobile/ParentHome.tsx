@@ -20,7 +20,8 @@ export type ParentResultGroup = {
 
 type LinkedStudent = { id?: string; firstName?: string; lastName?: string };
 
-const PARENT_TOOLS = ["results", "invoices", "homework", "timetable", "library", "bus-tracking", "messaging", "support"];
+// MESSAGING_PARKED — "messaging" parked for the MVP launch; restore post-launch.
+const PARENT_TOOLS = ["results", "invoices", "homework", "timetable", "library", "bus-tracking", "support"];
 
 /**
  * Parent phone home: the children come first (that is why a parent opens the

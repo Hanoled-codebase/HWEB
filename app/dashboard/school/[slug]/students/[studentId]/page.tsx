@@ -74,11 +74,18 @@ export default function StudentDetailPage() {
   const studentId = parseRouteParam(params.studentId);
 
   const [attendance, setAttendance] = useState<StudentAttendanceResponse | null>(null);
+  // ── SCRATCH_CARD_PARKED (always remember, agent!) ─────────────────────
+  // Scratch-card gate states — parked for the MVP launch (no scratch cards
+  // exist until the feature returns; see the reminders in this file). Flip
+  // each commented line back on post-launch.
+  // SCRATCH_CARD_PARKED — these gate states stay declared (dormant) while the
+  // card flow is parked; the commented lines document where they fed the UI.
   const [showGatingModal, setShowGatingModal] = useState(false);
-  const [gateError, setGateError] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
+  void setShowGatingModal; // SCRATCH_CARD_PARKED — restore with the modal post-launch
   const [serialNumber, setSerialNumber] = useState("");
+  void setSerialNumber; // SCRATCH_CARD_PARKED — restore with the modal post-launch
   const [pin, setPin] = useState("");
+  void setPin; // SCRATCH_CARD_PARKED — restore with the modal post-launch
   const [performance, setPerformance] =
     useState<StudentPerformanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +95,9 @@ export default function StudentDetailPage() {
   const [guardians, setGuardians] = useState<StudentGuardian[]>([]);
   const [guardiansLoading, setGuardiansLoading] = useState(true);
 
+  // SCRATCH_CARD_PARKED — the verify-card handler is parked for the MVP
+  // launch (agent: it lives here, commented, ready to restore post-launch).
+/*
   const handleVerifyCard = useCallback(async () => {
     if (!currentOrg || !studentId || !serialNumber || !pin) return;
     setIsVerifying(true);
@@ -114,6 +124,8 @@ export default function StudentDetailPage() {
       setIsVerifying(false);
     }
   }, [currentOrg, studentId, serialNumber, pin]);
+*/
+
 
   const fetchPerformance = useCallback(async () => {
     if (!currentOrg || !studentId) {
@@ -121,8 +133,10 @@ export default function StudentDetailPage() {
     }
 
     try {
-      setIsLoading(true);
-      setPerformanceForbidden(false);
+      // SCRATCH_CARD_PARKED — before the park this fetch also reset the
+      // loading and gate states synchronously for the verify-card refetch;
+      // with the card flow parked, the only caller is the mount effect,
+      // where these starts are already the initialised values.
       const [perfData, attData, profData, guardData] = await Promise.all([
         apiFetch<StudentPerformanceResponse>(
           `/students/${currentOrg.slug}/${studentId}/results`,
@@ -143,10 +157,11 @@ export default function StudentDetailPage() {
       setGuardians(guardData);
     } catch (error) {
       const err = error as { status?: number; message?: string };
-      const isAdminUser = currentMember?.role === "owner" || currentMember?.role === "admin";
-      if (err.status === 402 && !isAdminUser) {
-        setShowGatingModal(true);
-      } else if (isForbiddenError(error)) {
+      // SCRATCH_CARD_PARKED — the 402 scratch-card gate response cannot occur
+      // for the MVP launch (no scratch cards exist in the database, and the
+      // result-gating modal below is parked). After launch, restore the
+      // branch that opened the unlock modal for 402 responses.
+      if (isForbiddenError(error)) {
         setPerformanceForbidden(true);
       } else {
         toast.error(
@@ -363,7 +378,11 @@ export default function StudentDetailPage() {
         )}
       </div>
 
-      {/* ── Result Gating Modal ───────────────────────────────────── */}
+      {/* SCRATCH_CARD_PARKED — the "Access Your Results" unlock modal (serial
+           number + PIN) is parked for the MVP launch. Agent: the full Dialog
+           lives here, commented out below this note; restore post-launch.
+      */}
+      {/*
       <Dialog open={showGatingModal} onOpenChange={setShowGatingModal}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
@@ -437,6 +456,7 @@ export default function StudentDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+      */}
     </div>
   );
 }
