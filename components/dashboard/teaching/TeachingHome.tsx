@@ -24,7 +24,8 @@ import { EmptyNote, HomeGreeting, PrimaryAction, SectionTitle, ToolGrid, type Ho
 type Option = { id: string; name?: string | null };
 type SubjectGroup = { subject: Option; classes: Option[] };
 
-const TEACHING_TOOLS = ["students", "homework", "timetable", "lesson-notes", "scheme-of-work", "question-bank", "messaging"];
+// MESSAGING_PARKED — "messaging" parked for the MVP launch; restore post-launch.
+const TEACHING_TOOLS = ["students", "homework", "timetable", "lesson-notes", "scheme-of-work", "question-bank"];
 
 function greeting() {
   const hour = new Date().getHours();

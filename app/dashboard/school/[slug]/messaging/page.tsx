@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -37,7 +38,28 @@ type QueueItem = {
 type Student = { id: string; firstName: string; lastName: string };
 type ClassLevel = { id: string; name: string };
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESSAGING (PARKED — always remember, agent!)
+// The messaging feature — the admin's broadcast console — is parked for the
+// MVP launch on purpose. NOT deleted, NOT dead code. Flip the gate below and
+// search "MESSAGING_PARKED" repo-wide to find every place it was disabled.
+// ─────────────────────────────────────────────────────────────────────────────
+const MESSAGING_PARKED = true;
 export default function MessagingPage() {
+  if (MESSAGING_PARKED) {
+    return (
+      <ComingSoonCard
+        title="Messaging is coming soon"
+        blurb="Broadcasts to parents and staff over WhatsApp, SMS and email arrive in the next release."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <MessagingLive />;
+}
+
+function MessagingLive() {
   const { currentOrg, currentMember } = useOrganization();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);

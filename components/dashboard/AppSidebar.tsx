@@ -33,17 +33,20 @@ import { cn } from "@/lib/utils";
 const PRIMARY = ["overview"];
 const ACADEMICS = ["students", "classes", "subjects", "attendance", "timetable", "results", "homework"];
 const PEOPLE = ["teachers", "parents", "admissions"];
-const COMMUNICATION = ["messaging"];
+// MESSAGING_PARKED — the Communication workspace is parked for the MVP launch; restore post-launch.
+// const COMMUNICATION = ["messaging"];
 const BOTTOM = ["settings", "access", "support"];
 // Staff whose role covers any of the bursary get it as its own group; admins
 // reach these from the Overview launcher instead.
 // Each workspace's tools as one group, for staff who hold that workspace.
 const WORKSPACE_GROUPS: Array<{ workspace: WorkspaceKey; title: string; keys: string[] }> = [
   { workspace: "department", title: "Department", keys: ["spreadsheets", "scheme-of-work", "lesson-notes", "hr", "staff-attendance"] },
-  { workspace: "finance", title: "Bursary", keys: ["record-payment", "payments", "debt", "fee-structure", "billing", "payroll", "scratch-cards", "staff-attendance"] },
+  // SCRATCH_CARD_PARKED — "scratch-cards" out of the Bursary workspace for the MVP launch; restore post-launch.
+  { workspace: "finance", title: "Bursary", keys: ["record-payment", "payments", "debt", "fee-structure", "billing", "payroll", "staff-attendance"] },
   { workspace: "library", title: "Library", keys: ["library-desk", "library"] },
 ];
-const IN_SIDEBAR = new Set([...PRIMARY, ...ACADEMICS, ...PEOPLE, ...COMMUNICATION, ...BOTTOM]);
+// MESSAGING_PARKED — COMMUNICATION spread parked for the MVP launch; restore post-launch.
+const IN_SIDEBAR = new Set([...PRIMARY, ...ACADEMICS, ...PEOPLE, ...BOTTOM]);
 
 function NavGroup({
   title,
@@ -338,7 +341,8 @@ export function AppSidebar({
             {activeGroup && <NavGroup title={activeGroup.title} items={activeGroup.items} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />}
             <NavGroup title="Academics" items={pick(ACADEMICS)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
             <NavGroup title="People" items={pick(PEOPLE)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
-            <NavGroup title="Communication" items={pick(COMMUNICATION)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
+            {/* MESSAGING_PARKED — the Communication workspace group is parked for the MVP launch; restore post-launch. */}
+            {/* <NavGroup title="Communication" items={pick(COMMUNICATION)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} /> */}
             {otherGroups.map((group) => (
               <NavGroup key={group.workspace} title={group.title} items={group.items} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
             ))}

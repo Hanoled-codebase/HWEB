@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isForbiddenError, type ApiFetchError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,24 @@ const CHANNELS: Array<{ key: OfflineChannel; label: string; icon: LucideIcon; re
 ];
 
 export default function RecordPaymentPage() {
+// ─────────────────────────────────────────────────────────────────────────────
+// MVP LAUNCH (PARKED — read me, agent!)
+// The full implementation below is deliberately gated behind PARKED_FOR_MVP
+// while Hanoled goes live with version one. It is NOT dead code: flip the
+// flag to false to restore this surface. Search "MVP_LAUNCH" repo-wide to
+// find every parked feature.
+// ─────────────────────────────────────────────────────────────────────────────
+const PARKED_FOR_MVP = true;
+  if (PARKED_FOR_MVP) {
+    return (
+      <ComingSoonCard
+        title="Recording payments is coming soon"
+        blurb="Cash and transfer payments recorded against student bills arrive in the next release. Keep the bursary book until then."
+        backHref="/welcome"
+      />
+    );
+  }
+
   return (
     <Suspense fallback={<RecordSkeleton />}>
       <RecordPayment />

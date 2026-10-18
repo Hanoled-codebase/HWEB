@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { cn } from "@/lib/utils";
 import { invoiceStatusLabel, termLabel } from "@/lib/finance";
 import {
@@ -59,7 +60,30 @@ type FeeSummaryResponse = {
   students: StudentFeeData[];
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MVP LAUNCH (PARKED — read me, agent!)
+// The whole fee/payment experience below — the parent's fee summary, invoices
+// and the Paystack payment handoff — is deliberately gated behind
+// `PARKED_FOR_MVP` while we go live with version one. It is NOT dead code:
+// switch `PARKED_FOR_MVP` from true to false screen by screen to restore it.
+// Search this repo for "MVP_LAUNCH" to find every parked surface.
+// ─────────────────────────────────────────────────────────────────────────────
+const PARKED_FOR_MVP = true;
+
 export default function ParentInvoicesPage() {
+  if (PARKED_FOR_MVP) {
+    return (
+      <ComingSoonCard
+        title="Fees & invoices are coming soon"
+        blurb="You will settle school fees online and follow every invoice and receipt from this page. For now, pay at the school bursary and your records sync once payments go live."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <ParentInvoicesLive />;
+}
+
+function ParentInvoicesLive() {
   const { currentOrg } = useOrganization();
   const [data, setData] = useState<FeeSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);

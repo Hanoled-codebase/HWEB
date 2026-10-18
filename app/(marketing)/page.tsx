@@ -134,7 +134,7 @@ export default function LandingPage() {
       title: "Financial Management",
       headline: "Fees, invoicing & collections in one flow",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
-      desc: "Configurable fee structures by category, auto-generated invoicing, Paystack/Monnify online payment collection, a live debt dashboard with top-debtor tracking, scratch-card result checking.",
+      desc: "Configurable fee structures by category, auto-generated invoicing, Paystack/Monnify online payment collection, a live debt dashboard with top-debtor tracking, and scratch-card result checking (arriving post-launch).",
     },
     {
       id: "comm",
@@ -142,7 +142,7 @@ export default function LandingPage() {
       title: "Communication Portal",
       headline: "Parents never find out late",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
-      desc: "WhatsApp, Email, and SMS messaging with templates; automatic alerts the moment a student scores below 60% on any assessment.",
+      desc: "WhatsApp, Email, and SMS messaging with templates (arriving post-launch); automatic low-score alerts the moment a student scores below 60% on any assessment.",
     },
     {
       id: "welfare",

@@ -61,7 +61,8 @@ const TOOL_CATEGORIES: Record<string, { key: string; icon: LucideIcon }[]> = {
     { key: "billing", icon: Receipt },
     { key: "payments", icon: CreditCard },
     { key: "debt", icon: AlertTriangle },
-    { key: "scratch-cards", icon: Ticket },
+    // SCRATCH_CARD_PARKED — quick tile commented out for the MVP launch; restore post-launch.
+    // { key: "scratch-cards", icon: Ticket },
     { key: "payroll", icon: Wallet },
   ],
   "People & Staff": [

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -78,7 +79,30 @@ type ValidationResult = {
   error?: string;
 };
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCRATCH CARD (PARKED — always remember, agent!)
+// The scratch-card feature — serial + PIN result unlocking, card generation,
+// verification — sits commented out / gated in THIS repo on purpose. It is
+// NOT deleted and NOT dead code. This is an MVP-launch decision made by the
+// founder. Before the post-launch release, flip the gate below (and search
+// "SCRATCH_CARD_PARKED" repo-wide to find every place it was disabled).
+// ─────────────────────────────────────────────────────────────────────────────
+const SCRATCH_CARD_PARKED = true;
 export default function ScratchCardsPage() {
+  if (SCRATCH_CARD_PARKED) {
+    return (
+      <ComingSoonCard
+        title="Scratch cards are coming soon"
+        blurb="Serial + PIN result unlocking arrives in the next release. Until then, results open straight from the dashboard."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <ScratchCardsLive />;
+}
+
+function ScratchCardsLive() {
   const { currentOrg, currentMember } = useOrganization();
 
   const [batches, setBatches] = useState<Batch[]>([]);

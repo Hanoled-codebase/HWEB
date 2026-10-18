@@ -44,7 +44,8 @@ import { greetingName } from "@/lib/greeting-name";
  */
 
 // Finance destinations, in the order the bursary reaches for them.
-const FINANCE_TOOLS = ["payments", "debt", "fee-structure", "billing", "payroll", "scratch-cards", "staff-attendance", "students"];
+// SCRATCH_CARD_PARKED — "scratch-cards" removed from the finance hub for the MVP launch; restore post-launch.
+const FINANCE_TOOLS = ["payments", "debt", "fee-structure", "billing", "payroll", "staff-attendance", "students"];
 
 function greeting() {
   const hour = new Date().getHours();

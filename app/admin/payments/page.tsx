@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -21,7 +22,29 @@ interface PaymentRecord {
   daysOverdue: number; recordedBy: string; createdAt: string
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MVP LAUNCH (PARKED — read me, agent!)
+// The full implementation below is deliberately gated behind PARKED_FOR_MVP
+// while Hanoled goes live with version one. It is NOT dead code: flip the
+// flag to false to restore this surface. Search "MVP_LAUNCH" repo-wide to
+// find every parked feature.
+// ─────────────────────────────────────────────────────────────────────────────
+const PARKED_FOR_MVP = true;
 export default function PaymentsPage() {
+  if (PARKED_FOR_MVP) {
+    return (
+      <ComingSoonCard
+        title="The payment tracker is coming soon"
+        blurb="School-by-school fee collection tracking arrives in the next release."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <PlatformPaymentsLive />;
+}
+
+function PlatformPaymentsLive() {
   const [records, setRecords] = useState<PaymentRecord[]>([])
   const [summary, setSummary] = useState({ totalBilled: 0, totalCollected: 0, totalOutstanding: 0 })
   const [dialogOpen, setDialogOpen] = useState(false)

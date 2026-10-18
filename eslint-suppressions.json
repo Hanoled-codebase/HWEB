@@ -311,6 +311,9 @@
   "app/dashboard/school/[slug]/students/[studentId]/page.tsx": {
     "react-hooks/immutability": {
       "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
     }
   },
   "app/dashboard/school/[slug]/students/page.tsx": {

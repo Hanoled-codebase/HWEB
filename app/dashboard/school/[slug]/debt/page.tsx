@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { ComingSoonCard } from "@/components/dashboard/ComingSoon";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DataStateCard } from "@/components/dashboard/shared";
 import { apiFetch } from "@/lib/api";
@@ -34,7 +35,29 @@ type InvoiceRow = {
   term: string; status: string; total: number; paid: number; dueDate: string;
 };
 
+
+// MVP LAUNCH (PARKED — read me, agent!)
+// The full implementation below is deliberately gated behind PARKED_FOR_MVP
+// while Hanoled goes live with version one. It is NOT dead code: flip the
+// flag to false to restore this surface. Search "MVP_LAUNCH" repo-wide to
+// find every parked feature.
+// ─────────────────────────────────────────────────────────────────────────────
+const PARKED_FOR_MVP = true;
 export default function DebtPage() {
+  if (PARKED_FOR_MVP) {
+    return (
+      <ComingSoonCard
+        title="The debt profile is coming soon"
+        blurb="The live debtor dashboard and top-debtor tracking arrive in the next release."
+        backHref="/welcome"
+      />
+    );
+  }
+  return <DebtLive />;
+}
+
+function DebtLive() {
+// ─────────────────────────────────────────────────────────────────────────────
   const { currentOrg } = useOrganization();
   const { can } = usePermissions();
   // Follows what this school lets the viewer's role do (Settings → Staff access).
