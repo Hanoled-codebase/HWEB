@@ -942,6 +942,28 @@
   .m-rise, .m-stagger > *, .m-pop, .m-sheet-up, .m-sheet { animation-name: m-fade; animation-duration: 200ms; animation-delay: 0ms; }
   .m-collapsible { transition: opacity 150ms ease; }
   button:not(:disabled):active, [role="button"]:not([aria-disabled="true"]):active { scale: 1; }
+  /* Auth orbs hold still under reduced motion and keep their soft glow. */
+  .animate-blob { animation: none; opacity: 0.22; }
+  .animate-fade-in { animation: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Auth-screen orbs: brand-blue glow drifting slowly, one beat apart.
+     Reduced motion leaves them as calm static light (see the block above). */
+  .animate-blob { animation: auth-blob 14s var(--ease-out-smooth) infinite alternate; }
+  .animation-delay-2000 { animation-delay: 2s; }
+  .animation-delay-4000 { animation-delay: 4s; }
+  /* Dropdown panels (school picker) settle in softly. */
+  .animate-fade-in { animation: auth-fade-in var(--dur-press) var(--ease-out-smooth) backwards; }
+}
+
+@keyframes auth-blob {
+  from { translate: 0 -18px; scale: 1; }
+  to { translate: 0 26px; scale: 1.08; }
+}
+
+@keyframes auth-fade-in {
+  from { opacity: 0; translate: 0 -6px; }
 }
 
 @media (prefers-reduced-transparency: reduce) {

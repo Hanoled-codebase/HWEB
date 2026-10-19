@@ -24,7 +24,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -86,9 +86,9 @@ function ResetForm() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200">
+    <Card className="shadow-lg border-slate-200 m-rise">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold text-center text-slate-900">Reset your password</CardTitle>
+        <h1 className="text-2xl font-semibold text-center text-slate-900">Reset your password</h1>
         <CardDescription className="text-center text-slate-500">
           Enter the 6-digit code sent to your email and your new password.
         </CardDescription>
@@ -104,6 +104,7 @@ function ResetForm() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -116,7 +117,7 @@ function ResetForm() {
                 <FormItem className="flex flex-col items-center pt-2">
                   <FormLabel className="text-slate-900 self-start">Reset Code</FormLabel>
                   <FormControl>
-                    <InputOTP maxLength={6} {...field}>
+                    <InputOTP maxLength={6} {...field} aria-label="6-digit reset code">
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
@@ -139,7 +140,7 @@ function ResetForm() {
                 <FormItem>
                   <FormLabel className="text-slate-900">New Password</FormLabel>
                   <FormControl>
-                    <Input placeholder="••••••••" type="password" {...field} />
+                    <Input placeholder="••••••••" type="password" autoComplete="new-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

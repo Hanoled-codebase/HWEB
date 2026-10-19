@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
 
 const formSchema = z.object({
@@ -145,21 +145,21 @@ function AcceptInviteForm() {
 
   if (inviteError) {
     return (
-      <Card className="shadow-lg border-slate-200">
+      <Card className="shadow-lg border-slate-200 m-rise">
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <div className="bg-red-100 p-3 rounded-full">
               <AlertCircle className="h-8 w-8 text-red-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-semibold text-center text-slate-900">Invalid Invitation</CardTitle>
+          <h1 className="text-2xl font-semibold text-center text-slate-900">Invalid Invitation</h1>
           <CardDescription className="text-center text-slate-500">
            {inviteError}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            className="w-full bg-slate-900 hover:bg-slate-800" 
+          <Button
+            className="w-full bg-blue-600 hover:bg-blue-700"
             onClick={() => router.push("/")}
           >
             Return Home
@@ -170,9 +170,9 @@ function AcceptInviteForm() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200">
+    <Card className="shadow-lg border-slate-200 m-rise">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-semibold text-center text-slate-900">Join {inviteData?.orgName || "the School"}</CardTitle>
+          <h1 className="text-2xl font-semibold text-center text-slate-900">Join {inviteData?.orgName || "the School"}</h1>
           <CardDescription className="text-center text-slate-500">
             You have been invited to join as a <span className="font-semibold capitalize">{inviteData?.role || "member"}</span>. 
           {inviteData?.hasAccount
