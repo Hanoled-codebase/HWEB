@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname, ".."),
     resolveAlias: {
       "@/app/actions/auth": "./shims/auth-actions.ts",
+      "@/services/api": "./shims/services-api.ts",
     },
   },
   env: {
