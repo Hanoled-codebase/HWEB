@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/toast-provider";
 
 // Poppins is bundled locally: the appliance has no internet, so the online
 // build's next/font/google fetch is not an option here.
@@ -27,7 +28,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         className={`${poppins.variable} ${poppins.className} cbt-theme min-h-full flex flex-col bg-background text-foreground font-sans`}
         suppressHydrationWarning
       >
-        {children}
+        {/* Same toast host as the suite (CBT pages call toast() from sonner). */}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
