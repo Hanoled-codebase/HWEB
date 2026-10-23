@@ -2,7 +2,7 @@
 
 import React, { useState, useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { registerAction } from '../../actions/auth';
 
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
@@ -11,6 +11,7 @@ import { setAuthTokens } from '@/lib/auth-tokens';
 export default function RegisterPage() {
   const router = useRouter();
   const [orgSlug, setOrgSlug] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const [state, formAction, pending] = useActionState(registerAction, null);
 
@@ -110,15 +111,25 @@ export default function RegisterPage() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Secure Password (min 8 characters)</label>
-            <input
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              minLength={8}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3 pt-2">

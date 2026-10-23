@@ -3,7 +3,7 @@
 import React, { useState, useActionState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Hash, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2 } from 'lucide-react';
+import { Mail, Hash, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2, Eye, EyeOff } from 'lucide-react';
 import { loginAction } from '@/app/actions/auth';
 import { api } from '@/services/api';
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
@@ -55,6 +55,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
   const [loadingSchools, setLoadingSchools] = useState(false);
 
   const [state, formAction, pending] = useActionState(loginAction, null);
+  const [showPassword, setShowPassword] = useState(false);
   // "Back to sign in" from the new-password step hides that step for this token.
   const [abandonedChangeToken, setAbandonedChangeToken] = useState<string | null>(null);
 
@@ -331,14 +332,24 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
               </span>
             )}
           </div>
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all"
-            placeholder="••••••••"
-            required
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              autoComplete="current-password"
+              className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all"
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <button
