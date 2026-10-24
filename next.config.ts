@@ -29,7 +29,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: baseSecurityHeaders },
-      ...["/dashboard/:path*", "/cbt/:path*", "/admin/:path*", "/signin", "/welcome"].map((source) => ({
+      ...[
+        "/dashboard/:path*",
+        "/cbt/:path*",
+        "/admin/:path*",
+        "/signin",
+        "/signup",
+        "/forgot-password",
+        "/reset-password",
+        "/accept-invite",
+        "/welcome",
+      ].map((source) => ({
         source,
         headers: appOnlyHeaders,
       })),

@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAMES, exposeTokensToBrowser, sessionCookieClearTargets, sessionCookieOptions } from '@/lib/session-cookies';
 import { signInFailure } from '@/lib/sign-in-errors';
+import { isSafeRedirectUrl } from '@/lib/safe-redirect';
+import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from '@/lib/password-policy';
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
@@ -176,7 +178,7 @@ async function finishSignIn(
     path: '/',
   });
 
-  let redirectUrl = callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/welcome';
+  let redirectUrl = isSafeRedirectUrl(callbackUrl) ? callbackUrl! : '/welcome';
 
   if (isStudent) {
     // Students ALWAYS land directly in their Student Examination Room!
@@ -280,6 +282,10 @@ export async function registerAction(prevState: any, formData: FormData) {
   const platforms = formData.getAll('platforms') as string[];
   if (!platforms || platforms.length === 0) {
     return { error: 'Please select at least one platform subscription.' };
+  }
+
+  if (!isPasswordValid(password, 'staff')) {
+    return { error: STAFF_PASSWORD_POLICY_MESSAGE };
   }
 
   try {

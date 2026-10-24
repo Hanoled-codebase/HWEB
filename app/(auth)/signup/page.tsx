@@ -110,15 +110,15 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700">Secure Password (min 8 characters)</label>
+            <label className="text-sm font-semibold text-slate-700">Secure Password (min 12 characters, 3 character classes)</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={12}
                 className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
-                placeholder="••••••••"
+                placeholder="••••••••••••"
                 required
               />
               <button

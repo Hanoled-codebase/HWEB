@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isSafeRedirectUrl } from '@/lib/safe-redirect';
 
 // Add the routes that require authentication
 const protectedRoutes = ['/dashboard', '/cbt/admin'];
@@ -53,7 +54,7 @@ export function proxy(request: NextRequest) {
   // 2. If logged in and trying to access login/register, honor callbackUrl or redirect to welcome hub
   if (isAuthRoute && hasHcoreSession) {
     const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-    if (callbackUrl && callbackUrl.startsWith('/')) {
+    if (isSafeRedirectUrl(callbackUrl)) {
       return NextResponse.redirect(new URL(callbackUrl, request.url));
     }
     return NextResponse.redirect(new URL('/welcome', request.url));

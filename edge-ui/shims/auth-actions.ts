@@ -9,6 +9,7 @@
 //   HCBT on the device, the welcome hub carries the device's one destination.
 import { signInFailure } from "@/lib/sign-in-errors";
 import { clearAuthTokens } from "@/lib/auth-tokens";
+import { isSafeRedirectUrl } from "@/lib/safe-redirect";
 
 export type SignInContext = {
   identifierType: string;
@@ -49,7 +50,7 @@ function isCandidate(user?: { role?: string; roles?: string[] }): boolean {
 function redirectUrl(user: EdgeSignInResponse["user"], context: SignInContext): string {
   if (isCandidate(user)) return "/cbt/student";
   const callback = context.callbackUrl;
-  if (callback && callback.startsWith("/")) return callback;
+  if (callback && isSafeRedirectUrl(callback)) return callback;
   return "/welcome";
 }
 
