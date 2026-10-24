@@ -9,7 +9,7 @@ const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || "http://localhost:4000";
 
 export default async function WelcomePortal() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("hcore_session")?.value;
+  const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
 
   if (!token) {
     redirect("/signin");

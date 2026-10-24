@@ -11,6 +11,8 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthSessionResponse, getPostAuthPath } from "@/lib/auth-session";
 import { isPasswordValid, passwordRules, STAFF_PASSWORD_POLICY_MESSAGE } from "@/lib/password-policy";
+import { loginWithCredentials } from "@/app/actions/auth";
+import { setAuthTokens } from "@/lib/auth-tokens";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +31,7 @@ import { HanoledLogo } from "@/components/ui/HanoledLogo";
 const formSchema = z.object({
   name: z.string().optional(),
   password: z.string().optional(),
+  confirmPassword: z.string().optional(),
 });
 
 type InviteData = {
@@ -49,6 +52,7 @@ function AcceptInviteContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
 
@@ -57,11 +61,16 @@ function AcceptInviteContent() {
     defaultValues: {
       name: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
   const enteredPassword = form.watch("password") || "";
+  const enteredConfirmPassword = form.watch("confirmPassword") || "";
   const passwordChecklist = passwordRules(enteredPassword, "staff");
+  const passwordsMatch = Boolean(
+    enteredPassword && enteredConfirmPassword && enteredPassword === enteredConfirmPassword
+  );
 
   useEffect(() => {
     if (!token) {
@@ -78,6 +87,7 @@ function AcceptInviteContent() {
         form.reset({
           name: data.existingName || "",
           password: "",
+          confirmPassword: "",
         });
       } catch (err: unknown) {
         setInviteError(
@@ -98,6 +108,7 @@ function AcceptInviteContent() {
 
     const trimmedName = values.name?.trim() || "";
     const password = values.password || "";
+    const confirmPassword = values.confirmPassword || "";
 
     if (!inviteData?.hasAccount && !trimmedName) {
       form.setError("name", {
@@ -107,12 +118,32 @@ function AcceptInviteContent() {
       return;
     }
 
-    if (inviteData?.requiresPassword && !isPasswordValid(password, "staff")) {
+    const mustProvidePassword = !inviteData?.hasAccount || Boolean(inviteData?.requiresPassword);
+
+    if (mustProvidePassword && !password) {
       form.setError("password", {
         type: "manual",
-        message: STAFF_PASSWORD_POLICY_MESSAGE,
+        message: "Password is required to set up your account",
       });
       return;
+    }
+
+    if (password) {
+      if (!isPasswordValid(password, "staff")) {
+        form.setError("password", {
+          type: "manual",
+          message: STAFF_PASSWORD_POLICY_MESSAGE,
+        });
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        form.setError("confirmPassword", {
+          type: "manual",
+          message: "Passwords do not match",
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -126,9 +157,23 @@ function AcceptInviteContent() {
         }),
       });
 
+      let targetUrl = getPostAuthPath(response);
+
+      if (password && inviteData?.email) {
+        try {
+          const loginResult = await loginWithCredentials(inviteData.email, password, targetUrl);
+          if (loginResult && "success" in loginResult && loginResult.success) {
+            setAuthTokens({ hcoreToken: loginResult.hcoreToken, hcbtToken: loginResult.hcbtToken });
+            targetUrl = loginResult.redirectUrl;
+          }
+        } catch (authErr) {
+          console.warn("Direct session creation after invite acceptance:", authErr);
+        }
+      }
+
       setUser(response.user);
       toast.success("Invitation accepted successfully.");
-      router.replace(getPostAuthPath(response));
+      router.replace(targetUrl);
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
@@ -156,6 +201,9 @@ function AcceptInviteContent() {
     : rawRole.includes("parent")
     ? "Parent"
     : "Staff Member";
+
+  const isExistingAccount = Boolean(inviteData?.hasAccount);
+  const requiresPassword = !isExistingAccount || Boolean(inviteData?.requiresPassword);
 
   if (isVerifying) {
     return (
@@ -191,14 +239,14 @@ function AcceptInviteContent() {
         </p>
         <div className="space-y-3">
           <Button
-            className="w-full h-11 bg-[#1447E6] hover:bg-[#0F36B8] text-white font-bold rounded-xl"
+            className="w-full h-11 bg-[#1447E6] hover:bg-[#0F36B8] text-white font-bold rounded-xl cursor-pointer"
             onClick={() => router.push("/signin")}
           >
             Go to Sign In
           </Button>
           <Button
             variant="outline"
-            className="w-full h-11 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
+            className="w-full h-11 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
             onClick={() => router.push("/contact")}
           >
             Contact School Support
@@ -238,12 +286,12 @@ function AcceptInviteContent() {
       {/* Title & Description */}
       <div className="text-center mb-6">
         <h1 className="text-xl font-extrabold text-slate-900">
-          {inviteData?.hasAccount ? "Join School Dashboard" : "Set Up Your Profile"}
+          {isExistingAccount ? "Join School Dashboard" : "Set Up Your Profile"}
         </h1>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-          {inviteData?.hasAccount
-            ? "Your account already exists. Confirm below to link your profile to this school."
-            : "Complete your details to activate your account and access your staff portal."}
+          {isExistingAccount
+            ? "Your account is recognized. Set your password and join this school's staff portal."
+            : "Complete your details and choose a secure password to activate your school account."}
         </p>
       </div>
 
@@ -270,7 +318,7 @@ function AcceptInviteContent() {
           </div>
 
           {/* Full Name */}
-          {!inviteData?.hasAccount ? (
+          {!isExistingAccount ? (
             <FormField
               control={form.control}
               name="name"
@@ -290,7 +338,7 @@ function AcceptInviteContent() {
                 </FormItem>
               )}
             />
-          ) : inviteData.existingName ? (
+          ) : inviteData?.existingName ? (
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                 Account Name
@@ -301,37 +349,47 @@ function AcceptInviteContent() {
             </div>
           ) : null}
 
-          {/* Password Section */}
-          {inviteData?.requiresPassword ? (
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <FormLabel className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    {inviteData.hasAccount ? "Set Password" : "Create Password"}
-                  </FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        placeholder="Create a strong password"
-                        type={showPassword ? "text" : "password"}
-                        className="h-11 pr-11 rounded-xl border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:border-[#1447E6]"
-                        {...field}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-xs" />
+          {/* Existing Account Notice if password not strictly required */}
+          {isExistingAccount && !inviteData?.requiresPassword && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
+              <ShieldCheck className="w-4 h-4 text-[#1447E6] shrink-0 mt-0.5" />
+              <span>
+                Your profile is active in Hanoled. You can enter a new password below to update it, or leave blank to keep your current credentials.
+              </span>
+            </div>
+          )}
 
-                  {/* Real-time Password Policy Checklist */}
+          {/* Password Section */}
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  {requiresPassword ? "Password" : "Set New Password (Optional)"}
+                </FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      placeholder={requiresPassword ? "Create a strong password" : "Enter new password (optional)"}
+                      type={showPassword ? "text" : "password"}
+                      className="h-11 pr-11 rounded-xl border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:border-[#1447E6]"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage className="text-xs" />
+
+                {/* Real-time Password Policy Checklist (only shown when typing password) */}
+                {enteredPassword.length > 0 && (
                   <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
                     <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                       Password Requirements:
@@ -358,17 +416,63 @@ function AcceptInviteContent() {
                       ))}
                     </div>
                   </div>
-                </FormItem>
-              )}
-            />
-          ) : (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
-              <ShieldCheck className="w-4 h-4 text-[#1447E6] shrink-0 mt-0.5" />
-              <span>
-                Your HCORE login is already active. Accepting this invitation connects your profile with <strong>{schoolName}</strong>.
-              </span>
-            </div>
-          )}
+                )}
+              </FormItem>
+            )}
+          />
+
+          {/* Confirm Password Section */}
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    {requiresPassword ? "Confirm Password" : "Confirm New Password"}
+                  </FormLabel>
+                  {enteredConfirmPassword.length > 0 && (
+                    <span
+                      className={`text-[11px] font-medium flex items-center gap-1 ${
+                        passwordsMatch ? "text-emerald-700" : "text-amber-600"
+                      }`}
+                    >
+                      {passwordsMatch ? (
+                        <>
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                          Passwords match
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-3 h-3" />
+                          Passwords must match
+                        </>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      placeholder="Re-enter password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      className="h-11 pr-11 rounded-xl border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:border-[#1447E6]"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
 
           {/* Submit Button */}
           <Button
@@ -379,11 +483,11 @@ function AcceptInviteContent() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Processing Invitation...</span>
+                <span>Activating Account...</span>
               </>
             ) : (
               <>
-                <span>{inviteData?.hasAccount ? "Join School Dashboard" : "Accept Invitation & Continue"}</span>
+                <span>{isExistingAccount ? "Join School & Continue" : "Accept Invitation & Continue"}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -424,4 +528,5 @@ export default function AcceptInvitePage() {
     </SignInShell>
   );
 }
+
 
