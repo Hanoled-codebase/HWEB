@@ -79,7 +79,7 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
   // than the Hweb frontend, so session cookies can't cross that boundary.
   // Attach the bearer token explicitly instead (backends accept both).
   if (!requestHeaders.has("Authorization")) {
-    const token = baseUrl === HCBT_BASE ? getHcbtToken() : getHcoreToken();
+    const token = (baseUrl === HCBT_BASE ? getHcbtToken() : null) || getHcoreToken();
     if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
@@ -102,6 +102,21 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
           window.location.href = "/signin/";
         }
       } else if (response.status === 401 && !isAuthPath) {
+        // Satellite services (HCBT, HSMS) or silent background requests must not destroy the primary HCORE session
+        if (baseUrl !== HCORE_BASE || showErrorToast === false) {
+          const data = await response.json().catch(() => ({}));
+          const errMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || response.statusText;
+          const error = new Error(errMsg) as ApiFetchError;
+          error.status = response.status;
+          error.code = data.code;
+          error.details = data.issues || data.details || data;
+
+          if (showErrorToast) {
+            toast.error(error.message || "Unauthorized");
+          }
+          throw error;
+        }
+
         try {
           const refreshRes = await fetch(`${HCORE_BASE}/v1/auth/refresh`, {
             method: "POST",

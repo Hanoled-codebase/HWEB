@@ -9,7 +9,7 @@ const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || "http://localhost:4000";
 
 export default async function WelcomePortal() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("hcore_session")?.value;
+  const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
 
   if (!token) {
     redirect("/signin");
@@ -75,7 +75,6 @@ export default async function WelcomePortal() {
 
   const hasHsms = allowedPlatforms.includes("HSMS");
   const hasHcbt = allowedPlatforms.includes("HCBT");
-  const hasBoth = hasHsms && hasHcbt;
 
   return (
     <div className="min-h-screen bg-[#f8fbff] font-sans selection:bg-[#1447e6] selection:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">

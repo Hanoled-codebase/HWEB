@@ -21,7 +21,7 @@ export default async function DashboardRootLayout({
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("hcore_session")?.value;
+  const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
 
   // 1. Must be authenticated
   if (!token) {

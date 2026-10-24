@@ -136,6 +136,8 @@ async function finishSignIn(
           maxAge: 3600 * 24 * 7,
           path: '/',
         });
+      } else {
+        cookieStore.delete('hweb_candidate_redirect');
       }
     } else {
       console.error(`[probe] loginAction contexts not ok: ${meRes.status}`);
@@ -232,6 +234,19 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
   } catch (err: any) {
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }
+}
+
+export async function loginWithCredentials(
+  identifier: string,
+  password: string,
+  callbackUrl?: string,
+): Promise<SignInResult> {
+  const formData = new FormData();
+  formData.append('identifierType', 'EMAIL');
+  formData.append('identifier', identifier);
+  formData.append('password', password);
+  if (callbackUrl) formData.append('callbackUrl', callbackUrl);
+  return loginAction(null, formData);
 }
 
 // Second step of a sign-in that answered PASSWORD_CHANGE_REQUIRED: set the

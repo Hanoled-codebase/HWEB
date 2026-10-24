@@ -1,9 +1,4 @@
 {
-  "app/(auth)/accept-invite/page.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "app/(auth)/forgot-password/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1

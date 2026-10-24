@@ -201,11 +201,6 @@ export default function DashboardLayout({
   }
 
   if (slug && error) {
-    if (error === "User is not linked to a student profile") {
-      router.replace("/signin");
-      return null;
-    }
-
     return (
       <div className="absolute inset-0 z-[100] flex min-h-[100dvh] w-full flex-col items-center justify-center bg-slate-50 p-4 text-center sm:p-6">
         <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">

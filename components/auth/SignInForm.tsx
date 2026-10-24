@@ -47,7 +47,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
   // Students pin the admission-number tab; parents/staff pin the email tab;
   // the universal page keeps both tabs switchable.
   const pinnedTab = audience === 'all' ? null : AUDIENCE_TAB[audience];
-  const [tab, setTab] = useState<'EMAIL' | 'ADMISSION_NUMBER'>(queryOrgSlug ? 'ADMISSION_NUMBER' : pinnedTab ?? 'EMAIL');
+  const [tab, setTab] = useState<'EMAIL' | 'ADMISSION_NUMBER'>(pinnedTab ?? (queryOrgSlug ? 'ADMISSION_NUMBER' : 'EMAIL'));
   const [schools, setSchools] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [selectedSchool, setSelectedSchool] = useState<{ id: string; name: string; slug: string } | null>(null);
   const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
@@ -276,6 +276,11 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                               >
                                 Use &quot;{schoolSearchQuery}&quot; as custom code
                               </button>
+                            </div>
+                          ) : loadingSchools ? (
+                            <div className="flex items-center justify-center gap-1.5 py-2 text-slate-500">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Loading registered schools...</span>
                             </div>
                           ) : (
                             'No schools available'
