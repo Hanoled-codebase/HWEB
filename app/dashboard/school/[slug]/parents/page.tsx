@@ -115,7 +115,12 @@ export default function ParentsPage() {
     if (!currentOrg) return;
     setIsInviting(true);
     try {
-      await apiFetch(`/admin/invite`, {
+      const result = await apiFetch<{
+        ok?: boolean;
+        inviteId?: string;
+        emailDispatched?: boolean;
+        emailError?: string;
+      }>(`/admin/invite`, {
         method: "POST",
         body: JSON.stringify({
           email: values.email,
@@ -124,7 +129,15 @@ export default function ParentsPage() {
           studentIds: values.studentIds,
         }),
       });
-      toast.success("Invitation sent");
+      if (result?.emailDispatched === false) {
+        toast.warning(
+          `Invitation created, but the email could not be sent: ${
+            result.emailError || "unknown email error"
+          }. Share the accept link manually or retry.`,
+        );
+      } else {
+        toast.success("Invitation sent");
+      }
       setIsDialogOpen(false);
       form.reset();
     } catch (error: unknown) {

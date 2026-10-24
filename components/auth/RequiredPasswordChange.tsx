@@ -2,13 +2,13 @@
 
 import React, { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, KeyRound, Loader2 } from 'lucide-react';
+import { ArrowRight, Check, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { completePasswordChangeAction, type SignInContext } from '@/app/actions/auth';
 import { setAuthTokens } from '@/lib/auth-tokens';
 import { passwordRules } from '@/lib/password-policy';
 
 const inputClass =
-  'w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-xs sm:text-sm text-[#0B1220] placeholder-slate-400 transition-all';
+  'w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-xs sm:text-sm text-[#0B1220] placeholder-slate-400 transition-all';
 
 /**
  * Shown instead of the sign-in form when the password was right but was set by
@@ -27,6 +27,8 @@ export function RequiredPasswordChange({
   const router = useRouter();
   const [state, formAction, pending] = useActionState(completePasswordChangeAction, null);
   const [password, setPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const isStudent = context.identifierType === 'ADMISSION_NUMBER';
   const rules = passwordRules(password, isStudent ? 'learner' : 'staff');
 
@@ -78,17 +80,27 @@ export function RequiredPasswordChange({
           <label htmlFor="newPassword" className="block text-xs font-bold text-[#0B1220] uppercase tracking-wider">
             New password
           </label>
-          <input
-            id="newPassword"
-            type="password"
-            name="newPassword"
-            autoComplete="new-password"
-            className={inputClass}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            autoFocus
-          />
+          <div className="relative">
+            <input
+              id="newPassword"
+              type={showNewPassword ? "text" : "password"}
+              name="newPassword"
+              autoComplete="new-password"
+              className={inputClass}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              aria-label={showNewPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+            >
+              {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
           <ul className="space-y-1 pt-1">
             {rules.map((rule) => (
               <li
@@ -106,14 +118,24 @@ export function RequiredPasswordChange({
           <label htmlFor="confirmPassword" className="block text-xs font-bold text-[#0B1220] uppercase tracking-wider">
             Type it again
           </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            name="confirmPassword"
-            autoComplete="new-password"
-            className={inputClass}
-            required
-          />
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              autoComplete="new-password"
+              className={inputClass}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <button

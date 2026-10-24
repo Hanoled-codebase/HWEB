@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HanoledLogo } from '../../ui/HanoledLogo';
 import { api } from '../../../services/api';
-import { Mail, Hash, ArrowRight } from 'lucide-react';
+import { Mail, Hash, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: (data: any) => void;
@@ -12,6 +12,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onNavigateRegister
   const [tab, setTab] = useState<'EMAIL' | 'ADMISSION_NUMBER'>('EMAIL');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [orgSlug, setOrgSlug] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -165,14 +166,37 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onNavigateRegister
 
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              className="form-control"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="form-control"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <button

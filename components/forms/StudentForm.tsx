@@ -207,6 +207,8 @@ type StudentApiPayload = {
 type StudentMutationResponse = {
   parentInvite?: {
     action?: string;
+    emailDispatched?: boolean;
+    emailError?: string;
   };
 };
 
@@ -351,6 +353,13 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
       toast.success(
         getParentInviteMessage(response?.parentInvite?.action, isEditing),
       );
+      if (response?.parentInvite?.emailDispatched === false) {
+        toast.warning(
+          `Parent invite email couldn't be sent: ${
+            response?.parentInvite?.emailError || "unknown email error"
+          }`,
+        );
+      }
 
       router.push(`/dashboard/school/${currentOrg.slug}/students`);
       router.refresh();
