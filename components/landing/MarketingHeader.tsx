@@ -141,13 +141,16 @@ function SignInNavItem() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
-    // Leaving for a sign-in page should never leave a dead menu behind.
-    if (isActivePath(pathname, "/signin")) setOpen(false);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open, pathname]);
+  }, [open]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setOpen(false), 0);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   return (
     <div ref={wrapperRef} className="relative" onMouseEnter={openNow} onMouseLeave={closeSoon}>
