@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthSessionResponse, getPostAuthPath } from "@/lib/auth-session";
+import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from "@/lib/password-policy";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -101,10 +102,10 @@ function AcceptInviteForm() {
       return;
     }
 
-    if (inviteData?.requiresPassword && password.length < 6) {
+    if (inviteData?.requiresPassword && !isPasswordValid(password, "staff")) {
       form.setError("password", {
         type: "manual",
-        message: "Password must be at least 6 characters",
+        message: STAFF_PASSWORD_POLICY_MESSAGE,
       });
       return;
     }

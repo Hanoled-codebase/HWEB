@@ -32,3 +32,11 @@ export function passwordRules(value: string, audience: PasswordAudience): Passwo
     { label: "Three of: lowercase, capitals, numbers, symbols", met: kinds >= 3 },
   ];
 }
+
+export function isPasswordValid(value: string, audience: PasswordAudience = "staff"): boolean {
+  return passwordRules(value, audience).every((rule) => rule.met);
+}
+
+export const STAFF_PASSWORD_POLICY_MESSAGE =
+  "Password must be at least 12 characters and include at least three of: lowercase letters, uppercase letters, numbers, and symbols.";
+
