@@ -440,11 +440,6 @@
       "count": 1
     }
   },
-  "edge-ui/app/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "hooks/use-mobile.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1
