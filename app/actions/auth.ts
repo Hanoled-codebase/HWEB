@@ -9,6 +9,7 @@ import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from '@/lib/password-p
 
 const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
+const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
 
 /**
  * After a successful HCORE login, exchange the HCORE identity for a HCBT product session.
@@ -218,6 +219,42 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
+      // If HCORE returned 401 INVALID_CREDENTIALS for an EMAIL login,
+      // it is possible this user accepted an invite in HSMS before direct HCORE provisioning
+      // was active. Check HSMS to reconcile and provision their account into HCORE.
+      if (res.status === 401 && data?.code === 'INVALID_CREDENTIALS' && identifierType === 'EMAIL') {
+        try {
+          const reconcileRes = await fetch(`${HSMS_BASE}/api/auth/reconcile-hcore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: identifier, password }),
+          });
+          if (reconcileRes.ok) {
+            const reconcileData = await reconcileRes.json().catch(() => null);
+            if (reconcileData?.synced) {
+              const retryRes = await fetch(`${HCORE_BASE}/v1/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identifierType,
+                  identifier,
+                  password,
+                  audience: 'hcore-api',
+                }),
+              });
+              if (retryRes.ok) {
+                const retryData = await retryRes.json().catch(() => null);
+                if (retryData) {
+                  return await finishSignIn(retryData, { identifierType, identifier, organizationSlugOrId, callbackUrl });
+                }
+              }
+            }
+          }
+        } catch {
+          // Fall through to standard signInFailure
+        }
+      }
+
       // Correct password, but one the person didn't choose: HCORE issued no
       // session, only a token for the "choose a new password" step.
       if (data?.code === 'PASSWORD_CHANGE_REQUIRED' && data.changeToken) {
