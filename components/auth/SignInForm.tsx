@@ -277,6 +277,11 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                                 Use &quot;{schoolSearchQuery}&quot; as custom code
                               </button>
                             </div>
+                          ) : loadingSchools ? (
+                            <div className="flex items-center justify-center gap-1.5 py-2 text-slate-500">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Loading registered schools...</span>
+                            </div>
                           ) : (
                             'No schools available'
                           )}

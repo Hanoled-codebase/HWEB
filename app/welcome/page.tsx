@@ -75,7 +75,6 @@ export default async function WelcomePortal() {
 
   const hasHsms = allowedPlatforms.includes("HSMS");
   const hasHcbt = allowedPlatforms.includes("HCBT");
-  const hasBoth = hasHsms && hasHcbt;
 
   return (
     <div className="min-h-screen bg-[#f8fbff] font-sans selection:bg-[#1447e6] selection:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
