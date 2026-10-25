@@ -150,6 +150,7 @@ function AcceptInviteContent() {
     try {
       const response = await apiFetch<AuthSessionResponse>("/admin/invite/accept", {
         method: "POST",
+        showErrorToast: false,
         body: JSON.stringify({
           token,
           ...(trimmedName ? { name: trimmedName } : {}),
@@ -157,14 +158,22 @@ function AcceptInviteContent() {
         }),
       });
 
-      let targetUrl = getPostAuthPath(response);
+      // HSMS gives us the school dashboard path directly (e.g. /dashboard/school/slug).
+      // HCORE's loginResult.redirectUrl is always "/welcome" for staff, which would
+      // lose the specific destination. Keep the HSMS path unless it's a generic fallback.
+      const hsmsTargetUrl = getPostAuthPath(response);
+      let targetUrl = hsmsTargetUrl;
 
       if (password && inviteData?.email) {
         try {
-          const loginResult = await loginWithCredentials(inviteData.email, password, targetUrl);
+          const loginResult = await loginWithCredentials(inviteData.email, password, hsmsTargetUrl);
           if (loginResult && "success" in loginResult && loginResult.success) {
             setAuthTokens({ hcoreToken: loginResult.hcoreToken, hcbtToken: loginResult.hcbtToken });
-            targetUrl = loginResult.redirectUrl;
+            // Only use HCORE's redirectUrl if HSMS didn't give a specific school path
+            const isGenericPath = hsmsTargetUrl === "/dashboard" || hsmsTargetUrl === "/welcome" || hsmsTargetUrl === "/";
+            if (isGenericPath && loginResult.redirectUrl) {
+              targetUrl = loginResult.redirectUrl;
+            }
           }
         } catch (authErr) {
           console.warn("Direct session creation after invite acceptance:", authErr);
