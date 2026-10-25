@@ -10,8 +10,9 @@ export function SignOutForm({ children, className }: { children: ReactNode; clas
       action={logoutAction}
       className={className}
       onSubmit={(event) => {
-        // logoutAction only clears Hweb's cookies; the HCORE and HCBT sessions
-        // need the browser's own logout calls. It stays as the no-JS fallback.
+        // logoutAction only clears Hweb's cookies; the HCORE, HCBT and HSMS
+        // sessions need the browser's own logout calls. It stays as the no-JS
+        // fallback.
         event.preventDefault();
         void signOutEverywhere();
       }}
