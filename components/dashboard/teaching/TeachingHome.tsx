@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CheckCircle2, ChevronRight, ClipboardCheck, Eye, Layers, Users } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 import { cn } from "@/lib/utils";
 import { attendanceQueries, localDay, type Tally } from "@/lib/attendance";
@@ -56,6 +57,7 @@ export function TeachingHome({
   isSheetsLoading: boolean;
 }) {
   const { assignments } = usePermissions();
+  const { currentMember } = useOrganization();
   const { visibleNavItems } = useSchoolNavItems();
   const base = `/dashboard/school/${slug}`;
   const nav = useMemo(() => new Map(visibleNavItems.map((item) => [item.key, item])), [visibleNavItems]);
@@ -68,8 +70,13 @@ export function TeachingHome({
       const id = assignment.classLevel?.id || assignment.classLevelId;
       if (id && !seen.has(id)) seen.set(id, assignment.classLevel?.name || "Your class");
     }
+    // A form teacher set from the Classes screen has no CLASS_TEACHER
+    // assignment; the class is on the member as assignedClasses.
+    for (const cls of currentMember?.assignedClasses ?? []) {
+      if (cls.id && !seen.has(cls.id)) seen.set(cls.id, cls.name || "Your class");
+    }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [assignments]);
+  }, [assignments, currentMember]);
   const isClassTeacher = myClasses.length > 0;
   const isSubjectTeacher = subjectGroups.length > 0;
 

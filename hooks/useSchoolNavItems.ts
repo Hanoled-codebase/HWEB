@@ -98,7 +98,12 @@ export function useSchoolNavItems() {
     );
     const isHOD = safeAssignments.some((a) => a.type === "HOD");
     const isSubjectTeacher = safeAssignments.some((a) => a.type === "SUBJECT_TEACHER");
-    const isClassTeacher = safeAssignments.some((a) => a.type === "CLASS_TEACHER");
+    // Two stores mean "class teacher": a CLASS_TEACHER assignment (HCORE's
+    // teaching-assignment projection) or the class's own form-teacher field
+    // (the Classes screen), which lands in assignedClasses.
+    const isClassTeacher =
+      safeAssignments.some((a) => a.type === "CLASS_TEACHER") ||
+      (currentMember.assignedClasses?.length ?? 0) > 0;
     const isTeacher = isSubjectTeacher || isClassTeacher || isHOD;
     const userRole = role || "member";
 

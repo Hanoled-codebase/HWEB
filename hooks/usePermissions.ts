@@ -165,7 +165,13 @@ export function usePermissions() {
     const isAccountant = holds("ACCOUNTANT");
     const isHOD = holds("HOD");
     const isLibrarian = holds("LIBRARIAN");
-    const isClassTeacher = holds("CLASS_TEACHER");
+    // Two stores mean "class teacher": a CLASS_TEACHER assignment (HCORE's
+    // teaching-assignment projection) or the class's own form-teacher field
+    // (the Classes screen), which lands in assignedClasses. Reading only the
+    // first hid the class, and therefore the register, from a teacher the
+    // school had made form teacher from the Classes screen.
+    const isClassTeacher =
+      holds("CLASS_TEACHER") || (currentMember.assignedClasses?.length ?? 0) > 0;
     const isSubjectTeacher = holds("SUBJECT_TEACHER");
 
     return {
