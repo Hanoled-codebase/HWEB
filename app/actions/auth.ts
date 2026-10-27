@@ -60,6 +60,7 @@ export type SignInContext = {
 // The parts of HCORE's login / password-change response used here.
 type HcoreSignInResponse = {
   token?: string;
+  refreshToken?: string;
   principal?: { id?: string; email?: string | null };
   roles?: string[];
   activeOrganization?: { slug?: string } | null;
@@ -85,6 +86,13 @@ async function finishSignIn(
 
   // Set HCORE session cookie
   cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600 * 24 * 7));
+
+  // Keep the refresh token too: the access token above lasts an hour, and this
+  // cookie is what tells proxy.ts the session is still renew-able (and lets
+  // /api/session re-arm it) instead of treating the user as signed out.
+  if (data.refreshToken) {
+    cookieStore.set('hcore_refresh_web', data.refreshToken, sessionCookieOptions(60 * 60 * 24 * 30));
+  }
 
   // Exchange for HCBT session with full role and student context
   const hcbtToken = await exchangeHcbtSession(
@@ -364,6 +372,9 @@ export async function registerAction(prevState: any, formData: FormData) {
       const isProduction = process.env.NODE_ENV === 'production';
       
       cookieStore.set('hcore_session', data.token, sessionCookieOptions(3600));
+      if (data.refreshToken) {
+        cookieStore.set('hcore_refresh_web', data.refreshToken, sessionCookieOptions(60 * 60 * 24 * 30));
+      }
 
       // Cancel any unselected subscriptions automatically provisioned by HCORE
       const allPlatforms = ['HSMS', 'HCBT'];

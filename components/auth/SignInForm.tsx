@@ -161,7 +161,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Mail size={16} /> Staff
+            <Mail size={16} /> Staff / Admin
           </button>
           <button
             type="button"
@@ -172,7 +172,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Hash size={16} /> Student
+            <Hash size={16} /> Student / Candidate
           </button>
         </div>
       )}

@@ -38,13 +38,20 @@ export function proxy(request: NextRequest) {
   };
   // Protected pages accept any live session: the CBT console runs on HCBT's alone.
   const token = liveCookie('hcore_session') || liveCookie('hcbt_session') || liveCookie('accessToken');
+  // HCORE's access token lasts an hour, but the session behind it lasts thirty
+  // days and the browser can mint a new one from the refresh-token cookie. A
+  // page load that arrives after the hour is therefore still signed in: let it
+  // through, and the app refreshes on its first API call (or this route's own
+  // /api/session) instead of throwing the person back to the sign-in form
+  // mid-task.
+  const canRenewHcoreSession = Boolean(request.cookies.get('hcore_refresh_web')?.value);
   // Only an HCORE session counts as signed in on /signin: /welcome, where the
   // redirect below lands, requires one, so a leftover HCBT cookie (e.g. after a
   // logout that only reached HCORE) would bounce /signin <-> /welcome forever.
-  const hasHcoreSession = Boolean(liveCookie('hcore_session'));
+  const hasHcoreSession = Boolean(liveCookie('hcore_session')) || canRenewHcoreSession;
 
   // 1. If accessing a protected route without a token, redirect to login
-  if (isProtectedRoute && !token) {
+  if (isProtectedRoute && !token && !canRenewHcoreSession) {
     const url = new URL('/signin', request.url);
     // Add the original URL so we can redirect them back after login if needed
     url.searchParams.set('callbackUrl', request.nextUrl.pathname + request.nextUrl.search);
