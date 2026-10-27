@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { School, LogOut, ChevronDown, Search } from "lucide-react";
+import { LogOut, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**

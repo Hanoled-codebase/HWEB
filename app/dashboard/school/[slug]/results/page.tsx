@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  FileText,
   Loader2,
   Printer,
   RefreshCw,
@@ -32,7 +31,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Select,
