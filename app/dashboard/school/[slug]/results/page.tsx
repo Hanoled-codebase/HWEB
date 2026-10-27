@@ -6,22 +6,32 @@ import {
   AlertTriangle,
   BookOpen,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Download,
-  FileText,
   Loader2,
   Printer,
   RefreshCw,
   Search,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadReportCardPdf } from "@/lib/report-card-download";
 
-import ReportCardPrintModal from "@/components/results/ReportCardPrintModal";
+import ReportCardPrintModal, {
+  computeNigerianGrade,
+} from "@/components/results/ReportCardPrintModal";
 import { StudentAcademicRecord } from "@/components/dashboard/student-academic-record";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -351,6 +361,7 @@ export default function ResultsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [isDownloadingBatch, setIsDownloadingBatch] = useState(false);
+  const [isRosterOpen, setIsRosterOpen] = useState(false);
 
   const handleBatchExport = async () => {
     const targetClassId =
@@ -500,6 +511,33 @@ export default function ResultsPage() {
     [resultGroups, selectedStudentId],
   );
 
+  const currentIndex = useMemo(() => {
+    if (!selectedGroup) return -1;
+    return filteredResultGroups.findIndex(
+      (g) => g.student.id === selectedGroup.student.id
+    );
+  }, [filteredResultGroups, selectedGroup]);
+
+  const hasPrev = currentIndex > 0;
+  const hasNext =
+    currentIndex !== -1 && currentIndex < filteredResultGroups.length - 1;
+
+  const handlePrev = useCallback(() => {
+    if (hasPrev) {
+      setSelectedStudentId(filteredResultGroups[currentIndex - 1].student.id);
+      setShowAllMobileSubjects(false);
+      setSelectedSubject(null);
+    }
+  }, [hasPrev, filteredResultGroups, currentIndex]);
+
+  const handleNext = useCallback(() => {
+    if (hasNext) {
+      setSelectedStudentId(filteredResultGroups[currentIndex + 1].student.id);
+      setShowAllMobileSubjects(false);
+      setSelectedSubject(null);
+    }
+  }, [hasNext, filteredResultGroups, currentIndex]);
+
   const selectedNotifications = useMemo(() => {
     if (!selectedGroup) {
       return notifications;
@@ -615,8 +653,8 @@ export default function ResultsPage() {
           </div>
         ) : (
           <>
-            {/* Search and Class Level Filter Bar */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:gap-3 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-4 md:shadow-sm">
+            {/* Search and Class Level Filter Bar (Mobile only, Desktop uses Top-Docked Bar) */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:hidden">
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -804,98 +842,287 @@ export default function ResultsPage() {
               </section>
             )}
 
-            {resultGroups.length > 1 && (
-              <section className="hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 md:block">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Children
-                    </p>
-                    <h2 className="mt-1.5 text-base sm:text-xl font-bold text-slate-900">
-                      Choose a student record
-                    </h2>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600"
-                  >
-                    {filteredResultGroups.length} students
-                  </Badge>
-                </div>
-
-                <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  {filteredResultGroups.map((group) => {
-                    const isActive =
-                      group.student.id === selectedGroup?.student.id;
-
-                    return (
-                      <div key={group.student.id} className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudentId(group.student.id)}
-                          className={cn(
-                            "flex w-full items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-colors duration-150",
-                            isActive
-                              ? "border-slate-300 bg-slate-100"
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
-                          )}
+            {/* ── Top-Docked Student Control Bar (Option 2 - Zero Scroll) ── */}
+            {selectedGroup && (
+              <div className="hidden md:flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  {/* Left: Active Student Info with Quick Dropdown */}
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-base font-bold text-blue-700 shadow-sm border border-blue-100">
+                      {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={selectedGroup.student.id}
+                          onValueChange={(val) => {
+                            if (val) {
+                              setSelectedStudentId(String(val));
+                              setShowAllMobileSubjects(false);
+                              setSelectedSubject(null);
+                            }
+                          }}
                         >
-                          <div
-                            className={cn(
-                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                              isActive
-                                ? "bg-slate-800 text-white"
-                                : "bg-slate-100 text-slate-700",
-                            )}
-                          >
-                            {getInitials(
-                              `${group.student.firstName} ${group.student.lastName}`,
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900 capitalize">
-                              {group.student.firstName} {group.student.lastName}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-slate-500">
-                              {group.student.classLevel?.name ||
-                                "Unassigned class"}{" "}
-                              &middot; {group.results.length} subjects
-                            </p>
-                          </div>
-                        </button>
-                        {currentOrg?.slug && (
-                          <div className="absolute right-2 top-2 flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setPrintModalGroup(group)}
-                              className="rounded-md p-1.5 text-slate-400 hover:text-[#1447E6] hover:bg-blue-50 transition-colors"
-                              title="Print & Preview Report Card"
-                            >
-                              <Printer className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void downloadReportCardPdf({
-                                  orgSlug: currentOrg.slug,
-                                  studentId: group.student.id,
-                                  studentName: `${group.student.firstName} ${group.student.lastName}`,
-                                  term: exportTerm,
-                                  academicYear: exportYear,
-                                })
-                              }
-                              className="rounded-md p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              title="Download Report Card PDF"
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+                          <SelectTrigger className="h-9 border-none p-0 text-xl font-bold text-slate-900 shadow-none hover:text-blue-600 focus:ring-0 capitalize">
+                            <span className="truncate max-w-[280px]">
+                              {selectedGroup.student.firstName} {selectedGroup.student.lastName}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {filteredResultGroups.map((group) => (
+                              <SelectItem key={group.student.id} value={group.student.id} className="capitalize">
+                                {group.student.firstName} {group.student.lastName}
+                                {group.student.classLevel?.name ? ` · ${group.student.classLevel.name}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    );
-                  })}
+                      <p className="text-xs text-slate-500 flex items-center gap-2">
+                        <span>{selectedGroup.student.classLevel?.name || "Unassigned class"}</span>
+                        <span>&middot;</span>
+                        <span>{getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}</span>
+                        <span>&middot;</span>
+                        <span className="font-semibold text-slate-700">{selectedGroup.results.length} subjects</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Center: Stepper (Prev / Next Student) */}
+                  {filteredResultGroups.length > 1 && (
+                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!hasPrev}
+                        onClick={handlePrev}
+                        className="h-8 gap-1 rounded-xl px-3 text-xs font-semibold text-slate-700 hover:bg-white hover:shadow-xs disabled:opacity-40"
+                        title="Previous student"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Prev</span>
+                      </Button>
+                      <span className="px-2.5 text-xs font-medium text-slate-500 tabular-nums">
+                        <span className="font-bold text-slate-900">{currentIndex + 1}</span> of {filteredResultGroups.length}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!hasNext}
+                        onClick={handleNext}
+                        className="h-8 gap-1 rounded-xl px-3 text-xs font-semibold text-slate-700 hover:bg-white hover:shadow-xs disabled:opacity-40"
+                        title="Next student"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Right: Quick Actions (Print / PDF) & Browse Roster Button */}
+                  <div className="flex items-center gap-2">
+                    {/* Browse Full Roster Sheet */}
+                    {resultGroups.length > 1 && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsRosterOpen(true)}
+                          className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+                        >
+                          <Users className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Browse Roster</span>
+                          <Badge variant="secondary" className="ml-0.5 h-5 rounded-full px-1.5 text-[10px] font-bold">
+                            {filteredResultGroups.length}
+                          </Badge>
+                        </Button>
+                        <Sheet open={isRosterOpen} onOpenChange={setIsRosterOpen}>
+                          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col h-full bg-white">
+                            <SheetHeader className="p-6 border-b border-slate-100 pb-4">
+                              <SheetTitle className="text-lg font-bold text-slate-900">
+                                Student Roster ({filteredResultGroups.length})
+                              </SheetTitle>
+                              <SheetDescription className="text-xs text-slate-500">
+                                Select a student to view their published academic record.
+                              </SheetDescription>
+                              <div className="mt-3 relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                  type="search"
+                                  placeholder="Search roster..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  className="h-9 pl-9 text-xs"
+                                />
+                              </div>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                              {filteredResultGroups.map((group) => {
+                                const isCurrent = group.student.id === selectedGroup?.student.id;
+                                return (
+                                  <div
+                                    key={group.student.id}
+                                    className={cn(
+                                      "group relative flex items-center justify-between gap-3 rounded-2xl border p-3 text-left transition-all",
+                                      isCurrent
+                                        ? "border-blue-300 bg-blue-50/60 shadow-xs"
+                                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedStudentId(group.student.id);
+                                        setIsRosterOpen(false);
+                                      }}
+                                      className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                                    >
+                                      <div
+                                        className={cn(
+                                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                                          isCurrent
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-slate-100 text-slate-700"
+                                        )}
+                                      >
+                                        {getInitials(`${group.student.firstName} ${group.student.lastName}`)}
+                                      </div>
+                                      <div className="min-w-0 flex-1 pr-2">
+                                        <p className="truncate text-sm font-semibold capitalize text-slate-900">
+                                          {group.student.firstName} {group.student.lastName}
+                                        </p>
+                                        <p className="truncate text-xs text-slate-500">
+                                          {group.student.classLevel?.name || "Unassigned"} &middot; {group.results.length} subjects
+                                        </p>
+                                      </div>
+                                    </button>
+                                    {currentOrg?.slug && (
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPrintModalGroup(group)}
+                                          className="rounded-lg p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                          title="Print Report Card"
+                                        >
+                                          <Printer className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void downloadReportCardPdf({
+                                              orgSlug: currentOrg.slug,
+                                              studentId: group.student.id,
+                                              studentName: `${group.student.firstName} ${group.student.lastName}`,
+                                              term: exportTerm,
+                                              academicYear: exportYear,
+                                            })
+                                          }
+                                          className="rounded-lg p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                          title="Download PDF"
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </SheetContent>
+                        </Sheet>
+                      </>
+                    )}
+
+                    {/* Print and Download for Active Student */}
+                    {currentOrg?.slug && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setPrintModalGroup(selectedGroup)}
+                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 shadow-xs"
+                          title="Print or preview report card"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          <span>Print Report</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            void downloadReportCardPdf({
+                              orgSlug: currentOrg.slug,
+                              studentId: selectedGroup.student.id,
+                              studentName: `${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`,
+                              term: exportTerm,
+                              academicYear: exportYear,
+                            })
+                          }
+                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50/50 shadow-xs"
+                          title="Download PDF"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span>PDF</span>
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </section>
+
+                {/* Bottom Row of Bar: Search and Class Filter */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="search"
+                      placeholder="Search students by name or admission no..."
+                      aria-label="Search students"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-9 bg-slate-50/60 pl-9 text-xs"
+                    />
+                  </div>
+                  {availableClassOptions.length > 0 && (
+                    <div className="w-48">
+                      <Select
+                        value={selectedClassId}
+                        onValueChange={(val) => setSelectedClassId(String(val ?? "all"))}
+                      >
+                        <SelectTrigger className="h-9 text-xs bg-slate-50/60 border-slate-200">
+                          <SelectValue placeholder="All Class Levels" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Class Levels</SelectItem>
+                          {availableClassOptions.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Desktop Academic Record - Renders immediately at top of page! Zero scrolling! */}
+            {selectedGroup && (
+              <div className="hidden md:block">
+                <StudentAcademicRecord
+                  titlesPage={false}
+                  student={
+                    selectedGroup.student as StudentPerformanceResponse["student"]
+                  }
+                  subjects={performanceSubjects}
+                  description="A visual summary of the published subject performance for this student, including assessment progress and recorded scores."
+                  actionLabel="View Academic Record"
+                  emptyTitle="No subject records available"
+                  emptyDescription="The school has not published any subject spreadsheets for this student yet."
+                />
+              </div>
             )}
 
             {selectedNotifications.length > 0 && (
@@ -968,22 +1195,6 @@ export default function ResultsPage() {
               </section>
             )}
 
-            {selectedGroup && (
-              <div className="hidden md:block">
-                <StudentAcademicRecord
-                  titlesPage={false}
-                  student={
-                    selectedGroup.student as StudentPerformanceResponse["student"]
-                  }
-                  subjects={performanceSubjects}
-                  description="A visual summary of the published subject performance for this student, including assessment progress and recorded scores."
-                  actionLabel="View Academic Record"
-                  emptyTitle="No subject records available"
-                  emptyDescription="The school has not published any subject spreadsheets for this student yet."
-                />
-              </div>
-            )}
-
             {printModalGroup && currentOrg?.slug && (
               <ReportCardPrintModal
                 orgSlug={currentOrg.slug}
@@ -993,38 +1204,109 @@ export default function ResultsPage() {
                 student={printModalGroup.student}
                 term={exportTerm}
                 academicYear={exportYear}
+                classStudentCount={
+                  resultGroups.filter(
+                    (g) =>
+                      g.student.classLevel?.id ===
+                      printModalGroup.student.classLevel?.id
+                  ).length || 17
+                }
                 results={printModalGroup.results.map((r) => {
                   const total = r.values.reduce<number>(
                     (sum, val) => sum + (toNumericValue(val) ?? 0),
                     0
                   );
                   const rounded = Math.round(total);
-                  const grade =
-                    rounded >= 70
-                      ? "A"
-                      : rounded >= 60
-                      ? "B"
-                      : rounded >= 50
-                      ? "C"
-                      : rounded >= 40
-                      ? "D"
-                      : "F";
-                  const remark =
-                    rounded >= 70
-                      ? "Excellent"
-                      : rounded >= 60
-                      ? "Very Good"
-                      : rounded >= 50
-                      ? "Good"
-                      : rounded >= 40
-                      ? "Fair"
-                      : "Needs Improvement";
+                  const gradeObj = computeNigerianGrade(rounded);
+
+                  const assessmentsList = r.assessments?.length
+                    ? r.assessments
+                    : r.columns.map((c) => ({ name: c, total: undefined }));
+
+                  let classExercises: number | string | null = null;
+                  let assignments: number | string | null = null;
+                  let periodicTests: number | string | null = null;
+                  let examScore: number | string | null = null;
+
+                  assessmentsList.forEach((a, idx) => {
+                    const val = r.values[idx];
+                    const numVal = toNumericValue(val);
+                    const name = (a.name || "").toLowerCase();
+
+                    if (
+                      name.includes("exercise") ||
+                      name.includes("ca 1") ||
+                      name.includes("first ca") ||
+                      name.includes("cw")
+                    ) {
+                      classExercises = numVal ?? val;
+                    } else if (
+                      name.includes("assign") ||
+                      name.includes("homework") ||
+                      name.includes("ca 2") ||
+                      name.includes("hw")
+                    ) {
+                      assignments = numVal ?? val;
+                    } else if (
+                      name.includes("test") ||
+                      name.includes("ca 3") ||
+                      name.includes("periodic")
+                    ) {
+                      periodicTests = numVal ?? val;
+                    } else if (name.includes("exam")) {
+                      examScore = numVal ?? val;
+                    } else if (idx === 0 && classExercises === null) {
+                      classExercises = numVal ?? val;
+                    } else if (idx === 1 && assignments === null) {
+                      assignments = numVal ?? val;
+                    } else if (idx === 2 && periodicTests === null) {
+                      periodicTests = numVal ?? val;
+                    } else if (idx === 3 && examScore === null) {
+                      examScore = numVal ?? val;
+                    }
+                  });
+
+                  const classScoresForSubject = resultGroups
+                    .filter(
+                      (g) =>
+                        g.student.classLevel?.id ===
+                        printModalGroup.student.classLevel?.id
+                    )
+                    .map((g) => {
+                      const match = g.results.find(
+                        (res) =>
+                          res.id === r.id ||
+                          res.title === r.title ||
+                          res.subject?.name === r.subject?.name
+                      );
+                      if (!match) return null;
+                      return match.values.reduce<number>(
+                        (s, v) => s + (toNumericValue(v) ?? 0),
+                        0
+                      );
+                    })
+                    .filter((s): s is number => s !== null);
+
+                  const highestScore =
+                    classScoresForSubject.length > 0
+                      ? Math.round(Math.max(...classScoresForSubject))
+                      : 100;
+                  const lowestScore =
+                    classScoresForSubject.length > 0
+                      ? Math.round(Math.min(...classScoresForSubject))
+                      : 0;
+
                   return {
                     subject: r.subject?.name || r.title || "Subject",
                     score: rounded,
                     maxScore: 100,
-                    grade,
-                    remark,
+                    grade: gradeObj.grade,
+                    classExercises,
+                    assignments,
+                    periodicTests,
+                    examScore,
+                    highestScore,
+                    lowestScore,
                   };
                 })}
                 onClose={() => setPrintModalGroup(null)}

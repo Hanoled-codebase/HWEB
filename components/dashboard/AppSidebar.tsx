@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { School, LogOut, ChevronDown, Search } from "lucide-react";
+import { LogOut, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -267,17 +267,7 @@ export function AppSidebar({
               <DropdownMenuSeparator />
             </>
           )}
-          <DropdownMenuItem
-            render={
-              <Link href="/onboarding" className="flex w-full items-center gap-3 py-1 text-blue-600">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-200 bg-blue-50">
-                  <School className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm font-medium">Create new school</span>
-              </Link>
-            }
-          />
-          <DropdownMenuSeparator />
+
           <div className="px-2 py-2">
             <div className="flex items-center gap-3 rounded-lg px-2 py-2">
               <Avatar className="h-8 w-8 rounded-full">
