@@ -338,7 +338,7 @@ export default function TeacherDetailPage() {
                     setTeacher({ ...teacher, role: newRole as any });
                     toast.success(`Role updated to ${newRole}`);
                   } catch (error) {
-                    toast.error("Failed to update role");
+                    toast.error(error instanceof Error ? error.message : "Failed to update role");
                   }
                 }}
               >

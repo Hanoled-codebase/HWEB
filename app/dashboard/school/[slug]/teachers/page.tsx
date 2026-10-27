@@ -99,7 +99,10 @@ type TeacherMember = {
 /** What this person does at the school, instead of the raw membership role ("member"). */
 function staffRoleLabel(teacher: TeacherMember) {
   if (teacher.role === "owner") return "School owner";
-  if (teacher.role === "admin") return "School admin";
+  if (teacher.role === "admin") {
+    if ((teacher.teachingAssignments?.length ?? 0) > 0) return "School admin • Subject teacher";
+    return "School admin";
+  }
   if ((teacher.assignedClasses?.length ?? 0) > 0) return "Form teacher";
   if ((teacher.teachingAssignments?.length ?? 0) > 0) return "Subject teacher";
   return "Staff";

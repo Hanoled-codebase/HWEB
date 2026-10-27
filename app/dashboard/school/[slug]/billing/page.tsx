@@ -166,7 +166,7 @@ export default function BillingPage() {
           </CardContent>
           <CardFooter className="flex flex-col items-stretch gap-3 border-t border-slate-100 bg-slate-50/30 p-4 md:flex-row md:items-center md:justify-between md:px-6">
              <p className="text-sm text-slate-500 font-medium">
-               Estimated: <span className="text-slate-900">₦{currentPlan === "Growth" ? (studentCount * 3000).toLocaleString() : "0"}</span> / term
+               Estimated: <span className="text-slate-900">₦{currentPlan === "Growth" ? (studentCount * 500).toLocaleString() : "0"}</span> / term
              </p>
              <div className="flex flex-col gap-3 min-[420px]:flex-row sm:justify-end">
                <Button variant="outline" size="sm" className="w-full min-[420px]:w-auto">Modify Plan</Button>
@@ -196,7 +196,7 @@ export default function BillingPage() {
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="font-medium text-slate-700">Growth</span>
-                <span className="text-slate-900 font-semibold">₦3,000 / student</span>
+                <span className="text-slate-900 font-semibold">₦500 / student</span>
               </div>
             </div>
             <Separator className="bg-blue-100/50" />

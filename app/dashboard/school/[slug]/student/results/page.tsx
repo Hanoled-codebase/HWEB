@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText, BarChart3, Printer } from "lucide-react";
-import ReportCardPrintModal from "@/components/results/ReportCardPrintModal";
+import ReportCardPrintModal, {
+  computeNigerianGrade,
+} from "@/components/results/ReportCardPrintModal";
 
 type SubjectResult = {
   spreadsheetId: string;
@@ -234,15 +236,63 @@ export default function StudentResultsPage() {
         <ReportCardPrintModal
           orgSlug={slug}
           student={data.student}
-          term="Term 1"
-          academicYear="2026/2027"
-          results={data.subjects.map((sub) => ({
-            subject: sub.subject.name,
-            score: Math.round(sub.totalScore || 0),
-            maxScore: 100,
-            grade: sub.totalScore >= 70 ? "A" : sub.totalScore >= 60 ? "B" : sub.totalScore >= 50 ? "C" : sub.totalScore >= 40 ? "D" : "F",
-            remark: sub.totalScore >= 70 ? "Excellent" : sub.totalScore >= 60 ? "Very Good" : sub.totalScore >= 50 ? "Good" : sub.totalScore >= 40 ? "Fair" : "Needs Improvement",
-          }))}
+          term="1st Mid-Term"
+          academicYear="2025/2026"
+          results={data.subjects.map((sub) => {
+            const score = Math.round(sub.totalScore || 0);
+            const gradeObj = computeNigerianGrade(score);
+
+            let classExercises: number | string | null = null;
+            let assignments: number | string | null = null;
+            let periodicTests: number | string | null = null;
+            let examScore: number | string | null = null;
+
+            (sub.assessments || []).forEach((a, idx) => {
+              const name = (a.name || "").toLowerCase();
+              if (
+                name.includes("exercise") ||
+                name.includes("ca 1") ||
+                name.includes("first ca") ||
+                name.includes("cw")
+              ) {
+                classExercises = a.score;
+              } else if (
+                name.includes("assign") ||
+                name.includes("homework") ||
+                name.includes("ca 2") ||
+                name.includes("hw")
+              ) {
+                assignments = a.score;
+              } else if (
+                name.includes("test") ||
+                name.includes("ca 3") ||
+                name.includes("periodic")
+              ) {
+                periodicTests = a.score;
+              } else if (name.includes("exam")) {
+                examScore = a.score;
+              } else if (idx === 0 && classExercises === null) {
+                classExercises = a.score;
+              } else if (idx === 1 && assignments === null) {
+                assignments = a.score;
+              } else if (idx === 2 && periodicTests === null) {
+                periodicTests = a.score;
+              } else if (idx === 3 && examScore === null) {
+                examScore = a.score;
+              }
+            });
+
+            return {
+              subject: sub.subject.name,
+              score,
+              maxScore: 100,
+              grade: gradeObj.grade,
+              classExercises,
+              assignments,
+              periodicTests,
+              examScore,
+            };
+          })}
           onClose={() => setShowPrintModal(false)}
         />
       )}
