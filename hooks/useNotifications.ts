@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { localDay } from "@/lib/attendance";
 
 export type NotificationItem = {
   id: string;
@@ -15,26 +16,53 @@ export type NotificationItem = {
   expectedTotal?: number;
   percentage?: number;
   createdAt: string;
+  /** Page that fixes or explains this item; null when there is nowhere to go. */
+  href?: string | null;
+};
+
+/**
+ * A job that is still open, derived on the server on every read: an unmarked
+ * register, an invite nobody accepted. Unlike a notification there is nothing
+ * to "read" — it stays until the work is done and then disappears.
+ */
+export type AttentionItem = {
+  id: string;
+  kind: "attendance" | "invites" | "admissions" | string;
+  type: string;
+  title: string;
+  message: string;
+  href: string;
+  createdAt: string;
+  count: number;
 };
 
 type NotificationResponse = {
   notifications: NotificationItem[];
   unreadCount: number;
+  attention?: AttentionItem[];
+  attentionCount?: number;
 };
 
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [attention, setAttention] = useState<AttentionItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await apiFetch<NotificationResponse>("/notifications");
+      // "Today" is the reader's day, not the server's — a school in UTC+1
+      // should not be told yesterday's register is still open at 00:30.
+      const data = await apiFetch<NotificationResponse>(
+        `/notifications?date=${localDay()}`,
+        { showErrorToast: false },
+      );
       if (data && Array.isArray(data.notifications)) {
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount || 0);
+        setAttention(Array.isArray(data.attention) ? data.attention : []);
       }
     } catch {
       // ignore unauthenticated or network errors gracefully
@@ -74,28 +102,15 @@ export function useNotifications() {
     }
   };
 
-  const seedSampleNotifications = async () => {
-    try {
-      setLoading(true);
-      const data = await apiFetch<NotificationResponse>("/notifications/seed-sample", { method: "POST" });
-      if (data && Array.isArray(data.notifications)) {
-        setNotifications(data.notifications);
-        setUnreadCount(data.unreadCount || 0);
-      }
-    } catch {
-      /* ignore */
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return {
     notifications,
+    attention,
     unreadCount,
+    /** What the bell badge counts: unread confirmations plus open jobs. */
+    badgeCount: unreadCount + attention.length,
     loading,
     refresh: fetchNotifications,
     markAsRead,
     markAllAsRead,
-    seedSampleNotifications,
   };
 }

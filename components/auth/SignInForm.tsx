@@ -155,24 +155,24 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
           <button
             type="button"
             onClick={() => setTab('EMAIL')}
-            className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer pointer-coarse:min-h-11 ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
               tab === 'EMAIL'
-                ? 'bg-white text-blue-600 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Mail size={15} /> Staff / Admin
+            <Mail size={16} /> Staff
           </button>
           <button
             type="button"
             onClick={() => setTab('ADMISSION_NUMBER')}
-            className={`flex items-center justify-center gap-2 py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all cursor-pointer pointer-coarse:min-h-11 ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
               tab === 'ADMISSION_NUMBER'
-                ? 'bg-white text-blue-600 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Hash size={15} /> Student / Candidate
+            <Hash size={16} /> Student
           </button>
         </div>
       )}
@@ -227,7 +227,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                     setSelectedSchool(null);
                     setIsSchoolPickerOpen(true);
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-bold px-2 py-1 bg-white rounded-md border border-blue-200 shrink-0 cursor-pointer"
+                  className="min-h-11 shrink-0 cursor-pointer rounded-lg border border-blue-200 bg-white px-3 text-xs font-bold text-blue-700 hover:bg-blue-50"
                 >
                   Change
                 </button>
@@ -237,9 +237,9 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                 <button
                   type="button"
                   onClick={() => setIsSchoolPickerOpen(!isSchoolPickerOpen)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-left flex items-center justify-between hover:bg-slate-100/70 transition cursor-pointer"
+                  className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 cursor-pointer"
                 >
-                  <div className="flex items-center space-x-2 text-slate-600 text-xs">
+                  <div className="flex items-center space-x-2 text-slate-600 text-sm">
                     <Building2 className="w-4 h-4 text-slate-400" />
                     <span>Select your school from list...</span>
                   </div>
@@ -249,20 +249,20 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                 {isSchoolPickerOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-2 space-y-2 animate-fade-in">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         autoFocus
                         value={schoolSearchQuery}
                         onChange={(e) => setSchoolSearchQuery(e.target.value)}
                         placeholder="Search school by name or slug..."
-                        className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-600 md:text-sm"
                       />
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
                       {filteredSchools.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-slate-400">
+                        <div className="p-3 text-center text-sm text-slate-500">
                           {schoolSearchQuery ? (
                             <div>
                               <p>No registered school matches &quot;{schoolSearchQuery}&quot;.</p>
@@ -272,14 +272,14 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                                   setSelectedSchool({ id: schoolSearchQuery, name: schoolSearchQuery, slug: schoolSearchQuery });
                                   setIsSchoolPickerOpen(false);
                                 }}
-                                className="mt-1.5 text-blue-600 font-bold hover:underline"
+                                className="mt-1.5 min-h-11 text-blue-700 font-bold hover:underline"
                               >
                                 Use &quot;{schoolSearchQuery}&quot; as custom code
                               </button>
                             </div>
                           ) : loadingSchools ? (
-                            <div className="flex items-center justify-center gap-1.5 py-2 text-slate-500">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <div className="flex items-center justify-center gap-1.5 py-2 text-slate-600">
+                              <Loader2 className="w-4 h-4 animate-spin" />
                               <span>Loading registered schools...</span>
                             </div>
                           ) : (
@@ -292,13 +292,13 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
                             key={s.id || s.slug}
                             type="button"
                             onClick={() => handleSelectSchool(s)}
-                            className="w-full text-left p-2.5 hover:bg-blue-50 rounded-lg flex items-center justify-between transition cursor-pointer"
+                            className="group flex min-h-11 w-full items-center justify-between rounded-lg p-3 text-left transition hover:bg-blue-50"
                           >
                             <div>
-                              <div className="text-xs font-bold text-slate-800">{s.name}</div>
-                              <div className="text-[10px] text-slate-400 font-mono">{s.slug}</div>
+                              <div className="text-sm font-bold text-slate-800">{s.name}</div>
+                              <div className="text-xs text-slate-500 font-mono">{s.slug}</div>
                             </div>
-                            <Check className="w-3.5 h-3.5 text-blue-600 opacity-0 group-hover:opacity-100" />
+                            <Check className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100" />
                           </button>
                         ))
                       )}
@@ -319,7 +319,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
             type={tab === 'EMAIL' ? 'email' : 'text'}
             name="identifier"
             autoComplete={tab === 'EMAIL' ? 'email' : 'off'}
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all font-medium"
+            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-base text-slate-900 placeholder-slate-500 outline-none transition-all font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
             placeholder={tab === 'EMAIL' ? 'staff@school.edu' : 'e.g. GW/2026/001'}
             required
           />
@@ -342,7 +342,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
               type={showPassword ? "text" : "password"}
               name="password"
               autoComplete="current-password"
-              className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 pr-12 text-base text-slate-900 placeholder-slate-500 outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
               placeholder="••••••••"
               required
             />
@@ -350,7 +350,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -360,7 +360,7 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
         <button
           type="submit"
           disabled={pending || (tab === 'ADMISSION_NUMBER' && !selectedSchool && !queryOrgSlug && !schoolSearchQuery)}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 mt-3 cursor-pointer shadow-sm text-xs sm:text-sm"
+          className="mt-3 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-700 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50"
         >
           {pending ? (
             <>
@@ -380,19 +380,19 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
           New school or organization?{' '}
           <Link
             href="/contact"
-            className="text-blue-600 font-bold hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+            className="text-blue-700 font-bold hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
           >
             Contact Support
           </Link>
         </p>
         {audience === 'all' && (
-          <p className="text-xs text-slate-500 mt-2">
-            Straight to your entrance:{' '}
-            <Link href="/signin/staff" className="text-blue-600 font-bold hover:underline">Staff</Link>
-            {' · '}
-            <Link href="/signin/parent" className="text-blue-600 font-bold hover:underline">Parent</Link>
-            {' · '}
-            <Link href="/signin/student" className="text-blue-600 font-bold hover:underline">Student</Link>
+          <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-xs text-slate-500">
+            Straight to your entrance:
+            <Link href="/signin/staff" className="inline-flex min-h-11 items-center px-1 text-blue-700 font-bold hover:underline">Staff</Link>
+            <span aria-hidden="true">·</span>
+            <Link href="/signin/parent" className="inline-flex min-h-11 items-center px-1 text-blue-700 font-bold hover:underline">Parent</Link>
+            <span aria-hidden="true">·</span>
+            <Link href="/signin/student" className="inline-flex min-h-11 items-center px-1 text-blue-700 font-bold hover:underline">Student</Link>
           </p>
         )}
       </div>
@@ -401,19 +401,30 @@ export default function SignInForm({ audience = 'all' }: { audience?: SignInAudi
 }
 
 const cardClass =
-  'w-full max-w-md p-8 sm:p-10 bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/80 relative z-10';
+  'w-full max-w-md rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] sm:rounded-[2rem] sm:p-10 relative z-10';
 
-/** Shared page frame for every sign-in route (decorative background + Suspense). */
+/**
+ * Shared page frame for every auth route (decorative background + Suspense).
+ *
+ * The frame is deliberately not `overflow-hidden`: on a short phone the card
+ * is taller than the viewport, and clipping the page hid the top of the form
+ * (and the bottom once the keyboard opened). The decoration is clipped in its
+ * own layer instead, and the page keeps scrolling.
+ */
 export function SignInShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 relative overflow-hidden">
+    <div className="relative min-h-dvh overflow-x-clip bg-slate-50">
       {/* Decorative Background Elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none" />
-      <div className="absolute top-1/4 -right-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-2000" />
-      <div className="absolute -bottom-40 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob pointer-events-none animation-delay-4000" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
+        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-blue-300 opacity-30 mix-blend-multiply blur-[100px] animate-blob" />
+        <div className="absolute top-1/4 -right-20 h-80 w-80 rounded-full bg-blue-500 opacity-30 mix-blend-multiply blur-[100px] animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-40 left-1/4 h-96 w-96 rounded-full bg-blue-400 opacity-30 mix-blend-multiply blur-[100px] animate-blob animation-delay-4000" />
+      </div>
 
-      {children}
+      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:p-6">
+        {children}
+      </div>
     </div>
   );
 }

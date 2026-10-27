@@ -25,6 +25,8 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { HanoledLogo } from "@/components/ui/HanoledLogo";
+import { SignInShell } from "@/components/auth/SignInForm";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 const formSchema = z.object({
@@ -87,8 +89,11 @@ function ResetForm() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200 m-rise">
-      <CardHeader className="space-y-1">
+    <Card className="m-rise w-full max-w-md border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+      <CardHeader className="space-y-2 pt-8">
+        <div className="mb-1 flex justify-center">
+          <HanoledLogo size="lg" variant="blue" iconOnly />
+        </div>
         <h1 className="text-2xl font-semibold text-center text-slate-900">Reset your password</h1>
         <CardDescription className="text-center text-slate-500">
           Enter the 6-digit code sent to your email and your new password.
@@ -120,12 +125,9 @@ function ResetForm() {
                   <FormControl>
                     <InputOTP maxLength={6} {...field} aria-label="6-digit reset code">
                       <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                          <InputOTPSlot key={index} index={index} className="size-11 text-base sm:size-9 sm:text-sm" />
+                        ))}
                       </InputOTPGroup>
                     </InputOTP>
                   </FormControl>
@@ -146,14 +148,14 @@ function ResetForm() {
                         placeholder="••••••••"
                         type={showPassword ? "text" : "password"}
                         autoComplete="new-password"
-                        className="pr-10"
+                        className="pr-12"
                         {...field}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+                        className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -164,7 +166,7 @@ function ResetForm() {
               )}
             />
             
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading || !email}>
+            <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800" disabled={isLoading || !email}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Reset Password
             </Button>
@@ -173,7 +175,7 @@ function ResetForm() {
 
         <div className="mt-6 text-center text-sm text-slate-500">
           Return to{" "}
-          <Link href="/signin" className="font-semibold text-blue-600 hover:text-blue-500">
+          <Link href="/signin" className="font-semibold text-blue-700 hover:text-blue-600">
             Sign in
           </Link>
         </div>
@@ -184,12 +186,14 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <Card className="shadow-lg border-slate-200 p-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </Card>
-    }>
-      <ResetForm />
-    </Suspense>
+    <SignInShell>
+      <Suspense fallback={
+        <Card className="flex w-full max-w-md justify-center border-slate-200/80 p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
+        </Card>
+      }>
+        <ResetForm />
+      </Suspense>
+    </SignInShell>
   );
 }

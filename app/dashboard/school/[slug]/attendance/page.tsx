@@ -106,7 +106,7 @@ function StaffAttendance() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-28 md:pb-10">
-      <header>
+      <header className="hidden md:block">
         <h1 className="hidden text-2xl font-bold tracking-tight text-slate-900 md:block">Attendance</h1>
         <p className="max-w-2xl text-sm text-slate-600 md:mt-1 md:text-slate-500">{roleLine(data)}</p>
       </header>
@@ -125,7 +125,7 @@ function StaffAttendance() {
               aria-pressed={mode === option.key}
               onClick={() => setMode(option.key)}
               className={cn(
-                "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-150",
+                "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
                 mode === option.key
                   ? "bg-white text-blue-700 shadow-[0_1px_2px_rgba(11,18,32,0.08),0_2px_6px_-2px_rgba(11,18,32,0.12)]"
                   : "text-slate-600 hover:text-slate-900",
@@ -204,7 +204,11 @@ function RegisterView({
   onDate: (date: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const [classId, setClassId] = useState(data.register[0]?.classLevelId ?? "");
+  // Admins open on a class that actually has learners; landing on an empty
+  // first class made the page look broken while 60 students sat in another.
+  const [classId, setClassId] = useState(
+    data.register.find((item) => item.students > 0)?.classLevelId ?? data.register[0]?.classLevelId ?? "",
+  );
   const current = data.register.find((item) => item.classLevelId === classId) ?? data.register[0];
   const register = useQuery({
     ...attendanceQueries.register(slug, current.classLevelId, date),
@@ -292,7 +296,12 @@ function RegisterView({
         ) : (
           <div className="flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-50 px-3 text-sm font-semibold text-blue-800">
             <ClipboardCheck className="h-4 w-4 shrink-0" />
-            {data.canTakeAnyRegister ? "Class" : "Your class"}: {current.className}
+            <span className="min-w-0 truncate">
+              {data.canTakeAnyRegister ? "Class" : "Your class"}: {current.className}
+            </span>
+            <span className="ml-auto shrink-0 text-xs font-medium text-blue-700/80">
+              {current.students} {current.students === 1 ? "student" : "students"}
+            </span>
           </div>
         )}
         <DateField value={date} onChange={onDate} />
@@ -315,7 +324,7 @@ function RegisterView({
           <button
             type="button"
             onClick={() => setMarks(Object.fromEntries(students.map((student) => [student.id, "present" as const])))}
-            className="-mx-2 min-h-11 rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+            className="-mx-2 min-h-11 rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
           >
             Mark everyone present
           </button>
@@ -380,7 +389,7 @@ function RegisterView({
                         aria-checked={on}
                         onClick={() => setMarks((prev) => ({ ...prev, [student.id]: option }))}
                         className={cn(
-                          "min-h-[44px] rounded-lg border text-xs font-semibold transition-colors duration-100 sm:pointer-fine:min-h-[36px]",
+                          "min-h-[44px] rounded-lg border text-xs font-semibold transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:pointer-fine:min-h-[36px]",
                           on ? STATUS_META[option].on : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                         )}
                       >
@@ -471,7 +480,7 @@ function SubjectsView({
               aria-pressed={on}
               onClick={() => setSlotKey(key)}
               className={cn(
-                "min-h-[40px] shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors",
+                "min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
                 on ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
               )}
             >
@@ -507,12 +516,25 @@ function SubjectsView({
         <DataStateCard variant={isForbiddenError(view.error) ? "forbidden" : "error"} />
       ) : (
         <>
-          <p className="text-sm text-slate-600">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+            <p className="text-sm font-semibold text-slate-900">
+              {result.students.length} {result.students.length === 1 ? "student" : "students"}
+            </p>
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-1 text-xs font-semibold",
+                result.registerTaken
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-slate-100 text-slate-600",
+              )}
+            >
+              {result.registerTaken ? "Register taken" : "Register not taken"}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
             {result.offeringFrom === "sheet"
-              ? `${result.students.length} students on your ${result.subject.name} grade sheet`
-              : `All ${result.students.length} students in ${result.classLevel.name} (no ${result.subject.name} grade sheet yet)`}
-            {" · "}
-            {result.registerTaken ? `register taken for ${dayLabel(date).toLowerCase()}` : `register not taken for ${dayLabel(date).toLowerCase()} yet`}
+              ? `From your ${result.subject.name} grade sheet for ${result.classLevel.name}.`
+              : `${result.classLevel.name} is showing in full because ${result.subject.name} has no grade sheet yet.`}
           </p>
           {result.students.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
@@ -545,7 +567,9 @@ function SubjectsView({
                         {STATUS_META[student.status].label}
                       </span>
                     ) : (
-                      <span className="text-xs font-medium text-slate-500">Not marked</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        Not marked
+                      </span>
                     )}
                   </li>
                 );
