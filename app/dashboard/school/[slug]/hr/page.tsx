@@ -638,7 +638,9 @@ export default function HRPage() {
   }
 
   async function reloadProfiles(slug: string) {
-    setProfiles(await apiFetch<TeacherProfile[]>(`/hr/${slug}/teachers`));
+    const next = await apiFetch<TeacherProfile[]>(`/hr/${slug}/teachers`);
+    setProfiles(next);
+    return next;
   }
 
   async function onCreateAssignment() {
@@ -702,14 +704,39 @@ export default function HRPage() {
         await staffAccessApi.setRole(currentOrg.id, affiliationId, assignment.type, false);
         await staffAccessApi.refreshProjection(currentOrg.slug, affiliationId);
       } else {
-        // A row HCORE can't hold (its class isn't in the directory) is simply
-        // left out; the refresh then ends it here too.
         const removed = toHcoreTeaching(assignment, ids);
-        await editTeaching(currentOrg, profile, (current) => {
-          if (removed) current.delete(teachingKey(removed));
-        });
+        if (removed) {
+          await editTeaching(currentOrg, profile, (current) => {
+            current.delete(teachingKey(removed));
+          });
+        } else {
+          // HCORE can't hold this row because its class or subject isn't in the
+          // directory. It will therefore never drop it, and the next projection
+          // keeps restoring it — which is how a "removed" assignment came back
+          // on refresh. End it in Hanoled's own copy instead.
+          await apiFetch(`/subjects/${currentOrg.slug}/assignments/${assignment.id}`, {
+            method: "DELETE",
+            showErrorToast: false,
+          });
+        }
       }
-      await reloadProfiles(currentOrg.slug);
+      const after = await reloadProfiles(currentOrg.slug);
+      // Never report success for a row that is still there. Previously this
+      // toasted "Assignment removed" even when nothing had changed, and the row
+      // reappeared on the next refresh.
+      const sameRow = (a: MemberAssignmentItem) =>
+        a.type === assignment.type
+        && (a.classLevel?.id || null) === (assignment.classLevel?.id || null)
+        && (a.subject?.id || null) === (assignment.subject?.id || null)
+        && (a.department?.id || null) === (assignment.department?.id || null);
+      const stillAssigned = after
+        .find((p) => p.memberId === profile.memberId)
+        ?.member.memberAssignments?.some(sameRow);
+      if (stillAssigned) {
+        throw new Error(
+          "That assignment is still on the school directory, so it wasn't removed. Try again in a moment.",
+        );
+      }
       toast.success("Assignment removed");
       setRemoveTarget(null);
     } catch (error: unknown) {

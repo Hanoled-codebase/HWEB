@@ -30,6 +30,8 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { HanoledLogo } from "@/components/ui/HanoledLogo";
+import { SignInShell } from "@/components/auth/SignInForm";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -117,8 +119,11 @@ function VerifyForm() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200 m-rise">
-      <CardHeader className="space-y-1">
+    <Card className="m-rise w-full max-w-md border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+      <CardHeader className="space-y-2 pt-8">
+        <div className="mb-1 flex justify-center">
+          <HanoledLogo size="lg" variant="blue" iconOnly />
+        </div>
         <h1 className="text-2xl font-semibold text-center text-slate-900">Verify your email</h1>
         <CardDescription className="text-center text-slate-500">
           {email ? (
@@ -142,12 +147,9 @@ function VerifyForm() {
                   <FormControl>
                     <InputOTP maxLength={6} {...field} aria-label="6-digit verification code">
                       <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                          <InputOTPSlot key={index} index={index} className="size-11 text-base sm:size-9 sm:text-sm" />
+                        ))}
                       </InputOTPGroup>
                     </InputOTP>
                   </FormControl>
@@ -155,7 +157,7 @@ function VerifyForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Verify Email
             </Button>
@@ -168,7 +170,7 @@ function VerifyForm() {
             type="button" 
             onClick={handleResend}
             disabled={isResending || !email}
-            className="font-semibold text-blue-600 hover:text-blue-500 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center px-1 font-semibold text-blue-700 hover:text-blue-600 disabled:opacity-50"
           >
             {isResending ? "Resending..." : "Click to resend"}
           </button>
@@ -181,12 +183,14 @@ function VerifyForm() {
 // Wrap in Suspense because we use useSearchParams
 export default function VerifyPage() {
   return (
-    <Suspense fallback={
-      <Card className="shadow-lg border-slate-200 p-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </Card>
-    }>
-      <VerifyForm />
-    </Suspense>
+    <SignInShell>
+      <Suspense fallback={
+        <Card className="flex w-full max-w-md justify-center border-slate-200/80 p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
+        </Card>
+      }>
+        <VerifyForm />
+      </Suspense>
+    </SignInShell>
   );
 }

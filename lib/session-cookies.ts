@@ -1,13 +1,15 @@
 // Server-side helpers for the httpOnly session cookies (`hcore_session`,
-// `hcbt_session`). Shared by the login/logout server actions and the logout
-// route so a cookie is always set and cleared with the same scope.
+// `hcbt_session`) and the refresh-token copy (`hcore_refresh_web`) that lets
+// proxy.ts recognise a still-refreshable session after the one-hour access
+// token lapses. Shared by the login/logout server actions, the logout route and
+// /api/session so a cookie is always set and cleared with the same scope.
 //
 // AUTH_COOKIE_DOMAIN (server-only, e.g. ".hanoled.com") scopes the cookies to the
 // shared parent domain so the browser also sends them to the API subdomains.
 // That is what makes NEXT_PUBLIC_AUTH_MODE=cookie possible (see lib/auth-tokens.ts).
 // Unset, cookies stay host-only, exactly as before.
 
-export const SESSION_COOKIE_NAMES = ["hcore_session", "hcbt_session"] as const;
+export const SESSION_COOKIE_NAMES = ["hcore_session", "hcbt_session", "hcore_refresh_web"] as const;
 
 function cookieDomain(): string | undefined {
   return process.env.AUTH_COOKIE_DOMAIN || undefined;
