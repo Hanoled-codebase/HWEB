@@ -207,7 +207,7 @@ export default function ClassDetailPage() {
                   </div>
                   <div className="rounded-lg border border-blue-100 bg-white p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                      Form Teacher
+                      Class Teacher
                     </p>
                     <p className="mt-2 truncate text-sm font-semibold text-slate-900 capitalize">
                       {classDetail.assignedTeacher?.user?.name || "Unassigned"}

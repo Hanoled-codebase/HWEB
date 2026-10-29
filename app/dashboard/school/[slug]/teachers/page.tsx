@@ -99,12 +99,17 @@ type TeacherMember = {
 /** What this person does at the school, instead of the raw membership role ("member"). */
 function staffRoleLabel(teacher: TeacherMember) {
   if (teacher.role === "owner") return "School owner";
+  const hasClasses = (teacher.assignedClasses?.length ?? 0) > 0;
+  const hasTeaching = (teacher.teachingAssignments?.length ?? 0) > 0;
   if (teacher.role === "admin") {
-    if ((teacher.teachingAssignments?.length ?? 0) > 0) return "School admin • Subject teacher";
+    if (hasClasses && hasTeaching) return "School admin • Class teacher • Subject teacher";
+    if (hasClasses) return "School admin • Class teacher";
+    if (hasTeaching) return "School admin • Subject teacher";
     return "School admin";
   }
-  if ((teacher.assignedClasses?.length ?? 0) > 0) return "Form teacher";
-  if ((teacher.teachingAssignments?.length ?? 0) > 0) return "Subject teacher";
+  if (hasClasses && hasTeaching) return "Class teacher • Subject teacher";
+  if (hasClasses) return "Class teacher";
+  if (hasTeaching) return "Subject teacher";
   return "Staff";
 }
 

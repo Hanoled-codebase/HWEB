@@ -22,20 +22,33 @@ async function exchangeHcbtSession(
   extra?: { roles?: string[]; orgSlug?: string; studentId?: string; learnerId?: string }
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${HCBT_BASE}/api/auth/callback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token,
-        principalId,
-        email,
-        roles: extra?.roles,
-        orgSlug: extra?.orgSlug,
-        studentId: extra?.studentId,
-        learnerId: extra?.learnerId,
-      }),
+    const payload = JSON.stringify({
+      token,
+      principalId,
+      email,
+      roles: extra?.roles,
+      orgSlug: extra?.orgSlug,
+      studentId: extra?.studentId,
+      learnerId: extra?.learnerId,
     });
-    if (!res.ok) return null;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+    let res = await fetch(`${HCBT_BASE}/api/auth/exchange-session`, {
+      method: 'POST',
+      headers,
+      body: payload,
+    }).catch(() => null);
+
+    if (!res || !res.ok) {
+      res = await fetch(`${HCBT_BASE}/api/auth/callback`, {
+        method: 'POST',
+        headers,
+        body: payload,
+      }).catch(() => null);
+    }
+    if (!res || !res.ok) return null;
     const body = await res.json().catch(() => ({}));
     if (body.token) return body.token;
     // Extract set-cookie from the HCBT response
