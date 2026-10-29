@@ -353,7 +353,7 @@ export default function ClassesPage() {
                     name="assignedTeacher"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Form Teacher</FormLabel>
+                        <FormLabel>Class Teacher (Form Teacher)</FormLabel>
                         <Select
                           onValueChange={(v) => field.onChange(v ?? "none")}
                           value={field.value ?? "none"}
@@ -575,7 +575,7 @@ export default function ClassesPage() {
 
                 <div>
                   <span className="text-xs text-slate-500 block uppercase tracking-wider font-semibold mb-1">
-                    Form Teacher
+                    Class Teacher
                   </span>
                   <div className="text-sm font-medium text-slate-800">
                     {cls.assignedTeacher?.user ? (

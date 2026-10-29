@@ -202,7 +202,8 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
           if (showErrorToast && typeof window !== "undefined") {
             const currentPath = window.location.pathname;
             const publicRoutes = ["/signin", "/signup", "/forgot-password", "/reset-password", "/verify", "/accept-invite"];
-            if (!publicRoutes.some((route) => currentPath.startsWith(route))) {
+            // A 401 from a satellite product (HCBT) must NEVER log the user out of their core session.
+            if (baseUrl !== HCBT_BASE && !publicRoutes.some((route) => currentPath.startsWith(route))) {
               window.location.href = "/api/logout";
             }
           }
