@@ -601,7 +601,7 @@ export default function TeacherDetailPage() {
           </div>
 
           <div className="mt-4 space-y-3">
-            <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+            <Select value={selectedSubjectId} onValueChange={(v: unknown) => setSelectedSubjectId(v ? String(v) : "")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
@@ -614,7 +614,7 @@ export default function TeacherDetailPage() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+            <Select value={selectedClassId} onValueChange={(v: unknown) => setSelectedClassId(v ? String(v) : "")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select class" />
               </SelectTrigger>
