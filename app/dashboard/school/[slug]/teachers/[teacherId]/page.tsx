@@ -41,7 +41,15 @@ type Option = {
   hcoreSubjectId?: string | null;
 };
 
+type RawAssignment = {
+  id?: string;
+  type?: string;
+  classLevel?: Option | null;
+  subject?: Option | null;
+};
+
 type TeachingAssignment = {
+  id?: string;
   classLevel?: Option | null;
   subject?: Option | null;
 };
@@ -55,15 +63,18 @@ type TeacherMember = {
     email?: string;
   } | null;
   teachingAssignments?: TeachingAssignment[];
-  memberAssignments?: Array<{ type: string; classLevel?: Option | null; subject?: Option | null }>;
+  memberAssignments?: Array<{ id?: string; type?: string; classLevel?: Option | null; subject?: Option | null }>;
 };
 
 // This page manages subject-teacher pairs; the teacher's other duties (class
 // teacher, HOD, …) are left as they are when it saves.
 function subjectTeaching(member: TeacherMember): TeachingAssignment[] {
-  return (member.memberAssignments || []).flatMap((a) =>
-    a.type === "SUBJECT_TEACHER" && a.classLevel && a.subject
-      ? [{ classLevel: a.classLevel, subject: a.subject }]
+  const list: RawAssignment[] = (member.memberAssignments?.length
+    ? member.memberAssignments
+    : member.teachingAssignments) || [];
+  return list.flatMap((a) =>
+    (!a.type || a.type === "SUBJECT_TEACHER") && a.classLevel && a.subject
+      ? [{ id: a.id, classLevel: a.classLevel, subject: a.subject }]
       : [],
   );
 }
@@ -110,17 +121,56 @@ export default function TeacherDetailPage() {
 
     try {
       setIsLoading(true);
-      const [teacherData, classData, subjectData] = await Promise.all([
+      const [teacherData, classData, subjectData, allAssignments] = await Promise.all([
         apiFetch<TeacherMember>(
           `/organizations/${currentOrg.slug}/members/${teacherId}`,
         ),
         apiFetch<Option[]>(`/classes/${currentOrg.slug}`),
         apiFetch<Option[]>(`/subjects/${currentOrg.slug}`),
+        apiFetch<Array<{
+          id: string;
+          memberId?: string;
+          member?: { id: string };
+          classLevel?: Option | null;
+          subject?: Option | null;
+        }>>(`/subjects/${currentOrg.slug}/assignments`).catch(() => []),
       ]);
 
-      showTeacher(teacherData);
-      setClasses(classData);
-      setSubjects(subjectData);
+      const teacherAssignmentsFromSubjects: TeachingAssignment[] = (allAssignments || [])
+        .filter(
+          (a) =>
+            (a.memberId === teacherId || a.member?.id === teacherId) &&
+            a.classLevel &&
+            a.subject,
+        )
+        .map((a) => ({
+          id: a.id,
+          classLevel: a.classLevel,
+          subject: a.subject,
+        }));
+
+      const assignmentMap = new Map<string, TeachingAssignment>();
+      teacherAssignmentsFromSubjects.forEach((a) => {
+        if (a.subject?.id && a.classLevel?.id) {
+          assignmentMap.set(`${a.subject.id}-${a.classLevel.id}`, a);
+        }
+      });
+
+      const memberTeaching = subjectTeaching(teacherData);
+      memberTeaching.forEach((a) => {
+        if (a.subject?.id && a.classLevel?.id) {
+          const key = `${a.subject.id}-${a.classLevel.id}`;
+          if (!assignmentMap.has(key)) {
+            assignmentMap.set(key, a);
+          }
+        }
+      });
+
+      const finalTeaching = Array.from(assignmentMap.values());
+      setTeacher({ ...teacherData, teachingAssignments: finalTeaching });
+      setLoadedAssignments(finalTeaching);
+      setClasses(classData || []);
+      setSubjects(subjectData || []);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load teacher",
@@ -128,7 +178,7 @@ export default function TeacherDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg, isPrivileged, showTeacher, teacherId]);
+  }, [currentOrg, isPrivileged, teacherId]);
 
   useEffect(() => {
     fetchData();
@@ -227,27 +277,92 @@ export default function TeacherDetailPage() {
 
     setIsSaving(true);
     try {
-      const affiliationId = teacher.hcoreAffiliationId;
-      if (!affiliationId) {
-        throw new Error("This teacher isn't linked to the school directory yet. Try again in a minute.");
-      }
-      const asHcore = (list: TeachingAssignment[]) =>
-        new Map(
-          list.flatMap((a) => {
-            const item = toHcoreTeaching({ type: "SUBJECT_TEACHER", ...a }, ids);
-            return item ? [[teachingKey(item), item] as const] : [];
-          }),
-        );
-      const kept = asHcore(teacher.teachingAssignments || []);
-      const dropped = [...asHcore(loadedAssignments).keys()].filter((key) => !kept.has(key));
+      const currentList = teacher.teachingAssignments || [];
+      const currentKeys = new Set(
+        currentList.map((a) => `${a.subject?.id}-${a.classLevel?.id}`),
+      );
+      const removed = loadedAssignments.filter(
+        (a) => !currentKeys.has(`${a.subject?.id}-${a.classLevel?.id}`),
+      );
+      const loadedKeys = new Set(
+        loadedAssignments.map((a) => `${a.subject?.id}-${a.classLevel?.id}`),
+      );
+      const added = currentList.filter(
+        (a) => !loadedKeys.has(`${a.subject?.id}-${a.classLevel?.id}`),
+      );
 
-      // Apply this page's adds and removals to what HCORE holds; everything
-      // else (class-teacher duties, edits made elsewhere since loading) stays.
-      await editTeachingAssignments(currentOrg, affiliationId, (current) => {
-        for (const [key, item] of kept) current.set(key, item);
-        for (const key of dropped) current.delete(key);
-      });
-      showTeacher(await apiFetch<TeacherMember>(`/organizations/${currentOrg.slug}/members/${teacher.id}`));
+      // 1. Delete removed assignments from HSMS
+      for (const rem of removed) {
+        if (rem.id) {
+          await apiFetch(`/subjects/${currentOrg.slug}/assignments/${rem.id}`, {
+            method: "DELETE",
+          }).catch(() => {});
+        } else if (rem.subject?.id && rem.classLevel?.id) {
+          const activeAssignments = await apiFetch<
+            Array<{
+              id: string;
+              memberId?: string;
+              member?: { id: string };
+              subjectId?: string;
+              subject?: { id: string };
+              classLevelId?: string;
+              classLevel?: { id: string };
+            }>
+          >(
+            `/subjects/${currentOrg.slug}/assignments`,
+          ).catch(() => []);
+          const match = activeAssignments.find(
+            (a) =>
+              (a.memberId === teacher.id || a.member?.id === teacher.id) &&
+              (a.subjectId === rem.subject?.id || a.subject?.id === rem.subject?.id) &&
+              (a.classLevelId === rem.classLevel?.id || a.classLevel?.id === rem.classLevel?.id),
+          );
+          if (match?.id) {
+            await apiFetch(
+              `/subjects/${currentOrg.slug}/assignments/${match.id}`,
+              { method: "DELETE" },
+            ).catch(() => {});
+          }
+        }
+      }
+
+      // 2. Add newly assigned subject-class pairs to HSMS
+      for (const add of added) {
+        if (add.subject?.id && add.classLevel?.id) {
+          await apiFetch(`/subjects/${currentOrg.slug}/assignments`, {
+            method: "POST",
+            body: JSON.stringify({
+              memberId: teacher.id,
+              subjectId: add.subject.id,
+              classLevelId: add.classLevel.id,
+            }),
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Best-effort sync to HCORE if teacher is linked
+      if (teacher.hcoreAffiliationId) {
+        try {
+          const asHcore = (list: TeachingAssignment[]) =>
+            new Map(
+              list.flatMap((a) => {
+                const item = toHcoreTeaching({ type: "SUBJECT_TEACHER", ...a }, ids);
+                return item ? [[teachingKey(item), item] as const] : [];
+              }),
+            );
+          const kept = asHcore(currentList);
+          const dropped = [...asHcore(loadedAssignments).keys()].filter((key) => !kept.has(key));
+
+          await editTeachingAssignments(currentOrg, teacher.hcoreAffiliationId, (current) => {
+            for (const [key, item] of kept) current.set(key, item);
+            for (const key of dropped) current.delete(key);
+          });
+        } catch {
+          // Best effort sync to HCORE directory
+        }
+      }
+
+      await fetchData();
       toast.success("Teacher assignments updated");
     } catch (error) {
       toast.error(
@@ -335,7 +450,7 @@ export default function TeacherDetailPage() {
                       method: "PATCH",
                       body: JSON.stringify({ role: newRole }),
                     });
-                    setTeacher({ ...teacher, role: newRole as any });
+                    setTeacher({ ...teacher, role: newRole as TeacherMember["role"] });
                     toast.success(`Role updated to ${newRole}`);
                   } catch (error) {
                     toast.error(error instanceof Error ? error.message : "Failed to update role");
@@ -486,12 +601,12 @@ export default function TeacherDetailPage() {
           </div>
 
           <div className="mt-4 space-y-3">
-            <Select value={selectedSubjectId} onValueChange={(val: any) => setSelectedSubjectId(val)}>
+            <Select value={selectedSubjectId} onValueChange={(v: unknown) => setSelectedSubjectId(v ? String(v) : "")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
               <SelectContent>
-                {subjects.filter((subject) => ids.subjectIds.has(subject.id)).map((subject) => (
+                {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.name}
                   </SelectItem>
@@ -499,12 +614,12 @@ export default function TeacherDetailPage() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedClassId} onValueChange={(val: any) => setSelectedClassId(val)}>
+            <Select value={selectedClassId} onValueChange={(v: unknown) => setSelectedClassId(v ? String(v) : "")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select class" />
               </SelectTrigger>
               <SelectContent>
-                {classes.filter((classOption) => ids.classIds.has(classOption.id)).map((classOption) => (
+                {classes.map((classOption) => (
                   <SelectItem key={classOption.id} value={classOption.id}>
                     {classOption.name}
                   </SelectItem>

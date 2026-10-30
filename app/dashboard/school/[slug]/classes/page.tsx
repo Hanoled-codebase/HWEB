@@ -95,7 +95,7 @@ type ClassPayload = {
   level: string;
   limit: number;
   organizationId: string;
-  assignedTeacher?: string;
+  assignedTeacher?: string | null;
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -227,9 +227,8 @@ export default function ClassesPage() {
         limit: values.capacity,
         organizationId: currentOrg.id,
       };
-      if (values.assignedTeacher !== "none") {
-        payload.assignedTeacher = values.assignedTeacher;
-      }
+      payload.assignedTeacher =
+        values.assignedTeacher === "none" ? null : values.assignedTeacher;
 
       if (editingClass) {
         const updated = await apiFetch<ClassRecord>(

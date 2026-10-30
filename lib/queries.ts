@@ -16,8 +16,8 @@ export const orgQueries = {
     queryFn: () => apiFetch<T>(`/classes/${slug}`),
   }),
   teachers: <T = unknown[]>(slug: string) => ({
-    queryKey: ["members", "member", slug] as const,
-    queryFn: () => apiFetch<T>(`/organizations/${slug}/members?role=member`),
+    queryKey: ["members", "teachers", slug] as const,
+    queryFn: () => apiFetch<T>(`/organizations/${slug}/members`),
   }),
   parents: <T = unknown[]>(slug: string) => ({
     queryKey: ["members", "parent", slug] as const,

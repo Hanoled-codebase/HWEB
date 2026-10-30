@@ -135,7 +135,11 @@ function getErrorMessage(error: unknown, fallback: string) {
 function toPerformanceSubjects(
   results: ResultSheet[],
 ): StudentPerformanceSubject[] {
-  return results.map((result) => {
+  return results
+    .filter((result) =>
+      result.values.some((v) => v !== null && v !== undefined && v !== ""),
+    )
+    .map((result) => {
     const assessments = (
       result.assessments?.length
         ? result.assessments
@@ -1211,7 +1215,13 @@ export default function ResultsPage() {
                       printModalGroup.student.classLevel?.id
                   ).length || 17
                 }
-                results={printModalGroup.results.map((r) => {
+                results={printModalGroup.results
+                  .filter((r) =>
+                    r.values.some(
+                      (v) => v !== null && v !== undefined && v !== "",
+                    ),
+                  )
+                  .map((r) => {
                   const total = r.values.reduce<number>(
                     (sum, val) => sum + (toNumericValue(val) ?? 0),
                     0
