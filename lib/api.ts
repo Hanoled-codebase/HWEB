@@ -152,7 +152,15 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
   // than the Hweb frontend, so session cookies can't cross that boundary.
   // Attach the bearer token explicitly instead (backends accept both).
   if (!requestHeaders.has("Authorization")) {
-    const token = (baseUrl === HCBT_BASE ? getHcbtToken() : null) || getHcoreToken();
+    const hcbtToken = baseUrl === HCBT_BASE ? getHcbtToken() : null;
+    if (hcbtToken && tokenExpiresSoon(hcbtToken) && typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("hanoled_hcbt_token");
+      } catch {}
+    }
+    const token =
+      (baseUrl === HCBT_BASE && hcbtToken && !tokenExpiresSoon(hcbtToken) ? hcbtToken : null) ||
+      getHcoreToken();
     if (token) {
       // HCORE's access token lives one hour. Refresh it before it lapses rather
       // than spending a round trip on a guaranteed 401 — this also keeps the
@@ -181,6 +189,11 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
             window.location.href = "/signin/";
           }
         } else if (!retried) {
+          if (baseUrl === HCBT_BASE && typeof window !== "undefined") {
+            try {
+              localStorage.removeItem("hanoled_hcbt_token");
+            } catch {}
+          }
           // The access token is short-lived, and every backend checks it: a
           // satellite call (HSMS, HCBT) used to fail here while HCORE alone
           // tried to recover. Mint a new one and replay the request once.

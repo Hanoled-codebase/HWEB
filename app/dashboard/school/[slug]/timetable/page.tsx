@@ -69,10 +69,22 @@ type Subject = { id: string; name: string; code: string | null };
 type Teacher = { id: string; user: { id: string; name: string; email: string } };
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const TIME_PRESETS = [
-  "08:00", "08:45", "09:00", "09:45", "10:00", "10:45", "11:00", "11:45",
-  "12:00", "12:45", "13:00", "13:45", "14:00", "14:45", "15:00", "15:45", "16:00",
-];
+
+function calculateEndTime(start: string, durationMinutes: number): string {
+  const [h, m] = start.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return start;
+  const totalMin = h * 60 + m + durationMinutes;
+  const newH = Math.floor(totalMin / 60) % 24;
+  const newM = totalMin % 60;
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
+}
+
+function getDurationMinutes(start: string, end: string): number {
+  const [h1, m1] = start.split(":").map(Number);
+  const [h2, m2] = end.split(":").map(Number);
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+  return (h2 * 60 + m2) - (h1 * 60 + m1);
+}
 
 export default function TimetablePage() {
   const { currentOrg } = useOrganization();
@@ -226,6 +238,10 @@ export default function TimetablePage() {
   const handleSaveSlot = async () => {
     if (!orgSlug || !selectedSchedule || !slotSubject) {
       toast.error("Select a subject");
+      return;
+    }
+    if (slotEnd <= slotStart) {
+      toast.error("End time must be after start time");
       return;
     }
     try {
@@ -549,30 +565,51 @@ export default function TimetablePage() {
             <p className="text-xs text-slate-500 mb-5">{DAY_NAMES[slotDay]}</p>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Start Time</label>
-                  <select
-                    value={slotStart}
-                    onChange={(e) => setSlotStart(e.target.value)}
-                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  >
-                    {TIME_PRESETS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Start Time</label>
+                    <Input
+                      type="time"
+                      value={slotStart}
+                      onChange={(e) => setSlotStart(e.target.value)}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">End Time</label>
+                    <Input
+                      type="time"
+                      value={slotEnd}
+                      onChange={(e) => setSlotEnd(e.target.value)}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">End Time</label>
-                  <select
-                    value={slotEnd}
-                    onChange={(e) => setSlotEnd(e.target.value)}
-                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  >
-                    {TIME_PRESETS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-slate-500 font-medium">Quick duration:</span>
+                    {[30, 40, 45, 50, 60, 90].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setSlotEnd(calculateEndTime(slotStart, mins))}
+                        className={`text-[11px] px-2 py-0.5 rounded border transition ${
+                          getDurationMinutes(slotStart, slotEnd) === mins
+                            ? "bg-blue-50 border-blue-300 text-blue-700 font-semibold"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        +{mins}m
+                      </button>
                     ))}
-                  </select>
+                  </div>
+                  {getDurationMinutes(slotStart, slotEnd) > 0 ? (
+                    <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                      {getDurationMinutes(slotStart, slotEnd)} mins
+                    </span>
+                  ) : null}
                 </div>
               </div>
 

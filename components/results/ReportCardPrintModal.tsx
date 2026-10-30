@@ -167,7 +167,7 @@ export default function ReportCardPrintModal({
   // Determine subject rows: if results array is provided with real subjects, use them;
   // if empty, display the 16 standard subjects from the Elyon College template
   const displayResults = useMemo(() => {
-    if (results && results.length > 0) {
+    if (Array.isArray(results)) {
       return results.map((r) => {
         const gradeObj = computeNigerianGrade(r.score ?? 0);
         return {
@@ -184,7 +184,7 @@ export default function ReportCardPrintModal({
       });
     }
 
-    // Default template fallback with 16 subjects matching image
+    // Default template fallback with 16 subjects matching image only when no results array provided
     return DEFAULT_SAMPLE_SUBJECTS.map((subjectName) => ({
       subject: subjectName,
       classExercises: "",

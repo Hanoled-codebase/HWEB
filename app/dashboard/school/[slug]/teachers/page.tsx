@@ -138,13 +138,14 @@ export default function TeachersPage() {
 
   const filteredTeachers = teachers.filter(
     (t) =>
-      t.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.teachingAssignments || []).some((assignment) =>
-        assignment.subject?.name
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()),
-      ),
+      t.role !== "parent" &&
+      (t.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.teachingAssignments || []).some((assignment) =>
+          assignment.subject?.name
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+        )),
   );
 
   async function onInvite(values: z.infer<typeof inviteFormSchema>) {
