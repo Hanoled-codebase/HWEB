@@ -41,6 +41,13 @@ type Option = {
   hcoreSubjectId?: string | null;
 };
 
+type RawAssignment = {
+  id?: string;
+  type?: string;
+  classLevel?: Option | null;
+  subject?: Option | null;
+};
+
 type TeachingAssignment = {
   id?: string;
   classLevel?: Option | null;
@@ -56,16 +63,16 @@ type TeacherMember = {
     email?: string;
   } | null;
   teachingAssignments?: TeachingAssignment[];
-  memberAssignments?: Array<{ id?: string; type: string; classLevel?: Option | null; subject?: Option | null }>;
+  memberAssignments?: Array<{ id?: string; type?: string; classLevel?: Option | null; subject?: Option | null }>;
 };
 
 // This page manages subject-teacher pairs; the teacher's other duties (class
 // teacher, HOD, …) are left as they are when it saves.
 function subjectTeaching(member: TeacherMember): TeachingAssignment[] {
-  const list = member.memberAssignments?.length
+  const list: RawAssignment[] = (member.memberAssignments?.length
     ? member.memberAssignments
-    : member.teachingAssignments || [];
-  return list.flatMap((a: any) =>
+    : member.teachingAssignments) || [];
+  return list.flatMap((a) =>
     (!a.type || a.type === "SUBJECT_TEACHER") && a.classLevel && a.subject
       ? [{ id: a.id, classLevel: a.classLevel, subject: a.subject }]
       : [],
@@ -291,7 +298,17 @@ export default function TeacherDetailPage() {
             method: "DELETE",
           }).catch(() => {});
         } else if (rem.subject?.id && rem.classLevel?.id) {
-          const activeAssignments = await apiFetch<any[]>(
+          const activeAssignments = await apiFetch<
+            Array<{
+              id: string;
+              memberId?: string;
+              member?: { id: string };
+              subjectId?: string;
+              subject?: { id: string };
+              classLevelId?: string;
+              classLevel?: { id: string };
+            }>
+          >(
             `/subjects/${currentOrg.slug}/assignments`,
           ).catch(() => []);
           const match = activeAssignments.find(
@@ -433,7 +450,7 @@ export default function TeacherDetailPage() {
                       method: "PATCH",
                       body: JSON.stringify({ role: newRole }),
                     });
-                    setTeacher({ ...teacher, role: newRole as any });
+                    setTeacher({ ...teacher, role: newRole as TeacherMember["role"] });
                     toast.success(`Role updated to ${newRole}`);
                   } catch (error) {
                     toast.error(error instanceof Error ? error.message : "Failed to update role");
@@ -584,7 +601,7 @@ export default function TeacherDetailPage() {
           </div>
 
           <div className="mt-4 space-y-3">
-            <Select value={selectedSubjectId} onValueChange={(val: any) => setSelectedSubjectId(val)}>
+            <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
@@ -597,7 +614,7 @@ export default function TeacherDetailPage() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedClassId} onValueChange={(val: any) => setSelectedClassId(val)}>
+            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select class" />
               </SelectTrigger>

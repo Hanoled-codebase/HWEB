@@ -332,9 +332,6 @@
     }
   },
   "app/dashboard/school/[slug]/teachers/[teacherId]/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
