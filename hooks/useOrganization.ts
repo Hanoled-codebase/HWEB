@@ -278,6 +278,15 @@ export const useOrganization = create<OrgState>((set, get) => ({
           mergedAssignments.push(a);
         }
 
+        // Merge assignedStudents so parent views work with either Hanoled ID or HCORE learner ID
+        const mergedStudents: any[] = [];
+        const seenStudentIds = new Set<string>();
+        for (const s of [...(hsmsMember?.assignedStudents || []), ...(member.assignedStudents || [])]) {
+          if (s?.id && seenStudentIds.has(s.id)) continue;
+          if (s?.id) seenStudentIds.add(s.id);
+          mergedStudents.push(s);
+        }
+
         const rawAssignments = member.teachingAssignments || mergedAssignments;
         const normalizedAssignments = rawAssignments.map((a: any) => ({
           classLevel: a.classLevel || (a.classLevelId ? { id: a.classLevelId, name: a.classLevelName } : null),
@@ -290,6 +299,8 @@ export const useOrganization = create<OrgState>((set, get) => ({
             ...member,
             memberAssignments: mergedAssignments,
             teachingAssignments: normalizedAssignments,
+            assignedStudents: mergedStudents.length > 0 ? mergedStudents : (member.assignedStudents || []),
+            assignedClasses: hsmsMember?.assignedClasses?.length ? hsmsMember.assignedClasses : (member.assignedClasses || []),
             // HCORE says who holds which role; HSMS says what each role may
             // do at this school (usePermissions combines the two).
             access: rememberAccess(slug, hsmsMember?.access),
