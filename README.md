@@ -157,6 +157,13 @@ Hweb shipped as an MVP with a deliberately trimmed scope. The following are **pa
 - **Scratch cards** — serial + PIN result unlocking; the page exists but sits behind a post-launch gate
 - **Messaging** — in-product messaging is post-v1
 
+## Recent Updates & Bug Fixes
+
+- **Dynamic Timetables**: Timetable editor supports dynamic duration configuration, enabling arbitrary lesson durations instead of static 45-minute blocks.
+- **Parent View & Student Record Resolution**: Harmonized student profile and attendance resolution using unified lookup logic across HSMS and HCORE IDs (`OR: [{ id }, { hcoreLearnerId }]`).
+- **Teaching Assignments Synchronization**: Cleaned up member and teaching assignments in `useOrganization`, eliminating duplicate entries and strictly typing raw assignments to pass CI quality gates without ESLint `any` errors.
+- **HCBT Token Refresh & Session Exchange**: Tolerant dual-endpoint `/exchange-session` and `/callback` flows with proactive token refresh before exam launches.
+
 ## Related Services
 
 | Service | Repo | URL | Description |
