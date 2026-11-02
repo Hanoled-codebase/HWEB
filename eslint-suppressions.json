@@ -452,11 +452,6 @@
       "count": 1
     }
   },
-  "hooks/useOrganization.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
   "hooks/useSchoolNavItems.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
