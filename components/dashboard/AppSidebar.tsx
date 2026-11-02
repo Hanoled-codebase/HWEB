@@ -104,7 +104,7 @@ export function AppSidebar({
 } = {}) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentOrg, currentMember, organizations } = useOrganization();
+  const { currentOrg, currentMember, organizations, setCurrentOrg } = useOrganization();
   const { user, logout } = useAuth();
   const { visibleNavItems, role: userRole } = useSchoolNavItems();
   const { isAccountant, isHOD, isLibrarian, isClassTeacher, isSubjectTeacher, isPrivileged } = usePermissions();
@@ -254,13 +254,20 @@ export function AppSidebar({
                 <DropdownMenuItem
                   key={org.id}
                   render={
-                    <Link href={`/dashboard/school/${org.slug}`} className="flex w-full items-center gap-3 py-1">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await setCurrentOrg(org.slug);
+                        router.push(`/dashboard/school/${org.slug}`);
+                      }}
+                      className="flex w-full items-center gap-3 py-1 text-left"
+                    >
                       <Avatar className="h-7 w-7 rounded-lg">
                         <AvatarImage src={org.logo} alt={org.name} />
                         <AvatarFallback className="rounded-lg bg-blue-600 text-[11px] text-white">{getInitials(org.name)}</AvatarFallback>
                       </Avatar>
                       <span className="truncate text-sm font-medium capitalize">{org.name}</span>
-                    </Link>
+                    </button>
                   }
                 />
               ))}

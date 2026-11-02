@@ -55,12 +55,14 @@ import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
   getAssessmentPercentage,
+  getCurriculumSubjectsForClass,
   getOrderedStudentAssessments,
   getStudentRecordId,
   getSubjectName,
   getSubjectPerformanceSummary,
   getSubjectRecordLabel,
   hasEnteredScore,
+  matchSubjectAlias,
   StudentPerformanceResponse,
   StudentPerformanceSubject,
 } from "@/lib/student-performance";
@@ -134,45 +136,70 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function toPerformanceSubjects(
   results: ResultSheet[],
+  classLevelName?: string | null,
 ): StudentPerformanceSubject[] {
-  return results
-    .filter((result) =>
-      result.values.some((v) => v !== null && v !== undefined && v !== ""),
-    )
-    .map((result) => {
-    const assessments = (
-      result.assessments?.length
-        ? result.assessments
-        : result.columns.map((column) => ({ name: column, total: undefined }))
-    ).map((assessment, originalIndex) => ({
-      name: assessment.name,
-      total: assessment.total,
-      score: result.values[originalIndex] ?? "",
-      originalIndex,
-    }));
+  const curriculum = getCurriculumSubjectsForClass(classLevelName);
+  const resultsWithScores = results.filter((result) =>
+    result.values.some((v) => v !== null && v !== undefined && v !== ""),
+  );
+
+  return curriculum.map((subjectName) => {
+    const match = resultsWithScores.find((r) => {
+      const rName = r.subject?.name || r.title || "";
+      return matchSubjectAlias(rName, subjectName);
+    });
+
+    if (match) {
+      const assessments = (
+        match.assessments?.length
+          ? match.assessments
+          : match.columns.map((column) => ({ name: column, total: undefined }))
+      ).map((assessment, originalIndex) => ({
+        name: assessment.name,
+        total: assessment.total,
+        score: match.values[originalIndex] ?? "",
+        originalIndex,
+      }));
+
+      return {
+        spreadsheetId: match.id,
+        status: "active" as const,
+        updatedAt: match.updatedAt,
+        subject: {
+          id: match.subject?.id || match.id,
+          name: subjectName,
+        },
+        classLevel: match.classLevel
+          ? {
+              id: match.classLevel.id,
+              name: match.classLevel.name,
+              level: match.classLevel.level,
+            }
+          : classLevelName ? { name: classLevelName } : null,
+        totalScore: match.values.reduce<number>(
+          (sum, value) => sum + (toNumericValue(value) ?? 0),
+          0,
+        ),
+        assessments,
+      };
+    }
 
     return {
-      spreadsheetId: result.id,
-      status: "active",
-      updatedAt: result.updatedAt,
-      subject: result.subject
-        ? {
-            id: result.subject.id,
-            name: result.subject.name,
-          }
-        : null,
-      classLevel: result.classLevel
-        ? {
-            id: result.classLevel.id,
-            name: result.classLevel.name,
-            level: result.classLevel.level,
-          }
-        : null,
-      totalScore: result.values.reduce<number>(
-        (sum, value) => sum + (toNumericValue(value) ?? 0),
-        0,
-      ),
-      assessments,
+      spreadsheetId: `offered-${subjectName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+      status: "pending" as const,
+      updatedAt: undefined,
+      subject: {
+        id: `offered-${subjectName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+        name: subjectName,
+      },
+      classLevel: classLevelName ? { name: classLevelName } : null,
+      totalScore: 0,
+      assessments: [
+        { name: "Continuous Assessment 1", total: 10, score: "", originalIndex: 0 },
+        { name: "Continuous Assessment 2", total: 10, score: "", originalIndex: 1 },
+        { name: "Continuous Assessment 3", total: 20, score: "", originalIndex: 2 },
+        { name: "Terminal Examination", total: 60, score: "", originalIndex: 3 },
+      ],
     };
   });
 }
@@ -181,46 +208,34 @@ function getMobileBadgeClass(label: string) {
   const normalized = label.toLowerCase();
 
   if (normalized === "distinction") {
-    return "bg-emerald-700 text-white";
+    return "bg-black text-white font-bold border border-black";
   }
 
   if (normalized === "merit") {
-    return "bg-emerald-300 text-emerald-900";
+    return "bg-neutral-200 text-black font-bold border border-neutral-300";
   }
 
   if (normalized === "pass") {
-    return "bg-slate-200 text-slate-700";
+    return "bg-neutral-100 text-neutral-800 border border-neutral-300 font-semibold";
   }
 
   if (normalized === "grading in progress") {
-    return "bg-blue-100 text-blue-700";
+    return "bg-neutral-50 text-neutral-600 border border-dashed border-neutral-300 italic";
   }
 
   if (normalized === "waiting for score") {
-    return "bg-slate-100 text-slate-600";
+    return "bg-neutral-50 text-neutral-500 border border-dotted border-neutral-300";
   }
 
-  return "bg-rose-100 text-rose-700";
+  return "bg-neutral-100 text-neutral-700 border border-neutral-300";
 }
 
 function getScoreTone(percentage: number | null) {
   if (percentage === null) {
-    return { stroke: "oklch(0.865 0.014 263.4)", text: "text-slate-500" };
+    return { stroke: "#E5E7EB", text: "text-neutral-400" };
   }
 
-  if (percentage >= 75) {
-    return { stroke: "#12B76A", text: "text-emerald-700" };
-  }
-
-  if (percentage >= 60) {
-    return { stroke: "#12B76A", text: "text-emerald-600" };
-  }
-
-  if (percentage >= 50) {
-    return { stroke: "#1447E6", text: "text-blue-700" };
-  }
-
-  return { stroke: "#F04438", text: "text-red-600" };
+  return { stroke: "#000000", text: "text-black" };
 }
 
 function MobileScoreRing({ percentage }: { percentage: number | null }) {
@@ -237,7 +252,7 @@ function MobileScoreRing({ percentage }: { percentage: number | null }) {
           cy="24"
           r={radius}
           fill="none"
-          stroke="oklch(0.925 0.010 263.4)"
+          stroke="#F3F4F6"
           strokeWidth="4"
         />
         {percentage !== null && (
@@ -254,7 +269,7 @@ function MobileScoreRing({ percentage }: { percentage: number | null }) {
           />
         )}
       </svg>
-      <span className={`text-sm font-bold ${tone.text}`}>
+      <span className={`text-sm font-black tabular-nums ${tone.text}`}>
         {percentage === null ? "--" : `${Math.round(bounded)}%`}
       </span>
     </div>
@@ -553,7 +568,14 @@ export default function ResultsPage() {
   }, [notifications, selectedGroup]);
 
   const performanceSubjects = useMemo(
-    () => (selectedGroup ? toPerformanceSubjects(selectedGroup.results) : []),
+    () =>
+      selectedGroup
+        ? toPerformanceSubjects(
+            selectedGroup.results,
+            selectedGroup.student.classLevel?.name ||
+              selectedGroup.student.classLevel?.level,
+          )
+        : [],
     [selectedGroup],
   );
 
@@ -596,7 +618,7 @@ export default function ResultsPage() {
                   type="button"
                   onClick={handleBatchExport}
                   disabled={isDownloadingBatch}
-                  className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white text-xs font-semibold h-8 gap-1.5 px-3 rounded-lg shadow-sm"
+                  className="bg-black hover:bg-neutral-800 text-white text-xs font-semibold h-8 gap-1.5 px-3 rounded-lg shadow-sm border border-black"
                 >
                   {isDownloadingBatch ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -616,7 +638,7 @@ export default function ResultsPage() {
               fetchParentData({ refresh: true, showSuccessToast: true })
             }
             disabled={isLoading || isRefreshing}
-            className="h-11 shrink-0 rounded-2xl border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="h-11 shrink-0 rounded-2xl border-neutral-300 bg-white px-5 text-sm font-semibold text-black shadow-xs hover:bg-neutral-50"
           >
             {isRefreshing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -712,7 +734,7 @@ export default function ResultsPage() {
                           }}
                           className={cn(
                             "min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold capitalize",
-                            isActive ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700",
+                            isActive ? "border-black bg-black text-white font-bold" : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50",
                           )}
                         >
                           {group.student.firstName} {group.student.lastName}
@@ -744,7 +766,7 @@ export default function ResultsPage() {
                 ) : null}
 
                 <div className={cn("mt-4 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4", resultGroups.length > 4 ? "hidden" : "flex")}>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold uppercase text-blue-700">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-bold uppercase text-black border border-neutral-200">
                     {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
                   </span>
                   <div className="min-w-0">
@@ -761,7 +783,7 @@ export default function ResultsPage() {
 
                 <div className="mt-6 flex items-baseline justify-between gap-3">
                   <h2 className="text-base font-semibold text-slate-900">Subjects</h2>
-                  <p className="text-sm text-slate-500">{performanceSubjects.length} with results</p>
+                  <p className="text-sm text-slate-500">{performanceSubjects.length} enrolled subjects</p>
                 </div>
 
                 <div className="mt-3 space-y-3">
@@ -784,7 +806,7 @@ export default function ResultsPage() {
                       >
                         <div className="flex w-full items-center gap-3">
                           {inProgress ? (
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-700">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-neutral-100 text-black">
                               <BookOpen className="h-6 w-6" />
                             </div>
                           ) : (
@@ -821,7 +843,7 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       onClick={() => setShowAllMobileSubjects((value) => !value)}
-                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-blue-700"
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-neutral-300 bg-white text-sm font-bold text-black hover:bg-neutral-50"
                     >
                       {showAllMobileSubjects
                         ? "Show Less"
@@ -852,7 +874,7 @@ export default function ResultsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   {/* Left: Active Student Info with Quick Dropdown */}
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-base font-bold text-blue-700 shadow-sm border border-blue-100">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-base font-black text-white shadow-xs border border-black">
                       {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
                     </div>
                     <div className="min-w-0">
@@ -867,7 +889,7 @@ export default function ResultsPage() {
                             }
                           }}
                         >
-                          <SelectTrigger className="h-9 border-none p-0 text-xl font-bold text-slate-900 shadow-none hover:text-blue-600 focus:ring-0 capitalize">
+                          <SelectTrigger className="h-9 border-none p-0 text-xl font-bold text-slate-900 shadow-none hover:text-neutral-700 focus:ring-0 capitalize">
                             <span className="truncate max-w-[280px]">
                               {selectedGroup.student.firstName} {selectedGroup.student.lastName}
                             </span>
@@ -887,7 +909,7 @@ export default function ResultsPage() {
                         <span>&middot;</span>
                         <span>{getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}</span>
                         <span>&middot;</span>
-                        <span className="font-semibold text-slate-700">{selectedGroup.results.length} subjects</span>
+                        <span className="font-semibold text-slate-900">{performanceSubjects.length} subjects</span>
                       </p>
                     </div>
                   </div>
@@ -934,9 +956,9 @@ export default function ResultsPage() {
                           type="button"
                           variant="outline"
                           onClick={() => setIsRosterOpen(true)}
-                          className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+                          className="h-9 gap-2 rounded-xl border-neutral-300 bg-white px-3.5 text-xs font-semibold text-black hover:bg-neutral-50 shadow-xs"
                         >
-                          <Users className="h-3.5 w-3.5 text-slate-500" />
+                          <Users className="h-3.5 w-3.5 text-neutral-500" />
                           <span>Browse Roster</span>
                           <Badge variant="secondary" className="ml-0.5 h-5 rounded-full px-1.5 text-[10px] font-bold">
                             {filteredResultGroups.length}
@@ -971,7 +993,7 @@ export default function ResultsPage() {
                                     className={cn(
                                       "group relative flex items-center justify-between gap-3 rounded-2xl border p-3 text-left transition-all",
                                       isCurrent
-                                        ? "border-blue-300 bg-blue-50/60 shadow-xs"
+                                        ? "border-black bg-neutral-100 shadow-xs"
                                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                                     )}
                                   >
@@ -987,7 +1009,7 @@ export default function ResultsPage() {
                                         className={cn(
                                           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
                                           isCurrent
-                                            ? "bg-blue-600 text-white"
+                                            ? "bg-black text-white"
                                             : "bg-slate-100 text-slate-700"
                                         )}
                                       >
@@ -1007,7 +1029,7 @@ export default function ResultsPage() {
                                         <button
                                           type="button"
                                           onClick={() => setPrintModalGroup(group)}
-                                          className="rounded-lg p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                          className="rounded-lg p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100"
                                           title="Print Report Card"
                                         >
                                           <Printer className="h-3.5 w-3.5" />
@@ -1023,7 +1045,7 @@ export default function ResultsPage() {
                                               academicYear: exportYear,
                                             })
                                           }
-                                          className="rounded-lg p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                          className="rounded-lg p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100"
                                           title="Download PDF"
                                         >
                                           <Download className="h-3.5 w-3.5" />
@@ -1046,7 +1068,7 @@ export default function ResultsPage() {
                           type="button"
                           variant="outline"
                           onClick={() => setPrintModalGroup(selectedGroup)}
-                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 shadow-xs"
+                          className="h-9 gap-1.5 rounded-xl border-black bg-black px-3.5 text-xs font-bold text-white hover:bg-neutral-800 shadow-xs transition-colors"
                           title="Print or preview report card"
                         >
                           <Printer className="h-3.5 w-3.5" />
@@ -1064,7 +1086,7 @@ export default function ResultsPage() {
                               academicYear: exportYear,
                             })
                           }
-                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50/50 shadow-xs"
+                          className="h-9 gap-1.5 rounded-xl border-neutral-300 bg-white px-3.5 text-xs font-semibold text-black hover:border-black hover:bg-neutral-50 shadow-xs transition-colors"
                           title="Download PDF"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1130,24 +1152,24 @@ export default function ResultsPage() {
             )}
 
             {selectedNotifications.length > 0 && (
-              <section className="hidden rounded-3xl border border-rose-100 bg-white p-6 shadow-sm sm:p-8 md:block">
+              <section className="hidden rounded-3xl border border-neutral-300 bg-white p-6 shadow-xs sm:p-8 md:block">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-black border border-neutral-200">
                       <AlertTriangle className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-500">
                         Alerts
                       </p>
-                      <h2 className="mt-0.5 text-base sm:text-xl font-bold text-slate-900">
+                      <h2 className="mt-0.5 text-base sm:text-xl font-black text-black">
                         Low score notices
                       </h2>
                     </div>
                   </div>
                   <Badge
                     variant="outline"
-                    className="rounded-full border-rose-200 bg-rose-50 px-3 py-1 text-sm text-rose-600"
+                    className="rounded-full border-black bg-black px-3 py-1 text-sm font-bold text-white"
                   >
                     {selectedNotifications.length} active
                   </Badge>
@@ -1157,35 +1179,35 @@ export default function ResultsPage() {
                   {selectedNotifications.map((notification) => (
                     <article
                       key={notification.id}
-                      className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5"
+                      className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
+                          <h3 className="text-sm font-bold text-black">
                             {notification.assessmentName}
                           </h3>
-                          <p className="mt-1 text-sm leading-5 text-slate-500">
+                          <p className="mt-1 text-sm leading-5 text-neutral-600">
                             {notification.message}
                           </p>
                         </div>
                         <Badge
                           variant="outline"
-                          className="shrink-0 rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-600"
+                          className="shrink-0 rounded-full border-black bg-black px-2.5 py-0.5 text-xs font-black text-white tabular-nums"
                         >
                           {formatScore(notification.percentage)}%
                         </Badge>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-black">
+                        <span className="rounded-full border border-neutral-300 bg-white px-3 py-1">
                           {notification.subject?.name || "Subject"}
                         </span>
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                        <span className="rounded-full border border-neutral-300 bg-white px-3 py-1 tabular-nums">
                           {formatScore(notification.score)}/
                           {formatScore(notification.expectedTotal)}
                         </span>
                         {notification.updatedAt && (
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                          <span className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-neutral-500 font-medium">
                             {format(
                               new Date(notification.updatedAt),
                               "MMM d, yyyy",
@@ -1205,6 +1227,7 @@ export default function ResultsPage() {
                 orgName={currentOrg.name}
                 orgLogo={currentOrg.logo || undefined}
                 orgAddress={currentOrg.address || undefined}
+                orgEmail={currentOrg.email ? `Email: ${currentOrg.email}` : undefined}
                 student={printModalGroup.student}
                 term={exportTerm}
                 academicYear={exportYear}

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { request, HCORE_BASE, HSMS_BASE } from "@/lib/api";
+import { getHcoreToken, setAuthTokens } from "@/lib/auth-tokens";
 
 export interface Organization {
   id: string;
@@ -163,6 +164,45 @@ function rememberAccess(slug: string, access: AccessPolicy | undefined): AccessP
   }
 }
 
+function getSessionOrgId(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = getHcoreToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.orgId || payload.organizationId || null;
+  } catch {
+    return null;
+  }
+}
+
+async function syncSessionOrg(targetOrgId: string): Promise<void> {
+  if (typeof window === "undefined" || !targetOrgId) return;
+  const currentToken = getHcoreToken();
+  if (!currentToken) return;
+  const activeOrgId = getSessionOrgId();
+  if (activeOrgId === targetOrgId) return;
+
+  try {
+    const res = await request<{ token?: string }>(HCORE_BASE, "/v1/me/select-context", {
+      method: "POST",
+      body: JSON.stringify({ organizationId: targetOrgId }),
+      showErrorToast: false,
+    });
+    if (res?.token) {
+      setAuthTokens({ hcoreToken: res.token });
+      await fetch("/api/session", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: res.token }),
+      }).catch(() => null);
+    }
+  } catch {
+    // Best-effort context sync
+  }
+}
+
 export const useOrganization = create<OrgState>((set, get) => ({
   organizations: [],
   currentOrg: null,
@@ -207,41 +247,28 @@ export const useOrganization = create<OrgState>((set, get) => ({
       set({ isLoading: true, error: null, isStudent: false, currentMember: null, currentStudent: null });
       // Determine the org
       let org = get().organizations.find((o) => o.slug === slug);
-      const needsContextFetch = !org;
+      if (!org) {
+        try {
+          const res = await request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts");
+          const contextOrgs = res.organizations || [];
+          const normalizedOrgs = contextOrgs.map(normalizeOrganization);
+          set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
+          org = normalizedOrgs.find((o: Organization) => o.slug === slug);
+        } catch (e) {
+          console.warn("Context fetch in setCurrentOrg failed:", e);
+        }
+      }
 
-      // The context fetch (only needed when org isn't already known locally)
-      // and the member-profile fetch don't depend on each other's result —
-      // both only need `slug`, which is already known — so run them
-      // concurrently instead of paying two round trips back-to-back on every
-      // cold dashboard load. See fast-rendering skill, Rule 2.
-      //
-      // Also fetch Hanoled (HSMS)'s own member-profile in the same batch. It
-      // carries this school's role permissions (what an Accountant, HOD...
-      // may do here) and any HOD/Accountant/Librarian grant made locally
-      // before those roles moved to HCORE (Settings → Staff access). This
-      // fetch is best-effort (a user with no Hanoled Member row yet, e.g.
-      // brand new to the org, is expected to reject here) and merged in
-      // below rather than trusted as a replacement for HCORE's role/identity
-      // data.
-      const [contextResult, memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
-        needsContextFetch
-          ? request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts")
-          : Promise.resolve(null),
+      // If org is known and active session is bound to another school, align the session token
+      if (org?.id) {
+        await syncSessionOrg(org.id);
+      }
+
+      const [memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
         request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
         fetchOrgBranding(slug),
       ]);
-
-      if (needsContextFetch) {
-        if (contextResult.status === "fulfilled" && contextResult.value) {
-          const contextOrgs = contextResult.value.organizations || [];
-          const normalizedOrgs = contextOrgs.map(normalizeOrganization);
-          set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
-          org = normalizedOrgs.find((o: Organization) => o.slug === slug);
-        } else if (contextResult.status === "rejected") {
-          console.warn("Context fetch in setCurrentOrg failed:", contextResult.reason);
-        }
-      }
 
       if (!org) {
         // Build fallback org structure so UI doesn't get stuck in an infinite redirect loop

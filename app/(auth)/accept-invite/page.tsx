@@ -194,7 +194,7 @@ function AcceptInviteContent() {
     }
   }
 
-  const schoolName = inviteData?.orgName || "Elyon College";
+  const schoolName = inviteData?.orgName || "your school";
   const schoolInitials = (schoolName || "H")
     .trim()
     .split(/\s+/)

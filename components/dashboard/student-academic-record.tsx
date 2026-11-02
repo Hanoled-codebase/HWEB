@@ -61,7 +61,7 @@ type StudentAcademicRecordProps = {
 };
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
-// Color is used exclusively to communicate performance level — never decoration.
+// Pure high-contrast Black & White palette per institutional report requirements.
 
 type ScoreColors = {
   arc: string; // SVG stroke color for the filled arc
@@ -70,30 +70,20 @@ type ScoreColors = {
 };
 
 function getScoreColors(pct: number | null): ScoreColors {
-  // Null / no data → neutral gray track, no arc
   if (pct === null) {
-    return { arc: "oklch(0.865 0.014 263.4)", track: "oklch(0.965 0.006 263.4)", bar: "bg-slate-200" };
+    return { arc: "#E5E7EB", track: "#F3F4F6", bar: "bg-neutral-200" };
   }
-  if (pct >= 75) {
-    return { arc: "#12B76A", track: "oklch(0.92 0.05 154.9)", bar: "bg-emerald-500" };
-  }
-  if (pct >= 50) {
-    return { arc: "#F5A623", track: "oklch(0.93 0.06 73.0)", bar: "bg-amber-400" };
-  }
-  if (pct >= 25) {
-    return { arc: "#F04438", track: "oklch(0.93 0.04 28.5)", bar: "bg-rose-400" };
-  }
-  return { arc: "#F04438", track: "oklch(0.93 0.04 28.5)", bar: "bg-rose-500" };
+  return { arc: "#000000", track: "#E5E7EB", bar: "bg-black" };
 }
 
 function getGradeBadgeClass(label: string): string {
   const l = label.toLowerCase();
-  if (l === "distinction") return "bg-emerald-50/70 text-emerald-700";
-  if (l === "merit") return "bg-sky-50/70    text-sky-700";
-  if (l === "pass") return "bg-amber-50/70  text-amber-700";
-  if (l === "needs support") return "bg-rose-50/70   text-rose-700";
-  if (l === "grading in progress") return "bg-amber-50/70   text-amber-600";
-  return "bg-slate-50/70 text-slate-500";
+  if (l === "distinction") return "bg-black text-white font-bold border-black";
+  if (l === "merit") return "bg-neutral-200 text-black font-bold border-neutral-300";
+  if (l === "pass") return "bg-neutral-100 text-neutral-800 border-neutral-300 font-semibold";
+  if (l === "needs support") return "bg-neutral-50 text-neutral-700 border-neutral-200 font-medium";
+  if (l === "grading in progress") return "bg-neutral-50 text-neutral-600 border-dashed border-neutral-300 italic";
+  return "bg-neutral-50 text-neutral-500 border-neutral-200";
 }
 
 // ─── Assessment icon ──────────────────────────────────────────────────────────
@@ -353,7 +343,7 @@ function SubjectCard({
                         {assessment.name}
                       </p>
                       {!entered && (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600 border border-neutral-200">
                           Waiting
                         </span>
                       )}
@@ -478,18 +468,15 @@ export function StudentAcademicRecord({
                   return todayStatus ? (
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                        todayStatus === "present" ? "bg-emerald-50 text-emerald-700" :
-                        todayStatus === "late" ? "bg-amber-50 text-amber-700" :
-                        todayStatus === "excused" ? "bg-blue-50 text-blue-700" :
-                        "bg-rose-50 text-rose-700"
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold border",
+                        todayStatus === "present" ? "bg-black text-white border-black" :
+                        todayStatus === "late" ? "bg-neutral-200 text-black border-neutral-300" :
+                        todayStatus === "excused" ? "bg-neutral-100 text-neutral-800 border-neutral-300" :
+                        "bg-neutral-100 text-neutral-900 border-neutral-400"
                       )}>
                         <span className={cn(
                           "h-1.5 w-1.5 rounded-full",
-                          todayStatus === "present" ? "bg-emerald-500" :
-                          todayStatus === "late" ? "bg-amber-500" :
-                          todayStatus === "excused" ? "bg-blue-500" :
-                          "bg-rose-500"
+                          todayStatus === "present" ? "bg-white" : "bg-neutral-600"
                         )} />
                         {todayStatus === "present" ? "In school" :
                          todayStatus === "late" ? "Late" :
@@ -580,12 +567,7 @@ export function StudentAcademicRecord({
                     <p className="text-xs font-medium text-slate-500">
                       Attendance
                     </p>
-                    <p className={cn(
-                      "mt-1 text-2xl font-bold tracking-tight sm:text-3xl",
-                      attRate !== null && attRate >= 75 ? "text-emerald-600" :
-                      attRate !== null && attRate >= 50 ? "text-amber-600" :
-                      attRate !== null ? "text-rose-600" : "text-slate-900"
-                    )}>
+                    <p className="mt-1 text-2xl font-black tracking-tight sm:text-3xl text-black tabular-nums">
                       {attRate !== null ? `${Math.round(attRate)}%` : "—"}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
