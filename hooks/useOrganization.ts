@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { apiFetch, request, HCORE_BASE, HSMS_BASE } from "@/lib/api";
+import { request, HCORE_BASE, HSMS_BASE } from "@/lib/api";
 
 export interface Organization {
   id: string;
@@ -176,7 +176,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
   fetchOrgs: async () => {
     try {
       set({ isLoading: true, error: null });
-      const res = await request<any>(HCORE_BASE, "/v1/me/contexts");
+      const res = await request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts");
       const orgs = res.organizations || [];
       const normalized = orgs.map(normalizeOrganization);
       // HCORE owns identity, HSMS owns the school's logo/contact details, so
@@ -225,7 +225,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // data.
       const [contextResult, memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
         needsContextFetch
-          ? request<any>(HCORE_BASE, "/v1/me/contexts")
+          ? request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts")
           : Promise.resolve(null),
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
         request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
@@ -270,7 +270,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
 
         // Union HCORE's assignments with Hanoled's — same assignment synced
         // from HCORE can appear in both, so de-dupe by id.
-        const mergedAssignments: any[] = [];
+        const mergedAssignments: MemberAssignment[] = [];
         const seenAssignmentIds = new Set<string>();
         for (const a of [...(member.memberAssignments || []), ...(hsmsMember?.memberAssignments || [])]) {
           if (a?.id && seenAssignmentIds.has(a.id)) continue;
@@ -278,11 +278,24 @@ export const useOrganization = create<OrgState>((set, get) => ({
           mergedAssignments.push(a);
         }
 
-        const rawAssignments = member.teachingAssignments || mergedAssignments;
-        const normalizedAssignments = rawAssignments.map((a: any) => ({
-          classLevel: a.classLevel || (a.classLevelId ? { id: a.classLevelId, name: a.classLevelName } : null),
-          subject: a.subject || (a.subjectId ? { id: a.subjectId, name: a.subjectName, code: a.subjectCode } : null),
-        }));
+        // Merge assignedStudents so parent views work with either Hanoled ID or HCORE learner ID
+        const mergedStudents: Array<{ id?: string; firstName?: string; lastName?: string }> = [];
+        const seenStudentIds = new Set<string>();
+        for (const s of [...(hsmsMember?.assignedStudents || []), ...(member.assignedStudents || [])]) {
+          if (s?.id && seenStudentIds.has(s.id)) continue;
+          if (s?.id) seenStudentIds.add(s.id);
+          mergedStudents.push(s);
+        }
+
+        const rawAssignments = (member.teachingAssignments || mergedAssignments) as Array<Record<string, unknown>>;
+        const normalizedAssignments = rawAssignments.map((a) => {
+          const cl = a.classLevel as { id?: string; name?: string; level?: string } | undefined;
+          const sub = a.subject as { id?: string; name?: string; code?: string } | undefined;
+          return {
+            classLevel: cl || (a.classLevelId ? { id: a.classLevelId as string, name: (a.classLevelName as string) || "" } : null),
+            subject: sub || (a.subjectId ? { id: a.subjectId as string, name: (a.subjectName as string) || "", code: a.subjectCode as string | undefined } : null),
+          };
+        });
 
         set({
           currentOrg: org,
@@ -290,6 +303,8 @@ export const useOrganization = create<OrgState>((set, get) => ({
             ...member,
             memberAssignments: mergedAssignments,
             teachingAssignments: normalizedAssignments,
+            assignedStudents: mergedStudents.length > 0 ? mergedStudents : (member.assignedStudents || []),
+            assignedClasses: hsmsMember?.assignedClasses?.length ? hsmsMember.assignedClasses : (member.assignedClasses || []),
             // HCORE says who holds which role; HSMS says what each role may
             // do at this school (usePermissions combines the two).
             access: rememberAccess(slug, hsmsMember?.access),
@@ -309,7 +324,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
       try {
         const profile = await request<StudentProfile>(HSMS_BASE, `/organizations/${slug}/student-profile`, { showErrorToast: false });
         set({
-          currentOrg: profile.org ? normalizeOrganization(profile.org as any) : org,
+          currentOrg: profile.org ? normalizeOrganization(profile.org as unknown as OrganizationApiResponse) : org,
           currentStudent: profile.student,
           isStudent: true,
           isLoading: false,

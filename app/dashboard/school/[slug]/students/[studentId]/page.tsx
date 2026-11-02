@@ -44,7 +44,11 @@ type BusAssignment = {
 type StudentProfile = {
   id: string;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
+  admissionNumber?: string | null;
+  gender?: string | null;
+  classLevel?: { id?: string; name?: string | null } | null;
   hcoreLearnerId?: string | null;
   studentType?: string;
   usesBus?: boolean;
@@ -140,7 +144,10 @@ export default function StudentDetailPage() {
       const [perfData, attData, profData, guardData] = await Promise.all([
         apiFetch<StudentPerformanceResponse>(
           `/students/${currentOrg.slug}/${studentId}/results`,
-        ),
+        ).catch((err) => {
+          if (isForbiddenError(err)) setPerformanceForbidden(true);
+          return null;
+        }),
         apiFetch<StudentAttendanceResponse>(
           `/attendance/${currentOrg.slug}/student/${studentId}?month=${new Date().toISOString().slice(0, 7)}`,
         ).catch(() => null),
@@ -151,7 +158,26 @@ export default function StudentDetailPage() {
           `/students/${currentOrg.slug}/${studentId}/guardians`,
         ).catch(() => []),
       ]);
-      setPerformance(perfData);
+
+      if (!perfData && profData) {
+        setPerformance({
+          student: {
+            id: profData.id,
+            firstName: profData.firstName,
+            middleName: profData.middleName || undefined,
+            lastName: profData.lastName,
+            admissionNumber: profData.admissionNumber || undefined,
+            gender: profData.gender || undefined,
+            classLevel: profData.classLevel
+              ? { id: profData.classLevel.id, name: profData.classLevel.name }
+              : undefined,
+          },
+          subjects: [],
+        });
+      } else {
+        setPerformance(perfData);
+      }
+
       setAttendance(attData);
       setStudentProfile(profData);
       setGuardians(guardData);
