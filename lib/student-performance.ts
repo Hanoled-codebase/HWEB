@@ -229,3 +229,171 @@ export function getSubjectRecordBadgeClass(summary: StudentPerformanceSummary) {
 
   return "border-rose-200/80 bg-rose-50/90 text-rose-800";
 }
+
+// ─── Curriculum Subject Resolution by Class Level ────────────────────────────
+
+export const JUNIOR_1_2_SUBJECTS = [
+  "English Studies",
+  "Mathematics",
+  "Intermediate Science",
+  "Yoruba",
+  "Business Studies",
+  "Christian Religious Studies",
+  "History",
+  "Livestock Farming",
+  "Social and Citizenship Studies",
+  "Physical and Health Education",
+  "Digital Technology",
+  "French",
+  "Cultural and Creative Art",
+] as const;
+
+export const JUNIOR_3_SUBJECTS = [
+  "English Studies",
+  "Mathematics",
+  "Basic Science",
+  "Basic Technology",
+  "Yoruba",
+  "Business Studies",
+  "Christian Religious Studies",
+  "History",
+  "Livestock Farming",
+  "Social and Citizenship Studies",
+  "Physical and Health Education",
+  "Digital Technology",
+  "French",
+  "Cultural and Creative Art",
+] as const;
+
+export const SENIOR_SUBJECTS = [
+  "English Studies",
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Agriculture",
+  "Citizenship and Heritage Studies",
+  "Digital Technology",
+  "Christian Religious Studies",
+  "Financial Accounting",
+  "Commerce",
+  "Literature in English",
+  "Government",
+  "Yoruba",
+  "Further Mathematics",
+  "Economics",
+  "Geography",
+  "French",
+  "Technical Drawing",
+] as const;
+
+export function getCurriculumSubjectsForClass(
+  classNameOrLevel?: string | null,
+): string[] {
+  if (!classNameOrLevel) {
+    return [...JUNIOR_1_2_SUBJECTS];
+  }
+
+  const normalized = classNameOrLevel.trim().toUpperCase();
+
+  // JSS 3 / Basic 9 / Grade 9
+  if (
+    normalized.includes("JSS 3") ||
+    normalized.includes("JSS3") ||
+    normalized.includes("BASIC 9") ||
+    normalized.includes("GRADE 9")
+  ) {
+    return [...JUNIOR_3_SUBJECTS];
+  }
+
+  // JSS 1 and JSS 2 / Basic 7 and 8
+  if (
+    normalized.includes("JSS 1") ||
+    normalized.includes("JSS1") ||
+    normalized.includes("JSS 2") ||
+    normalized.includes("JSS2") ||
+    normalized.includes("BASIC 7") ||
+    normalized.includes("BASIC 8") ||
+    normalized.includes("GRADE 7") ||
+    normalized.includes("GRADE 8")
+  ) {
+    return [...JUNIOR_1_2_SUBJECTS];
+  }
+
+  // Senior secondary: SS 1, SS 2, SS 3 / SSS 1-3 / Grade 10-12
+  if (
+    normalized.includes("SS") ||
+    normalized.includes("SSS") ||
+    normalized.includes("GRADE 10") ||
+    normalized.includes("GRADE 11") ||
+    normalized.includes("GRADE 12") ||
+    normalized.includes("SENIOR")
+  ) {
+    return [...SENIOR_SUBJECTS];
+  }
+
+  // Default fallback for any other junior class
+  if (normalized.includes("JSS") || normalized.includes("JUNIOR")) {
+    return [...JUNIOR_1_2_SUBJECTS];
+  }
+
+  return [...JUNIOR_1_2_SUBJECTS];
+}
+
+export function matchSubjectAlias(
+  subjectA: string | undefined | null,
+  subjectB: string | undefined | null,
+): boolean {
+  if (!subjectA || !subjectB) return false;
+  const normA = subjectA.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normB = subjectB.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+
+  const aliases: [string, string][] = [
+    ["crs", "christianreligiousstudies"],
+    ["crk", "christianreligiousknowledge"],
+    ["irk", "islamicreligiousknowledge"],
+    ["irs", "islamicreligiousstudies"],
+    ["phe", "physicalandhealtheducation"],
+    ["pe", "physicaleducation"],
+    ["cca", "culturalandcreativeart"],
+    ["cca", "culturalandcreativearts"],
+    ["scs", "socialandcitizenshipstudies"],
+    ["chs", "citizenshipandheritagestudies"],
+    ["account", "financialaccounting"],
+    ["agric", "agriculture"],
+    ["agric", "agriculturalscience"],
+    ["agriculture", "agriculturalscience"],
+    ["furthermaths", "furthermathematics"],
+    ["maths", "mathematics"],
+    ["english", "englishstudies"],
+    ["english", "englishlanguage"],
+    ["literature", "literatureinenglish"],
+    ["intermediate", "intermediatescience"],
+    ["basictech", "basictechnology"],
+    ["basicscience", "basicscienceandtechnology"],
+    ["bst", "basicscienceandtechnology"],
+    ["livestock", "livestockfarming"],
+    ["techdrawing", "technicaldrawing"],
+    ["td", "technicaldrawing"],
+  ];
+
+  for (const [a1, a2] of aliases) {
+    if (
+      (normA.includes(a1) || a1.includes(normA)) &&
+      (normB.includes(a2) || a2.includes(normB))
+    ) {
+      return true;
+    }
+    if (
+      (normB.includes(a1) || a1.includes(normB)) &&
+      (normA.includes(a2) || a2.includes(normA))
+    ) {
+      return true;
+    }
+  }
+
+  return normA.includes(normB) || normB.includes(normA);
+}
+

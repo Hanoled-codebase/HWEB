@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -38,7 +38,8 @@ import {
 
 export function StudentSidebar() {
   const pathname = usePathname();
-  const { currentOrg, currentStudent, organizations } = useOrganization();
+  const router = useRouter();
+  const { currentOrg, currentStudent, organizations, setCurrentOrg } = useOrganization();
   const { user, logout } = useAuth();
   // Tablets show this sidebar as a drawer; picking a page closes it.
   const { setOpenMobile } = useSidebar();
@@ -76,55 +77,78 @@ export function StudentSidebar() {
       <SidebarHeader className="border-b border-sidebar-border py-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuButton size="lg" className="w-full justify-between px-3.5">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <Avatar className="h-8 w-8 rounded-lg shrink-0">
-                        <AvatarImage src={currentOrg.logo} alt={currentOrg.name} />
-                        <AvatarFallback className="rounded-lg bg-blue-600 text-white font-semibold">
-                          {getInitials(currentOrg.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
-                        <span className="font-semibold text-sm truncate capitalize">
-                          {currentOrg.name}
-                        </span>
-                        <span className="text-xs text-sidebar-foreground/70 truncate">
-                          Student
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronUp className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-                  </SidebarMenuButton>
-                }
-              />
-              <DropdownMenuContent align="start" className="w-[240px]">
-                <DropdownMenuLabel className="text-xs text-slate-500">
-                  Switch School
-                </DropdownMenuLabel>
-                {organizations.map((org) => (
-                  <DropdownMenuItem
-                    key={org.id}
-                    render={
-                      <Link
-                        href={`/dashboard/school/${org.slug}`}
-                        className="flex items-center gap-2 w-full"
-                      >
-                        <Avatar className="h-6 w-6 rounded-sm">
-                          <AvatarImage src={org.logo} alt={org.name} />
-                          <AvatarFallback className="rounded-sm bg-blue-600 text-[11px] text-white">
-                            {getInitials(org.name)}
+            {organizations.length > 1 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton size="lg" className="w-full justify-between px-3.5">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <Avatar className="h-8 w-8 rounded-lg shrink-0">
+                          <AvatarImage src={currentOrg.logo} alt={currentOrg.name} />
+                          <AvatarFallback className="rounded-lg bg-blue-600 text-white font-semibold">
+                            {getInitials(currentOrg.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate capitalize">{org.name}</span>
-                      </Link>
-                    }
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                        <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
+                          <span className="font-semibold text-sm truncate capitalize">
+                            {currentOrg.name}
+                          </span>
+                          <span className="text-xs text-sidebar-foreground/70 truncate">
+                            Student
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronUp className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                    </SidebarMenuButton>
+                  }
+                />
+                <DropdownMenuContent align="start" className="w-[240px]">
+                  <DropdownMenuLabel className="text-xs text-slate-500">
+                    Switch School
+                  </DropdownMenuLabel>
+                  {organizations.map((org) => (
+                    <DropdownMenuItem
+                      key={org.id}
+                      render={
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await setCurrentOrg(org.slug);
+                            router.push(`/dashboard/school/${org.slug}`);
+                          }}
+                          className="flex items-center gap-2 w-full text-left"
+                        >
+                          <Avatar className="h-6 w-6 rounded-sm">
+                            <AvatarImage src={org.logo} alt={org.name} />
+                            <AvatarFallback className="rounded-sm bg-blue-600 text-[11px] text-white">
+                              {getInitials(org.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate capitalize">{org.name}</span>
+                        </button>
+                      }
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 px-3.5">
+                <Avatar className="h-8 w-8 rounded-lg shrink-0">
+                  <AvatarImage src={currentOrg.logo} alt={currentOrg.name} />
+                  <AvatarFallback className="rounded-lg bg-blue-600 text-white font-semibold">
+                    {getInitials(currentOrg.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
+                  <span className="font-semibold text-sm truncate capitalize">
+                    {currentOrg.name}
+                  </span>
+                  <span className="text-xs text-sidebar-foreground/70 truncate">
+                    Student
+                  </span>
+                </div>
+              </div>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

@@ -4,6 +4,10 @@ import React, { useRef, useState, useMemo } from "react";
 import { Printer, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadReportCardPdf } from "@/lib/report-card-download";
+import {
+  getCurriculumSubjectsForClass,
+  matchSubjectAlias,
+} from "@/lib/student-performance";
 
 export interface ReportCardStudent {
   id: string;
@@ -54,7 +58,7 @@ export interface ReportCardPrintModalProps {
   onClose: () => void;
 }
 
-// 9-point WAEC / Elyon College Nigerian Grading scale
+// 9-point WAEC Nigerian Grading scale
 export function computeNigerianGrade(score: number): {
   grade: string;
   letter: "A" | "B" | "C" | "D" | "E" | "P";
@@ -109,13 +113,13 @@ const DEFAULT_LEADERSHIP_SKILLS = [
 
 export default function ReportCardPrintModal({
   orgSlug,
-  orgName = "Elyon COLLEGE",
+  orgName = "School",
   orgLogo,
-  orgAddress = "Address: Block VI, Plot 6, Housing Estate, Ajebo Road, Kemta, Idi-Aba, Abk.",
-  orgEmail = "Email: elyon@elyoncollege.com",
+  orgAddress = "",
+  orgEmail = "",
   student,
   term = "1st Mid-Term",
-  academicYear = "2025/2026",
+  academicYear = "2026/2027",
   classStudentCount = 17,
   results = [],
   ceoComment: initialCeoComment = "",
@@ -164,51 +168,98 @@ export default function ReportCardPrintModal({
     }
   };
 
-  // Determine subject rows: if results array is provided with real subjects, use them;
-  // if empty, display the 16 standard subjects from the Elyon College template
+  // Determine subject rows: Show ONLY the subjects the student is offering based on their class level
   const displayResults = useMemo(() => {
-    if (Array.isArray(results)) {
-      return results.map((r) => {
-        const gradeObj = computeNigerianGrade(r.score ?? 0);
-        return {
-          subject: r.subject,
-          classExercises: r.classExercises ?? "",
-          assignments: r.assignments ?? "",
-          periodicTests: r.periodicTests ?? "",
-          examScore: r.examScore ?? "",
-          score: r.score ?? 0,
-          grade: r.grade || gradeObj.grade,
-          highestScore: r.highestScore ?? "",
-          lowestScore: r.lowestScore ?? "",
-        };
-      });
-    }
+    const curriculum = getCurriculumSubjectsForClass(
+      student.classLevel?.name || student.classLevel?.level,
+    );
 
-    // Default template fallback with 16 subjects matching image only when no results array provided
-    return DEFAULT_SAMPLE_SUBJECTS.map((subjectName) => ({
-      subject: subjectName,
-      classExercises: "",
-      assignments: "",
-      periodicTests: "",
-      examScore: "",
-      score: 0,
-      grade: "F9",
-      highestScore: "",
-      lowestScore: "",
-    }));
-  }, [results]);
+    return curriculum.map((subjectName) => {
+      const match = Array.isArray(results)
+        ? results.find((r) => matchSubjectAlias(r.subject, subjectName))
+        : null;
+
+      if (match) {
+        const hasScore =
+          match.score !== undefined && match.score !== null && !isNaN(Number(match.score));
+        const numericScore = typeof match.score === "number" ? match.score : Number(match.score);
+        const gradeObj = computeNigerianGrade(
+          Number.isFinite(numericScore) ? numericScore : 0,
+        );
+
+        return {
+          subject: subjectName,
+          classExercises:
+            match.classExercises !== undefined &&
+            match.classExercises !== null &&
+            match.classExercises !== ""
+              ? match.classExercises
+              : "—",
+          assignments:
+            match.assignments !== undefined &&
+            match.assignments !== null &&
+            match.assignments !== ""
+              ? match.assignments
+              : "—",
+          periodicTests:
+            match.periodicTests !== undefined &&
+            match.periodicTests !== null &&
+            match.periodicTests !== ""
+              ? match.periodicTests
+              : "—",
+          examScore:
+            match.examScore !== undefined &&
+            match.examScore !== null &&
+            match.examScore !== ""
+              ? match.examScore
+              : "—",
+          score: hasScore && Number.isFinite(numericScore) ? numericScore : "—",
+          grade:
+            hasScore && Number.isFinite(numericScore)
+              ? match.grade || gradeObj.grade
+              : "—",
+          highestScore:
+            match.highestScore !== undefined &&
+            match.highestScore !== null &&
+            match.highestScore !== ""
+              ? match.highestScore
+              : "—",
+          lowestScore:
+            match.lowestScore !== undefined &&
+            match.lowestScore !== null &&
+            match.lowestScore !== ""
+              ? match.lowestScore
+              : "—",
+        };
+      }
+
+      // Default row for offered subject awaiting score entry
+      return {
+        subject: subjectName,
+        classExercises: "—",
+        assignments: "—",
+        periodicTests: "—",
+        examScore: "—",
+        score: "—",
+        grade: "—",
+        highestScore: "—",
+        lowestScore: "—",
+      };
+    });
+  }, [results, student.classLevel]);
 
   // Dynamic Grade Breakdown counts for "SUMMARY OF ACADEMIC REPORT"
   const summaryCounts = useMemo(() => {
     const counts = { A: 0, B: 0, C: 0, D: 0, E: 0, P: 0 };
     displayResults.forEach((item) => {
-      const g = (item.grade || "F9").toUpperCase();
+      const g = String(item.grade || "").toUpperCase();
+      if (!g || g === "—") return;
       if (g.startsWith("A")) counts.A += 1;
       else if (g.startsWith("B")) counts.B += 1;
       else if (g.startsWith("C")) counts.C += 1;
       else if (g.startsWith("D")) counts.D += 1;
       else if (g.startsWith("E")) counts.E += 1;
-      else counts.P += 1; // P9 / F9
+      else if (g.startsWith("F") || g.startsWith("P")) counts.P += 1;
     });
     return counts;
   }, [displayResults]);
@@ -228,7 +279,7 @@ export default function ReportCardPrintModal({
     student.classLevel?.level ||
     "JSS 1A";
 
-  const studentAdmissionNo = student.admissionNumber || "ECLA/2024/626";
+  const studentAdmissionNo = student.admissionNumber || "—";
   const studentSex = student.gender ? student.gender.toUpperCase() : "FEMALE";
 
   // Title formatting: "Report Sheet For 1st Mid-Term Result, 2025/2026 Session"
@@ -348,21 +399,21 @@ export default function ReportCardPrintModal({
         }
       `}</style>
 
-      <div className="report-card-modal-wrapper relative w-full max-w-4xl rounded-xl bg-slate-900 shadow-2xl overflow-hidden my-4 border border-slate-700 flex flex-col max-h-[96vh]">
+      <div className="report-card-modal-wrapper relative w-full max-w-4xl rounded-2xl bg-neutral-950 shadow-2xl overflow-hidden my-4 border border-neutral-800 flex flex-col max-h-[96vh]">
         {/* Top Control Bar (Hidden during Print) */}
-        <div className="no-print flex items-center justify-between border-b border-slate-800 bg-[#0F172A] px-4 sm:px-6 py-3 text-white shrink-0">
+        <div className="no-print flex items-center justify-between border-b border-neutral-800 bg-black px-4 sm:px-6 py-3.5 text-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E78216] text-white font-bold text-sm shadow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900 border border-neutral-700 text-white font-black text-xs shadow-xs">
               RC
             </div>
             <div>
               <h2 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
                 Official Report Sheet Preview
-                <span className="rounded bg-[#E78216]/20 px-2 py-0.5 text-[10px] font-bold uppercase text-[#E78216] border border-[#E78216]/40">
+                <span className="rounded bg-neutral-900 px-2 py-0.5 text-[10px] font-bold uppercase text-neutral-300 border border-neutral-700">
                   {term}
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 {studentFullName} &bull; {studentClass} &bull; {studentAdmissionNo}
               </p>
             </div>
@@ -372,7 +423,7 @@ export default function ReportCardPrintModal({
             <Button
               type="button"
               onClick={handlePrint}
-              className="bg-[#E78216] hover:bg-[#D37210] text-white font-semibold gap-1.5 shadow-sm text-xs h-8 px-3.5 cursor-pointer"
+              className="bg-white hover:bg-neutral-200 text-black font-bold gap-1.5 shadow-sm text-xs h-8 px-3.5 cursor-pointer border border-white"
             >
               <Printer className="h-3.5 w-3.5" />
               Print Template
@@ -382,7 +433,7 @@ export default function ReportCardPrintModal({
               onClick={handleDownloadPDF}
               disabled={isDownloading}
               variant="outline"
-              className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 font-semibold gap-1.5 text-xs h-8 px-3.5 cursor-pointer"
+              className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 hover:text-white font-semibold gap-1.5 text-xs h-8 px-3.5 cursor-pointer"
             >
               <Download className="h-3.5 w-3.5" />
               {isDownloading ? "Downloading..." : "Download PDF"}
@@ -392,7 +443,7 @@ export default function ReportCardPrintModal({
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8 cursor-pointer ml-1"
+              className="text-neutral-400 hover:text-white hover:bg-neutral-900 h-8 w-8 cursor-pointer ml-1"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -400,51 +451,47 @@ export default function ReportCardPrintModal({
         </div>
 
         {/* Scrollable Preview Canvas */}
-        <div className="report-card-scroll-area p-3 sm:p-6 overflow-y-auto bg-slate-200/90 flex-1">
+        <div className="report-card-scroll-area p-3 sm:p-6 overflow-y-auto bg-neutral-200/90 flex-1">
           <div
             id="report-sheet-print-container"
             ref={printRef}
-            className="mx-auto bg-white p-3 sm:p-5 rounded-sm shadow-md border border-slate-400 text-black max-w-[820px] font-sans text-xs leading-tight"
+            className="mx-auto bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black max-w-[820px] font-sans text-xs leading-tight"
           >
-            {/* ── ROW 1 & 2: School Logo & Leadership Academy Badge ── */}
+            {/* ── ROW 1 & 2: School Logo & Branding ── */}
             <div className="text-center pt-1 pb-1">
               {orgLogo ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={orgLogo}
                   alt={orgName}
-                  className="h-14 w-auto max-w-[220px] object-contain mx-auto"
+                  className="h-16 w-auto max-w-[240px] object-contain mx-auto"
                 />
               ) : (
                 <div className="inline-flex flex-col items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl sm:text-2xl font-black tracking-wide text-[#C0392B] font-serif">
-                      Elyon
-                    </span>
-                  </div>
-                  <div className="text-base sm:text-lg font-black tracking-[0.25em] text-[#1E3A8A] font-serif uppercase border-b-2 border-[#C0392B] pb-0.5 w-full text-center">
-                    COLLEGE
-                  </div>
-                  <div className="text-[10px] font-semibold text-slate-600 italic tracking-wider mt-0.5">
-                    Leadership Academy
-                  </div>
+                  <span className="text-xl sm:text-2xl font-black tracking-widest text-black font-serif uppercase px-4 text-center">
+                    {orgName || "School"}
+                  </span>
+                  <div className="w-48 h-0.5 bg-black mt-1" />
+                  <div className="w-32 h-px bg-black mt-0.5" />
                 </div>
               )}
             </div>
 
             {/* ── ROW 3: School Address and Email ── */}
-            <div className="text-center text-[10.5px] font-bold text-black border-t border-slate-400 pt-1 pb-1">
-              {orgAddress} {orgEmail}
-            </div>
+            {(orgAddress || orgEmail) && (
+              <div className="text-center text-[10.5px] font-bold text-black border-t border-black pt-1.5 pb-1 mt-1">
+                {[orgAddress, orgEmail].filter(Boolean).join(" • ")}
+              </div>
+            )}
 
-            {/* ── ROW 4: Title Banner (Light Blue fill) ── */}
-            <div className="text-center text-sm sm:text-base font-extrabold text-black bg-[#E6EFFE] border border-slate-700 py-1 tracking-tight">
+            {/* ── ROW 4: Title Banner (Solid Black fill with White text) ── */}
+            <div className="text-center text-sm sm:text-base font-black text-white bg-black border border-black py-1.5 tracking-wider uppercase">
               Report Sheet For {formattedTerm}, {academicYear} Session
             </div>
 
             {/* ── ROW 5-7: Student Metadata Grid (Bordered table) ── */}
-            <div className="border-x border-b border-slate-700 text-[11px] font-semibold">
-              <div className="grid grid-cols-12 divide-x divide-slate-700 border-b border-slate-700">
+            <div className="border-x border-b border-black text-[11px] font-semibold divide-y divide-black">
+              <div className="grid grid-cols-12 divide-x divide-black">
                 <div className="col-span-6 px-2 py-1 flex items-center gap-1.5">
                   <span className="font-bold text-black">Name:</span>
                   <span className="font-extrabold uppercase text-black">
@@ -461,7 +508,7 @@ export default function ReportCardPrintModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-12 divide-x divide-slate-700">
+              <div className="grid grid-cols-12 divide-x divide-black">
                 <div className="col-span-6 px-2 py-1 flex items-center gap-1.5">
                   <span className="font-bold text-black">Admission No:</span>
                   <span className="font-extrabold text-black">
@@ -476,26 +523,26 @@ export default function ReportCardPrintModal({
             </div>
 
             {/* ── MAIN ACADEMIC ASSESSMENT TABLE ── */}
-            <div className="mt-1 border border-slate-700 overflow-hidden">
+            <div className="mt-1 border border-black overflow-hidden">
               <table className="w-full border-collapse text-left text-[11px]">
                 <thead>
                   {/* Rows 8-13 Header Lockup */}
-                  <tr className="border-b border-slate-700">
-                    {/* Left Column (Cols A-C): Solid Orange Bar + 2-col Nigerian Grade Scale Key */}
+                  <tr className="border-b border-black">
+                    {/* Left Column (Cols A-C): Solid Black Bar + 2-col Nigerian Grade Scale Key */}
                     <th
                       rowSpan={2}
-                      className="p-0 border-r border-slate-700 align-top w-[38%] bg-[#C4CDDC]"
+                      className="p-0 border-r border-black align-top w-[38%] bg-[#F1F3F5]"
                     >
                       <div className="flex h-full min-h-[145px]">
-                        {/* Solid Orange Vertical Bar on Left */}
-                        <div className="w-12 bg-[#E78216] text-black font-extrabold flex flex-col items-center justify-end p-1.5 border-r border-slate-700">
+                        {/* Solid Black Vertical Bar on Left */}
+                        <div className="w-12 bg-black text-white font-extrabold flex flex-col items-center justify-end p-1.5 border-r border-black">
                           <span className="grades-vertical-text tracking-widest text-[11px] pb-1">
                             GRADES
                           </span>
                         </div>
 
                         {/* Two-column Grade Scale reference box */}
-                        <div className="flex-1 p-2 bg-[#C4CDDC] text-[9.5px] font-bold text-black flex flex-col justify-center">
+                        <div className="flex-1 p-2 bg-[#F8F9FA] text-[9.5px] font-bold text-black flex flex-col justify-center">
                           <div className="grid grid-cols-2 gap-x-2 gap-y-1">
                             <div>A1** : 90 - 100</div>
                             <div>C5 : 60 - 64</div>
@@ -522,7 +569,7 @@ export default function ReportCardPrintModal({
                     {/* Grouped Header: Continuous Assessment (spanning 3 CA columns) */}
                     <th
                       colSpan={3}
-                      className="text-center font-bold text-black bg-[#C4CDDC] border-r border-b border-slate-700 py-1 text-[10.5px]"
+                      className="text-center font-black text-black bg-[#F1F3F5] border-r border-b border-black py-1 text-[10.5px]"
                     >
                       Continuous
                       <br />
@@ -532,135 +579,135 @@ export default function ReportCardPrintModal({
                     {/* Remaining Vertical Column Headers */}
                     <th
                       rowSpan={2}
-                      className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center"
+                      className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center">
+                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
                         Mid-Term Exam Scores
                       </div>
                     </th>
 
                     <th
                       rowSpan={2}
-                      className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center"
+                      className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center">
+                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
                         Total Scores
                       </div>
                     </th>
 
                     <th
                       rowSpan={2}
-                      className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[8%] align-bottom text-center"
+                      className="border-r border-black bg-[#F1F3F5] p-1 w-[8%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center">
+                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
                         Grades
                       </div>
                     </th>
 
                     <th
                       rowSpan={2}
-                      className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center"
+                      className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center">
+                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
                         Highest Score
                       </div>
                     </th>
 
                     <th
                       rowSpan={2}
-                      className="bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center"
+                      className="bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center">
+                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
                         Lowest Score
                       </div>
                     </th>
                   </tr>
 
                   {/* CA Subheaders (vertical text) */}
-                  <tr className="border-b border-slate-700">
-                    <th className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center">
+                  <tr className="border-b border-black">
+                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
+                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
                         Class Exercises
                       </div>
                     </th>
-                    <th className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center">
+                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
+                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
                         Assignments
                       </div>
                     </th>
-                    <th className="border-r border-slate-700 bg-[#C4CDDC] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center">
+                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
+                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
                         Periodic Tests
                       </div>
                     </th>
                   </tr>
 
-                  {/* ── ROW 14: Mark Obtainable Row (Solid Orange) ── */}
-                  <tr className="bg-[#E78216] font-bold text-black border-b border-slate-700 text-center text-[10.5px]">
-                    <td className="text-left px-3 py-1 font-extrabold border-r border-slate-700">
+                  {/* ── ROW 14: Mark Obtainable Row (Solid Black) ── */}
+                  <tr className="bg-black font-black text-white border-b border-black text-center text-[10.5px]">
+                    <td className="text-left px-3 py-1 font-extrabold border-r border-neutral-700">
                       Mark obtainable
                     </td>
-                    <td className="border-r border-slate-700 py-1">10</td>
-                    <td className="border-r border-slate-700 py-1">10</td>
-                    <td className="border-r border-slate-700 py-1">20</td>
-                    <td className="border-r border-slate-700 py-1">60</td>
-                    <td className="border-r border-slate-700 py-1 font-extrabold">100</td>
-                    <td className="border-r border-slate-700 py-1"></td>
-                    <td className="border-r border-slate-700 py-1">100</td>
+                    <td className="border-r border-neutral-700 py-1">10</td>
+                    <td className="border-r border-neutral-700 py-1">10</td>
+                    <td className="border-r border-neutral-700 py-1">20</td>
+                    <td className="border-r border-neutral-700 py-1">60</td>
+                    <td className="border-r border-neutral-700 py-1 font-black">100</td>
+                    <td className="border-r border-neutral-700 py-1"></td>
+                    <td className="border-r border-neutral-700 py-1">100</td>
                     <td className="py-1">100</td>
                   </tr>
                 </thead>
 
-                {/* ── ROWS 15-30: Subject Rows ── */}
-                <tbody className="divide-y divide-slate-700 font-medium">
+                {/* ── ROWS 15+: Subject Rows (Strictly Offered Subjects) ── */}
+                <tbody className="divide-y divide-black font-medium">
                   {displayResults.map((item, idx) => (
                     <tr
                       key={idx}
-                      className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
+                      className={idx % 2 === 0 ? "bg-white" : "bg-[#F8F9FA]"}
                     >
                       {/* Subject Name */}
-                      <td className="px-2.5 py-1 font-bold text-black border-r border-slate-700">
+                      <td className="px-2.5 py-1 font-bold text-black border-r border-black">
                         {item.subject}
                       </td>
 
                       {/* Class Exercises (10) */}
-                      <td className="text-center border-r border-slate-700 py-1 text-slate-800">
-                        {item.classExercises !== "" ? item.classExercises : ""}
+                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                        {item.classExercises}
                       </td>
 
                       {/* Assignments (10) */}
-                      <td className="text-center border-r border-slate-700 py-1 text-slate-800">
-                        {item.assignments !== "" ? item.assignments : ""}
+                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                        {item.assignments}
                       </td>
 
                       {/* Periodic Tests (20) */}
-                      <td className="text-center border-r border-slate-700 py-1 text-slate-800">
-                        {item.periodicTests !== "" ? item.periodicTests : ""}
+                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                        {item.periodicTests}
                       </td>
 
                       {/* Mid-Term Exam (60) */}
-                      <td className="text-center border-r border-slate-700 py-1 text-slate-800">
-                        {item.examScore !== "" ? item.examScore : ""}
+                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                        {item.examScore}
                       </td>
 
                       {/* Total Scores (100) */}
-                      <td className="text-center border-r border-slate-700 py-1 font-bold text-black">
+                      <td className="text-center border-r border-black py-1 font-black text-black tabular-nums">
                         {item.score}
                       </td>
 
-                      {/* Grades (Peach / Warm Tan background: #E6AF77) */}
-                      <td className="text-center border-r border-slate-700 py-1 font-extrabold text-black bg-[#E6AF77]">
+                      {/* Grades (Subtle light gray fill: #E9ECEF) */}
+                      <td className="text-center border-r border-black py-1 font-black text-black bg-[#E9ECEF] tabular-nums">
                         {item.grade}
                       </td>
 
                       {/* Highest Score */}
-                      <td className="text-center border-r border-slate-700 py-1 text-slate-800">
-                        {item.highestScore !== "" ? item.highestScore : ""}
+                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                        {item.highestScore}
                       </td>
 
                       {/* Lowest Score */}
-                      <td className="text-center py-1 text-slate-800">
-                        {item.lowestScore !== "" ? item.lowestScore : ""}
+                      <td className="text-center py-1 text-black tabular-nums">
+                        {item.lowestScore}
                       </td>
                     </tr>
                   ))}
@@ -669,30 +716,30 @@ export default function ReportCardPrintModal({
             </div>
 
             {/* ── LOWER SECTION: Leadership Skills (Left) & Academic Summary (Right) ── */}
-            <div className="grid grid-cols-12 border-x border-b border-slate-700 text-[10.5px]">
+            <div className="grid grid-cols-12 border-x border-b border-black text-[10.5px]">
               {/* ── LEFT COLUMN (Cols 1-7): Leadership / Psychomotor Skills ── */}
-              <div className="col-span-7 border-r border-slate-700 flex flex-col">
+              <div className="col-span-7 border-r border-black flex flex-col">
                 {/* Header */}
-                <div className="grid grid-cols-12 bg-[#C4CDDC] font-bold text-black border-b border-slate-700 py-1">
+                <div className="grid grid-cols-12 bg-[#F1F3F5] font-black text-black border-b border-black py-1">
                   <div className="col-span-9 px-2">
-                    Leadership Skills /Affective/ Psychomotor Skills
+                    Leadership Skills / Affective / Psychomotor Skills
                   </div>
-                  <div className="col-span-3 text-center border-l border-slate-700 font-extrabold">
+                  <div className="col-span-3 text-center border-l border-black font-black">
                     GRADES
                   </div>
                 </div>
 
                 {/* 12 Skills Rows */}
-                <div className="divide-y divide-slate-700 font-medium">
+                <div className="divide-y divide-black font-medium">
                   {DEFAULT_LEADERSHIP_SKILLS.map((skillName, sIdx) => (
                     <div
                       key={sIdx}
-                      className="grid grid-cols-12 py-0.5 hover:bg-slate-50"
+                      className="grid grid-cols-12 py-0.5 hover:bg-neutral-50"
                     >
-                      <div className="col-span-9 px-2 text-slate-900 font-semibold truncate">
+                      <div className="col-span-9 px-2 text-black font-semibold truncate">
                         {skillName}
                       </div>
-                      <div className="col-span-3 text-center border-l border-slate-700 font-bold text-slate-800">
+                      <div className="col-span-3 text-center border-l border-black font-bold text-black">
                         <input
                           type="text"
                           maxLength={3}
@@ -704,7 +751,7 @@ export default function ReportCardPrintModal({
                             })
                           }
                           placeholder=""
-                          className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold focus:outline-none focus:bg-amber-50"
+                          className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold text-black focus:outline-none focus:bg-neutral-100"
                         />
                       </div>
                     </div>
@@ -715,54 +762,54 @@ export default function ReportCardPrintModal({
               {/* ── RIGHT COLUMN (Cols 8-12): Academic Summary, Grade Keys, Attendance, Resumption ── */}
               <div className="col-span-5 flex flex-col justify-between">
                 <div>
-                  {/* Summary Header (Solid Orange) */}
-                  <div className="bg-[#E78216] font-extrabold text-black text-center py-1 border-b border-slate-700 text-[11px]">
+                  {/* Summary Header (Solid Black) */}
+                  <div className="bg-black font-black text-white text-center py-1 border-b border-black text-[11px] uppercase tracking-wider">
                     SUMMARY OF ACADEMIC REPORT
                   </div>
 
                   {/* Summary of As, Bs, Cs, Ds, Es, Ps Grid */}
-                  <div className="divide-y divide-slate-700 font-bold text-black border-b border-slate-700">
-                    <div className="grid grid-cols-2 divide-x divide-slate-700 py-1 px-2">
+                  <div className="divide-y divide-black font-bold text-black border-b border-black">
+                    <div className="grid grid-cols-2 divide-x divide-black py-1 px-2">
                       <div className="flex justify-between pr-2">
                         <span>NOS OF As:</span>
-                        <span>{summaryCounts.A}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.A}</span>
                       </div>
                       <div className="flex justify-between pl-2">
                         <span>NOS OF Bs:</span>
-                        <span>{summaryCounts.B}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.B}</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 divide-x divide-slate-700 py-1 px-2">
+                    <div className="grid grid-cols-2 divide-x divide-black py-1 px-2">
                       <div className="flex justify-between pr-2">
                         <span>NOS OF Cs:</span>
-                        <span>{summaryCounts.C}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.C}</span>
                       </div>
                       <div className="flex justify-between pl-2">
                         <span>NOS OF Ds:</span>
-                        <span>{summaryCounts.D}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.D}</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 divide-x divide-slate-700 py-1 px-2">
+                    <div className="grid grid-cols-2 divide-x divide-black py-1 px-2">
                       <div className="flex justify-between pr-2">
                         <span>NOS OF Es:</span>
-                        <span>{summaryCounts.E}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.E}</span>
                       </div>
                       <div className="flex justify-between pl-2">
                         <span>NOS OF Ps:</span>
-                        <span>{summaryCounts.P}</span>
+                        <span className="font-black tabular-nums">{summaryCounts.P}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Grade Keys Header (Solid Orange) */}
-                  <div className="bg-[#E78216] font-extrabold text-black px-2 py-0.5 border-b border-slate-700 text-[11px]">
+                  {/* Grade Keys Header (Solid Black) */}
+                  <div className="bg-black font-black text-white px-2 py-0.5 border-b border-black text-[11px] uppercase tracking-wider">
                     Grade Keys
                   </div>
 
                   {/* Skills Rating Scale (5-1) and Attendance Table */}
-                  <div className="grid grid-cols-12 divide-x divide-slate-700 border-b border-slate-700 text-[10px]">
+                  <div className="grid grid-cols-12 divide-x divide-black border-b border-black text-[10px]">
                     {/* Left side: 5 - Excellent scale */}
                     <div className="col-span-5 p-1.5 font-bold space-y-0.5 text-black">
                       <div>5 - Excellent</div>
@@ -774,19 +821,19 @@ export default function ReportCardPrintModal({
 
                     {/* Right side: Attendance Table */}
                     <div className="col-span-7 flex flex-col">
-                      <div className="grid grid-cols-3 divide-x divide-slate-700 bg-[#E78216] text-black font-extrabold text-center text-[8.5px] leading-tight border-b border-slate-700">
+                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-[8.5px] leading-tight border-b border-black">
                         <div className="p-1">No of Times School Open</div>
                         <div className="p-1">No of Times Present</div>
                         <div className="p-1">No of Times Absent</div>
                       </div>
-                      <div className="grid grid-cols-3 divide-x divide-slate-700 text-center font-bold text-black flex-1 min-h-[50px] items-center">
+                      <div className="grid grid-cols-3 divide-x divide-black text-center font-bold text-black flex-1 min-h-[50px] items-center">
                         <div className="p-1">
                           <input
                             type="text"
                             value={schoolOpen}
                             onChange={(e) => setSchoolOpen(e.target.value)}
                             placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-bold focus:outline-none"
+                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
                           />
                         </div>
                         <div className="p-1">
@@ -795,7 +842,7 @@ export default function ReportCardPrintModal({
                             value={schoolPresent}
                             onChange={(e) => setSchoolPresent(e.target.value)}
                             placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-bold focus:outline-none"
+                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
                           />
                         </div>
                         <div className="p-1">
@@ -804,7 +851,7 @@ export default function ReportCardPrintModal({
                             value={schoolAbsent}
                             onChange={(e) => setSchoolAbsent(e.target.value)}
                             placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-bold focus:outline-none"
+                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
                           />
                         </div>
                       </div>
@@ -814,7 +861,7 @@ export default function ReportCardPrintModal({
 
                 {/* Resumption Bar */}
                 <div>
-                  <div className="bg-[#E78216] font-extrabold text-black text-center py-1 border-t border-slate-700 text-[11px]">
+                  <div className="bg-black font-black text-white text-center py-1 border-t border-black text-[11px] uppercase tracking-wider">
                     Resumption
                   </div>
                   <div className="p-1 text-center font-bold text-black min-h-[22px] bg-white">
@@ -823,7 +870,7 @@ export default function ReportCardPrintModal({
                       value={resumption}
                       onChange={(e) => setResumption(e.target.value)}
                       placeholder="Next term resumption date..."
-                      className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold focus:outline-none"
+                      className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold text-black focus:outline-none"
                     />
                   </div>
                 </div>
@@ -831,7 +878,7 @@ export default function ReportCardPrintModal({
             </div>
 
             {/* ── FOOTER: C.E.O's Comment & C.E.O's Signature ── */}
-            <div className="border-x border-b border-slate-700 p-2 text-[11px] font-bold text-black">
+            <div className="border-x border-b border-black p-2 text-[11px] font-bold text-black">
               <div className="grid grid-cols-12 gap-3 items-end">
                 {/* Left: C.E.O's Comment */}
                 <div className="col-span-8 flex flex-col justify-between min-h-[75px]">
@@ -844,7 +891,7 @@ export default function ReportCardPrintModal({
                       value={ceoComment}
                       onChange={(e) => setCeoComment(e.target.value)}
                       placeholder="Commendable performance, keep soaring higher."
-                      className="w-full mt-1 bg-transparent border-0 border-b border-dotted border-slate-400 p-1 text-[11px] font-semibold text-slate-800 focus:outline-none focus:border-slate-800 resize-none"
+                      className="w-full mt-1 bg-transparent border-0 border-b border-dotted border-black p-1 text-[11px] font-semibold text-black focus:outline-none focus:border-black resize-none"
                     />
                   </div>
                 </div>
@@ -855,7 +902,7 @@ export default function ReportCardPrintModal({
                     {/* Elegant Cursive CEO Signature Scribble */}
                     <svg
                       viewBox="0 0 160 45"
-                      className="h-9 w-36 stroke-slate-900 fill-none"
+                      className="h-9 w-36 stroke-black fill-none"
                     >
                       <path
                         d="M 12 32 C 16 14, 22 10, 26 28 C 30 14, 36 20, 42 27 C 48 34, 54 12, 60 24 C 66 34, 76 18, 86 24 C 96 30, 110 22, 120 28 C 130 33, 140 26, 150 29"
@@ -870,7 +917,7 @@ export default function ReportCardPrintModal({
                       />
                     </svg>
                   </div>
-                  <div className="text-[11px] font-extrabold text-black tracking-wide border-t border-slate-400 pt-0.5 w-3/4 mx-auto">
+                  <div className="text-[11px] font-extrabold text-black tracking-wide border-t border-black pt-0.5 w-3/4 mx-auto">
                     C.E.O's Signature
                   </div>
                 </div>

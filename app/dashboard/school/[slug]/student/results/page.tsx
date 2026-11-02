@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText, BarChart3, Printer } from "lucide-react";
+import { useOrganization } from "@/hooks/useOrganization";
 import ReportCardPrintModal, {
   computeNigerianGrade,
 } from "@/components/results/ReportCardPrintModal";
@@ -37,6 +38,7 @@ type ResultsData = {
 export default function StudentResultsPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { currentOrg } = useOrganization();
   const [data, setData] = useState<ResultsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -235,9 +237,13 @@ export default function StudentResultsPage() {
       {showPrintModal && data && (
         <ReportCardPrintModal
           orgSlug={slug}
+          orgName={currentOrg?.name}
+          orgLogo={currentOrg?.logo || undefined}
+          orgAddress={currentOrg?.address || undefined}
+          orgEmail={currentOrg?.email ? `Email: ${currentOrg.email}` : undefined}
           student={data.student}
-          term="1st Mid-Term"
-          academicYear="2025/2026"
+          term="First Term"
+          academicYear="2026/2027"
           results={data.subjects.map((sub) => {
             const score = Math.round(sub.totalScore || 0);
             const gradeObj = computeNigerianGrade(score);

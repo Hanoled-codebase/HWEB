@@ -223,9 +223,9 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
                 <button
                   key={org.id}
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isCurrent) {
-                      void setCurrentOrg(org.slug);
+                      await setCurrentOrg(org.slug);
                       router.push(`/dashboard/school/${org.slug}`);
                     }
                     close();
