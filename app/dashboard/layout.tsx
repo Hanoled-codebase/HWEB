@@ -13,7 +13,9 @@ export const viewport: Viewport = {
   themeColor: "#1447E6",
 };
 
-const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
+import { getHcoreBaseUrl } from "@/lib/api-endpoints";
+
+const HCORE_BASE = getHcoreBaseUrl();
 
 export default async function DashboardRootLayout({
   children,

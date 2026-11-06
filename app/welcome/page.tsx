@@ -4,8 +4,9 @@ import { HanoledLogo } from "@/components/ui/HanoledLogo";
 import { ArrowRight, LayoutGrid, Monitor, Rocket } from "lucide-react";
 import { redirect } from "next/navigation";
 import { SignOutForm } from "@/components/auth/SignOutForm";
+import { getHcoreBaseUrl } from "@/lib/api-endpoints";
 
-const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || "http://localhost:4000";
+const HCORE_BASE = getHcoreBaseUrl();
 
 export default async function WelcomePortal() {
   const cookieStore = await cookies();
