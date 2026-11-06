@@ -214,6 +214,8 @@ export default function ReportCardPrintModal({
             match.remark ||
             (hasScore && Number.isFinite(numericScore) ? gradeObj.grade : "—"),
           maxScore: match.maxScore || 100,
+          highestScore: match.highestScore ?? "—",
+          lowestScore: match.lowestScore ?? "—",
         };
       });
     }
@@ -682,12 +684,12 @@ export default function ReportCardPrintModal({
 
                         {/* Highest Score */}
                         <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                          {(item as any).highestScore ?? "—"}
+                          {item.highestScore ?? "—"}
                         </td>
 
                         {/* Lowest Score */}
                         <td className="text-center py-1 text-black tabular-nums">
-                          {(item as any).lowestScore ?? "—"}
+                          {item.lowestScore ?? "—"}
                         </td>
                       </tr>
                     ))

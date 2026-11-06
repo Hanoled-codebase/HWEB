@@ -19,11 +19,6 @@
       "count": 3
     }
   },
-  "app/actions/auth.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/admin/login/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1

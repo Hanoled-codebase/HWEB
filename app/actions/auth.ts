@@ -14,7 +14,7 @@ const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
 async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(url, init);
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (url.includes('localhost:4000')) {
       return await fetch(url.replace('localhost:4000', '127.0.0.1:4000'), init);
     }
@@ -229,7 +229,7 @@ async function finishSignIn(
   return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
 }
 
-export async function loginAction(prevState: any, formData: FormData): Promise<SignInResult> {
+export async function loginAction(prevState: unknown, formData: FormData): Promise<SignInResult> {
   const identifierType = formData.get('identifierType') as string;
   const identifier = formData.get('identifier') as string;
   const password = formData.get('password') as string;
@@ -305,9 +305,10 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
     }
 
     return await finishSignIn(data ?? {}, { identifierType, identifier, organizationSlugOrId, callbackUrl });
-  } catch (err: any) {
-    console.error('[loginAction ERROR]:', err?.message || err);
-    if (err?.name === 'TimeoutError' || err?.message?.includes('timed out')) {
+  } catch (err: unknown) {
+    const errorObj = err as Error | null | undefined;
+    console.error('[loginAction ERROR]:', errorObj?.message || err);
+    if (errorObj?.name === 'TimeoutError' || errorObj?.message?.includes('timed out')) {
       return { error: 'The sign in request timed out. Please try again.' };
     }
     return { error: 'Unable to connect to authentication service. Please ensure HCORE API is running.' };
@@ -365,7 +366,7 @@ export async function completePasswordChangeAction(_prevState: SignInResult | nu
   }
 }
 
-export async function registerAction(prevState: any, formData: FormData) {
+export async function registerAction(prevState: unknown, formData: FormData) {
   const displayName = formData.get('displayName') as string;
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
@@ -458,7 +459,7 @@ export async function registerAction(prevState: any, formData: FormData) {
     }
 
     return { error: 'No token received' };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Registration Error:', err);
     return { error: 'Network error. Please ensure Hcore API is running.' };
   }

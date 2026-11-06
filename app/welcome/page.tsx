@@ -68,8 +68,9 @@ export default async function WelcomePortal() {
     } else {
       console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
     }
-  } catch (e: any) {
-    if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;
+  } catch (e: unknown) {
+    const digest = (e as { digest?: string } | null | undefined)?.digest;
+    if (digest?.startsWith("NEXT_REDIRECT")) throw e;
     console.error("Failed to fetch subscriptions in /welcome:", e);
   }
   if (sessionInvalid) {

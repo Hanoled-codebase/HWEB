@@ -73,18 +73,20 @@ export default function SchoolBrandingPage() {
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
 
   useEffect(() => {
-    if (currentOrg?.primaryColor) {
-      setPrimaryColor(currentOrg.primaryColor);
-    } else {
-      setPrimaryColor(DEFAULT_HANOLED_PRIMARY);
-    }
+    queueMicrotask(() => {
+      if (currentOrg?.primaryColor) {
+        setPrimaryColor(currentOrg.primaryColor);
+      } else {
+        setPrimaryColor(DEFAULT_HANOLED_PRIMARY);
+      }
 
-    if (currentOrg?.secondaryColor) {
-      setSecondaryColor(currentOrg.secondaryColor);
-      setUseCustomSecondary(true);
-    } else {
-      setUseCustomSecondary(false);
-    }
+      if (currentOrg?.secondaryColor) {
+        setSecondaryColor(currentOrg.secondaryColor);
+        setUseCustomSecondary(true);
+      } else {
+        setUseCustomSecondary(false);
+      }
+    });
   }, [currentOrg?.primaryColor, currentOrg?.secondaryColor]);
 
   const effectiveSecondary = useCustomSecondary ? secondaryColor : null;

@@ -73,7 +73,9 @@ export default function SignInForm({
   useEffect(() => {
     const slugToResolve = queryOrgSlug || selectedSchool?.slug;
     if (!slugToResolve) {
-      if (!initialBranding) setBranding(null);
+      queueMicrotask(() => {
+        if (!initialBranding) setBranding(null);
+      });
       return;
     }
     if (branding?.slug.toLowerCase() === slugToResolve.toLowerCase()) return;

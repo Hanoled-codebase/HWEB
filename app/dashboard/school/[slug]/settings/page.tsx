@@ -102,11 +102,10 @@ export default function SettingsPage() {
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
 
   useEffect(() => {
-    if (currentOrg?.primaryColor) {
-      setSelectedColor(currentOrg.primaryColor);
-    } else {
-      setSelectedColor(DEFAULT_HANOLED_PRIMARY);
-    }
+    const nextColor = currentOrg?.primaryColor || DEFAULT_HANOLED_PRIMARY;
+    queueMicrotask(() => {
+      setSelectedColor(nextColor);
+    });
   }, [currentOrg?.primaryColor]);
 
   const previewTheme = useMemo(() => {
