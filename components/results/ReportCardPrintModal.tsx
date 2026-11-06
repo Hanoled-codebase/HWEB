@@ -168,18 +168,10 @@ export default function ReportCardPrintModal({
     }
   };
 
-  // Determine subject rows: Show ONLY the subjects the student is offering based on their class level
+  // Determine subject rows: Show ONLY the subjects the student is offering (where spreadsheets exist for them)
   const displayResults = useMemo(() => {
-    const curriculum = getCurriculumSubjectsForClass(
-      student.classLevel?.name || student.classLevel?.level,
-    );
-
-    return curriculum.map((subjectName) => {
-      const match = Array.isArray(results)
-        ? results.find((r) => matchSubjectAlias(r.subject, subjectName))
-        : null;
-
-      if (match) {
+    if (Array.isArray(results) && results.length > 0) {
+      return results.map((match) => {
         const hasScore =
           match.score !== undefined && match.score !== null && !isNaN(Number(match.score));
         const numericScore = typeof match.score === "number" ? match.score : Number(match.score);
@@ -188,7 +180,7 @@ export default function ReportCardPrintModal({
         );
 
         return {
-          subject: subjectName,
+          subject: match.subject,
           classExercises:
             match.classExercises !== undefined &&
             match.classExercises !== null &&
@@ -218,35 +210,16 @@ export default function ReportCardPrintModal({
             hasScore && Number.isFinite(numericScore)
               ? match.grade || gradeObj.grade
               : "—",
-          highestScore:
-            match.highestScore !== undefined &&
-            match.highestScore !== null &&
-            match.highestScore !== ""
-              ? match.highestScore
-              : "—",
-          lowestScore:
-            match.lowestScore !== undefined &&
-            match.lowestScore !== null &&
-            match.lowestScore !== ""
-              ? match.lowestScore
-              : "—",
+          remark:
+            match.remark ||
+            (hasScore && Number.isFinite(numericScore) ? gradeObj.grade : "—"),
+          maxScore: match.maxScore || 100,
         };
-      }
+      });
+    }
 
-      // Default row for offered subject awaiting score entry
-      return {
-        subject: subjectName,
-        classExercises: "—",
-        assignments: "—",
-        periodicTests: "—",
-        examScore: "—",
-        score: "—",
-        grade: "—",
-        highestScore: "—",
-        lowestScore: "—",
-      };
-    });
-  }, [results, student.classLevel]);
+    return [];
+  }, [results]);
 
   // Dynamic Grade Breakdown counts for "SUMMARY OF ACADEMIC REPORT"
   const summaryCounts = useMemo(() => {
@@ -660,57 +633,65 @@ export default function ReportCardPrintModal({
 
                 {/* ── ROWS 15+: Subject Rows (Strictly Offered Subjects) ── */}
                 <tbody className="divide-y divide-black font-medium">
-                  {displayResults.map((item, idx) => (
-                    <tr
-                      key={idx}
-                      className={idx % 2 === 0 ? "bg-white" : "bg-[#F8F9FA]"}
-                    >
-                      {/* Subject Name */}
-                      <td className="px-2.5 py-1 font-bold text-black border-r border-black">
-                        {item.subject}
-                      </td>
-
-                      {/* Class Exercises (10) */}
-                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                        {item.classExercises}
-                      </td>
-
-                      {/* Assignments (10) */}
-                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                        {item.assignments}
-                      </td>
-
-                      {/* Periodic Tests (20) */}
-                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                        {item.periodicTests}
-                      </td>
-
-                      {/* Mid-Term Exam (60) */}
-                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                        {item.examScore}
-                      </td>
-
-                      {/* Total Scores (100) */}
-                      <td className="text-center border-r border-black py-1 font-black text-black tabular-nums">
-                        {item.score}
-                      </td>
-
-                      {/* Grades (Subtle light gray fill: #E9ECEF) */}
-                      <td className="text-center border-r border-black py-1 font-black text-black bg-[#E9ECEF] tabular-nums">
-                        {item.grade}
-                      </td>
-
-                      {/* Highest Score */}
-                      <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                        {item.highestScore}
-                      </td>
-
-                      {/* Lowest Score */}
-                      <td className="text-center py-1 text-black tabular-nums">
-                        {item.lowestScore}
+                  {displayResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-6 text-center text-xs text-slate-500 italic">
+                        No recorded subject spreadsheets found for this student.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayResults.map((item, idx) => (
+                      <tr
+                        key={idx}
+                        className={idx % 2 === 0 ? "bg-white" : "bg-[#F8F9FA]"}
+                      >
+                        {/* Subject Name */}
+                        <td className="px-2.5 py-1 font-bold text-black border-r border-black">
+                          {item.subject}
+                        </td>
+
+                        {/* Class Exercises (10) */}
+                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                          {item.classExercises}
+                        </td>
+
+                        {/* Assignments (10) */}
+                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                          {item.assignments}
+                        </td>
+
+                        {/* Periodic Tests (20) */}
+                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                          {item.periodicTests}
+                        </td>
+
+                        {/* Mid-Term Exam (60) */}
+                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                          {item.examScore}
+                        </td>
+
+                        {/* Total Scores (100) */}
+                        <td className="text-center border-r border-black py-1 font-black text-black tabular-nums">
+                          {item.score}
+                        </td>
+
+                        {/* Grades (Subtle light gray fill: #E9ECEF) */}
+                        <td className="text-center border-r border-black py-1 font-black text-black bg-[#E9ECEF] tabular-nums">
+                          {item.grade}
+                        </td>
+
+                        {/* Highest Score */}
+                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
+                          {(item as any).highestScore ?? "—"}
+                        </td>
+
+                        {/* Lowest Score */}
+                        <td className="text-center py-1 text-black tabular-nums">
+                          {(item as any).lowestScore ?? "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

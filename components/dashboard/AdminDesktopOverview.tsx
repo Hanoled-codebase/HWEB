@@ -28,6 +28,7 @@ import {
   Table2,
   Ticket,
   ToggleLeft,
+  Palette,
   UserCog,
   UserPlus,
   Users,
@@ -77,6 +78,7 @@ const TOOL_CATEGORIES: Record<string, { key: string; icon: LucideIcon }[]> = {
     { key: "clinic", icon: Stethoscope },
   ],
   Admin: [
+    { key: "branding", icon: Palette },
     { key: "features", icon: ToggleLeft },
     { key: "settings", icon: Settings },
     { key: "support", icon: LifeBuoy },

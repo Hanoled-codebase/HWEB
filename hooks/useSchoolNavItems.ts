@@ -34,6 +34,7 @@ import {
   HandCoins,
   KeyRound,
   ArrowLeftRight,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 
@@ -114,7 +115,7 @@ export function useSchoolNavItems() {
     const navItems: SchoolNavItem[] = [
       { key: "overview", title: "Overview", url: baseUrl, icon: LayoutDashboard, show: true, section: "OVERVIEW" },
       { key: "students", title: "Students", url: `${baseUrl}/students`, icon: GraduationCap, show: isPrivileged || can("students.view") || userRole === "parent", section: "ACADEMICS" },
-      { key: "results", title: "Results", url: `${baseUrl}/results`, icon: FileText, show: isPrivileged || userRole === "parent" || can("results.view_own_child") || can("results.view_self"), section: "ACADEMICS" },
+      { key: "results", title: "Results", url: `${baseUrl}/results`, icon: FileText, show: isPrivileged || userRole === "parent" || isClassTeacher || can("results.view_own_child") || can("results.view_self"), section: "ACADEMICS" },
       { key: "classes", title: "Classes", url: `${baseUrl}/classes`, icon: Building2, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "subjects", title: "Subjects", url: `${baseUrl}/subjects`, icon: BookOpen, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "spreadsheets", title: "Spreadsheets", url: `${baseUrl}/spreadsheets`, icon: TableProperties, show: isPrivileged || isTeacher, section: "ACADEMICS" },
@@ -156,6 +157,7 @@ export function useSchoolNavItems() {
       { key: "payroll", title: "Payroll", url: `${baseUrl}/payroll`, icon: Banknote, show: can("payroll.manage"), section: "FINANCE" },
       { key: "support", title: "Support", url: `${baseUrl}/support`, icon: MessageSquare, show: true, section: "OPERATIONS" },
       { key: "settings", title: "Settings", url: `${baseUrl}/settings`, icon: Settings, show: isPrivileged, section: "SYSTEM" },
+      { key: "branding", title: "School Branding", url: `${baseUrl}/settings/branding`, icon: Palette, show: isPrivileged, section: "SYSTEM" },
       { key: "access", title: "Staff Access", url: `${baseUrl}/settings/access`, icon: KeyRound, show: isPrivileged, section: "SYSTEM" },
       { key: "features", title: "Features", url: `${baseUrl}/settings/features`, icon: Settings2, show: isPrivileged, section: "SYSTEM" },
     ];

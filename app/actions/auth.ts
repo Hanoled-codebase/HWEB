@@ -11,6 +11,20 @@ const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
 const HCBT_BASE = process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002';
 const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
 
+async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err: any) {
+    if (url.includes('localhost:4000')) {
+      return await fetch(url.replace('localhost:4000', '127.0.0.1:4000'), init);
+    }
+    if (url.includes('127.0.0.1:4000')) {
+      return await fetch(url.replace('127.0.0.1:4000', 'localhost:4000'), init);
+    }
+    throw err;
+  }
+}
+
 /**
  * After a successful HCORE login, exchange the HCORE identity for a HCBT product session.
  * This sets the hcbt_session cookie so CBT pages are immediately authenticated.
@@ -126,7 +140,7 @@ async function finishSignIn(
   // Query HCORE for real-time active user context & subscriptions
   let allowedPlatforms: string[] = []; 
   try {
-    const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
+    const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
       headers: { 'Authorization': `Bearer ${data.token}` },
       cache: 'no-store',
     });
@@ -224,14 +238,14 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
   const callbackUrl = formData.get('callbackUrl') as string | null;
 
   try {
-    const res = await fetch(`${HCORE_BASE}/v1/auth/login`, {
+    const res = await fetchWithFallback(`${HCORE_BASE}/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         identifierType,
         identifier,
         password,
-        organizationSlugOrId: identifierType === 'ADMISSION_NUMBER' ? organizationSlugOrId : undefined,
+        organizationSlugOrId: organizationSlugOrId || undefined,
         audience: 'hcore-api',
       }),
     });
@@ -249,11 +263,13 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: identifier, password }),
-          });
-          if (reconcileRes.ok) {
+            signal: AbortSignal.timeout(3000),
+          }).catch(() => null);
+
+          if (reconcileRes && reconcileRes.ok) {
             const reconcileData = await reconcileRes.json().catch(() => null);
             if (reconcileData?.synced) {
-              const retryRes = await fetch(`${HCORE_BASE}/v1/auth/login`, {
+              const retryRes = await fetchWithFallback(`${HCORE_BASE}/v1/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -285,12 +301,16 @@ export async function loginAction(prevState: any, formData: FormData): Promise<S
           context: { identifierType, identifier, organizationSlugOrId, callbackUrl },
         };
       }
-      return signInFailure(res, data, 'Something went wrong signing in. Please try again.');
+      return signInFailure(res, data, 'Wrong email, admission number or password. Please try again.');
     }
 
     return await finishSignIn(data ?? {}, { identifierType, identifier, organizationSlugOrId, callbackUrl });
   } catch (err: any) {
-    return { error: 'Network error. Please ensure Hcore API is running.' };
+    console.error('[loginAction ERROR]:', err?.message || err);
+    if (err?.name === 'TimeoutError' || err?.message?.includes('timed out')) {
+      return { error: 'The sign in request timed out. Please try again.' };
+    }
+    return { error: 'Unable to connect to authentication service. Please ensure HCORE API is running.' };
   }
 }
 
@@ -325,7 +345,7 @@ export async function completePasswordChangeAction(_prevState: SignInResult | nu
   }
 
   try {
-    const res = await fetch(`${HCORE_BASE}/v1/auth/password/change`, {
+    const res = await fetchWithFallback(`${HCORE_BASE}/v1/auth/password/change`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ changeToken, newPassword, audience: 'hcore-api' }),
@@ -362,7 +382,7 @@ export async function registerAction(prevState: any, formData: FormData) {
   }
 
   try {
-    const res = await fetch(`${HCORE_BASE}/v1/auth/register`, {
+    const res = await fetchWithFallback(`${HCORE_BASE}/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

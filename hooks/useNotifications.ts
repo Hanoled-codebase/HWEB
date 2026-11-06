@@ -61,7 +61,10 @@ export function useNotifications() {
       );
       if (data && Array.isArray(data.notifications)) {
         setNotifications(data.notifications);
-        setUnreadCount(data.unreadCount || 0);
+        const derivedUnread = data.notifications.filter((n) => !n.read).length;
+        setUnreadCount(
+          typeof data.unreadCount === "number" ? data.unreadCount : derivedUnread,
+        );
         setAttention(Array.isArray(data.attention) ? data.attention : []);
       }
     } catch {
@@ -102,12 +105,16 @@ export function useNotifications() {
     }
   };
 
+  const localUnreadInList = notifications.filter((n) => !n.read).length;
+  const effectiveUnreadNotifications = Math.max(unreadCount, localUnreadInList);
+
   return {
     notifications,
     attention,
-    unreadCount,
+    unreadCount: effectiveUnreadNotifications,
+    unreadNotificationsCount: effectiveUnreadNotifications,
     /** What the bell badge counts: unread confirmations plus open jobs. */
-    badgeCount: unreadCount + attention.length,
+    badgeCount: effectiveUnreadNotifications + attention.length,
     loading,
     refresh: fetchNotifications,
     markAsRead,

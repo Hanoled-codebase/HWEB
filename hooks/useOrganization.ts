@@ -9,6 +9,8 @@ export interface Organization {
   name: string;
   slug: string;
   logo?: string;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
   email?: string;
   phone?: string;
   address?: string;
@@ -124,14 +126,14 @@ const ACCESS_CACHE_PREFIX = "hanoled.access.";
  * sidebar, the school switcher or the report headers without this extra read.
  * Best-effort: a failure just leaves the HCORE fields untouched.
  */
-type OrgBranding = Pick<Organization, "logo" | "email" | "phone" | "address">;
+type OrgBranding = Pick<Organization, "logo" | "primaryColor" | "secondaryColor" | "email" | "phone" | "address">;
 
 async function fetchOrgBranding(slug: string): Promise<OrgBranding | null> {
   try {
     const org = await request<Partial<Organization>>(HSMS_BASE, `/organizations/${slug}`, {
       showErrorToast: false,
     });
-    return { logo: org.logo, email: org.email, phone: org.phone, address: org.address };
+    return { logo: org.logo, primaryColor: org.primaryColor, secondaryColor: org.secondaryColor, email: org.email, phone: org.phone, address: org.address };
   } catch {
     return null;
   }

@@ -33,6 +33,8 @@ type SubjectResult = {
 type ResultsData = {
   student: { id: string; firstName: string; lastName: string; admissionNumber?: string; gender?: string; classLevel: { id: string; name: string } | null };
   subjects: SubjectResult[];
+  approvedTemplate?: { id: string; name: string; isApproved: boolean } | null;
+  isTemplateApproved?: boolean;
 };
 
 export default function StudentResultsPage() {
@@ -78,7 +80,20 @@ export default function StudentResultsPage() {
             <span>/</span>
             <span className="text-slate-900 font-medium">Academic Results</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Report</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Report</h1>
+            {data && (
+              data.isTemplateApproved ? (
+                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
+                  ✓ Official & Approved
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold">
+                  Pending Official Approval
+                </Badge>
+              )
+            )}
+          </div>
         </div>
 
         {data && data.subjects.length > 0 && (

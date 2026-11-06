@@ -20,6 +20,7 @@ import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProv
 import { MobileTopBar } from "@/components/dashboard/mobile/MobileTopBar";
 import { MobileTabBar } from "@/components/dashboard/mobile/MobileTabBar";
 import { useStaffMobileConfig } from "@/components/dashboard/mobile/mobile-config";
+import { SchoolThemeProvider } from "@/components/providers/SchoolThemeProvider";
 
 function isUuidLike(segment: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(segment) || /^[0-9a-f]{20,}$/i.test(segment);
@@ -240,98 +241,102 @@ export default function DashboardLayout({
   // doubled its API calls.
   if (isStudent) {
     return (
-      <TooltipProvider>
-        <SidebarProvider>
-          <StudentSidebar />
-          <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative md:overflow-x-hidden">
-            <StudentMobileFrame>
-              {/* Desktop top bar */}
-              <header className="sticky top-0 z-10 hidden h-14 shrink-0 items-center border-b bg-white/85 backdrop-blur-md px-6 md:flex">
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
+      <SchoolThemeProvider>
+        <TooltipProvider>
+          <SidebarProvider>
+            <StudentSidebar />
+            <SidebarInset className="bg-slate-50 flex flex-col min-h-screen relative md:overflow-x-hidden">
+              <StudentMobileFrame>
+                {/* Desktop top bar */}
+                <header className="sticky top-0 z-10 hidden h-14 shrink-0 items-center border-b bg-white/85 backdrop-blur-md px-6 md:flex">
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <NotificationSheet />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <NotificationSheet />
+                </header>
+
+                <StudentMobileTopBar />
+
+                {/* pb-safe-nav (tab bar clearance) is plain CSS that outranks Tailwind padding, so desktop needs ! to drop it. */}
+                <main className="flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:!pb-6 lg:p-8 lg:!pb-8">
+                  <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
+                    {children}
                   </div>
-                </div>
-              </header>
+                </main>
 
-              <StudentMobileTopBar />
-
-              {/* pb-safe-nav (tab bar clearance) is plain CSS that outranks Tailwind padding, so desktop needs ! to drop it. */}
-              <main className="flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:!pb-6 lg:p-8 lg:!pb-8">
-                <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
-                  {children}
-                </div>
-              </main>
-
-              <MobileTabBar />
-            </StudentMobileFrame>
-          </SidebarInset>
-        </SidebarProvider>
-      </TooltipProvider>
+                <MobileTabBar />
+              </StudentMobileFrame>
+            </SidebarInset>
+          </SidebarProvider>
+        </TooltipProvider>
+      </SchoolThemeProvider>
     );
   }
 
   const isHome = pathname === `/dashboard/school/${slug}`;
 
   return (
-    <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar drawerOpen={navOpen} onDrawerOpenChange={(open) => setNavOpenedOn(open ? pathname : null)} />
-        {/* overflow-x-clip, not hidden: hidden makes this a scroll container and breaks position:sticky in pages. */}
-        <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-clip bg-slate-50">
-          <StaffMobileFrame>
-            {/* Tablet and desktop top bar (phones use MobileTopBar). Below lg it opens the nav drawer. */}
-            <header className="sticky top-0 z-10 hidden items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 md:flex lg:px-8 lg:py-4">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setNavOpenedOn(pathname)}
-                  aria-label="Open navigation"
-                  aria-expanded={navOpen}
-                  className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
-                >
-                  <Menu className="h-5 w-5" aria-hidden="true" />
-                </button>
-                <span className="truncate text-sm font-semibold capitalize text-slate-900 lg:hidden">{currentOrg.name}</span>
-                <span className="hidden whitespace-nowrap text-sm font-medium text-slate-600 lg:inline">School Operations Dashboard</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-2 lg:gap-3">
-                {currentMember?.role !== "parent" && (
-                  <a
-                    href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
-                    className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 pointer-coarse:min-h-11"
+    <SchoolThemeProvider>
+      <TooltipProvider>
+        <SidebarProvider>
+          <AppSidebar drawerOpen={navOpen} onDrawerOpenChange={(open) => setNavOpenedOn(open ? pathname : null)} />
+          {/* overflow-x-clip, not hidden: hidden makes this a scroll container and breaks position:sticky in pages. */}
+          <div className="relative flex min-h-svh min-w-0 flex-1 flex-col overflow-x-clip bg-slate-50">
+            <StaffMobileFrame>
+              {/* Tablet and desktop top bar (phones use MobileTopBar). Below lg it opens the nav drawer. */}
+              <header className="sticky top-0 z-10 hidden items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 md:flex lg:px-8 lg:py-4">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setNavOpenedOn(pathname)}
+                    aria-label="Open navigation"
+                    aria-expanded={navOpen}
+                    className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                    CBT Console
+                    <Menu className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                  <span className="truncate text-sm font-semibold capitalize text-slate-900 lg:hidden">{currentOrg.name}</span>
+                  <span className="hidden whitespace-nowrap text-sm font-medium text-slate-600 lg:inline">School Operations Dashboard</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 lg:gap-3">
+                  {currentMember?.role !== "parent" && (
+                    <a
+                      href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 pointer-coarse:min-h-11"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                      CBT Console
+                    </a>
+                  )}
+                  <a
+                    href="/welcome"
+                    className="flex items-center whitespace-nowrap rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 pointer-coarse:min-h-11"
+                  >
+                    Suite Hub
                   </a>
-                )}
-                <a
-                  href="/welcome"
-                  className="flex items-center whitespace-nowrap rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 pointer-coarse:min-h-11"
-                >
-                  Suite Hub
-                </a>
-                <NotificationSheet />
-              </div>
-            </header>
+                  <NotificationSheet />
+                </div>
+              </header>
 
-            <MobileTopBar title={getPageTitle(pathname, slug)} isHome={isHome} />
+              <MobileTopBar title={getPageTitle(pathname, slug)} isHome={isHome} />
 
-            <main className="min-w-0 flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:pb-6 lg:p-8">
-              <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
-                <StaffRouteGuard slug={slug}>
-                  {children}
-                </StaffRouteGuard>
-              </div>
-            </main>
+              <main className="min-w-0 flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:pb-6 lg:p-8">
+                <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
+                  <StaffRouteGuard slug={slug}>
+                    {children}
+                  </StaffRouteGuard>
+                </div>
+              </main>
 
-            <MobileTabBar />
-          </StaffMobileFrame>
-        </div>
-      </SidebarProvider>
-    </TooltipProvider>
+              <MobileTabBar />
+            </StaffMobileFrame>
+          </div>
+        </SidebarProvider>
+      </TooltipProvider>
+    </SchoolThemeProvider>
   );
 }
