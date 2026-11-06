@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { DataRetentionCard } from "@/components/dashboard/DataRetentionCard";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/api";
+import { clearTenantBrandingCache } from "@/lib/tenant-branding";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,7 +40,38 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Save, School, Upload, Shield, ArrowLeftRight } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  School,
+  Upload,
+  Shield,
+  ArrowLeftRight,
+  Palette,
+  Check,
+  RotateCcw,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
+import {
+  deriveTheme,
+  isValidHexColor,
+  normalizeHex,
+  DEFAULT_HANOLED_PRIMARY,
+} from "@/lib/theme-colors";
+
+const PRESET_COLORS = [
+  { name: "Hanoled Blue", hex: "#1447E6" },
+  { name: "Royal Blue", hex: "#1E40AF" },
+  { name: "Deep Navy", hex: "#0F172A" },
+  { name: "Forest Green", hex: "#047857" },
+  { name: "Emerald", hex: "#059669" },
+  { name: "Ocean Teal", hex: "#0F766E" },
+  { name: "Burgundy", hex: "#831843" },
+  { name: "Crimson", hex: "#B91C1C" },
+  { name: "Royal Purple", hex: "#581C87" },
+  { name: "Warm Amber", hex: "#B45309" },
+];
 
 const profileFormSchema = z.object({
   name: z.string().min(3),
@@ -63,9 +96,91 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [selectedColor, setSelectedColor] = useState<string>(
+    currentOrg?.primaryColor || DEFAULT_HANOLED_PRIMARY
+  );
+  const [isUpdatingColor, setIsUpdatingColor] = useState(false);
+
+  useEffect(() => {
+    const nextColor = currentOrg?.primaryColor || DEFAULT_HANOLED_PRIMARY;
+    queueMicrotask(() => {
+      setSelectedColor(nextColor);
+    });
+  }, [currentOrg?.primaryColor]);
+
+  const previewTheme = useMemo(() => {
+    const valid = isValidHexColor(selectedColor) ? normalizeHex(selectedColor) : DEFAULT_HANOLED_PRIMARY;
+    return deriveTheme(valid);
+  }, [selectedColor]);
+
+  async function onSaveColor() {
+    if (!isAdmin) {
+      toast.error("You don't have permission to update school branding");
+      return;
+    }
+    if (!isValidHexColor(selectedColor)) {
+      toast.error("Please enter a valid hex color code (e.g. #1E40AF)");
+      return;
+    }
+
+    setIsUpdatingColor(true);
+    try {
+      const normalized = normalizeHex(selectedColor);
+      await apiFetch(`/organizations/${currentOrg?.slug}`, {
+        method: "PATCH",
+        body: JSON.stringify({ primaryColor: normalized }),
+      });
+
+      updateCurrentOrg({
+        primaryColor: normalized,
+      });
+
+      if (currentOrg?.slug) {
+        clearTenantBrandingCache(currentOrg.slug);
+      }
+
+      toast.success("School branding color updated successfully!");
+      await fetchOrgs();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update branding color");
+    } finally {
+      setIsUpdatingColor(false);
+    }
+  }
+
+  async function onResetColor() {
+    if (!isAdmin) return;
+    setIsUpdatingColor(true);
+    try {
+      await apiFetch(`/organizations/${currentOrg?.slug}`, {
+        method: "PATCH",
+        body: JSON.stringify({ primaryColor: null }),
+      });
+
+      setSelectedColor(DEFAULT_HANOLED_PRIMARY);
+      updateCurrentOrg({
+        primaryColor: null,
+      });
+
+      if (currentOrg?.slug) {
+        clearTenantBrandingCache(currentOrg.slug);
+      }
+
+      toast.success("Reset to default Hanoled Blue");
+      await fetchOrgs();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset branding color");
+    } finally {
+      setIsUpdatingColor(false);
+    }
+  }
+
+  const { isPrivileged } = usePermissions();
   const isOwner = currentMember?.role === "owner";
   const isAdmin =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+    isPrivileged ||
+    currentMember?.role === "owner" ||
+    currentMember?.role === "admin";
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema) as any,
@@ -173,6 +288,41 @@ export default function SettingsPage() {
           Manage your school&apos;s profile, contact details, and platform
           preferences.
         </p>
+      </div>
+
+      {/* Quick Access to School Branding */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-blue-100 bg-blue-50/60 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+            style={{ backgroundColor: previewTheme.primary }}
+          >
+            <Palette className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-slate-900 block">
+              School Branding &amp; Signature Theme Color
+            </span>
+            <span className="text-xs text-slate-600">
+              Customize your school&apos;s theme color for sign-in portals, result sheets, and parent invite emails.
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href="#branding"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          >
+            Scroll Down ↓
+          </a>
+          <Link
+            href={`/dashboard/school/${currentOrg.slug}/settings/branding`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-2xs hover:opacity-95 transition-all"
+            style={{ backgroundColor: previewTheme.primary }}
+          >
+            Open Branding Studio <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -438,6 +588,192 @@ export default function SettingsPage() {
             </Form>
           </CardContent>
         </Card>
+
+        {/* School Branding & Theme Color Card */}
+        {isAdmin && (
+          <Card id="branding" className="shadow-sm border-slate-200 scroll-mt-6">
+            <CardHeader>
+              <CardTitle className="text-base sm:text-xl flex items-center">
+                <Palette className="h-5 w-5 text-blue-600 mr-2" />
+                School Branding &amp; Theme Color
+              </CardTitle>
+              <CardDescription>
+                Customize your school&apos;s signature brand color. This custom theme is applied across your student &amp; staff sign-in portal, result printouts, report cards, and parent invitation emails.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Presets Grid */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Quick Presets
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  {PRESET_COLORS.map((preset) => {
+                    const isSelected = selectedColor.toUpperCase() === preset.hex.toUpperCase();
+                    return (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => setSelectedColor(preset.hex)}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-blue-600 ring-2 ring-blue-600/20 bg-blue-50/50"
+                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span
+                          className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center shadow-2xs"
+                          style={{ backgroundColor: preset.hex }}
+                        >
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-800 truncate">
+                          {preset.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Color Picker & Hex Input */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Custom Hex Color
+                </label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative flex items-center">
+                    <input
+                      type="color"
+                      value={isValidHexColor(selectedColor) ? normalizeHex(selectedColor) : "#1447E6"}
+                      onChange={(e) => setSelectedColor(e.target.value.toUpperCase())}
+                      className="h-10 w-14 rounded-xl cursor-pointer border border-slate-300 p-1 bg-white shadow-2xs"
+                      title="Open color palette"
+                    />
+                  </div>
+
+                  <Input
+                    type="text"
+                    value={selectedColor}
+                    onChange={(e) => setSelectedColor(e.target.value)}
+                    placeholder="#1E40AF"
+                    maxLength={7}
+                    className="font-mono uppercase w-32 tracking-wider"
+                  />
+
+                  {/* Contrast Status Badge */}
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium">
+                    {previewTheme.contrast.isAccessibleOnWhite ? (
+                      <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        WCAG AA Passed ({previewTheme.contrast.ratio.toFixed(1)}:1)
+                      </span>
+                    ) : previewTheme.contrast.isAccessibleLargeOnWhite ? (
+                      <span className="flex items-center gap-1.5 text-amber-700 font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        WCAG AA Large ({previewTheme.contrast.ratio.toFixed(1)}:1)
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-rose-700 font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                        Low Contrast ({previewTheme.contrast.ratio.toFixed(1)}:1)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Interactive Preview Box */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                    Live Component Preview
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Text foreground: {previewTheme.foreground}
+                  </span>
+                </div>
+
+                <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+                  {/* Primary Button Preview */}
+                  <button
+                    type="button"
+                    className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-opacity hover:opacity-90 cursor-default"
+                    style={{
+                      backgroundColor: previewTheme.primary,
+                      color: previewTheme.foreground,
+                    }}
+                  >
+                    <span>Sign In to {currentOrg.name}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Status Badge Preview */}
+                  <div
+                    className="px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase border flex items-center gap-1.5"
+                    style={{
+                      backgroundColor: previewTheme.light,
+                      borderColor: previewTheme.border,
+                      color: previewTheme.primary,
+                    }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: previewTheme.primary }}
+                    />
+                    <span>{currentOrg.name} Portal</span>
+                  </div>
+
+                  {/* Monogram Crest Preview */}
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shadow-2xs"
+                    style={{
+                      backgroundColor: previewTheme.primary,
+                      color: previewTheme.foreground,
+                    }}
+                  >
+                    {currentOrg.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Save / Reset Buttons */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetColor}
+                  disabled={isUpdatingColor}
+                  className="text-slate-600 hover:text-slate-900 border-slate-200"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1.5 text-slate-400" />
+                  Reset to Default Blue
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={onSaveColor}
+                  disabled={isUpdatingColor}
+                  className="bg-blue-600 hover:bg-blue-700 min-h-10 px-5 font-bold"
+                >
+                  {isUpdatingColor ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving Theme...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Theme Color
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isAdmin && (
           <Card className="shadow-sm border-slate-200">

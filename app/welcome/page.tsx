@@ -12,7 +12,7 @@ export default async function WelcomePortal() {
   const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
 
   if (!token) {
-    redirect("/signin");
+    redirect("/api/logout");
   }
 
   // 1. If user is a student, send directly to student examination portal
@@ -30,7 +30,8 @@ export default async function WelcomePortal() {
   // Set inside the try below, followed after it: redirect() works by throwing,
   // so calling it inside the try would be caught and ignored.
   let candidateRedirect: string | null = null;
-  if (candidateCookie) {
+  let sessionInvalid = false;
+  if (candidateCookie && candidateCookie !== "/welcome") {
     redirect(candidateCookie);
   }
 
@@ -61,13 +62,23 @@ export default async function WelcomePortal() {
           .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
           .join(",");
       }
+    } else if (meRes.status === 401) {
+      // Stale or revoked token in HCORE: mark session invalid to wipe cookies cleanly
+      sessionInvalid = true;
     } else {
       console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
     }
-  } catch (e) {
+  } catch (e: unknown) {
+    const digest = (e as { digest?: string } | null | undefined)?.digest;
+    if (digest?.startsWith("NEXT_REDIRECT")) throw e;
     console.error("Failed to fetch subscriptions in /welcome:", e);
   }
-  if (candidateRedirect) redirect(candidateRedirect);
+  if (sessionInvalid) {
+    redirect("/api/logout");
+  }
+  if (candidateRedirect && candidateRedirect !== "/welcome") {
+    redirect(candidateRedirect);
+  }
 
   if (!allowedPlatforms) {
     allowedPlatforms = "HSMS,HCBT";

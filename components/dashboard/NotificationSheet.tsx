@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Bell,
+  Check,
   CheckCheck,
   ChevronRight,
   ClipboardCheck,
@@ -128,6 +129,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
     notifications,
     attention,
     unreadCount,
+    unreadNotificationsCount,
     badgeCount,
     loading,
     markAsRead,
@@ -137,6 +139,11 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [open, setOpen] = useState(false);
+
+  const effectiveUnreadNotifications =
+    unreadNotificationsCount ?? unreadCount;
+  const allCount = notifications.length + attention.length;
+  const unreadCountTotal = badgeCount;
 
   const filteredNotifications =
     activeTab === "unread"
@@ -177,15 +184,15 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
             <SheetTitle className="text-lg font-bold text-slate-900">
               Notifications
             </SheetTitle>
-            {unreadCount > 0 && (
+            {unreadCountTotal > 0 && (
               <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 font-bold px-2 py-0.5 text-xs rounded-full">
-                {unreadCount} unread
+                {unreadCountTotal} unread
               </Badge>
             )}
           </div>
 
           {/* Row 2: Sub-action underneath */}
-          {unreadCount > 0 && (
+          {effectiveUnreadNotifications > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Recent updates</span>
               <Button
@@ -206,6 +213,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
           {/* Filter Tabs */}
           <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
             <button
+              type="button"
               onClick={() => setActiveTab("all")}
               className={cn(
                 "flex-1 py-1.5 rounded-lg transition-all text-center",
@@ -214,9 +222,10 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
                   : "text-slate-500 hover:text-slate-900",
               )}
             >
-              All ({notifications.length})
+              All ({allCount})
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("unread")}
               className={cn(
                 "flex-1 py-1.5 rounded-lg transition-all text-center",
@@ -225,7 +234,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
                   : "text-slate-500 hover:text-slate-900",
               )}
             >
-              Unread ({unreadCount})
+              Unread ({unreadCountTotal})
             </button>
           </div>
         </SheetHeader>
@@ -261,23 +270,36 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
               )}
 
               {filteredNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm mb-3">
-                    <Inbox className="h-7 w-7 text-slate-400" />
+                attention.length > 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 py-6 text-center px-4">
+                    <p className="text-xs font-semibold text-slate-600">
+                      {activeTab === "unread"
+                        ? "No unread notifications"
+                        : "No other notifications"}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {activeTab === "unread"
+                        ? "All regular notifications have been read."
+                        : "You're all caught up with alerts."}
+                    </p>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {activeTab === "unread"
-                      ? "No unread notifications"
-                      : attention.length > 0
-                        ? "Nothing else needs you"
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                    <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm mb-3">
+                      <Inbox className="h-7 w-7 text-slate-400" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      {activeTab === "unread"
+                        ? "No unread notifications"
                         : "You're all caught up"}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
-                    {activeTab === "unread"
-                      ? "You have read all your notifications."
-                      : "New alerts and results will show up here."}
-                  </p>
-                </div>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+                      {activeTab === "unread"
+                        ? "You have read all your notifications."
+                        : "New alerts and results will show up here."}
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="space-y-3">
                   {filteredNotifications.map((item: NotificationItem) => (
@@ -300,7 +322,21 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
                       )}
                     >
                       {!item.read && (
-                        <span className="absolute top-4 right-4 h-2 w-2 rounded-full bg-blue-600" />
+                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            title="Mark as read"
+                            aria-label="Mark as read"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsRead(item.id);
+                            }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="h-2 w-2 rounded-full bg-blue-600" />
+                        </div>
                       )}
 
                       <div
@@ -313,7 +349,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
                       </div>
 
                       <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2 pr-4">
+                        <div className="flex items-center gap-2 pr-10">
                           <p
                             className={cn(
                               "text-sm font-bold leading-snug",

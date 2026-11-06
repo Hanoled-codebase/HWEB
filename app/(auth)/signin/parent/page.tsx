@@ -1,13 +1,22 @@
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import SignInForm, { SignInShell } from '@/components/auth/SignInForm';
+import { getTenantBranding } from '@/lib/tenant-branding';
+
+interface PageProps {
+  searchParams?: Promise<{ orgSlug?: string; school?: string }>;
+}
 
 // Parent entrance (email sign-in; tabs hidden).
-export default function ParentSignInPage() {
+export default async function ParentSignInPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const slug = params?.orgSlug || params?.school;
+  const branding = await getTenantBranding(slug);
+
   return (
-    <SignInShell>
+    <SignInShell branding={branding}>
       <Suspense fallback={<div className="flex items-center justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>}>
-        <SignInForm audience="parent" />
+        <SignInForm audience="parent" initialBranding={branding} />
       </Suspense>
     </SignInShell>
   );

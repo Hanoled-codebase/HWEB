@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import {
   AlertTriangle,
@@ -101,6 +102,16 @@ type StudentResultGroup = {
     } | null;
   };
   results: ResultSheet[];
+  approvedTemplate?: {
+    id: string;
+    name: string;
+    classLevelId?: string | null;
+    isDefault: boolean;
+    isApproved: boolean;
+    metrics: Array<{ name: string; label: string; weight: number }>;
+    gradeScale: Array<{ grade: string; min: number; max: number }>;
+  } | null;
+  isTemplateApproved?: boolean;
 };
 
 type ParentNotification = {
@@ -138,70 +149,55 @@ function toPerformanceSubjects(
   results: ResultSheet[],
   classLevelName?: string | null,
 ): StudentPerformanceSubject[] {
-  const curriculum = getCurriculumSubjectsForClass(classLevelName);
+  // Only display subjects where the student actually has a record/score entered under their spreadsheet
   const resultsWithScores = results.filter((result) =>
     result.values.some((v) => v !== null && v !== undefined && v !== ""),
   );
 
-  return curriculum.map((subjectName) => {
-    const match = resultsWithScores.find((r) => {
-      const rName = r.subject?.name || r.title || "";
-      return matchSubjectAlias(rName, subjectName);
-    });
+  const seen = new Set<string>();
+  const performanceSubjects: StudentPerformanceSubject[] = [];
 
-    if (match) {
-      const assessments = (
-        match.assessments?.length
-          ? match.assessments
-          : match.columns.map((column) => ({ name: column, total: undefined }))
-      ).map((assessment, originalIndex) => ({
-        name: assessment.name,
-        total: assessment.total,
-        score: match.values[originalIndex] ?? "",
-        originalIndex,
-      }));
+  for (const match of resultsWithScores) {
+    const rawName = match.subject?.name || match.title || "Untitled Subject";
+    const key = rawName.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
 
-      return {
-        spreadsheetId: match.id,
-        status: "active" as const,
-        updatedAt: match.updatedAt,
-        subject: {
-          id: match.subject?.id || match.id,
-          name: subjectName,
-        },
-        classLevel: match.classLevel
-          ? {
-              id: match.classLevel.id,
-              name: match.classLevel.name,
-              level: match.classLevel.level,
-            }
-          : classLevelName ? { name: classLevelName } : null,
-        totalScore: match.values.reduce<number>(
-          (sum, value) => sum + (toNumericValue(value) ?? 0),
-          0,
-        ),
-        assessments,
-      };
-    }
+    const assessments = (
+      match.assessments?.length
+        ? match.assessments
+        : match.columns.map((column) => ({ name: column, total: undefined }))
+    ).map((assessment, originalIndex) => ({
+      name: assessment.name,
+      total: assessment.total,
+      score: match.values[originalIndex] ?? "",
+      originalIndex,
+    }));
 
-    return {
-      spreadsheetId: `offered-${subjectName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
-      status: "pending" as const,
-      updatedAt: undefined,
+    performanceSubjects.push({
+      spreadsheetId: match.id,
+      status: "active" as const,
+      updatedAt: match.updatedAt,
       subject: {
-        id: `offered-${subjectName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
-        name: subjectName,
+        id: match.subject?.id || match.id,
+        name: rawName,
       },
-      classLevel: classLevelName ? { name: classLevelName } : null,
-      totalScore: 0,
-      assessments: [
-        { name: "Continuous Assessment 1", total: 10, score: "", originalIndex: 0 },
-        { name: "Continuous Assessment 2", total: 10, score: "", originalIndex: 1 },
-        { name: "Continuous Assessment 3", total: 20, score: "", originalIndex: 2 },
-        { name: "Terminal Examination", total: 60, score: "", originalIndex: 3 },
-      ],
-    };
-  });
+      classLevel: match.classLevel
+        ? {
+            id: match.classLevel.id,
+            name: match.classLevel.name,
+            level: match.classLevel.level,
+          }
+        : classLevelName ? { name: classLevelName } : null,
+      totalScore: match.values.reduce<number>(
+        (sum, value) => sum + (toNumericValue(value) ?? 0),
+        0,
+      ),
+      assessments,
+    });
+  }
+
+  return performanceSubjects;
 }
 
 function getMobileBadgeClass(label: string) {
@@ -665,7 +661,7 @@ export default function ResultsPage() {
           <DataStateCard
             variant="forbidden"
             title="You don't have access to these results"
-            description="Ask the school to check that your account is linked to the right student."
+            description="You must be an administrator, class teacher, or parent of an enrolled learner to view results."
           />
         ) : resultGroups.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
@@ -674,7 +670,7 @@ export default function ResultsPage() {
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
               Results will appear here once the school publishes active
-              spreadsheets for the children linked to your account.
+              spreadsheets for the learners in your class or linked to your account.
             </p>
           </div>
         ) : (
@@ -904,13 +900,23 @@ export default function ResultsPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <p className="text-xs text-slate-500 flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         <span>{selectedGroup.student.classLevel?.name || "Unassigned class"}</span>
                         <span>&middot;</span>
                         <span>{getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}</span>
                         <span>&middot;</span>
                         <span className="font-semibold text-slate-900">{performanceSubjects.length} subjects</span>
-                      </p>
+                        <span>&middot;</span>
+                        {selectedGroup.isTemplateApproved ? (
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                            ✓ Template Approved
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-[10px] font-bold">
+                            Template Pending Approval
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1131,6 +1137,33 @@ export default function ResultsPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Template Pending Approval Banner */}
+            {selectedGroup && !selectedGroup.isTemplateApproved && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-200/80 text-amber-900 font-bold text-sm">
+                    !
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-amber-950">
+                      Result Template Pending Approval for {selectedGroup.student.classLevel?.name || "this class"}
+                    </p>
+                    <p className="text-amber-800 text-xs">
+                      Official scores and positions become finalized once an administrator approves the template for this class.
+                    </p>
+                  </div>
+                </div>
+                {currentMember?.role !== "parent" && currentOrg?.slug && (
+                  <Link
+                    href={`/dashboard/school/${currentOrg.slug}/result-templates`}
+                    className="shrink-0 self-start sm:self-center font-bold text-amber-900 underline hover:text-amber-950 text-xs"
+                  >
+                    Go to Result Templates &rarr;
+                  </Link>
+                )}
               </div>
             )}
 

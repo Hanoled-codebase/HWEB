@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { apiFetch, HSMS_BASE } from "@/lib/api";
 import { toast } from "sonner";
@@ -21,27 +21,41 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Loader2, Plus, Pencil, Trash2, ClipboardList, Calculator, Upload, Eye, FileDown, FileSpreadsheet,
+  Loader2, Plus, Pencil, Trash2, ClipboardList, Calculator, Eye, FileDown, FileSpreadsheet, CheckCircle2, AlertCircle, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Metric = { name: string; label: string; weight: number };
 type GradeLevel = { grade: string; min: number; max: number };
 type Template = {
-  id: string; name: string; description: string | null;
-  metrics: Metric[]; gradeScale: GradeLevel[]; isDefault: boolean;
+  id: string;
+  name: string;
+  description: string | null;
+  classLevelId: string | null;
+  classLevel?: { id: string; name: string; level?: string | null } | null;
+  metrics: Metric[];
+  gradeScale: GradeLevel[];
+  isDefault: boolean;
+  isApproved: boolean;
+  approvedAt?: string | null;
+  approvedById?: string | null;
 };
 
 type TermResult = {
-  id: string; term: string; academicYear: string; totalScore: number;
-  grade: string; position: number | null; publishedAt: string | null;
+  id: string;
+  term: string;
+  academicYear: string;
+  totalScore: number;
+  grade: string;
+  position: number | null;
+  publishedAt: string | null;
   student: { firstName: string; lastName: string };
   classLevel: { name: string };
-  template: { name: string };
+  template: { name: string; isApproved?: boolean };
   metrics: Metric[];
 };
 
-type ClassLevel = { id: string; name: string };
+type ClassLevel = { id: string; name: string; level?: string | null };
 
 export default function ResultTemplatesPage() {
   const { currentOrg, currentMember } = useOrganization();
@@ -55,6 +69,11 @@ export default function ResultTemplatesPage() {
   const [editItem, setEditItem] = useState<Template | null>(null);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("templates");
+  
+  // Template filters
+  const [templateClassFilter, setTemplateClassFilter] = useState("all");
+  
+  // Results tab filters
   const [filterClass, setFilterClass] = useState("");
   const [filterTerm, setFilterTerm] = useState("Term 1");
   const [filterYear, setFilterYear] = useState("2026/2027");
@@ -62,6 +81,229 @@ export default function ResultTemplatesPage() {
   const [weightTerm1, setWeightTerm1] = useState("20");
   const [weightTerm2, setWeightTerm2] = useState("30");
   const [weightTerm3, setWeightTerm3] = useState("50");
+
+  // Form state
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formClassLevelId, setFormClassLevelId] = useState("");
+  const [formIsDefault, setFormIsDefault] = useState(false);
+  const [formIsApproved, setFormIsApproved] = useState(true);
+  const [formMetrics, setFormMetrics] = useState<Metric[]>([]);
+  const [formGrades, setFormGrades] = useState<GradeLevel[]>([]);
+
+  useEffect(() => {
+    if (!currentOrg) return;
+    fetchClassLevels();
+    fetchTemplates();
+  }, [currentOrg]);
+
+  async function fetchClassLevels() {
+    if (!currentOrg) return;
+    try {
+      const d = await apiFetch<ClassLevel[]>(`/classes/${currentOrg.slug}`);
+      setClassLevels(Array.isArray(d) ? d : []);
+    } catch {
+      toast.error("Failed to load classes");
+    }
+  }
+
+  async function fetchTemplates() {
+    if (!currentOrg) return;
+    try {
+      const res = await apiFetch(`/result-templates/templates/${currentOrg.slug}`);
+      const d = (res as any).data ?? res;
+      setTemplates(Array.isArray(res) ? res : d ?? []);
+    } catch {
+      toast.error("Failed to load templates");
+    } finally {
+      setLoadingT(false);
+    }
+  }
+
+  async function fetchResults() {
+    if (!currentOrg) return;
+    setLoadingR(true);
+    try {
+      const params = new URLSearchParams({ term: filterTerm, academicYear: filterYear });
+      if (filterClass) params.set("classLevelId", filterClass);
+      const res = await apiFetch(`/result-templates/results/${currentOrg.slug}?${params}`);
+      const d = (res as any).data ?? res;
+      setResults(Array.isArray(res) ? res : d ?? []);
+    } catch {
+      toast.error("Failed to load results");
+    } finally {
+      setLoadingR(false);
+    }
+  }
+
+  function resetForm() {
+    setFormName("");
+    setFormDesc("");
+    setFormClassLevelId("");
+    setFormIsDefault(false);
+    setFormIsApproved(true);
+    setFormMetrics([
+      { name: "Continuous Assessment 1", label: "CA 1", weight: 10 },
+      { name: "Continuous Assessment 2", label: "CA 2", weight: 10 },
+      { name: "Continuous Assessment 3", label: "CA 3", weight: 20 },
+      { name: "Terminal Examination", label: "Exam", weight: 60 },
+    ]);
+    setFormGrades([
+      { grade: "A1", min: 75, max: 100 },
+      { grade: "B2", min: 70, max: 74 },
+      { grade: "B3", min: 65, max: 69 },
+      { grade: "C4", min: 60, max: 64 },
+      { grade: "C5", min: 55, max: 59 },
+      { grade: "C6", min: 50, max: 54 },
+      { grade: "D7", min: 45, max: 49 },
+      { grade: "E8", min: 40, max: 44 },
+      { grade: "F9", min: 0, max: 39 },
+    ]);
+  }
+
+  function openEdit(t: Template) {
+    if (!isAdmin) {
+      toast.error("You are not authorized. Only administrators can edit templates.");
+      return;
+    }
+    setEditItem(t);
+    setFormName(t.name);
+    setFormDesc(t.description || "");
+    setFormClassLevelId(t.classLevelId || "");
+    setFormIsDefault(t.isDefault);
+    setFormIsApproved(t.isApproved);
+    setFormMetrics(t.metrics);
+    setFormGrades(t.gradeScale);
+    setDialogOpen(true);
+  }
+
+  async function saveTemplate() {
+    if (!currentOrg || !formName) return;
+    if (!isAdmin) {
+      toast.error("You are not authorized. Only administrators can save templates.");
+      return;
+    }
+
+    const totalWeight = formMetrics.reduce((sum, m) => sum + (Number(m.weight) || 0), 0);
+    if (totalWeight !== 100) {
+      toast.error(`Metric weights must sum to 100% (currently ${totalWeight}%)`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const body = {
+        name: formName,
+        description: formDesc,
+        classLevelId: formClassLevelId ? formClassLevelId : null,
+        isDefault: formIsDefault,
+        isApproved: formIsApproved,
+        metrics: formMetrics,
+        gradeScale: formGrades,
+      };
+
+      if (editItem) {
+        await apiFetch(`/result-templates/templates/${currentOrg.slug}/${editItem.id}`, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        });
+        toast.success("Result template updated successfully");
+      } else {
+        await apiFetch(`/result-templates/templates/${currentOrg.slug}`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        toast.success("Result template created successfully");
+      }
+      setDialogOpen(false);
+      setEditItem(null);
+      fetchTemplates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save template");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleApproval(t: Template) {
+    if (!currentOrg) return;
+    if (!isAdmin) {
+      toast.error("Only administrators can approve or revoke result templates.");
+      return;
+    }
+    try {
+      const action = t.isApproved ? "disapprove" : "approve";
+      await apiFetch(`/result-templates/templates/${currentOrg.slug}/${t.id}/${action}`, {
+        method: "PATCH",
+      });
+      toast.success(
+        t.isApproved
+          ? `Approval revoked for "${t.name}"`
+          : `"${t.name}" is now the approved result template for ${t.classLevel?.name || "all classes"}!`
+      );
+      fetchTemplates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update approval status");
+    }
+  }
+
+  async function deleteTemplate(id: string) {
+    if (!currentOrg) return;
+    if (!isAdmin) {
+      toast.error("You are not authorized. Only administrators can delete templates.");
+      return;
+    }
+    try {
+      await apiFetch(`/result-templates/templates/${currentOrg.slug}/${id}`, { method: "DELETE" });
+      toast.success("Template deleted");
+      fetchTemplates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete template");
+    }
+  }
+
+  async function bulkCompute() {
+    if (!currentOrg || !filterClass) {
+      toast.error("Please select a class first");
+      return;
+    }
+    if (!isAdmin) {
+      toast.error("You are not authorized. Only administrators can compute results.");
+      return;
+    }
+
+    // Check if class has an approved template
+    const approvedTpl =
+      templates.find((t) => t.classLevelId === filterClass && t.isApproved) ||
+      templates.find((t) => !t.classLevelId && t.isDefault && t.isApproved) ||
+      templates.find((t) => t.isApproved);
+
+    if (!approvedTpl) {
+      toast.error(
+        "No approved result template found for this class. Please approve a result template first so official results can be calculated."
+      );
+      return;
+    }
+
+    setComputing(true);
+    try {
+      await apiFetch(`/result-templates/bulk-compute/${currentOrg.slug}`, {
+        method: "POST",
+        body: JSON.stringify({
+          classLevelId: filterClass,
+          term: filterTerm,
+          academicYear: filterYear,
+          templateId: approvedTpl.id,
+        }),
+      });
+      toast.success(`Results computed using approved template "${approvedTpl.name}"!`);
+      fetchResults();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to compute results");
+    } finally {
+      setComputing(false);
+    }
+  }
 
   async function computeSessionCumulative() {
     if (!currentOrg || !filterClass) {
@@ -93,112 +335,14 @@ export default function ResultTemplatesPage() {
     }
   }
 
-  // Form state
-  const [formName, setFormName] = useState("");
-  const [formDesc, setFormDesc] = useState("");
-  const [formMetrics, setFormMetrics] = useState<Metric[]>([]);
-  const [formGrades, setFormGrades] = useState<GradeLevel[]>([]);
-
-  useEffect(() => { if (!currentOrg) return; fetchClassLevels(); fetchTemplates(); }, [currentOrg]);
-
-  async function fetchClassLevels() {
-    if (!currentOrg) return;
-    try { const d = await apiFetch<ClassLevel[]>(`/classes/${currentOrg.slug}`); setClassLevels(Array.isArray(d) ? d : []); } catch (error) { toast.error("Failed to load classes"); }
-  }
-
-  async function fetchTemplates() {
-    if (!currentOrg) return;
-    try {
-      const res = await apiFetch(`/result-templates/templates/${currentOrg.slug}`);
-      const d = (res as any).data ?? res;
-      setTemplates(Array.isArray(res) ? res : d ?? []);
-    } catch (error) { toast.error("Failed to load templates"); } finally { setLoadingT(false); }
-  }
-
-  async function fetchResults() {
-    if (!currentOrg) return;
-    setLoadingR(true);
-    try {
-      const params = new URLSearchParams({ term: filterTerm, academicYear: filterYear });
-      if (filterClass) params.set("classLevelId", filterClass);
-      const res = await apiFetch(`/result-templates/results/${currentOrg.slug}?${params}`);
-      const d = (res as any).data ?? res;
-      setResults(Array.isArray(res) ? res : d ?? []);
-    } catch (error) { toast.error("Failed to load results"); } finally { setLoadingR(false); }
-  }
-
-  function resetForm() {
-    setFormName("");
-    setFormDesc("");
-    setFormMetrics([{ name: "exam", label: "Exam", weight: 70 }, { name: "test", label: "Test", weight: 20 }, { name: "assignment", label: "Assignment", weight: 10 }]);
-    setFormGrades([{ grade: "A", min: 70, max: 100 }, { grade: "B", min: 60, max: 69 }, { grade: "C", min: 50, max: 59 }, { grade: "D", min: 40, max: 49 }, { grade: "F", min: 0, max: 39 }]);
-  }
-
-  function openEdit(t: Template) {
-    if (!isAdmin) {
-      toast.error("You are not authorized. Only administrators can edit templates.");
-      return;
-    }
-    setEditItem(t);
-    setFormName(t.name);
-    setFormDesc(t.description || "");
-    setFormMetrics(t.metrics);
-    setFormGrades(t.gradeScale);
-    setDialogOpen(true);
-  }
-
-  async function saveTemplate() {
-    if (!currentOrg || !formName) return;
-    if (!isAdmin) {
-      toast.error("You are not authorized. Only administrators can save templates.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const body = { name: formName, description: formDesc, metrics: formMetrics, gradeScale: formGrades };
-      if (editItem) {
-        await apiFetch(`/result-templates/templates/${currentOrg.slug}/${editItem.id}`, { method: "PUT", body: JSON.stringify(body) });
-        toast.success("Updated");
-      } else {
-        await apiFetch(`/result-templates/templates/${currentOrg.slug}`, { method: "POST", body: JSON.stringify(body) });
-        toast.success("Created");
-      }
-      setDialogOpen(false); setEditItem(null); fetchTemplates();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Failed to save template"); } finally { setSaving(false); }
-  }
-
-  async function deleteTemplate(id: string) {
-    if (!currentOrg) return;
-    if (!isAdmin) {
-      toast.error("You are not authorized. Only administrators can delete templates.");
-      return;
-    }
-    try { await apiFetch(`/result-templates/templates/${currentOrg.slug}/${id}`, { method: "DELETE" }); toast.success("Deleted"); fetchTemplates(); } catch (error) { toast.error(error instanceof Error ? error.message : "Failed to delete template"); }
-  }
-
-  async function bulkCompute() {
-    if (!currentOrg || !filterClass) { toast.error("Select a class"); return; }
-    if (!isAdmin) {
-      toast.error("You are not authorized. Only administrators can compute results.");
-      return;
-    }
-    setComputing(true);
-    try {
-      const res = await apiFetch(`/result-templates/bulk-compute/${currentOrg.slug}`, {
-        method: "POST",
-        body: JSON.stringify({ classLevelId: filterClass, term: filterTerm, academicYear: filterYear, templateId: templates.find((t) => t.isDefault)?.id || templates[0]?.id }),
-      });
-      toast.success("Results computed");
-      fetchResults();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Failed to compute results"); } finally { setComputing(false); }
-  }
-
   function addMetric() {
     setFormMetrics([...formMetrics, { name: "", label: "", weight: 0 }]);
   }
 
   function updateMetric(i: number, field: string, value: any) {
-    setFormMetrics((prev) => prev.map((m, idx) => idx === i ? { ...m, [field]: value } : m));
+    setFormMetrics((prev) =>
+      prev.map((m, idx) => (idx === i ? { ...m, [field]: value } : m))
+    );
   }
 
   function removeMetric(i: number) {
@@ -210,129 +354,490 @@ export default function ResultTemplatesPage() {
   }
 
   function updateGrade(i: number, field: string, value: any) {
-    setFormGrades((prev) => prev.map((g, idx) => idx === i ? { ...g, [field]: field === "min" || field === "max" ? Number(value) : value } : g));
+    setFormGrades((prev) =>
+      prev.map((g, idx) =>
+        idx === i
+          ? { ...g, [field]: field === "min" || field === "max" ? Number(value) : value }
+          : g
+      )
+    );
   }
 
   function removeGrade(i: number) {
     setFormGrades((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  // Filter templates based on selected class
+  const filteredTemplates = useMemo(() => {
+    if (templateClassFilter === "all") return templates;
+    if (templateClassFilter === "general") return templates.filter((t) => !t.classLevelId);
+    return templates.filter((t) => t.classLevelId === templateClassFilter);
+  }, [templates, templateClassFilter]);
+
+  // Selected class's approved template for the Results tab
+  const activeClassApprovedTemplate = useMemo(() => {
+    if (!filterClass) return null;
+    return (
+      templates.find((t) => t.classLevelId === filterClass && t.isApproved) ||
+      templates.find((t) => !t.classLevelId && t.isDefault && t.isApproved) ||
+      null
+    );
+  }, [filterClass, templates]);
+
   if (!currentOrg) return null;
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-6 md:px-6 md:py-8 lg:px-8">
-        <div className="flex items-start justify-between gap-3">
-          <div className="hidden min-w-0 md:block">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Result Templates</h1>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">Configure grading templates and compute term results.</p>
+        
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Class Result Templates & Grading
+            </h1>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              Manage class-specific grading templates, set weighted components, and approve official templates for report card generation.
+            </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(o) => { 
-            if (o && !isAdmin) {
-              toast.error("You are not authorized. Only administrators can create templates.");
-              return;
-            }
-            setDialogOpen(o); 
-            if (!o) { setEditItem(null); resetForm(); } 
-          }}>
+
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(o) => {
+              if (o && !isAdmin) {
+                toast.error("You are not authorized. Only administrators can create templates.");
+                return;
+              }
+              setDialogOpen(o);
+              if (!o) {
+                setEditItem(null);
+                resetForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"><Plus className="mr-2 h-4 w-4" />New template</Button>
+              <Button
+                onClick={resetForm}
+                className="h-11 w-full shrink-0 bg-[#1447E6] font-semibold hover:bg-[#1447E6]/90 text-white md:h-9 md:w-auto md:px-4 cursor-pointer"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Class Template
+              </Button>
             </DialogTrigger>
+
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editItem ? "Edit" : "New"} Template</DialogTitle>
-                <DialogDescription className="sr-only">Form to manage the result grading template.</DialogDescription>
+                <DialogTitle>{editItem ? "Edit" : "New"} Class Result Template</DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  Configure assessment metrics and grading scales for a specific class or across all classes.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Standard" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="min-h-[60px]" />
+
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">Template Name</label>
+                    <Input
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="e.g. Senior Secondary WAEC Scale"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">Applicable Class</label>
+                    <Select
+                      value={formClassLevelId || "all"}
+                      onValueChange={(val) => setFormClassLevelId(val === "all" ? "" : (val as string))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="All Classes (Default)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Classes (General Fallback)</SelectItem>
+                        {classLevels.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            Class: {cls.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Description</label>
+                  <Textarea
+                    value={formDesc}
+                    onChange={(e) => setFormDesc(e.target.value)}
+                    placeholder="e.g. Approved weighting for SSS 1 Science terminal examinations."
+                    className="min-h-[50px] mt-1 text-xs"
+                  />
+                </div>
+
+                {/* Status Toggles */}
+                <div className="flex flex-wrap items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={formIsApproved}
+                      onChange={(e) => setFormIsApproved(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Approve this template for official class results</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={formIsDefault}
+                      onChange={(e) => setFormIsDefault(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Set as school default template</span>
+                  </label>
+                </div>
+
+                {/* Metrics Breakdown */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Metrics (weighted components)</label>
-                    <Button type="button" variant="outline" size="sm" onClick={addMetric}>+ Add</Button>
-                  </div>
-                  {formMetrics.map((m, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Input placeholder="Name" value={m.name} onChange={(e) => updateMetric(i, "name", e.target.value)} className="w-[120px] text-xs" />
-                      <Input placeholder="Label" value={m.label} onChange={(e) => updateMetric(i, "label", e.target.value)} className="flex-1 text-xs" />
-                      <Input type="number" placeholder="Weight %" value={m.weight} onChange={(e) => updateMetric(i, "weight", Number(e.target.value))} className="w-[100px] text-xs" />
-                      <button type="button" onClick={() => removeMetric(i)} className="text-xs text-red-400 hover:text-red-600">✕</button>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800">Assessment Components & Weights</label>
+                      <p className="text-[11px] text-slate-500">
+                        Weights must total 100% (Current: {formMetrics.reduce((s, m) => s + (Number(m.weight) || 0), 0)}%)
+                      </p>
                     </div>
-                  ))}
+                    <Button type="button" variant="outline" size="sm" onClick={addMetric} className="h-7 text-xs">
+                      + Add Component
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {formMetrics.map((m, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <Input
+                          placeholder="Internal Name (e.g. CA 1)"
+                          value={m.name}
+                          onChange={(e) => updateMetric(i, "name", e.target.value)}
+                          className="flex-1 text-xs h-8 bg-white"
+                        />
+                        <Input
+                          placeholder="Display Label"
+                          value={m.label}
+                          onChange={(e) => updateMetric(i, "label", e.target.value)}
+                          className="w-[110px] text-xs h-8 bg-white"
+                        />
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            placeholder="Weight"
+                            value={m.weight}
+                            onChange={(e) => updateMetric(i, "weight", Number(e.target.value))}
+                            className="w-[70px] text-xs h-8 bg-white text-center font-bold"
+                          />
+                          <span className="text-xs font-semibold text-slate-500">%</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMetric(i)}
+                          className="text-slate-400 hover:text-red-600 px-1.5 text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Grade Scale */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Grade Scale</label>
-                    <Button type="button" variant="outline" size="sm" onClick={addGrade}>+ Add</Button>
-                  </div>
-                  {formGrades.map((g, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Input placeholder="Grade" value={g.grade} onChange={(e) => updateGrade(i, "grade", e.target.value)} className="w-[80px] text-xs" />
-                      <span className="text-xs text-slate-500">Min</span>
-                      <Input type="number" value={g.min} onChange={(e) => updateGrade(i, "min", e.target.value)} className="w-[80px] text-xs" />
-                      <span className="text-xs text-slate-500">Max</span>
-                      <Input type="number" value={g.max} onChange={(e) => updateGrade(i, "max", e.target.value)} className="w-[80px] text-xs" />
-                      <button type="button" onClick={() => removeGrade(i)} className="text-xs text-red-400 hover:text-red-600">✕</button>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800">Grading Scale (Nigerian WAEC / Secondary)</label>
+                      <p className="text-[11px] text-slate-500">Assign grade thresholds from 0 to 100%.</p>
                     </div>
-                  ))}
+                    <Button type="button" variant="outline" size="sm" onClick={addGrade} className="h-7 text-xs">
+                      + Add Grade
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {formGrades.map((g, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <Input
+                          placeholder="Grade"
+                          value={g.grade}
+                          onChange={(e) => updateGrade(i, "grade", e.target.value)}
+                          className="w-12 text-xs h-7 bg-white text-center font-bold"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={g.min}
+                          onChange={(e) => updateGrade(i, "min", e.target.value)}
+                          className="w-12 text-xs h-7 bg-white text-center"
+                        />
+                        <span className="text-[10px] text-slate-400">-</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={g.max}
+                          onChange={(e) => updateGrade(i, "max", e.target.value)}
+                          className="w-12 text-xs h-7 bg-white text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeGrade(i)}
+                          className="text-slate-400 hover:text-red-600 px-1 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <Button onClick={saveTemplate} disabled={saving}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {editItem ? "Update" : "Create"} Template
-                </Button>
+                <div className="pt-2">
+                  <Button
+                    onClick={saveTemplate}
+                    disabled={saving}
+                    className="w-full bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-bold h-10"
+                  >
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {editItem ? "Update Class Template" : "Save & Activate Class Template"}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
+        {/* Tabs: Class Templates & Computed Results */}
         <Tabs value={tab} onValueChange={(v) => setTab(v)}>
-          <TabsList>
-            <TabsTrigger value="templates"><ClipboardList className="mr-2 h-4 w-4" />Templates</TabsTrigger>
-            <TabsTrigger value="results"><Calculator className="mr-2 h-4 w-4" />Results</TabsTrigger>
+          <TabsList className="bg-slate-200/60 p-1">
+            <TabsTrigger value="templates" className="font-semibold text-xs sm:text-sm">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Class Result Templates ({templates.length})
+            </TabsTrigger>
+            <TabsTrigger value="results" className="font-semibold text-xs sm:text-sm">
+              <Calculator className="mr-2 h-4 w-4" />
+              Results Overview & Computation
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="templates" className="mt-4">
-            {loadingT ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
-            : templates.length === 0
-            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><ClipboardList className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-500">No templates yet.</p></CardContent></Card>
-            : <div className="grid gap-4 sm:grid-cols-2">
-                {templates.map((t) => (
-                  <Card key={t.id} className="border-slate-200 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-sm font-semibold">{t.name}</CardTitle>
-                        <div className="flex gap-1">
-                          <button type="button" onClick={() => openEdit(t)} className="text-slate-300 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button type="button" onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+          {/* ── Tab 1: Class Result Templates ── */}
+          <TabsContent value="templates" className="mt-4 space-y-4">
+            
+            {/* Class Filter Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">Filter by Class:</span>
+                <Select
+                  value={templateClassFilter}
+                  onValueChange={(v) => setTemplateClassFilter(v as string)}
+                >
+                  <SelectTrigger className="w-[180px] h-8 text-xs font-semibold">
+                    <SelectValue placeholder="All Classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Templates ({templates.length})</SelectItem>
+                    <SelectItem value="general">School General Default</SelectItem>
+                    {classLevels.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="text-xs text-slate-500 font-medium">
+                {filteredTemplates.filter((t) => t.isApproved).length} approved templates active
+              </div>
+            </div>
+
+            {loadingT ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+                ))}
+              </div>
+            ) : filteredTemplates.length === 0 ? (
+              <Card className="border-dashed border-slate-300">
+                <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                  <ClipboardList className="h-10 w-10 text-slate-300" />
+                  <p className="text-sm font-semibold text-slate-700">No result templates found for this selection.</p>
+                  <p className="text-xs text-slate-400">
+                    Create a new template to configure the grading rules and weighted scores for your classes.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {filteredTemplates.map((t) => (
+                  <Card
+                    key={t.id}
+                    className={cn(
+                      "rounded-2xl border transition-all shadow-xs",
+                      t.isApproved ? "border-emerald-200 bg-white" : "border-slate-200 bg-slate-50/50"
+                    )}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-base font-bold text-slate-900">{t.name}</CardTitle>
+                            {t.isApproved ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                                <CheckCircle2 className="mr-1 h-3 w-3 text-emerald-600" />
+                                Approved
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold">
+                                <AlertCircle className="mr-1 h-3 w-3 text-amber-600" />
+                                Pending Approval
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                            <Badge variant="secondary" className="font-semibold text-slate-700 text-[11px]">
+                              {t.classLevel?.name ? `Class: ${t.classLevel.name}` : "School Default (All Classes)"}
+                            </Badge>
+                            {t.isDefault && (
+                              <Badge variant="outline" className="text-[10px] text-slate-500">
+                                Default Fallback
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(t)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Edit Template"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteTemplate(t.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Delete Template"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {t.description && (
+                        <CardDescription className="text-xs text-slate-500 mt-1">
+                          {t.description}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+
+                    <CardContent className="space-y-3 pt-0">
+                      <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-xs text-slate-600 space-y-1">
+                        <p className="font-semibold text-slate-800">Components & Weights:</p>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {t.metrics.map((m, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium"
+                            >
+                              {m.label}: <strong className="ml-1 text-slate-900">{m.weight}%</strong>
+                            </span>
+                          ))}
                         </div>
                       </div>
-                      {t.isDefault && <Badge variant="secondary" className="text-xs mt-1">Default</Badge>}
-                      <CardDescription className="text-xs mt-1">{t.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-xs text-slate-500 space-y-1">
-                        <p><strong>Metrics:</strong> {t.metrics.map((m) => `${m.label} (${m.weight}%)`).join(", ")}</p>
-                        <p><strong>Grades:</strong> {t.gradeScale.map((g) => `${g.grade}: ${g.min}-${g.max}`).join(", ")}</p>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] text-slate-400">
+                          {t.gradeScale.length} Grade Tiers ({t.gradeScale[0]?.grade || "A"} to{" "}
+                          {t.gradeScale[t.gradeScale.length - 1]?.grade || "F"})
+                        </span>
+
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleApproval(t)}
+                            className={cn(
+                              "h-7 text-xs font-semibold cursor-pointer",
+                              t.isApproved
+                                ? "border-amber-200 text-amber-700 hover:bg-amber-50"
+                                : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                            )}
+                          >
+                            <ShieldCheck className="mr-1 h-3.5 w-3.5" />
+                            {t.isApproved ? "Revoke Approval" : "Approve for Class"}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            }
+            )}
           </TabsContent>
 
+          {/* ── Tab 2: Results Overview & Computation ── */}
           <TabsContent value="results" className="mt-4 space-y-4">
+            
+            {/* Active Template Status Bar for Selected Class */}
+            {filterClass && (
+              <div
+                className={cn(
+                  "p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shadow-2xs",
+                  activeClassApprovedTemplate
+                    ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+                    : "bg-amber-50/70 border-amber-200 text-amber-950"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  {activeClassApprovedTemplate ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold">
+                      {activeClassApprovedTemplate
+                        ? `Approved Template: "${activeClassApprovedTemplate.name}"`
+                        : "No Approved Template Found for this Class"}
+                    </span>
+                    <p className="text-[11px] opacity-80 font-normal">
+                      {activeClassApprovedTemplate
+                        ? `Weighted: ${activeClassApprovedTemplate.metrics.map((m) => `${m.label} (${m.weight}%)`).join(" + ")}`
+                        : "Results can only reflect what has been approved from the result template for this class."}
+                    </p>
+                  </div>
+                </div>
+
+                {!activeClassApprovedTemplate && isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setTab("templates");
+                      setTemplateClassFilter(filterClass);
+                    }}
+                    className="h-7 text-xs border-amber-300 bg-amber-100 text-amber-900 font-bold hover:bg-amber-200 cursor-pointer"
+                  >
+                    Configure Template &rarr;
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Dynamic Term Weighting Configuration Bar */}
-            <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold">
+            <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-2xl bg-white border border-slate-200 text-xs font-semibold shadow-2xs">
               <span className="text-slate-900 font-bold">Class Session Formula:</span>
               <div className="flex items-center gap-1.5">
                 <span className="text-slate-600">T1:</span>
@@ -371,105 +876,172 @@ export default function ResultTemplatesPage() {
                 className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white h-8 px-3.5 text-xs ml-auto rounded-lg font-bold shadow-sm cursor-pointer"
               >
                 {computing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Calculator className="mr-1.5 h-3.5 w-3.5" />}
-                Compute Dynamic Session Cumulative
+                Compute Session Cumulative
               </Button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 mb-4">
+            {/* Results Filter Bar */}
+            <div className="flex flex-wrap items-center gap-2">
               <Select value={filterClass} onValueChange={(v: unknown) => setFilterClass(v as string)}>
-                <SelectTrigger className="w-[140px] h-8 text-xs sm:w-[180px] sm:h-9 sm:text-sm"><SelectValue placeholder="Select class" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Select class</SelectItem>{classLevels.map((cl) => <SelectItem key={cl.id} value={cl.id}>{cl.name}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="w-[150px] h-9 text-xs sm:w-[180px] sm:text-sm font-semibold">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Select class</SelectItem>
+                  {classLevels.map((cl) => (
+                    <SelectItem key={cl.id} value={cl.id}>
+                      {cl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
+
               <Select value={filterTerm} onValueChange={(v: unknown) => setFilterTerm(v as string)}>
-                <SelectTrigger className="w-[100px] h-8 text-xs sm:w-[130px] sm:h-9 sm:text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="Term 1">Term 1</SelectItem><SelectItem value="Term 2">Term 2</SelectItem><SelectItem value="Term 3">Term 3</SelectItem></SelectContent>
+                <SelectTrigger className="w-[110px] h-9 text-xs sm:w-[130px] sm:text-sm font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Term 1">Term 1</SelectItem>
+                  <SelectItem value="Term 2">Term 2</SelectItem>
+                  <SelectItem value="Term 3">Term 3</SelectItem>
+                </SelectContent>
               </Select>
-              <Input value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="w-[90px] h-8 text-xs sm:w-[120px] sm:h-9" placeholder="Year" />
-              <Button variant="outline" size="sm" onClick={fetchResults} className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"><Eye className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />View</Button>
-              <Button size="sm" onClick={bulkCompute} disabled={computing || !filterClass} className="bg-blue-600 hover:bg-blue-700 h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm">
-                {computing ? <Loader2 className="mr-1 h-3 w-3 animate-spin sm:mr-1.5 sm:h-3.5 sm:w-3.5" /> : <Calculator className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />}
-                Compute All
+
+              <Input
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="w-[100px] h-9 text-xs sm:w-[120px] font-semibold"
+                placeholder="Year"
+              />
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchResults}
+                className="h-9 px-3 text-xs sm:text-sm font-semibold cursor-pointer"
+              >
+                <Eye className="mr-1.5 h-3.5 w-3.5" />
+                View
               </Button>
+
+              <Button
+                size="sm"
+                onClick={bulkCompute}
+                disabled={computing || !filterClass}
+                className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white h-9 px-3 text-xs sm:text-sm font-bold cursor-pointer"
+              >
+                {computing ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Calculator className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Compute Class Results
+              </Button>
+
               {filterClass && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                    className="h-9 px-3 text-xs sm:text-sm font-semibold"
                     onClick={() => {
-                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
+                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(
+                        filterTerm
+                      )}&academicYear=${encodeURIComponent(filterYear)}`;
                       window.open(url, "_blank");
                     }}
                   >
-                    <FileDown className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
-                    PDF
+                    <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                    PDF Broadsheet
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                    className="h-9 px-3 text-xs sm:text-sm font-semibold"
                     onClick={() => {
-                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
+                      const url = `${HSMS_BASE}/export/${currentOrg.slug}/broadsheet/${filterClass}?term=${encodeURIComponent(
+                        filterTerm
+                      )}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
                       window.open(url, "_blank");
                     }}
                   >
-                    <FileSpreadsheet className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
+                    <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
                     Excel
                   </Button>
                 </>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                onClick={() => {
-                  const url = `${HSMS_BASE}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}`;
-                  window.open(url, "_blank");
-                }}
-              >
-                <FileDown className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
-                School PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                onClick={() => {
-                  const url = `${HSMS_BASE}/export/${currentOrg.slug}/school-broadsheet?term=${encodeURIComponent(filterTerm)}&academicYear=${encodeURIComponent(filterYear)}&format=xlsx`;
-                  window.open(url, "_blank");
-                }}
-              >
-                <FileSpreadsheet className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
-                School Excel
-              </Button>
             </div>
 
-            {loadingR ? <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
-            : results.length === 0
-            ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-8 text-center sm:py-12"><Calculator className="h-8 w-8 text-slate-300 sm:h-10 sm:w-10" /><p className="text-xs text-slate-500 sm:text-sm">No results yet. Select a class and compute.</p></CardContent></Card>
-            : <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            {/* Results Table */}
+            {loadingR ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : results.length === 0 ? (
+              <Card className="border-dashed border-slate-300">
+                <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                  <Calculator className="h-10 w-10 text-slate-300" />
+                  <p className="text-sm font-semibold text-slate-700">No computed results found for this class.</p>
+                  <p className="text-xs text-slate-400">
+                    Select a class and click &ldquo;Compute Class Results&rdquo; to evaluate scores using the approved template.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
                 {results.map((r) => (
-                  <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-xs sm:gap-4 sm:px-4 sm:py-2.5 sm:text-sm">
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-2 px-4 py-3 text-xs sm:gap-4 sm:text-sm hover:bg-slate-50/50"
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-900">{r.student.firstName} {r.student.lastName}</p>
-                      <p className="text-xs text-slate-500 sm:text-xs">{r.classLevel.name} · {r.term} · {r.template.name}</p>
+                      <p className="font-bold text-slate-900">
+                        {r.student.firstName} {r.student.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {r.classLevel.name} &middot; {r.term} &middot; Template: {r.template.name}
+                      </p>
                     </div>
+
                     <div className="text-right shrink-0">
-                      <p className="font-bold text-sm sm:text-lg">{r.totalScore}</p>
+                      <p className="font-extrabold text-base sm:text-lg tabular-nums text-slate-900">
+                        {r.totalScore}
+                      </p>
                     </div>
-                    <Badge variant="outline" className={cn("rounded-full px-1.5 py-0 text-xs font-bold shrink-0 sm:px-2.5 sm:py-0.5 sm:text-xs",
-                      r.grade === "A" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : r.grade === "B" ? "border-blue-200 bg-blue-50 text-blue-700"
-                      : r.grade === "C" ? "border-amber-200 bg-amber-50 text-amber-700"
-                      : r.grade === "D" ? "border-orange-200 bg-orange-50 text-orange-700"
-                      : "border-rose-200 bg-rose-50 text-rose-700"
-                    )}>{r.grade}</Badge>
-                    <div className="text-xs text-slate-500 shrink-0 w-6 text-center sm:text-xs sm:w-8">#{r.position || "—"}</div>
-                    {r.publishedAt && <Badge variant="secondary" className="text-xs px-1 py-0 shrink-0 sm:text-[10px]">Published</Badge>}
+
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-xs font-bold shrink-0",
+                        r.grade.startsWith("A")
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : r.grade.startsWith("B")
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : r.grade.startsWith("C")
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : r.grade.startsWith("D")
+                          ? "border-orange-200 bg-orange-50 text-orange-700"
+                          : "border-rose-200 bg-rose-50 text-rose-700"
+                      )}
+                    >
+                      {r.grade}
+                    </Badge>
+
+                    <div className="text-xs text-slate-500 shrink-0 w-8 text-center font-bold">
+                      #{r.position || "—"}
+                    </div>
+
+                    {r.publishedAt && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0 font-semibold">
+                        Published
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>
-            }
+            )}
           </TabsContent>
         </Tabs>
       </div>

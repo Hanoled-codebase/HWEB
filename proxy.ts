@@ -15,14 +15,17 @@ const authRoutes = ['/signin', '/signup'];
 // form again. This only reads the unverified `exp` claim to break that loop;
 // real verification still happens server-side on every API call.
 function isLikelyValidToken(token: string): boolean {
+  if (!token || typeof token !== 'string') return false;
   try {
-    const payload = token.split('.')[1];
-    if (!payload) return true; // not a JWT (e.g. an opaque session id) — treat as valid, let the API be the source of truth
+    const parts = token.split('.');
+    if (parts.length < 2) return false;
+    const payload = parts[1];
+    if (!payload) return false;
     const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    if (typeof decoded.exp !== 'number') return true;
+    if (typeof decoded.exp !== 'number') return false;
     return decoded.exp * 1000 > Date.now();
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -40,15 +43,22 @@ export function proxy(request: NextRequest) {
   const token = liveCookie('hcore_session') || liveCookie('hcbt_session') || liveCookie('accessToken');
   // HCORE's access token lasts an hour, but the session behind it lasts thirty
   // days and the browser can mint a new one from the refresh-token cookie. A
-  // page load that arrives after the hour is therefore still signed in: let it
+  // page load that arrives after the hour on a protected route is still signed in: let it
   // through, and the app refreshes on its first API call (or this route's own
   // /api/session) instead of throwing the person back to the sign-in form
   // mid-task.
   const canRenewHcoreSession = Boolean(request.cookies.get('hcore_refresh_web')?.value);
-  // Only an HCORE session counts as signed in on /signin: /welcome, where the
-  // redirect below lands, requires one, so a leftover HCBT cookie (e.g. after a
-  // logout that only reached HCORE) would bounce /signin <-> /welcome forever.
-  const hasHcoreSession = Boolean(liveCookie('hcore_session')) || canRenewHcoreSession;
+  // Only an actual live HCORE token counts as signed-in for auth pages.
+  // We do NOT use `canRenewHcoreSession` here because /welcome requires a live
+  // `hcore_session` token to render. If the session has expired and only the
+  // refresh cookie remains, redirecting to /welcome causes an infinite loop:
+  // /welcome sees no token and redirects to /signin, which redirects to /welcome.
+  // Furthermore, if the user explicitly supplies tenant parameters like `orgSlug`
+  // or `school`, they are attempting to view or use that specific school's sign-in
+  // portal, so we let them reach the sign-in form.
+  const hasLiveHcoreSession = Boolean(liveCookie('hcore_session')) || Boolean(liveCookie('accessToken'));
+  const hasExplicitTenant = request.nextUrl.searchParams.has('orgSlug') || request.nextUrl.searchParams.has('school');
+  const hasHcoreSession = hasLiveHcoreSession && !hasExplicitTenant;
 
   // 1. If accessing a protected route without a token, redirect to login
   if (isProtectedRoute && !token && !canRenewHcoreSession) {
@@ -58,13 +68,18 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 2. If logged in and trying to access login/register, honor callbackUrl or redirect to welcome hub
+  // 2. If logged in and trying to access generic login/register, honor callbackUrl or redirect to welcome hub
   if (isAuthRoute && hasHcoreSession) {
     const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-    if (isSafeRedirectUrl(callbackUrl)) {
+    if (isSafeRedirectUrl(callbackUrl) && callbackUrl !== '/welcome' && !authRoutes.some((r) => callbackUrl.startsWith(r))) {
       return NextResponse.redirect(new URL(callbackUrl, request.url));
     }
-    return NextResponse.redirect(new URL('/welcome', request.url));
+    // Only bounce generic /signin or /signup to /welcome.
+    // If a user is intentionally visiting an explicit entrance like /signin/staff, /signin/student, /signin/parent,
+    // let them reach the sign-in form.
+    if (pathname === '/signin' || pathname === '/signup') {
+      return NextResponse.redirect(new URL('/welcome', request.url));
+    }
   }
 
   return NextResponse.next();
