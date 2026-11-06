@@ -28,7 +28,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { SignOutForm } from "@/components/auth/SignOutForm";
 
-const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
+import { getHcoreBaseUrl } from "@/lib/api-endpoints";
+
+const HCORE_BASE = getHcoreBaseUrl();
 
 export default async function CBTLayout({
   children,

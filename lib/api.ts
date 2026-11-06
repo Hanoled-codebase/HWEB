@@ -1,11 +1,8 @@
 import { toast } from "sonner";
 import { getHcoreToken, getHcbtToken, setAuthTokens } from "./auth-tokens";
 
-export const HCORE_BASE = process.env.NEXT_PUBLIC_HCORE_URL || 'http://localhost:4000';
-export const HSMS_BASE = process.env.NEXT_PUBLIC_HSMS_URL || 'http://localhost:3001';
-// The HCBT Edge Appliance serves this UI itself, so its API is same-origin.
-export const EDGE_MODE = process.env.NEXT_PUBLIC_EDGE_MODE === "1";
-export const HCBT_BASE = EDGE_MODE ? '' : (process.env.NEXT_PUBLIC_HCBT_URL || 'http://localhost:4002');
+import { HCORE_BASE, HSMS_BASE, EDGE_MODE, HCBT_BASE } from "./api-endpoints";
+export { HCORE_BASE, HSMS_BASE, EDGE_MODE, HCBT_BASE };
 
 export type RequestOptions = RequestInit & {
   params?: Record<string, string | number | boolean | undefined>;
