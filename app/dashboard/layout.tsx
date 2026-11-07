@@ -13,7 +13,7 @@ export const viewport: Viewport = {
   themeColor: "#1447E6",
 };
 
-import { getHcoreBaseUrl } from "@/lib/api-endpoints";
+import { getHcoreBaseUrl, fetchWithFallback } from "@/lib/api-endpoints";
 
 const HCORE_BASE = getHcoreBaseUrl();
 
@@ -34,7 +34,7 @@ export default async function DashboardRootLayout({
   let allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
   if (!allowedPlatforms) {
     try {
-      const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
+      const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });

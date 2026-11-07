@@ -4,7 +4,7 @@ import { HanoledLogo } from "@/components/ui/HanoledLogo";
 import { ArrowRight, LayoutGrid, Monitor, Rocket } from "lucide-react";
 import { redirect } from "next/navigation";
 import { SignOutForm } from "@/components/auth/SignOutForm";
-import { getHcoreBaseUrl } from "@/lib/api-endpoints";
+import { getHcoreBaseUrl, fetchWithFallback } from "@/lib/api-endpoints";
 
 const HCORE_BASE = getHcoreBaseUrl();
 
@@ -38,7 +38,7 @@ export default async function WelcomePortal() {
 
   // If cookie is missing or empty, fetch real active subscriptions directly from HCORE
   try {
-    const meRes = await fetch(`${HCORE_BASE}/v1/me/contexts`, {
+    const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });

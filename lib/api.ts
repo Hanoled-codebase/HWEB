@@ -76,30 +76,50 @@ export function refreshHcoreSession(): Promise<string | null> {
 
 async function mintAccessToken(): Promise<string | null> {
   try {
+    // 1. Try our same-origin /api/session first (shares httpOnly session & refresh cookies)
+    const sessionRes = await fetch("/api/session", {
+      method: "GET",
+      credentials: "include",
+      headers: { "Cache-Control": "no-cache" },
+    }).catch(() => null);
+
+    if (sessionRes && sessionRes.ok) {
+      const data = await sessionRes.json().catch(() => null);
+      if (data?.authenticated && typeof data.token === "string" && data.token) {
+        setAuthTokens({ hcoreToken: data.token, hcbtToken: data?.hcbtToken });
+        refreshAttemptedAt = 0;
+        return data.token;
+      }
+    }
+
+    // 2. Direct HCORE refresh fallback (for localhost / same-domain environments & unit tests)
     const res = await fetch(`${HCORE_BASE}/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
-    });
-    if (!res.ok) return null;
-
-    const data = await res.json().catch(() => null);
-    const token = typeof data?.token === "string" ? data.token : "";
-    if (!token) return null;
-
-    setAuthTokens({ hcoreToken: token });
-    // proxy.ts reads Hweb's own httpOnly copy on the next navigation, and it
-    // can only be refreshed from the server, so hand it the new token.
-    await fetch("/api/session", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, refreshToken: data?.refreshToken }),
     }).catch(() => null);
 
-    refreshAttemptedAt = 0;
-    return token;
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      const token = typeof data?.token === "string" ? data.token : "";
+      if (token) {
+        setAuthTokens({ hcoreToken: token });
+        // proxy.ts reads Hweb's own httpOnly copy on the next navigation, and it
+        // can only be refreshed from the server, so hand it the new token.
+        await fetch("/api/session", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, refreshToken: data?.refreshToken }),
+        }).catch(() => null);
+
+        refreshAttemptedAt = 0;
+        return token;
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -155,9 +175,12 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
         localStorage.removeItem("hanoled_hcbt_token");
       } catch {}
     }
-    const token =
+    let token =
       (baseUrl === HCBT_BASE && hcbtToken && !tokenExpiresSoon(hcbtToken) ? hcbtToken : null) ||
       getHcoreToken();
+    if (!token && typeof window !== "undefined" && !EDGE_MODE) {
+      token = await mintAccessToken();
+    }
     if (token) {
       // HCORE's access token lives one hour. Refresh it before it lapses rather
       // than spending a round trip on a guaranteed 401 — this also keeps the
