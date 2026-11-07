@@ -172,9 +172,9 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (isInitialized && !authLoading && !user) {
-      void logout();
+      router.replace(`/signin?callbackUrl=${encodeURIComponent(pathname)}`);
     }
-  }, [authLoading, isInitialized, logout, user]);
+  }, [authLoading, isInitialized, pathname, router, user]);
 
   // Load the org context in parallel with checkAuth (/v1/me). Neither needs
   // the other's result (both authenticate via the bearer token), so waiting

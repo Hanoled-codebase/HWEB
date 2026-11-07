@@ -6,36 +6,11 @@ import { SESSION_COOKIE_NAMES, exposeTokensToBrowser, sessionCookieClearTargets,
 import { signInFailure } from '@/lib/sign-in-errors';
 import { isSafeRedirectUrl } from '@/lib/safe-redirect';
 import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from '@/lib/password-policy';
-import { getHcoreBaseUrl, getHsmsBaseUrl, getHcbtBaseUrl } from '@/lib/api-endpoints';
+import { getHcoreBaseUrl, getHsmsBaseUrl, getHcbtBaseUrl, fetchWithFallback } from '@/lib/api-endpoints';
 
 const HCORE_BASE = getHcoreBaseUrl();
 const HCBT_BASE = getHcbtBaseUrl();
 const HSMS_BASE = getHsmsBaseUrl();
-
-async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, init);
-  } catch (err: unknown) {
-    if (url.includes('localhost:4000') && !process.env.VERCEL) {
-      try {
-        return await fetch(url.replace('localhost:4000', '127.0.0.1:4000'), init);
-      } catch {}
-    }
-    if (url.includes('127.0.0.1:4000') && !process.env.VERCEL) {
-      try {
-        return await fetch(url.replace('127.0.0.1:4000', 'localhost:4000'), init);
-      } catch {}
-    }
-    if (url.includes('localhost:4000') || url.includes('127.0.0.1:4000') || url.includes('core-api.hanoled.com')) {
-      const cloudUrl = url
-        .replace(/https?:\/\/localhost:4000/, 'https://hcore-backend-eta.vercel.app')
-        .replace(/https?:\/\/127\.0\.0\.1:4000/, 'https://hcore-backend-eta.vercel.app')
-        .replace('https://core-api.hanoled.com', 'https://hcore-backend-eta.vercel.app');
-      return await fetch(cloudUrl, init);
-    }
-    throw err;
-  }
-}
 
 /**
  * After a successful HCORE login, exchange the HCORE identity for a HCBT product session.

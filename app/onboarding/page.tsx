@@ -117,9 +117,9 @@ export default function OnboardingPage() {
     }
 
     if (!user) {
-      void logout();
+      router.replace("/signin?callbackUrl=/onboarding");
     }
-  }, [authLoading, isInitialized, logout, user]);
+  }, [authLoading, isInitialized, router, user]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
