@@ -79,18 +79,20 @@ export default function SchoolBrandingPage() {
   const [activePreviewTab, setActivePreviewTab] = useState<"buttons" | "portal" | "report" | "dashboard">("buttons");
 
   useEffect(() => {
-    if (currentOrg?.primaryColor) {
-      setPrimaryColor(currentOrg.primaryColor);
-    } else {
-      setPrimaryColor(DEFAULT_HANOLED_PRIMARY);
-    }
+    queueMicrotask(() => {
+      if (currentOrg?.primaryColor) {
+        setPrimaryColor(currentOrg.primaryColor);
+      } else {
+        setPrimaryColor(DEFAULT_HANOLED_PRIMARY);
+      }
 
-    if (currentOrg?.secondaryColor) {
-      setSecondaryColor(currentOrg.secondaryColor);
-      setUseCustomSecondary(true);
-    } else {
-      setUseCustomSecondary(false);
-    }
+      if (currentOrg?.secondaryColor) {
+        setSecondaryColor(currentOrg.secondaryColor);
+        setUseCustomSecondary(true);
+      } else {
+        setUseCustomSecondary(false);
+      }
+    });
   }, [currentOrg?.primaryColor, currentOrg?.secondaryColor]);
 
   // Evaluate whether current state differs from saved server values
@@ -694,6 +696,7 @@ export default function SchoolBrandingPage() {
                   <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-sm text-center space-y-4 pointer-events-none">
                     <div className="flex justify-center">
                       {currentOrg.logo ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={currentOrg.logo}
                           alt="School Logo"
