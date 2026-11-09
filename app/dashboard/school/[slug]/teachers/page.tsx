@@ -163,6 +163,7 @@ export default function TeachersPage() {
         body: JSON.stringify({
           email: values.email,
           role: "member", // Teachers are 'member' role in this system
+          displayRole: "Teacher", // Human-facing label for the invite email/accept page
           organizationId: currentOrg.id,
         }),
       });

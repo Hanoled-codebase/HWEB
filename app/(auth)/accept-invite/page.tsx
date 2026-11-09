@@ -37,6 +37,7 @@ const formSchema = z.object({
 type InviteData = {
   email: string;
   role: string;
+  displayRole?: string | null;
   orgName?: string | null;
   hasAccount?: boolean;
   requiresPassword?: boolean;
@@ -202,8 +203,12 @@ function AcceptInviteContent() {
     .map((w) => w[0]?.toUpperCase() || "")
     .join("") || "SC";
 
-  const rawRole = (inviteData?.role || "Member").toLowerCase();
-  const roleDisplay = rawRole.includes("admin")
+  // displayRole comes from the invite itself (e.g. "Teacher" for staff invites)
+  // and is the most accurate label; fall back to the permission-role mapping.
+  const rawRole = (inviteData?.displayRole || inviteData?.role || "Member").toLowerCase();
+  const roleDisplay = inviteData?.displayRole?.trim()
+    ? inviteData.displayRole.trim()
+    : rawRole.includes("admin")
     ? "Administrator"
     : rawRole.includes("teacher")
     ? "Teacher"
