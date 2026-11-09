@@ -50,7 +50,6 @@ import {
   Palette,
   Check,
   RotateCcw,
-  Sparkles,
   ArrowRight,
 } from "lucide-react";
 import {
@@ -687,7 +686,7 @@ export default function SettingsPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                    <Palette className="w-3.5 h-3.5 text-slate-500" />
                     Live Component Preview
                   </span>
                   <span className="text-[11px] text-slate-400 font-mono">

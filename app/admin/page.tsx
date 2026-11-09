@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   ChevronRight,
   Plus,
-  Sparkles,
   Activity,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -123,7 +122,7 @@ export default function AdminDashboard() {
     { label: "Total Students", value: stats?.totalStudents ?? 0, icon: Users, format: "number" as const },
     { label: "Expected Revenue", value: stats?.totalExpectedRevenue ?? 0, icon: TrendingUp, format: "currency" as const, accent: true },
     { label: "Outstanding", value: stats?.totalOutstanding ?? 0, icon: AlertCircle, format: "currency" as const },
-    { label: "In Pipeline", value: stats?.pipelineCount ?? 0, icon: Sparkles, format: "number" as const },
+    { label: "In Pipeline", value: stats?.pipelineCount ?? 0, icon: Activity, format: "number" as const },
   ]
 
   return (
