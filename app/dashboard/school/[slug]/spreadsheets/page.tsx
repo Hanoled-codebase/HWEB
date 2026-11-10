@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
-import { DataStateCard } from "@/components/dashboard/shared";
+import { BackButton, DataStateCard } from "@/components/dashboard/shared";
 import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import { getSpreadsheetLabel } from "@/lib/spreadsheets";
@@ -449,10 +449,22 @@ export default function SpreadsheetsPage() {
   }
 
   const displayName = getDisplayName(currentMember?.user?.name);
+  const orgSlug = currentOrg?.slug;
+  const backHref = prefilledSubjectId
+    ? `/dashboard/school/${orgSlug}/subjects/${prefilledSubjectId}`
+    : prefilledClassId
+      ? `/dashboard/school/${orgSlug}/classes/${prefilledClassId}`
+      : `/dashboard/school/${orgSlug}`;
+  const backLabel = prefilledSubjectId
+    ? "Back to Subject"
+    : prefilledClassId
+      ? "Back to Class"
+      : "Back to Overview";
 
   if (!isStaff) {
     return (
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+        {orgSlug && <BackButton href={`/dashboard/school/${orgSlug}`} label="Back to Overview" />}
         <DataStateCard
           variant="forbidden"
           title="Grade spreadsheets aren't available to your role"
@@ -465,6 +477,7 @@ export default function SpreadsheetsPage() {
   return (
     <div className="min-h-full">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:gap-6 md:px-4 md:py-4 lg:px-6 lg:py-6">
+        {orgSlug && <BackButton href={backHref} label={backLabel} />}
         {/* Header Section (phones: the top bar names the page; the list starts right away) */}
         <section className="md:rounded-xl md:border md:border-blue-100/80 md:bg-white/90 md:p-5 md:shadow-[0_24px_70px_rgba(37,99,235,0.10)] lg:p-6">
           <div className="flex flex-col gap-3 md:gap-5">

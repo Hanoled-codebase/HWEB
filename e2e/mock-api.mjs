@@ -130,7 +130,23 @@ const QUESTIONS = [
 
 let state;
 function reset() {
-  state = { requests: [], tokens: new Map(), submitted: null, gradebook: null };
+  state = {
+    requests: [],
+    tokens: new Map(),
+    submitted: null,
+    gradebook: null,
+    org: {
+      ...ORG,
+      country: "Nigeria",
+      category: null,
+      schoolType: null,
+      idPrefix: "HNL",
+      nextIdSequence: 1,
+      subscriptionTier: "free",
+      paymentStatus: "active",
+      subscriptionType: "annual",
+    },
+  };
 }
 reset();
 
@@ -143,7 +159,7 @@ function userFor(req) {
 function contexts(user) {
   return {
     principal: { id: user.principalId, displayName: user.displayName, primaryEmail: user.identifierType === "EMAIL" ? user.identifier : null },
-    organizations: [{ ...ORG, subscribed: ["HSMS", "HCBT"], products: user.products }],
+    organizations: [{ ...state.org, subscribed: ["HSMS", "HCBT"], products: user.products, subscription: { plan: "Standard", status: "ACTIVE" } }],
   };
 }
 
@@ -228,9 +244,32 @@ const ROUTES = {
     }],
   ],
   hsms: [
-    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
+    ["GET", /^\/organizations\/greenfield$/, () => [200, {
+      id: state.org.id,
+      name: state.org.name,
+      slug: state.org.slug,
+      logo: state.org.logo ?? null,
+      primaryColor: state.org.primaryColor ?? null,
+      secondaryColor: state.org.secondaryColor ?? null,
+      address: state.org.address ?? null,
+      email: state.org.email ?? null,
+      phone: state.org.phone ?? null,
+      category: state.org.category,
+      schoolType: state.org.schoolType,
+      country: state.org.country,
+    }]],
+    ["PATCH", /^\/organizations\/greenfield$/, (_req, _m, body, user) => {
+      if (!user) return [401, { error: "Unauthorized" }];
+      if (user.memberRole !== "admin") return [403, { error: "Only school admins can update settings" }];
+      state.org = { ...state.org, ...body };
+      return [200, state.org];
+    }],
+    ["GET", /^\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => {
+      const [status, payload] = memberProfile(user);
+      return status === 200 ? [200, { ...payload, organization: { ...state.org } }] : [status, payload];
+    }],
     ["GET", /^\/organizations\/greenfield\/student-profile$/, (_req, _m, _b, user) => (user?.learnerId
-      ? [200, { student: PUPIL, org: ORG }]
+      ? [200, { student: PUPIL, org: state.org }]
       : [404, { error: "Not a student" }])],
     // Like the real HSMS: exams live in HCBT, so this dashboard never lists any.
     ["GET", /^\/student\/greenfield\/dashboard$/, () => [200, {
@@ -269,6 +308,9 @@ const ROUTES = {
         student: { id: OWING.id, name: OWING.name, admissionNumber: OWING.admissionNumber },
       }];
     }],
+    ["GET", /^\/classes\/greenfield$/, () => [200, [{ id: "jss1a", name: "JSS 1A", level: 1 }]]],
+    ["GET", /^\/subjects\/greenfield$/, () => [200, [{ id: "maths", name: "Mathematics", code: "MTH" }]]],
+    ["GET", /^\/spreadsheets\/greenfield$/, () => [200, [{ ...gradebook(), createdAt: "2026-09-01T00:00:00.000Z" }]]],
     ["GET", /^\/spreadsheets\/greenfield\/results$/, () => [200, results()]],
     // The Mathematics JSS 1A gradebook the maths teacher keeps.
     ["GET", /^\/spreadsheets\/greenfield\/sheet-maths$/, () => [200, gradebook()]],

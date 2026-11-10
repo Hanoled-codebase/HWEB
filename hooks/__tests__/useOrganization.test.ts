@@ -139,4 +139,86 @@ describe("useOrganization branding", () => {
     await loadPromise;
     expect(useOrganization.getState().currentOrg?.logo).toBe(LOGO);
   });
+
+  it("merges HCORE subscription plan and HSMS category, type, and ID settings on cold load", async () => {
+    routeRequest({
+      "http://hcore /v1/me/contexts": {
+        organizations: [
+          {
+            id: "org-1",
+            name: "Greenfield Academy",
+            slug: "greenfield-academy",
+            subscribed: ["HSMS"],
+            products: { HSMS: { status: "TRIALING", roles: ["SCHOOL_ADMIN"] } },
+            subscription: { plan: "Standard", status: "ACTIVE" },
+          },
+        ],
+      },
+      "http://hcore /v1/directory/organizations/greenfield-academy/member-profile": {
+        id: "m-1",
+        user: null,
+        organization: null,
+        role: "owner",
+        assignedClasses: [],
+        assignedStudents: [],
+      },
+      "http://hsms /organizations/greenfield-academy/member-profile": {
+        organization: {
+          id: "org-1",
+          category: "secondary",
+          schoolType: "private",
+          country: "Nigeria",
+          idPrefix: "GFA",
+          nextIdSequence: 12,
+          subscriptionTier: "free",
+          paymentStatus: "inactive",
+        },
+      },
+      "http://hsms /organizations/greenfield-academy": {
+        ...greenfieldBranding,
+        category: "secondary",
+        schoolType: "private",
+        country: "Nigeria",
+      },
+    });
+
+    await useOrganization.getState().setCurrentOrg("greenfield-academy");
+
+    expect(useOrganization.getState().currentOrg).toMatchObject({
+      category: "secondary",
+      type: "private",
+      schoolType: "private",
+      country: "Nigeria",
+      idPrefix: "GFA",
+      nextIdSequence: 12,
+      subscription: { plan: "Standard", status: "ACTIVE" },
+    });
+  });
+
+  it("keeps type, schoolType, idPrefix, and nextIdSequence synced in updateCurrentOrg", () => {
+    useOrganization.setState({
+      organizations: [{ id: "org-1", name: "Greenfield Academy", slug: "greenfield-academy", counts: { students: 0, teachers: 0, parents: 0 } }],
+      currentOrg: { id: "org-1", name: "Greenfield Academy", slug: "greenfield-academy", counts: { students: 0, teachers: 0, parents: 0 } },
+    });
+
+    useOrganization.getState().updateCurrentOrg({
+      category: "tertiary",
+      schoolType: "federal",
+      idPrefix: "GFT",
+      nextIdSequence: 88,
+    });
+
+    expect(useOrganization.getState().currentOrg).toMatchObject({
+      category: "tertiary",
+      type: "federal",
+      schoolType: "federal",
+      idPrefix: "GFT",
+      nextIdSequence: 88,
+    });
+    expect(useOrganization.getState().organizations[0]).toMatchObject({
+      type: "federal",
+      idPrefix: "GFT",
+      nextIdSequence: 88,
+    });
+  });
 });

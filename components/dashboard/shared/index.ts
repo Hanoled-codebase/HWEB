@@ -1,3 +1,4 @@
+export { BackButton } from "./back-button";
 export { EntityHeader } from "./entity-header";
 export { SearchInput } from "./search-input";
 export { TableContainer } from "./table-container";

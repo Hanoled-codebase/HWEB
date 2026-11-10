@@ -18,6 +18,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -26,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackButton } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
@@ -78,7 +88,12 @@ export default function AssessmentEntryPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const assessmentsHref = currentOrg?.slug
+    ? `/dashboard/school/${currentOrg.slug}/spreadsheets/${sheetId}`
+    : "/dashboard";
 
   const isPrivileged =
     currentMember?.role === "owner" || currentMember?.role === "admin";
@@ -211,8 +226,8 @@ export default function AssessmentEntryPage() {
     handleScoreChange(rowIndex, String(next));
   };
 
-  const handleSave = async () => {
-    if (!currentOrg || !sheet) return;
+  const saveScores = async (): Promise<boolean> => {
+    if (!currentOrg || !sheet) return false;
     setIsSaving(true);
     try {
       const sanitizedData = sanitizeSpreadsheetRows(localData, rawAssessments);
@@ -232,10 +247,31 @@ export default function AssessmentEntryPage() {
       setSheet({ ...updatedSheet, data: normalizedData });
       setLocalData(normalizedData);
       toast.success(`${selectedAssessment?.name || "Assessment"} saved successfully`);
+      return true;
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to save spreadsheet"));
+      return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    await saveScores();
+  };
+
+  const handleBackClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (hasChanges) {
+      event.preventDefault();
+      setShowLeaveDialog(true);
+    }
+  };
+
+  const handleSaveAndBack = async () => {
+    const saved = await saveScores();
+    if (saved) {
+      setShowLeaveDialog(false);
+      router.push(assessmentsHref);
     }
   };
 
@@ -281,17 +317,20 @@ export default function AssessmentEntryPage() {
   /* ── Error state ── */
   if (!isLoading && loadError) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-rose-200 bg-white p-10 text-center shadow-sm">
-          <FileSpreadsheet className="mb-4 h-10 w-10 text-rose-300" />
-          <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
-          <p className="mt-2 max-w-xs text-sm text-slate-500">{loadError}</p>
-          <button
-            onClick={() => void fetchSheet()}
-            className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            Try Again
-          </button>
+      <div className="space-y-4">
+        <BackButton label="Back to Assessments" href={assessmentsHref} className="hidden md:inline-flex" />
+        <div className="flex flex-col items-center justify-center px-4 py-16">
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-rose-200 bg-white p-10 text-center shadow-sm">
+            <FileSpreadsheet className="mb-4 h-10 w-10 text-rose-300" />
+            <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
+            <p className="mt-2 max-w-xs text-sm text-slate-500">{loadError}</p>
+            <button
+              onClick={() => void fetchSheet()}
+              className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -301,6 +340,7 @@ export default function AssessmentEntryPage() {
   if (isLoading) {
     return (
       <div className="space-y-4 py-2">
+        <BackButton label="Back to Assessments" href={assessmentsHref} className="hidden md:inline-flex" />
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-11 w-full rounded-2xl" />
@@ -314,23 +354,22 @@ export default function AssessmentEntryPage() {
   /* ── Not found ── */
   if (!sheet || !selectedAssessment) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-blue-200 bg-white p-10 text-center shadow-sm">
-          <FileText className="mb-4 h-10 w-10 text-blue-300" />
-          <h2 className="text-lg font-bold text-slate-800">Assessment Not Found</h2>
-          <p className="mt-2 max-w-xs text-sm text-slate-500">
-            The selected assessment is unavailable.
-          </p>
-          <button
-            onClick={() =>
-              router.push(
-                `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheetId}`,
-              )
-            }
-            className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            Back to Assessments
-          </button>
+      <div className="space-y-4">
+        <BackButton label="Back to Assessments" href={assessmentsHref} className="hidden md:inline-flex" />
+        <div className="flex flex-col items-center justify-center px-4 py-16">
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-blue-200 bg-white p-10 text-center shadow-sm">
+            <FileText className="mb-4 h-10 w-10 text-blue-300" />
+            <h2 className="text-lg font-bold text-slate-800">Assessment Not Found</h2>
+            <p className="mt-2 max-w-xs text-sm text-slate-500">
+              The selected assessment is unavailable.
+            </p>
+            <button
+              onClick={() => router.push(assessmentsHref)}
+              className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Back to Assessments
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -343,6 +382,12 @@ export default function AssessmentEntryPage() {
   return (
     // -mx-4 -mt-4 cancel the layout padding so the sticky header can run edge to edge on phones.
     <div className="-mx-4 -mt-4 flex flex-col bg-slate-50 pb-32 md:mx-0 md:mt-0 md:pb-0">
+      <BackButton
+        label="Back to Assessments"
+        href={assessmentsHref}
+        onClick={handleBackClick}
+        className="mb-3 hidden md:inline-flex"
+      />
       {/* ── Sticky context: what is being scored, out of what, how far along ── */}
       <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-3 backdrop-blur-md md:static md:rounded-2xl md:border md:px-5 md:pt-4">
         <div className="flex items-start justify-between gap-3">
@@ -585,7 +630,12 @@ export default function AssessmentEntryPage() {
             type="button"
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 text-base font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500 md:h-12 md:w-auto md:px-8"
+            className={cn(
+              "flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-semibold transition-colors md:h-12 md:w-auto md:px-8",
+              isSaving || !hasChanges
+                ? "bg-slate-200 text-slate-600"
+                : "bg-blue-600 text-white hover:bg-blue-700",
+            )}
           >
             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : hasChanges ? <Save className="h-5 w-5" /> : <Check className="h-5 w-5" />}
             {isSaving
@@ -596,6 +646,52 @@ export default function AssessmentEntryPage() {
           </button>
         </div>
       )}
+
+      <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unsaved score changes</DialogTitle>
+            <DialogDescription>
+              You have {unsavedCount} unsaved {unsavedCount === 1 ? "score" : "scores"} for{" "}
+              {selectedAssessment.name}. Save before returning to Assessments?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              onClick={() => {
+                setShowLeaveDialog(false);
+                router.push(assessmentsHref);
+              }}
+            >
+              Discard &amp; leave
+            </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                autoFocus
+                disabled={isSaving}
+                onClick={() => setShowLeaveDialog(false)}
+              >
+                Stay on page
+              </Button>
+              <Button
+                type="button"
+                disabled={isSaving}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => void handleSaveAndBack()}
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                Save &amp; go back
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
