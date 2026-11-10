@@ -3,7 +3,7 @@
 import React, { useState, useActionState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Hash, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2, Eye, EyeOff } from 'lucide-react';
+import { Mail, GraduationCap, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2, Eye, EyeOff } from 'lucide-react';
 import { loginAction } from '@/app/actions/auth';
 import { api } from '@/services/api';
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
@@ -247,7 +247,7 @@ export default function SignInForm({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Hash size={16} /> Student / Candidate
+            <GraduationCap size={16} /> Student / Candidate
           </button>
         </div>
       )}

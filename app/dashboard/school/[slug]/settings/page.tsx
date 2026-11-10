@@ -51,6 +51,7 @@ import {
   Check,
   RotateCcw,
   ArrowRight,
+  ArrowDown,
 } from "lucide-react";
 import {
   deriveTheme,
@@ -291,14 +292,14 @@ export default function SettingsPage() {
 
       {/* Quick Access to School Branding */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-blue-100 bg-blue-50/60 shadow-2xs">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
             style={{ backgroundColor: previewTheme.primary }}
           >
-            <Palette className="w-5 h-5 text-white" />
+            <Palette className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="text-sm font-bold text-slate-900 block">
               School Branding &amp; Signature Theme Color
             </span>
@@ -307,19 +308,21 @@ export default function SettingsPage() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:gap-2 sm:w-auto sm:shrink-0">
           <a
             href="#branding"
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+            aria-label="Jump down to the branding section"
+            className="inline-flex items-center justify-center gap-1 px-3.5 min-h-[40px] rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 sm:w-auto"
           >
-            Scroll Down ↓
+            Jump to Branding
+            <ArrowDown className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
           <Link
             href={`/dashboard/school/${currentOrg.slug}/settings/branding`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-2xs hover:opacity-95 transition-all"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 min-h-[40px] rounded-lg text-xs font-semibold text-white shadow-2xs hover:opacity-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-700 sm:w-auto"
             style={{ backgroundColor: previewTheme.primary }}
           >
-            Open Branding Studio <ArrowRight className="w-3.5 h-3.5" />
+            Open Branding Studio <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>
         </div>
       </div>
