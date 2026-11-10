@@ -103,11 +103,6 @@
       "count": 2
     }
   },
-  "app/dashboard/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/dashboard/school/[slug]/admissions/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 3

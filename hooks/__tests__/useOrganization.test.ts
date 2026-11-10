@@ -97,4 +97,46 @@ describe("useOrganization branding", () => {
     expect(useOrganization.getState().currentOrg?.logo).toBe(LOGO);
     expect(useOrganization.getState().organizations[0].logo).toBe(LOGO);
   });
+
+  it("fetches contexts, member profile, and branding in parallel on cold school load", async () => {
+    const started: string[] = [];
+    let releaseContexts!: () => void;
+    const contextsGate = new Promise<void>((resolve) => {
+      releaseContexts = resolve;
+    });
+
+    req.mockImplementation(async (base: string, endpoint: string) => {
+      const key = `${base} ${endpoint}`;
+      started.push(key);
+      if (key === "http://hcore /v1/me/contexts") {
+        await contextsGate;
+        return greenfieldContext;
+      }
+      if (key === "http://hcore /v1/directory/organizations/greenfield-academy/member-profile") {
+        return {
+          id: "m-1",
+          user: null,
+          organization: null,
+          role: "owner",
+          assignedClasses: [],
+          assignedStudents: [],
+        };
+      }
+      if (key === "http://hsms /organizations/greenfield-academy") {
+        return greenfieldBranding;
+      }
+      return Promise.reject(new Error(`unexpected request: ${key}`));
+    });
+
+    const loadPromise = useOrganization.getState().setCurrentOrg("greenfield-academy");
+    // Before /v1/me/contexts even resolves, member-profile and branding have already started.
+    await Promise.resolve();
+    expect(started).toContain("http://hcore /v1/me/contexts");
+    expect(started).toContain("http://hcore /v1/directory/organizations/greenfield-academy/member-profile");
+    expect(started).toContain("http://hsms /organizations/greenfield-academy");
+
+    releaseContexts();
+    await loadPromise;
+    expect(useOrganization.getState().currentOrg?.logo).toBe(LOGO);
+  });
 });

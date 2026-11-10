@@ -46,6 +46,7 @@ async function exchangeHcbtSession(
       method: 'POST',
       headers,
       body: payload,
+      signal: AbortSignal.timeout(5000),
     }).catch(() => null);
 
     if (!res || !res.ok) {
@@ -53,6 +54,7 @@ async function exchangeHcbtSession(
         method: 'POST',
         headers,
         body: payload,
+        signal: AbortSignal.timeout(5000),
       }).catch(() => null);
     }
     if (!res || !res.ok) return null;
@@ -114,69 +116,77 @@ async function finishSignIn(
     cookieStore.set('hcore_refresh_web', data.refreshToken, sessionCookieOptions(60 * 60 * 24 * 30));
   }
 
-  // Exchange for HCBT session with full role and student context
-  const hcbtToken = await exchangeHcbtSession(
-    data.token,
-    data.principal?.id,
-    data.principal?.email || identifier,
-    {
-      roles: data.roles,
-      orgSlug: organizationSlugOrId || data.activeOrganization?.slug,
-      studentId: data.studentId ?? undefined,
-      learnerId: data.learnerId ?? undefined,
-    }
-  );
+  // Run HCBT session exchange and HCORE context lookup in parallel so sign-in
+  // doesn't pay sequential cross-service round trips.
+  const [hcbtToken, meRes] = await Promise.all([
+    exchangeHcbtSession(
+      data.token,
+      data.principal?.id,
+      data.principal?.email || identifier,
+      {
+        roles: data.roles,
+        orgSlug: organizationSlugOrId || data.activeOrganization?.slug,
+        studentId: data.studentId ?? undefined,
+        learnerId: data.learnerId ?? undefined,
+      }
+    ),
+    fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
+      headers: { 'Authorization': `Bearer ${data.token}` },
+      cache: 'no-store',
+    }).catch((e) => {
+      console.error('Context fetch error in loginAction:', e);
+      return null;
+    }),
+  ]);
   if (hcbtToken) {
     cookieStore.set('hcbt_session', hcbtToken, sessionCookieOptions(3600 * 24 * 7));
   }
 
-  // Query HCORE for real-time active user context & subscriptions
+  // Extract real-time active user context & subscriptions
   let allowedPlatforms: string[] = [];
   let contextOrgs: ContextOrganization[] = [];
-  try {
-    const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
-      headers: { 'Authorization': `Bearer ${data.token}` },
-      cache: 'no-store',
-    });
-    if (meRes.ok) {
-      const meData = await meRes.json();
-      contextOrgs = Array.isArray(meData.organizations) ? meData.organizations : [];
-      const primaryOrg = contextOrgs[0];
-      if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-        // `subscribed` is org-level (does the school pay for this product at all).
-        // Only surface a product to this user if they also hold an actual
-        // role in it — otherwise e.g. a Parent at a school that also buys
-        // HCBT would be routed into the CBT product with no role there.
-        allowedPlatforms = primaryOrg.subscribed.filter(
-          (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
-        );
-      }
+  if (meRes) {
+    try {
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        contextOrgs = Array.isArray(meData.organizations) ? meData.organizations : [];
+        const primaryOrg = contextOrgs[0];
+        if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
+          // `subscribed` is org-level (does the school pay for this product at all).
+          // Only surface a product to this user if they also hold an actual
+          // role in it — otherwise e.g. a Parent at a school that also buys
+          // HCBT would be routed into the CBT product with no role there.
+          allowedPlatforms = primaryOrg.subscribed.filter(
+            (code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0
+          );
+        }
 
-      // Record at sign-in time where a candidate without an HSMS role should
-      // be sent. /welcome then redirects from this cookie without a
-      // render-time HCORE round-trip, which keeps the reveal deterministic.
-      // Only CBT-only candidates get it: a pupil with an HSMS STUDENT role
-      // keeps membership of the hub (their "Launch dashboard" tile lives
-      // there), so /welcome must never bounce them back into the exam room.
-      const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes('CANDIDATE') ?? false;
-      const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes('STUDENT') ?? false;
-      if (hasCandidate && !hasStudent) {
-        const slug = primaryOrg?.slug || '';
-        cookieStore.set('hweb_candidate_redirect', slug ? `/cbt/student?orgSlug=${encodeURIComponent(slug)}` : '/cbt/student', {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'lax',
-          maxAge: 3600 * 24 * 7,
-          path: '/',
-        });
+        // Record at sign-in time where a candidate without an HSMS role should
+        // be sent. /welcome then redirects from this cookie without a
+        // render-time HCORE round-trip, which keeps the reveal deterministic.
+        // Only CBT-only candidates get it: a pupil with an HSMS STUDENT role
+        // keeps membership of the hub (their "Launch dashboard" tile lives
+        // there), so /welcome must never bounce them back into the exam room.
+        const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes('CANDIDATE') ?? false;
+        const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes('STUDENT') ?? false;
+        if (hasCandidate && !hasStudent) {
+          const slug = primaryOrg?.slug || '';
+          cookieStore.set('hweb_candidate_redirect', slug ? `/cbt/student?orgSlug=${encodeURIComponent(slug)}` : '/cbt/student', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'lax',
+            maxAge: 3600 * 24 * 7,
+            path: '/',
+          });
+        } else {
+          cookieStore.delete('hweb_candidate_redirect');
+        }
       } else {
-        cookieStore.delete('hweb_candidate_redirect');
+        console.error(`[probe] loginAction contexts not ok: ${meRes.status}`);
       }
-    } else {
-      console.error(`[probe] loginAction contexts not ok: ${meRes.status}`);
+    } catch (e) {
+      console.error('Context fetch error in loginAction:', e);
     }
-  } catch (e) {
-    console.error('Context fetch error in loginAction:', e);
   }
 
   // If still empty, check existing cookie
@@ -201,6 +211,19 @@ async function finishSignIn(
   if (!allowedPlatforms.includes('HCBT')) {
     // Clear any old HCBT session if org doesn't have CBT entitlement
     cookieStore.delete('hcbt_session');
+  }
+
+  const primaryOrgSlug = contextOrgs[0]?.slug || data.activeOrganization?.slug || '';
+  if (primaryOrgSlug) {
+    cookieStore.set('hweb_primary_org_slug', primaryOrgSlug, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 3600 * 24 * 7,
+      path: '/',
+    });
+  } else {
+    cookieStore.delete('hweb_primary_org_slug');
   }
 
   // Track user identity type for routing
@@ -459,6 +482,24 @@ export async function registerAction(prevState: unknown, formData: FormData) {
         maxAge: 3600,
         path: '/',
       });
+      cookieStore.set('hweb_user_role', 'STAFF', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 3600,
+        path: '/',
+      });
+      if (data.organization?.slug) {
+        cookieStore.set('hweb_primary_org_slug', data.organization.slug, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 3600,
+          path: '/',
+        });
+      } else {
+        cookieStore.delete('hweb_primary_org_slug');
+      }
       cookieStore.delete('hweb_parent_redirect');
       cookieStore.delete('hweb_candidate_redirect');
 
@@ -496,6 +537,7 @@ export async function logoutAction() {
   }
   cookieStore.delete('hweb_allowed_platforms');
   cookieStore.delete('hweb_user_role');
+  cookieStore.delete('hweb_primary_org_slug');
   cookieStore.delete('hweb_candidate_redirect');
   cookieStore.delete('hweb_parent_redirect');
   cookieStore.delete('accessToken');

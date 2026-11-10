@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   for (const name of SESSION_COOKIE_NAMES) {
     for (const target of sessionCookieClearTargets(name)) response.cookies.delete(target);
   }
-  for (const name of ["hweb_allowed_platforms", "hweb_user_role", "hweb_candidate_redirect", "hweb_parent_redirect", "accessToken"]) {
+  for (const name of ["hweb_allowed_platforms", "hweb_user_role", "hweb_primary_org_slug", "hweb_candidate_redirect", "hweb_parent_redirect", "accessToken"]) {
     response.cookies.delete(name);
   }
   return response;

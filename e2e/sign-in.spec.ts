@@ -27,6 +27,16 @@ test.describe("signing in", () => {
     await page.getByRole("button", { name: /Sign In to Dashboard/ }).click();
     await expect(page.getByText("Wrong email, admission number or password")).toBeVisible();
     await expect(page).toHaveURL(/\/signin/);
+    // Typed identifier stays in the field instead of resetting blank after the action.
+    await expect(page.getByPlaceholder("staff@school.edu")).toHaveValue("mrs.obi@greenfield.test");
+  });
+
+  test("clicking Launch dashboard on /welcome goes straight to the school dashboard", async ({ page }) => {
+    await signIn(page, "teacher");
+    await expect(page).toHaveURL(/\/welcome$/);
+
+    await page.getByRole("link", { name: "Launch dashboard" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
   });
 
   test("a pupil signs in with their admission number and goes straight to their exams", async ({ page }) => {
@@ -62,8 +72,10 @@ test.describe("signing in", () => {
     await page.goto("/welcome");
     await expect(page).toHaveURL(/\/welcome$/);
 
-    // The hub renders with the HSMS "Launch dashboard" tile visible.
+    // The hub renders with the HSMS "Launch dashboard" tile visible and opens the student dashboard.
     await expect(page.getByRole("link", { name: "Launch dashboard" })).toBeVisible();
+    await page.getByRole("link", { name: "Launch dashboard" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
   });
 
   test("a CBT-only candidate visiting /welcome is routed to the exam room", async ({ page }) => {

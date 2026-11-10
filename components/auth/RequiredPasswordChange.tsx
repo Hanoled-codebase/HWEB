@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { completePasswordChangeAction, type SignInContext } from '@/app/actions/auth';
 import { setAuthTokens } from '@/lib/auth-tokens';
+import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import { passwordRules } from '@/lib/password-policy';
 
 const inputClass =
-  'w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-xs sm:text-sm text-[#0B1220] placeholder-slate-400 transition-all';
+  'w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#1447E6] focus:border-[#1447E6] outline-none text-base sm:text-sm text-[#0B1220] placeholder-slate-500 read-only:bg-slate-100 read-only:text-slate-600 transition-all';
 
 /**
  * Shown instead of the sign-in form when the password was right but was set by
@@ -26,7 +28,10 @@ export function RequiredPasswordChange({
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(completePasswordChangeAction, null);
+  const isRedirecting = Boolean(state && 'success' in state);
+  const isSubmitting = pending || isRedirecting;
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const isStudent = context.identifierType === 'ADMISSION_NUMBER';
@@ -35,7 +40,9 @@ export function RequiredPasswordChange({
   useEffect(() => {
     if (state && 'success' in state) {
       setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
-      router.push(state.redirectUrl);
+      useAuth.setState({ user: null, isAuthenticated: false, isInitialized: false, error: null });
+      useOrganization.getState().clear();
+      router.replace(state.redirectUrl);
     }
   }, [state, router]);
 
@@ -53,7 +60,7 @@ export function RequiredPasswordChange({
       {state && 'error' in state && (
         <div
           role="alert"
-          className="bg-[#F04438]/10 text-[#F04438] p-3 rounded-lg text-xs sm:text-sm mb-4 border border-[#F04438]/30"
+          className="bg-rose-50 text-rose-700 p-3 rounded-lg text-xs sm:text-sm mb-4 border border-rose-200"
         >
           {state.error}
           {state.expired && (
@@ -89,6 +96,7 @@ export function RequiredPasswordChange({
               className={inputClass}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              readOnly={isSubmitting}
               required
               autoFocus
             />
@@ -96,7 +104,7 @@ export function RequiredPasswordChange({
               type="button"
               onClick={() => setShowNewPassword(!showNewPassword)}
               aria-label={showNewPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] transition-colors cursor-pointer"
             >
               {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -125,13 +133,16 @@ export function RequiredPasswordChange({
               name="confirmPassword"
               autoComplete="new-password"
               className={inputClass}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              readOnly={isSubmitting}
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 cursor-pointer"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] transition-colors cursor-pointer"
             >
               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -140,23 +151,33 @@ export function RequiredPasswordChange({
 
         <button
           type="submit"
-          disabled={pending || rules.some((rule) => !rule.met)}
-          className="w-full flex items-center justify-center gap-2 bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 mt-3 cursor-pointer shadow-sm text-xs sm:text-sm"
+          aria-busy={isSubmitting}
+          disabled={isSubmitting || rules.some((rule) => !rule.met)}
+          className="w-full min-h-12 flex items-center justify-center gap-2 bg-[#1447E6] hover:bg-[#103BBD] text-white font-bold py-3.5 rounded-xl transition-all disabled:cursor-not-allowed disabled:opacity-60 mt-3 cursor-pointer shadow-sm text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:ring-offset-2"
         >
           {pending ? (
             <>
-              <Loader2 size={16} className="animate-spin" /> Saving…
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Saving…
+            </>
+          ) : isRedirecting ? (
+            <>
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Redirecting…
             </>
           ) : (
             <>
-              Set password and continue <ArrowRight size={16} />
+              Set password and continue <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
         </button>
       </form>
 
       <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-        <button type="button" onClick={onRestart} className="text-xs text-slate-500 hover:text-[#1447E6] cursor-pointer">
+        <button
+          type="button"
+          onClick={onRestart}
+          disabled={isSubmitting}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-xs font-medium text-slate-600 hover:text-[#1447E6] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] cursor-pointer"
+        >
           Back to sign in
         </button>
       </div>

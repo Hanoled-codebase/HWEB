@@ -36,7 +36,8 @@ export default async function WelcomePortal() {
   // finishSignIn no longer sets it for them.
   const candidateCookie = cookieStore.get("hweb_candidate_redirect")?.value;
   const parentCookie = cookieStore.get("hweb_parent_redirect")?.value;
-  const isParentCookie = cookieStore.get("hweb_user_role")?.value === "PARENT";
+  const userRole = cookieStore.get("hweb_user_role")?.value;
+  const isParentCookie = userRole === "PARENT";
   // Set inside the try below, followed after it: redirect() works by throwing,
   // so calling it inside the try would be caught and ignored.
   let candidateRedirect: string | null = null;
@@ -49,51 +50,56 @@ export default async function WelcomePortal() {
     redirect(parentCookie);
   }
 
-  // If cookie is missing or empty, fetch real active subscriptions directly from HCORE
-  try {
-    const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    if (meRes.ok) {
-      const meData = await meRes.json();
-      const orgs: ContextOrganization[] = Array.isArray(meData.organizations) ? meData.organizations : [];
-      const primaryOrg = orgs[0];
-      
-      // CBT-only candidates (e.g. external WAEC candidates) have no home
-      // outside the exam room: route them straight there. A pupil with an
-      // HSMS STUDENT role must stay on the hub — it carries their HSMS tile.
-      const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ?? false;
-      const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes("STUDENT") ?? false;
-      if (hasCandidate && !hasStudent) {
-        const orgSlug = primaryOrg?.slug || "";
-        candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
-      }
+  // Only probe HCORE when routing/subscription cookies are missing or ambiguous
+  // (e.g. legacy HCBT-only sessions without hweb_candidate_redirect); sign-in
+  // already resolved these cookies, so skipping avoids a redundant round-trip.
+  const shouldProbeContexts = !allowedPlatforms || !userRole || (allowedPlatforms === "HCBT" && !candidateCookie);
+  if (shouldProbeContexts) {
+    try {
+      const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const orgs: ContextOrganization[] = Array.isArray(meData.organizations) ? meData.organizations : [];
+        const primaryOrg = orgs[0];
+        
+        // CBT-only candidates (e.g. external WAEC candidates) have no home
+        // outside the exam room: route them straight there. A pupil with an
+        // HSMS STUDENT role must stay on the hub — it carries their HSMS tile.
+        const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ?? false;
+        const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes("STUDENT") ?? false;
+        if (hasCandidate && !hasStudent) {
+          const orgSlug = primaryOrg?.slug || "";
+          candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
+        }
 
-      // Parents never see the suite welcome screen; route them straight to
-      // their school dashboard.
-      if (isParentOnlyAccount(orgs)) {
-        parentRedirect = resolveParentDashboardPath(orgs);
-      }
+        // Parents never see the suite welcome screen; route them straight to
+        // their school dashboard.
+        if (isParentOnlyAccount(orgs)) {
+          parentRedirect = resolveParentDashboardPath(orgs);
+        }
 
-      if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-        // Org-level subscription isn't enough — only offer a product this
-        // user actually has a role in (a Parent shouldn't see "Launch CBT
-        // engine" just because the school also subscribes to HCBT).
-        allowedPlatforms = primaryOrg.subscribed
-          .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
-          .join(",");
+        if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
+          // Org-level subscription isn't enough — only offer a product this
+          // user actually has a role in (a Parent shouldn't see "Launch CBT
+          // engine" just because the school also subscribes to HCBT).
+          allowedPlatforms = primaryOrg.subscribed
+            .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
+            .join(",");
+        }
+      } else if (meRes.status === 401) {
+        // Stale or revoked token in HCORE: mark session invalid to wipe cookies cleanly
+        sessionInvalid = true;
+      } else {
+        console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
       }
-    } else if (meRes.status === 401) {
-      // Stale or revoked token in HCORE: mark session invalid to wipe cookies cleanly
-      sessionInvalid = true;
-    } else {
-      console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
+    } catch (e: unknown) {
+      const digest = (e as { digest?: string } | null | undefined)?.digest;
+      if (digest?.startsWith("NEXT_REDIRECT")) throw e;
+      console.error("Failed to fetch subscriptions in /welcome:", e);
     }
-  } catch (e: unknown) {
-    const digest = (e as { digest?: string } | null | undefined)?.digest;
-    if (digest?.startsWith("NEXT_REDIRECT")) throw e;
-    console.error("Failed to fetch subscriptions in /welcome:", e);
   }
   if (sessionInvalid) {
     redirect("/api/logout");

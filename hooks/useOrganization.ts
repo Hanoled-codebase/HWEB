@@ -247,30 +247,34 @@ export const useOrganization = create<OrgState>((set, get) => ({
   setCurrentOrg: async (slug: string) => {
     try {
       set({ isLoading: true, error: null, isStudent: false, currentMember: null, currentStudent: null });
-      // Determine the org
       let org = get().organizations.find((o) => o.slug === slug);
-      if (!org) {
-        try {
-          const res = await request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts");
-          const contextOrgs = res.organizations || [];
-          const normalizedOrgs = contextOrgs.map(normalizeOrganization);
-          set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
-          org = normalizedOrgs.find((o: Organization) => o.slug === slug);
-        } catch (e) {
-          console.warn("Context fetch in setCurrentOrg failed:", e);
-        }
-      }
 
-      // If org is known and active session is bound to another school, align the session token
-      if (org?.id) {
-        await syncSessionOrg(org.id);
-      }
+      // Run org context discovery, member profiles, and HSMS branding together so
+      // cold school loads don't pay multiple serial round trips behind the splash.
+      const contextsPromise = org
+        ? Promise.resolve(null)
+        : request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts", { showErrorToast: false });
 
-      const [memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
+      const [contextsResult, memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
+        contextsPromise,
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
         request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
         fetchOrgBranding(slug),
       ]);
+
+      if (!org && contextsResult.status === "fulfilled" && contextsResult.value) {
+        const contextOrgs = contextsResult.value.organizations || [];
+        const normalizedOrgs = contextOrgs.map(normalizeOrganization);
+        set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
+        org = normalizedOrgs.find((o: Organization) => o.slug === slug);
+      } else if (!org && contextsResult.status === "rejected") {
+        console.warn("Context fetch in setCurrentOrg failed:", contextsResult.reason);
+      }
+
+      // If org is known and active session is bound to another school, align the session token in the background
+      if (org?.id) {
+        void syncSessionOrg(org.id);
+      }
 
       if (!org) {
         // Build fallback org structure so UI doesn't get stuck in an infinite redirect loop
