@@ -5,6 +5,12 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAMES, exposeTokensToBrowser, sessionCookieClearTargets, sessionCookieOptions } from '@/lib/session-cookies';
 import { signInFailure } from '@/lib/sign-in-errors';
 import { isSafeRedirectUrl } from '@/lib/safe-redirect';
+import {
+  type ContextOrganization,
+  isGenericPostAuthTarget,
+  isParentOnlyAccount,
+  resolveParentDashboardPath,
+} from '@/lib/parent-routing';
 import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from '@/lib/password-policy';
 import { getHcoreBaseUrl, getHsmsBaseUrl, getHcbtBaseUrl, fetchWithFallback } from '@/lib/api-endpoints';
 
@@ -125,7 +131,8 @@ async function finishSignIn(
   }
 
   // Query HCORE for real-time active user context & subscriptions
-  let allowedPlatforms: string[] = []; 
+  let allowedPlatforms: string[] = [];
+  let contextOrgs: ContextOrganization[] = [];
   try {
     const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
       headers: { 'Authorization': `Bearer ${data.token}` },
@@ -133,7 +140,8 @@ async function finishSignIn(
     });
     if (meRes.ok) {
       const meData = await meRes.json();
-      const primaryOrg = meData.organizations?.[0];
+      contextOrgs = Array.isArray(meData.organizations) ? meData.organizations : [];
+      const primaryOrg = contextOrgs[0];
       if (primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
         // `subscribed` is org-level (does the school pay for this product at all).
         // Only surface a product to this user if they also hold an actual
@@ -144,13 +152,15 @@ async function finishSignIn(
         );
       }
 
-      // Record at sign-in time where a student / exam candidate should be
-      // sent. /welcome then redirects from this cookie without a render-time
-      // HCORE round-trip, which keeps the reveal deterministic.
-      const isCandidate =
-        primaryOrg?.products?.HCBT?.roles?.includes('CANDIDATE') ||
-        primaryOrg?.products?.HSMS?.roles?.includes('STUDENT');
-      if (isCandidate) {
+      // Record at sign-in time where a candidate without an HSMS role should
+      // be sent. /welcome then redirects from this cookie without a
+      // render-time HCORE round-trip, which keeps the reveal deterministic.
+      // Only CBT-only candidates get it: a pupil with an HSMS STUDENT role
+      // keeps membership of the hub (their "Launch dashboard" tile lives
+      // there), so /welcome must never bounce them back into the exam room.
+      const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes('CANDIDATE') ?? false;
+      const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes('STUDENT') ?? false;
+      if (hasCandidate && !hasStudent) {
         const slug = primaryOrg?.slug || '';
         cookieStore.set('hweb_candidate_redirect', slug ? `/cbt/student?orgSlug=${encodeURIComponent(slug)}` : '/cbt/student', {
           httpOnly: true,
@@ -195,7 +205,28 @@ async function finishSignIn(
 
   // Track user identity type for routing
   const isStudent = identifierType === 'ADMISSION_NUMBER';
-  cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : 'STAFF', {
+  const isParentOnly = !isStudent && isParentOnlyAccount(contextOrgs, data.roles);
+  const parentTarget = isParentOnly
+    ? resolveParentDashboardPath(
+        contextOrgs,
+        organizationSlugOrId || data.activeOrganization?.slug,
+        data.activeOrganization?.slug,
+      )
+    : null;
+
+  if (parentTarget) {
+    cookieStore.set('hweb_parent_redirect', parentTarget, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 3600 * 24 * 7,
+      path: '/',
+    });
+  } else {
+    cookieStore.delete('hweb_parent_redirect');
+  }
+
+  cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : isParentOnly ? 'PARENT' : 'STAFF', {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax',
@@ -209,6 +240,10 @@ async function finishSignIn(
     // Students ALWAYS land directly in their Student Examination Room!
     const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
     redirectUrl = `/cbt/student${orgParam}`;
+  } else if (parentTarget) {
+    // Parents never see the suite welcome screen; land directly on their school dashboard
+    // unless they signed in from an explicit feature deep link.
+    redirectUrl = isGenericPostAuthTarget(callbackUrl) ? parentTarget : callbackUrl!;
   } else if (redirectUrl === '/dashboard' || redirectUrl === '/') {
     redirectUrl = '/welcome';
   }
@@ -424,6 +459,8 @@ export async function registerAction(prevState: unknown, formData: FormData) {
         maxAge: 3600,
         path: '/',
       });
+      cookieStore.delete('hweb_parent_redirect');
+      cookieStore.delete('hweb_candidate_redirect');
 
       let hcbtToken: string | null = null;
       if (platforms.includes('HCBT')) {
@@ -460,6 +497,7 @@ export async function logoutAction() {
   cookieStore.delete('hweb_allowed_platforms');
   cookieStore.delete('hweb_user_role');
   cookieStore.delete('hweb_candidate_redirect');
+  cookieStore.delete('hweb_parent_redirect');
   cookieStore.delete('accessToken');
   redirect('/signin');
 }

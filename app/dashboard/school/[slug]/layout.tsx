@@ -295,7 +295,7 @@ export default function DashboardLayout({
                     onClick={() => setNavOpenedOn(pathname)}
                     aria-label="Open navigation"
                     aria-expanded={navOpen}
-                    className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
+                    className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 lg:hidden"
                   >
                     <Menu className="h-5 w-5" aria-hidden="true" />
                   </button>
@@ -304,20 +304,22 @@ export default function DashboardLayout({
                 </div>
                 <div className="flex shrink-0 items-center gap-2 lg:gap-3">
                   {currentMember?.role !== "parent" && (
-                    <a
-                      href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
-                      className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 pointer-coarse:min-h-11"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                      CBT Console
-                    </a>
+                    <>
+                      <a
+                        href={`/cbt/admin?orgSlug=${encodeURIComponent(slug)}`}
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 pointer-coarse:min-h-11"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                        CBT Console
+                      </a>
+                      <a
+                        href="/welcome"
+                        className="flex items-center whitespace-nowrap rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 pointer-coarse:min-h-11"
+                      >
+                        Suite Hub
+                      </a>
+                    </>
                   )}
-                  <a
-                    href="/welcome"
-                    className="flex items-center whitespace-nowrap rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 pointer-coarse:min-h-11"
-                  >
-                    Suite Hub
-                  </a>
                   <NotificationSheet />
                 </div>
               </header>

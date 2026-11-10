@@ -71,12 +71,13 @@ type FeeSummaryResponse = {
 const PARKED_FOR_MVP = true;
 
 export default function ParentInvoicesPage() {
+  const { currentOrg } = useOrganization();
   if (PARKED_FOR_MVP) {
     return (
       <ComingSoonCard
         title="Fees & invoices are coming soon"
         blurb="You will settle school fees online and follow every invoice and receipt from this page. For now, pay at the school bursary and your records sync once payments go live."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }

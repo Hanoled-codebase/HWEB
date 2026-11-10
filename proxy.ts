@@ -74,10 +74,18 @@ export function proxy(request: NextRequest) {
     if (isSafeRedirectUrl(callbackUrl) && callbackUrl !== '/welcome' && !authRoutes.some((r) => callbackUrl.startsWith(r))) {
       return NextResponse.redirect(new URL(callbackUrl, request.url));
     }
-    // Only bounce generic /signin or /signup to /welcome.
+    // Only bounce generic /signin or /signup to /welcome (or directly to the
+    // school dashboard for parents, who never see the suite welcome screen).
     // If a user is intentionally visiting an explicit entrance like /signin/staff, /signin/student, /signin/parent,
     // let them reach the sign-in form.
     if (pathname === '/signin' || pathname === '/signup') {
+      const parentRedirect = request.cookies.get('hweb_parent_redirect')?.value;
+      if (isSafeRedirectUrl(parentRedirect) && parentRedirect !== '/welcome') {
+        return NextResponse.redirect(new URL(parentRedirect, request.url));
+      }
+      if (request.cookies.get('hweb_user_role')?.value === 'PARENT') {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
       return NextResponse.redirect(new URL('/welcome', request.url));
     }
   }
