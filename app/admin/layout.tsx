@@ -10,11 +10,7 @@ import { MobileTabBar } from "@/components/dashboard/mobile/MobileTabBar"
 import type { MobileShellConfig } from "@/components/dashboard/mobile/mobile-config"
 import { Button } from "@/components/ui/button"
 import { HanoledLogo } from "@/components/ui/HanoledLogo"
-
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch, clearAdminToken } from "@/lib/admin-api"
 
 interface AdminUser {
   id: string; email: string; name: string; role: string
@@ -36,13 +32,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/auth/me`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/auth/me`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.admin) setAdmin(data.admin)
-        else if (!pathname.includes("/login")) router.push("/admin/login")
+        else if (!pathname.includes("/login")) {
+          clearAdminToken()
+          router.push("/admin/login")
+        }
       })
-      .catch(() => { if (!pathname.includes("/login")) router.push("/admin/login") })
+      .catch(() => {
+        if (!pathname.includes("/login")) {
+          clearAdminToken()
+          router.push("/admin/login")
+        }
+      })
       .finally(() => setLoading(false))
   }, [pathname, router])
 
@@ -51,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const adminId = admin?.id
   useEffect(() => {
     if (!adminId) return
-    fetch(`${ADMIN_API}/support-tickets`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/support-tickets`)
       .then(r => (r.ok ? r.json() : []))
       .then((tickets: { status?: string }[]) =>
         setOpenTickets(Array.isArray(tickets) ? tickets.filter(t => t.status === "open").length : 0),
@@ -63,10 +67,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // opened by /admin/login). An unreachable HSMS must not strand the admin here.
   const logout = useCallback(async () => {
     try {
-      await fetch(`${ADMIN_API}/auth/logout`, { method: "POST", credentials: "include" })
+      await adminFetch(`${ADMIN_API}/auth/logout`, { method: "POST" })
     } catch (e) {
       console.error("Admin logout failed", e)
     }
+    clearAdminToken()
     setAdmin(null)
     router.push("/admin/login")
   }, [router])

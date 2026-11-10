@@ -10,10 +10,7 @@ import { Input } from "@/components/ui/input"
 import { AlertTriangle } from "lucide-react"
 import { EmptyPanel, MList, PaymentChip, naira } from "@/components/admin/mobile-kit"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 interface PaymentRecord {
   id: string; schoolId: string; schoolName: string; term: string
@@ -51,7 +48,7 @@ function PlatformPaymentsLive() {
   const [form, setForm] = useState({ organizationId: "", term: "", studentCount: "", amountBilled: "", amountPaid: "", dueDate: "", notes: "" })
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/payments`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/payments`)
       .then(r => r.json())
       .then(data => { setRecords(data.records); setSummary(data.summary) })
   }, [])
@@ -67,10 +64,9 @@ function PlatformPaymentsLive() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch(`${ADMIN_API}/payments`, {
+    const res = await adminFetch(`${ADMIN_API}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({
         organizationId: form.organizationId,
         term: form.term,
@@ -84,7 +80,7 @@ function PlatformPaymentsLive() {
     if (res.ok) {
       setDialogOpen(false)
       setForm({ organizationId: "", term: "", studentCount: "", amountBilled: "", amountPaid: "", dueDate: "", notes: "" })
-      const data = await fetch(`${ADMIN_API}/payments`, { credentials: "include" }).then(r => r.json())
+      const data = await adminFetch(`${ADMIN_API}/payments`).then(r => r.json())
       setRecords(data.records)
       setSummary(data.summary)
     }

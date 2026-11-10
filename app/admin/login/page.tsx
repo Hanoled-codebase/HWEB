@@ -8,10 +8,7 @@ import { Input } from "@/components/ui/input"
 import { HanoledLogo } from "@/components/ui/HanoledLogo"
 import { Eye, EyeOff } from "lucide-react"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, setAdminToken } from "@/lib/admin-api"
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -32,9 +29,12 @@ export default function AdminLogin() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       })
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Login failed")
+        throw new Error(data?.error || "Login failed")
+      }
+      if (data?.token) {
+        setAdminToken(data.token)
       }
       router.push("/admin")
     } catch (err: any) {

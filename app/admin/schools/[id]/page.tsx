@@ -7,10 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SchoolDetailMobile } from "@/components/admin/SchoolDetailMobile"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 interface SchoolDetail {
   id: string; name: string; slug: string; city: string; state: string
@@ -28,7 +25,7 @@ export default function SchoolDetail() {
   const [school, setSchool] = useState<SchoolDetail | null>(null)
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/schools/${id}`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/schools/${id}`)
       .then(r => r.ok ? r.json() : null)
       .then(setSchool)
   }, [id])

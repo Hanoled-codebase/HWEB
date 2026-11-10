@@ -9,10 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ChipTabs, EmptyPanel, MList } from "@/components/admin/mobile-kit"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 const STAGES = [
   { key: "prospect", label: "Prospect", color: "bg-slate-100 text-slate-700" },
@@ -38,7 +35,7 @@ export default function PipelinePage() {
   const [form, setForm] = useState({ name: "", location: "", estimatedStudents: "", stage: "prospect", nextAction: "", notes: "" })
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/pipeline`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/pipeline`)
       .then(r => r.json())
       .then(data => setItems(data.list))
   }, [])
@@ -47,10 +44,9 @@ export default function PipelinePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch(`${ADMIN_API}/pipeline`, {
+    const res = await adminFetch(`${ADMIN_API}/pipeline`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({
         name: form.name, location: form.location,
         estimatedStudents: parseInt(form.estimatedStudents) || null,
@@ -60,7 +56,7 @@ export default function PipelinePage() {
     if (res.ok) {
       setDialogOpen(false)
       setForm({ name: "", location: "", estimatedStudents: "", stage: "prospect", nextAction: "", notes: "" })
-      const data = await fetch(`${ADMIN_API}/pipeline`, { credentials: "include" }).then(r => r.json())
+      const data = await adminFetch(`${ADMIN_API}/pipeline`).then(r => r.json())
       setItems(data.list)
     }
   }
@@ -69,13 +65,12 @@ export default function PipelinePage() {
     const idx = STAGES.findIndex(s => s.key === currentStage)
     if (idx < STAGES.length - 1) {
       const nextStage = STAGES[idx + 1].key
-      await fetch(`${ADMIN_API}/pipeline/${id}`, {
+      await adminFetch(`${ADMIN_API}/pipeline/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ stage: nextStage }),
       })
-      const data = await fetch(`${ADMIN_API}/pipeline`, { credentials: "include" }).then(r => r.json())
+      const data = await adminFetch(`${ADMIN_API}/pipeline`).then(r => r.json())
       setItems(data.list)
     }
   }
