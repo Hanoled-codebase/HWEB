@@ -3,11 +3,13 @@
 import React, { useState, useActionState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Hash, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2, Eye, EyeOff } from 'lucide-react';
+import { Mail, GraduationCap, ArrowRight, Loader2, School, Search, ChevronDown, Check, Building2, Eye, EyeOff } from 'lucide-react';
 import { loginAction } from '@/app/actions/auth';
 import { api } from '@/services/api';
 import { HanoledLogo } from '@/components/ui/HanoledLogo';
 import { setAuthTokens } from '@/lib/auth-tokens';
+import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import { RequiredPasswordChange } from '@/components/auth/RequiredPasswordChange';
 import { TenantBranding, getTenantBranding } from '@/lib/tenant-branding';
 import { generateTenantCssVariables, generateTenantStyleBlock } from '@/lib/theme-colors';
@@ -58,6 +60,8 @@ export default function SignInForm({
   // the universal page keeps both tabs switchable.
   const pinnedTab = audience === 'all' ? null : AUDIENCE_TAB[audience];
   const [tab, setTab] = useState<'EMAIL' | 'ADMISSION_NUMBER'>(pinnedTab ?? (queryOrgSlug ? 'ADMISSION_NUMBER' : 'EMAIL'));
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [schools, setSchools] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [selectedSchool, setSelectedSchool] = useState<{ id: string; name: string; slug: string } | null>(null);
   const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
@@ -65,6 +69,8 @@ export default function SignInForm({
   const [loadingSchools, setLoadingSchools] = useState(false);
 
   const [state, formAction, pending] = useActionState(loginAction, null);
+  const isRedirecting = Boolean(state && 'success' in state);
+  const isSubmitting = pending || isRedirecting;
   const [showPassword, setShowPassword] = useState(false);
   // "Back to sign in" from the new-password step hides that step for this token.
   const [abandonedChangeToken, setAbandonedChangeToken] = useState<string | null>(null);
@@ -143,7 +149,11 @@ export default function SignInForm({
   useEffect(() => {
     if (state && 'success' in state) {
       setAuthTokens({ hcoreToken: state.hcoreToken, hcbtToken: state.hcbtToken });
-      router.push(state.redirectUrl);
+      // Clear any stale unauthenticated client state before replacing the route so
+      // protected layouts re-hydrate cleanly while keeping SPA hydration instant.
+      useAuth.setState({ user: null, isAuthenticated: false, isInitialized: false, error: null });
+      useOrganization.getState().clear();
+      router.replace(state.redirectUrl);
     }
   }, [state, router]);
 
@@ -229,8 +239,9 @@ export default function SignInForm({
         <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl mb-5">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => setTab('EMAIL')}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
               tab === 'EMAIL'
                 ? 'bg-white text-blue-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -240,14 +251,15 @@ export default function SignInForm({
           </button>
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => setTab('ADMISSION_NUMBER')}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
               tab === 'ADMISSION_NUMBER'
                 ? 'bg-white text-blue-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Hash size={16} /> Student / Candidate
+            <GraduationCap size={16} /> Student / Candidate
           </button>
         </div>
       )}
@@ -385,14 +397,18 @@ export default function SignInForm({
 
         {/* IDENTIFIER FIELD */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <label htmlFor="signin-identifier" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
             {tab === 'EMAIL' ? 'Email Address' : 'Student Admission Number'}
           </label>
           <input
+            id="signin-identifier"
             type={tab === 'EMAIL' ? 'email' : 'text'}
             name="identifier"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            readOnly={isSubmitting}
             autoComplete={tab === 'EMAIL' ? 'email' : 'off'}
-            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-base text-slate-900 placeholder-slate-500 outline-none transition-all font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
+            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-base text-slate-900 placeholder-slate-500 outline-none transition-all font-medium read-only:bg-slate-50 read-only:text-slate-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
             placeholder={tab === 'EMAIL' ? 'staff@school.edu' : 'e.g. GW/2026/001'}
             required
           />
@@ -401,21 +417,25 @@ export default function SignInForm({
         {/* PASSWORD FIELD */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label htmlFor="signin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Password
             </label>
             {tab === 'ADMISSION_NUMBER' && (
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-500">
                 Default: Admission No.
               </span>
             )}
           </div>
           <div className="relative">
             <input
+              id="signin-password"
               type={showPassword ? "text" : "password"}
               name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              readOnly={isSubmitting}
               autoComplete="current-password"
-              className="w-full rounded-xl border border-slate-300 bg-white p-3 pr-12 text-base text-slate-900 placeholder-slate-500 outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 pr-12 text-base text-slate-900 placeholder-slate-500 outline-none transition-all read-only:bg-slate-50 read-only:text-slate-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25 sm:text-sm"
               placeholder="••••••••"
               required
             />
@@ -432,8 +452,9 @@ export default function SignInForm({
 
         <button
           type="submit"
-          disabled={pending || (tab === 'ADMISSION_NUMBER' && !selectedSchool && !queryOrgSlug && !branding && !schoolSearchQuery)}
-          className="mt-3 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50"
+          aria-busy={isSubmitting}
+          disabled={isSubmitting || (tab === 'ADMISSION_NUMBER' && !selectedSchool && !queryOrgSlug && !branding && !schoolSearchQuery)}
+          className="mt-3 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           style={
             branding
               ? {
@@ -448,12 +469,16 @@ export default function SignInForm({
         >
           {pending ? (
             <>
-              <Loader2 size={16} className="animate-spin" /> Authenticating...
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Authenticating...
+            </>
+          ) : isRedirecting ? (
+            <>
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Redirecting...
             </>
           ) : (
             <>
               {tab === 'ADMISSION_NUMBER' ? 'Enter CBT Examination Portal' : 'Sign In to Dashboard'}
-              <ArrowRight size={16} />
+              <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
         </button>

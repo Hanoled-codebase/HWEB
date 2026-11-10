@@ -23,7 +23,6 @@ import {
   Palette,
   Check,
   RotateCcw,
-  Sparkles,
   Save,
   Loader2,
   ExternalLink,
@@ -240,14 +239,14 @@ export default function SchoolBrandingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
                 <span
                   className="w-4 h-4 rounded-full shadow-xs inline-block shrink-0 ring-1 ring-black/10"
                   style={{ backgroundColor: previewTheme.primary }}
                   aria-hidden="true"
                 />
                 School Branding Studio
-              </h1>
+              </h2>
 
               {isDirty && (
                 <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 gap-1 font-semibold text-[11px]">
@@ -298,9 +297,9 @@ export default function SchoolBrandingPage() {
           {/* Section 1: Curated School Presets */}
           <section aria-labelledby="presets-heading" className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 id="presets-heading" className="text-xs font-bold text-foreground uppercase tracking-wider">
+              <h3 id="presets-heading" className="text-xs font-bold text-foreground uppercase tracking-wider">
                 Institutional Color Pairings
-              </h2>
+              </h3>
               <span className="text-[11px] text-muted-foreground hidden sm:inline">
                 Click any preset to apply primary and secondary pairs
               </span>
@@ -362,9 +361,9 @@ export default function SchoolBrandingPage() {
 
           {/* Section 2: Primary & Secondary Custom Pickers */}
           <section aria-labelledby="custom-colors-heading" className="space-y-6 pt-6 border-t border-border/60">
-            <h2 id="custom-colors-heading" className="text-xs font-bold text-foreground uppercase tracking-wider">
+            <h3 id="custom-colors-heading" className="text-xs font-bold text-foreground uppercase tracking-wider">
               Exact Hex Codes &amp; Contrast Validation
-            </h2>
+            </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Primary Color Card */}
@@ -543,10 +542,10 @@ export default function SchoolBrandingPage() {
           <section aria-labelledby="preview-heading" className="space-y-4 pt-6 border-t border-border/60">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
-                <h2 id="preview-heading" className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                <h3 id="preview-heading" className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                   Live Multichannel Preview Studio
-                </h2>
+                </h3>
                 <p className="text-xs text-muted-foreground">
                   Preview how your selected palette renders across dashboard buttons, login portals, and student report cards.
                 </p>

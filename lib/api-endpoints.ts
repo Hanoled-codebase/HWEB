@@ -63,21 +63,31 @@ export const HCORE_BASE = getHcoreBaseUrl();
 export const HSMS_BASE = getHsmsBaseUrl();
 export const HCBT_BASE = getHcbtBaseUrl();
 
+const DEFAULT_SERVER_FETCH_TIMEOUT_MS = 8000;
+
+function withTimeout(init?: RequestInit): RequestInit {
+  if (init?.signal || typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") {
+    return init ?? {};
+  }
+  return { ...init, signal: AbortSignal.timeout(DEFAULT_SERVER_FETCH_TIMEOUT_MS) };
+}
+
 /**
  * Resilient fetch helper with IPv4/IPv6 dual-stack fallback and cloud domain resolution.
  */
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, init);
+    return await fetch(url, withTimeout(init));
   } catch (err: unknown) {
+    if (init?.signal?.aborted) throw err;
     if (url.includes('localhost:4000') && !process.env.VERCEL) {
       try {
-        return await fetch(url.replace('localhost:4000', '127.0.0.1:4000'), init);
+        return await fetch(url.replace('localhost:4000', '127.0.0.1:4000'), withTimeout(init));
       } catch {}
     }
     if (url.includes('127.0.0.1:4000') && !process.env.VERCEL) {
       try {
-        return await fetch(url.replace('127.0.0.1:4000', 'localhost:4000'), init);
+        return await fetch(url.replace('127.0.0.1:4000', 'localhost:4000'), withTimeout(init));
       } catch {}
     }
     if (url.includes('localhost:4000') || url.includes('127.0.0.1:4000') || url.includes('core-api.hanoled.com')) {
@@ -85,7 +95,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
         .replace(/https?:\/\/localhost:4000/, 'https://hcore-backend-eta.vercel.app')
         .replace(/https?:\/\/127\.0\.0\.1:4000/, 'https://hcore-backend-eta.vercel.app')
         .replace('https://core-api.hanoled.com', 'https://hcore-backend-eta.vercel.app');
-      return await fetch(cloudUrl, init);
+      return await fetch(cloudUrl, withTimeout(init));
     }
     throw err;
   }

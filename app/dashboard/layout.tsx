@@ -54,9 +54,15 @@ export default async function DashboardRootLayout({
     }
   }
 
-  // 3. If organization only has HCBT, redirect to /cbt/admin automatically
+  // 3. If the person has no HSMS access, route them to the surface they do have.
+  // CBT-only candidates (external exam candidates) hit this after signing in,
+  // or when their sign-in cookies are present but stale — pupils get the exam
+  // room, staff with CBT-admin rights get the admin console.
   if (allowedPlatforms && !allowedPlatforms.includes("HSMS")) {
     if (allowedPlatforms.includes("HCBT")) {
+      if (cookieStore.get("hweb_user_role")?.value === "STUDENT") {
+        redirect("/cbt/student");
+      }
       redirect("/cbt/admin");
     } else {
       redirect("/welcome");

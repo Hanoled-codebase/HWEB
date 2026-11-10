@@ -1,72 +1,105 @@
-"use client";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { DashboardWorkspaceError } from "@/components/dashboard/DashboardWorkspaceError";
+import { fetchWithFallback, getHcoreBaseUrl } from "@/lib/api-endpoints";
+import type { ContextOrganization } from "@/lib/parent-routing";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useOrganization } from "@/hooks/useOrganization";
-import { useAuth } from "@/hooks/useAuth";
+const HCORE_BASE = getHcoreBaseUrl();
 
-import { Button } from "@/components/ui/button";
-import { HanoledLoader } from "@/components/ui/hanoled-loader";
+function isValidOrgSlug(slug: string | undefined): slug is string {
+  return Boolean(slug && /^[a-zA-Z0-9_-]+$/.test(slug));
+}
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const { organizations, fetchOrgs, isLoading, error, hasFetchedOrganizations } =
-    useOrganization();
-  const { user, checkAuth, isInitialized, isLoading: authLoading, logout } = useAuth();
-  const ran = useRef(false);
+async function fetchContexts(token: string) {
+  return fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+}
 
-  useEffect(() => {
-    if (!isInitialized && !authLoading) {
-      checkAuth();
-    }
-  }, [isInitialized, authLoading, checkAuth]);
+export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
 
-  useEffect(() => {
-    if (isInitialized && user && !hasFetchedOrganizations && !isLoading) {
-      fetchOrgs();
-    }
-  }, [isInitialized, user, hasFetchedOrganizations, isLoading, fetchOrgs]);
-
-  // Separate effect for redirect — depends on live store values after init
-  useEffect(() => {
-    if (!user || authLoading || isLoading || !hasFetchedOrganizations) return;
-
-    if (organizations.length > 0) {
-      const primaryOrg = organizations[0];
-      const subscribed = (primaryOrg as any).subscribed || [];
-      const hasHsms = subscribed.length === 0 || subscribed.includes("HSMS");
-      const hasHcbt = subscribed.includes("HCBT");
-
-      if (!hasHsms && hasHcbt) {
-        router.replace("/cbt/admin");
-      } else if (hasHsms) {
-        router.replace(`/dashboard/school/${primaryOrg.slug}`);
-      } else {
-        router.replace("/welcome");
-      }
-    } else if (!error) {
-      router.replace("/onboarding");
-    }
-  }, [authLoading, error, hasFetchedOrganizations, isLoading, organizations, user, router]);
-
-  if (error && hasFetchedOrganizations && !isLoading && user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-900">
-            Unable to load your workspace
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">{error}</p>
-          <div className="mt-4 flex justify-center gap-3">
-            <Button variant="outline" onClick={() => void fetchOrgs()}>
-              Retry
-            </Button>
-            <Button onClick={() => void logout()}>Sign in again</Button>
-          </div>
-        </div>
-      </div>
-    );
+  if (!token) {
+    redirect("/signin?callbackUrl=/dashboard");
   }
 
-  return <HanoledLoader />;
+  const primaryOrgSlug = cookieStore.get("hweb_primary_org_slug")?.value?.trim();
+  const allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
+  const userRole = cookieStore.get("hweb_user_role")?.value;
+
+  // Fast path: sign-in already cached the primary school slug and HSMS entitlement.
+  if (isValidOrgSlug(primaryOrgSlug) && (!allowedPlatforms || allowedPlatforms.includes("HSMS"))) {
+    redirect(`/dashboard/school/${encodeURIComponent(primaryOrgSlug)}`);
+  }
+
+  // Fallback for sessions without hweb_primary_org_slug (e.g. post-onboarding or pre-existing cookies).
+  let targetUrl: string | null = null;
+  let loadError: string | null = null;
+
+  try {
+    let meRes = await fetchContexts(token);
+
+    if (meRes.status === 401) {
+      const refreshToken = cookieStore.get("hcore_refresh_web")?.value;
+      if (refreshToken) {
+        const refreshRes = await fetchWithFallback(`${HCORE_BASE}/v1/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+          cache: "no-store",
+        }).catch(() => null);
+
+        if (refreshRes && refreshRes.ok) {
+          const refreshData = await refreshRes.json().catch(() => null);
+          if (typeof refreshData?.token === "string" && refreshData.token) {
+            meRes = await fetchContexts(refreshData.token);
+          }
+        }
+      }
+    }
+
+    if (meRes.status === 401) {
+      targetUrl = "/api/logout";
+    } else if (meRes.ok) {
+      const meData = await meRes.json().catch(() => ({}));
+      const organizations: ContextOrganization[] = Array.isArray(meData.organizations)
+        ? meData.organizations
+        : [];
+
+      if (organizations.length === 0) {
+        targetUrl = "/onboarding";
+      } else {
+        const primaryOrg = organizations[0];
+        const subscribed = Array.isArray(primaryOrg.subscribed) ? primaryOrg.subscribed : [];
+        const hasRole = (code: string) =>
+          !primaryOrg.products || (primaryOrg.products[code]?.roles?.length ?? 0) > 0;
+        const hasHsms =
+          subscribed.length === 0 ? hasRole("HSMS") : subscribed.includes("HSMS") && hasRole("HSMS");
+        const hasHcbt = subscribed.includes("HCBT") && hasRole("HCBT");
+
+        if (!hasHsms && hasHcbt) {
+          targetUrl = userRole === "STUDENT" ? "/cbt/student" : "/cbt/admin";
+        } else if (hasHsms && primaryOrg.slug) {
+          targetUrl = `/dashboard/school/${encodeURIComponent(primaryOrg.slug)}`;
+        } else {
+          targetUrl = "/welcome";
+        }
+      }
+    } else {
+      loadError = `Workspace lookup failed (${meRes.status}). Please try again.`;
+    }
+  } catch (error: unknown) {
+    const isTimeout = error instanceof Error && error.name === "TimeoutError";
+    loadError = isTimeout
+      ? "Loading your workspace took too long. Please try again."
+      : "Unable to connect to the authentication service. Please try again.";
+  }
+
+  if (targetUrl) {
+    redirect(targetUrl);
+  }
+
+  return <DashboardWorkspaceError error={loadError || "Failed to load organizations"} />;
 }

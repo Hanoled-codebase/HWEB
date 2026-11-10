@@ -8,7 +8,6 @@ import { signOutEverywhere } from "@/lib/sign-out";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toTitleCase } from "@/lib/utils";
 import {
-  Sparkles,
   School,
 
   TrendingUp,
@@ -1097,7 +1096,7 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <div className="bg-white p-4 border-b border-slate-100">
                     <div className="flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-blue-500" />
+                      <FileText className="w-4 h-4 text-blue-500" />
                       <h3 className="font-bold text-xs uppercase tracking-wider text-blue-700">SSCE past questions importer</h3>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">Quickly query, preview, and load authentic WAEC/NECO questions via our smart API cache proxy.</p>

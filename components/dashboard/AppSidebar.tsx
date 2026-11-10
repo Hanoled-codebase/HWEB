@@ -197,55 +197,59 @@ export function AppSidebar({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <button className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-4 text-left transition-colors hover:bg-slate-50">
+            <button className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 px-4 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
               <Avatar className="h-9 w-9 shrink-0">
                 <AvatarImage src={currentOrg.logo} alt={currentOrg.name} />
                 <AvatarFallback className="bg-blue-600 text-sm font-bold text-white">{getInitials(currentOrg.name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold capitalize text-slate-900">{currentOrg.name}</div>
-                <div className="truncate text-xs text-slate-400">{roleLabel}</div>
+                <div className="truncate text-xs text-slate-500">{roleLabel}</div>
               </div>
               <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
             </button>
           }
         />
         <DropdownMenuContent align="start" className="w-[250px]">
-          <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hanoled Products</div>
-          <DropdownMenuItem
-            render={
-              <div className="flex w-full items-center justify-between px-1 py-1">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-sm font-semibold text-slate-900">School Management</span>
-                </div>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Active</span>
-              </div>
-            }
-          />
-          <DropdownMenuItem
-            render={
-              <Link href={orgSlug ? `/cbt/admin?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/admin"} className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-sm font-medium">CBT Exam Console</span>
-                </div>
-                <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Switch</span>
-              </Link>
-            }
-          />
-          <DropdownMenuItem
-            render={
-              <Link href="/welcome" className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-sm font-medium">Suite Welcome Hub</span>
-                </div>
-                <span className="rounded-full border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500">Hub</span>
-              </Link>
-            }
-          />
-          <DropdownMenuSeparator />
+          {userRole !== "parent" && (
+            <>
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hanoled Products</div>
+              <DropdownMenuItem
+                render={
+                  <div className="flex w-full items-center justify-between px-1 py-1">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-sm font-semibold text-slate-900">School Management</span>
+                    </div>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Active</span>
+                  </div>
+                }
+              />
+              <DropdownMenuItem
+                render={
+                  <Link href={orgSlug ? `/cbt/admin?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/admin"} className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="text-sm font-medium">CBT Exam Console</span>
+                    </div>
+                    <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Switch</span>
+                  </Link>
+                }
+              />
+              <DropdownMenuItem
+                render={
+                  <Link href="/welcome" className="flex w-full items-center justify-between px-1 py-1 text-slate-600 hover:text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="text-sm font-medium">Suite Welcome Hub</span>
+                    </div>
+                    <span className="rounded-full border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500">Hub</span>
+                  </Link>
+                }
+              />
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {organizations.length > 1 && (
             <>

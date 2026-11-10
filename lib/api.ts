@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { getHcoreToken, getHcbtToken, setAuthTokens } from "./auth-tokens";
+import { COOKIE_AUTH, getHcoreToken, getHcbtToken, setAuthTokens } from "./auth-tokens";
 
 import { HCORE_BASE, HSMS_BASE, EDGE_MODE, HCBT_BASE } from "./api-endpoints";
 export { HCORE_BASE, HSMS_BASE, EDGE_MODE, HCBT_BASE };
@@ -49,6 +49,16 @@ function tokenExpiresSoon(token: string, withinMs = 60_000): boolean {
 }
 
 const REFRESH_RETRY_AFTER_MS = 20_000;
+const SESSION_TIMEOUT_MS = 8_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+const FORM_REQUEST_TIMEOUT_MS = 60_000;
+
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
 let refreshAttemptedAt = 0;
 let refreshInFlight: Promise<string | null> | null = null;
 
@@ -81,6 +91,7 @@ async function mintAccessToken(): Promise<string | null> {
       method: "GET",
       credentials: "include",
       headers: { "Cache-Control": "no-cache" },
+      signal: timeoutSignal(SESSION_TIMEOUT_MS),
     }).catch(() => null);
 
     if (sessionRes && sessionRes.ok) {
@@ -98,6 +109,7 @@ async function mintAccessToken(): Promise<string | null> {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
+      signal: timeoutSignal(SESSION_TIMEOUT_MS),
     }).catch(() => null);
 
     if (res && res.ok) {
@@ -112,6 +124,7 @@ async function mintAccessToken(): Promise<string | null> {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, refreshToken: data?.refreshToken }),
+          signal: timeoutSignal(SESSION_TIMEOUT_MS),
         }).catch(() => null);
 
         refreshAttemptedAt = 0;
@@ -178,8 +191,8 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
     let token =
       (baseUrl === HCBT_BASE && hcbtToken && !tokenExpiresSoon(hcbtToken) ? hcbtToken : null) ||
       getHcoreToken();
-    if (!token && typeof window !== "undefined" && !EDGE_MODE) {
-      token = await mintAccessToken();
+    if (!token && !COOKIE_AUTH && typeof window !== "undefined" && !EDGE_MODE) {
+      token = await refreshHcoreSession();
     }
     if (token) {
       // HCORE's access token lives one hour. Refresh it before it lapses rather
@@ -195,6 +208,7 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
       credentials: "include",
       headers: requestHeaders,
       ...rest,
+      signal: rest.signal ?? timeoutSignal(isFormData ? FORM_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS),
     });
 
     const isAuthPath = ["/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh", "/auth/refresh", "/auth/logout"].some((p) =>
@@ -259,11 +273,13 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
 
     return await response.json().catch(() => ({})) as T;
   } catch (error: unknown) {
-    const apiError = error as ApiFetchError;
-    if (showErrorToast && !apiError.status && !(error instanceof Error && apiError.status === 401)) {
+    const isTimeout = error instanceof Error && error.name === "TimeoutError";
+    const resolvedError = isTimeout ? new Error("Request timed out. Please try again.") : error;
+    const apiError = resolvedError as ApiFetchError;
+    if (showErrorToast && !apiError.status && !(resolvedError instanceof Error && apiError.status === 401)) {
       toast.error(apiError.message || "Connection failed. Please check your internet.");
     }
-    throw error;
+    throw resolvedError;
   }
 }
 

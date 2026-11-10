@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Clock, Rocket } from "lucide-react";
 
 /**
@@ -22,22 +23,24 @@ export function ComingSoonCard({
 }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200/80 bg-white/90 p-8 text-center shadow-sm">
+      <div className="m-rise w-full max-w-lg rounded-2xl border border-slate-200/80 bg-white/90 p-6 text-center shadow-sm sm:p-8">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-          <Clock className="h-7 w-7" />
+          <Clock className="h-7 w-7" aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-        <p className="mt-2 text-xs sm:text-sm text-slate-500">{blurb}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">{blurb}</p>
         <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-600">
-          <Rocket className="h-3.5 w-3.5" /> Arriving in the next release
+          <Rocket className="h-3.5 w-3.5" aria-hidden="true" /> Arriving in the next release
         </p>
         {backHref && (
-          <a
-            href={backHref}
-            className="mt-4 block text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            Back to dashboard
-          </a>
+          <div className="mt-3">
+            <Link
+              href={backHref}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            >
+              Back to dashboard
+            </Link>
+          </div>
         )}
       </div>
     </div>

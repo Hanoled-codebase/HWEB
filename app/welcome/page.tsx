@@ -5,6 +5,12 @@ import { ArrowRight, LayoutGrid, Monitor, Rocket } from "lucide-react";
 import { redirect } from "next/navigation";
 import { SignOutForm } from "@/components/auth/SignOutForm";
 import { getHcoreBaseUrl, fetchWithFallback } from "@/lib/api-endpoints";
+import { isSafeRedirectUrl } from "@/lib/safe-redirect";
+import {
+  type ContextOrganization,
+  isParentOnlyAccount,
+  resolveParentDashboardPath,
+} from "@/lib/parent-routing";
 
 const HCORE_BASE = getHcoreBaseUrl();
 
@@ -16,69 +22,96 @@ export default async function WelcomePortal() {
     redirect("/api/logout");
   }
 
-  // 1. If user is a student, send directly to student examination portal
-  const userRole = cookieStore.get("hweb_user_role")?.value;
-  if (userRole === "STUDENT") {
-    redirect("/cbt/student");
-  }
+  // Pupils (HSMS STUDENT role) keep their HSMS access here: they may arrive at
+  // the hub from "Back to Suite" in the CBT portal or via bookmark. The hub's
+  // "School management" tile takes them into the student dashboard, and the
+  // CBT tile into their exam room. CBT-only candidates (no HSMS role) are still
+  // routed to the exam room — from the sign-in cookie below, or the live probe.
 
   let allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
-  // Set at sign-in time (finishSignIn): the action already resolved whether
-  // this person is a student / exam candidate and where they go. Redirecting
-  // from the cookie keeps the reveal deterministic — no render-time HCORE
-  // round-trip can flake it.
+  // Set at sign-in time (finishSignIn) — only for candidates without an HSMS
+  // role, whose only destination is the exam room. The cookie keeps that
+  // reveal deterministic — no render-time HCORE round-trip can flake it. A
+  // pupil must NOT be bounced by this cookie (their HSMS tile lives here), so
+  // finishSignIn no longer sets it for them.
   const candidateCookie = cookieStore.get("hweb_candidate_redirect")?.value;
+  const parentCookie = cookieStore.get("hweb_parent_redirect")?.value;
+  const userRole = cookieStore.get("hweb_user_role")?.value;
+  const isParentCookie = userRole === "PARENT";
   // Set inside the try below, followed after it: redirect() works by throwing,
   // so calling it inside the try would be caught and ignored.
   let candidateRedirect: string | null = null;
+  let parentRedirect: string | null = null;
   let sessionInvalid = false;
   if (candidateCookie && candidateCookie !== "/welcome") {
     redirect(candidateCookie);
   }
+  if (parentCookie && isSafeRedirectUrl(parentCookie) && parentCookie !== "/welcome") {
+    redirect(parentCookie);
+  }
 
-  // If cookie is missing or empty, fetch real active subscriptions directly from HCORE
-  try {
-    const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    if (meRes.ok) {
-      const meData = await meRes.json();
-      const primaryOrg = meData.organizations?.[0];
-      
-      // Check if primary role is student / candidate
-      const isCandidate =
-        primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ||
-        primaryOrg?.products?.HSMS?.roles?.includes("STUDENT");
-      if (isCandidate) {
-        const orgSlug = primaryOrg?.slug || "";
-        candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
-      }
+  // Only probe HCORE when routing/subscription cookies are missing or ambiguous
+  // (e.g. legacy HCBT-only sessions without hweb_candidate_redirect); sign-in
+  // already resolved these cookies, so skipping avoids a redundant round-trip.
+  const shouldProbeContexts = !allowedPlatforms || !userRole || (allowedPlatforms === "HCBT" && !candidateCookie);
+  if (shouldProbeContexts) {
+    try {
+      const meRes = await fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const orgs: ContextOrganization[] = Array.isArray(meData.organizations) ? meData.organizations : [];
+        const primaryOrg = orgs[0];
+        
+        // CBT-only candidates (e.g. external WAEC candidates) have no home
+        // outside the exam room: route them straight there. A pupil with an
+        // HSMS STUDENT role must stay on the hub — it carries their HSMS tile.
+        const hasCandidate = primaryOrg?.products?.HCBT?.roles?.includes("CANDIDATE") ?? false;
+        const hasStudent = primaryOrg?.products?.HSMS?.roles?.includes("STUDENT") ?? false;
+        if (hasCandidate && !hasStudent) {
+          const orgSlug = primaryOrg?.slug || "";
+          candidateRedirect = orgSlug ? `/cbt/student?orgSlug=${encodeURIComponent(orgSlug)}` : "/cbt/student";
+        }
 
-      if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
-        // Org-level subscription isn't enough — only offer a product this
-        // user actually has a role in (a Parent shouldn't see "Launch CBT
-        // engine" just because the school also subscribes to HCBT).
-        allowedPlatforms = primaryOrg.subscribed
-          .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
-          .join(",");
+        // Parents never see the suite welcome screen; route them straight to
+        // their school dashboard.
+        if (isParentOnlyAccount(orgs)) {
+          parentRedirect = resolveParentDashboardPath(orgs);
+        }
+
+        if (!allowedPlatforms && primaryOrg && Array.isArray(primaryOrg.subscribed) && primaryOrg.subscribed.length > 0) {
+          // Org-level subscription isn't enough — only offer a product this
+          // user actually has a role in (a Parent shouldn't see "Launch CBT
+          // engine" just because the school also subscribes to HCBT).
+          allowedPlatforms = primaryOrg.subscribed
+            .filter((code: string) => (primaryOrg.products?.[code]?.roles?.length ?? 0) > 0)
+            .join(",");
+        }
+      } else if (meRes.status === 401) {
+        // Stale or revoked token in HCORE: mark session invalid to wipe cookies cleanly
+        sessionInvalid = true;
+      } else {
+        console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
       }
-    } else if (meRes.status === 401) {
-      // Stale or revoked token in HCORE: mark session invalid to wipe cookies cleanly
-      sessionInvalid = true;
-    } else {
-      console.error(`[probe] /welcome contexts not ok: ${meRes.status}`);
+    } catch (e: unknown) {
+      const digest = (e as { digest?: string } | null | undefined)?.digest;
+      if (digest?.startsWith("NEXT_REDIRECT")) throw e;
+      console.error("Failed to fetch subscriptions in /welcome:", e);
     }
-  } catch (e: unknown) {
-    const digest = (e as { digest?: string } | null | undefined)?.digest;
-    if (digest?.startsWith("NEXT_REDIRECT")) throw e;
-    console.error("Failed to fetch subscriptions in /welcome:", e);
   }
   if (sessionInvalid) {
     redirect("/api/logout");
   }
   if (candidateRedirect && candidateRedirect !== "/welcome") {
     redirect(candidateRedirect);
+  }
+  if (parentRedirect && parentRedirect !== "/welcome") {
+    redirect(parentRedirect);
+  }
+  if (isParentCookie) {
+    redirect("/dashboard");
   }
 
   if (!allowedPlatforms) {
@@ -172,7 +205,7 @@ export default async function WelcomePortal() {
             {hasHsms ? (
               <Link
                 href="/dashboard"
-                className="w-full py-3.5 px-4 bg-[#1447e6] hover:bg-[#103bbd] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs group"
+                className="w-full min-h-12 py-3.5 px-4 bg-[#1447e6] hover:bg-[#103bbd] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447e6] focus-visible:ring-offset-2 group"
               >
                 <span>Launch dashboard</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -180,7 +213,7 @@ export default async function WelcomePortal() {
             ) : (
               <Link
                 href="/features"
-                className="w-full py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                className="w-full min-h-12 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447e6] focus-visible:ring-offset-2"
               >
                 <Rocket className="w-4 h-4 text-slate-500" />
                 <span>Explore SMS Features</span>
@@ -203,7 +236,7 @@ export default async function WelcomePortal() {
             {hasHcbt ? (
               <Link
                 href="/cbt/admin"
-                className="w-full py-3.5 px-4 bg-[#1447e6] hover:bg-[#103bbd] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs group"
+                className="w-full min-h-12 py-3.5 px-4 bg-[#1447e6] hover:bg-[#103bbd] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447e6] focus-visible:ring-offset-2 group"
               >
                 <span>Launch CBT engine</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -211,7 +244,7 @@ export default async function WelcomePortal() {
             ) : (
               <Link
                 href="/hcbt"
-                className="w-full py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                className="w-full min-h-12 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447e6] focus-visible:ring-offset-2"
               >
                 <Rocket className="w-4 h-4 text-slate-500" />
                 <span>Explore CBT Features</span>
@@ -226,7 +259,7 @@ export default async function WelcomePortal() {
           <SignOutForm>
             <button
               type="submit"
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447e6] focus-visible:ring-offset-2 cursor-pointer"
             >
               Sign out / Use a different account
             </button>

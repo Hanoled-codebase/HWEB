@@ -464,7 +464,7 @@ export default function PayrollPage() {
                     +{formatNaira(r.allowances)}
                     {r.notes && r.notes.includes("Bonus") && (
                       <span className="block text-xs text-emerald-700 font-sans font-medium">
-                        ✨ {r.notes.split("\n").filter((n) => n.includes("Bonus")).pop()}
+                        {r.notes.split("\n").filter((n) => n.includes("Bonus")).pop()}
                       </span>
                     )}
                   </td>
@@ -704,7 +704,7 @@ export default function PayrollPage() {
               </div>
             </div>
             <p className="text-xs text-slate-600 bg-violet-50/80 p-3 rounded-xl border border-violet-200 leading-relaxed">
-              ✨ <span className="font-semibold text-violet-900">Auto-sourced Salaries:</span> Each staff's basic salary is automatically populated from their profile on record. The fallback basic above is only applied for staff without a profile salary.
+              <span className="font-semibold text-violet-900">Auto-sourced Salaries:</span> Each staff's basic salary is automatically populated from their profile on record. The fallback basic above is only applied for staff without a profile salary.
             </p>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setBulkOpen(false)} className="flex-1">Cancel</Button>
