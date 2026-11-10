@@ -10,10 +10,7 @@ import { Select } from "@/components/ui/select"
 import { Search } from "lucide-react"
 import { CardList, Chip, ChipTabs, EmptyPanel, SchoolRow } from "@/components/admin/mobile-kit"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 interface School {
   id: string; name: string; slug: string; city: string; state: string
@@ -32,7 +29,7 @@ export default function AdminSchools() {
     const params = new URLSearchParams()
     if (search) params.set("search", search)
     if (filterStatus) params.set("paymentStatus", filterStatus)
-    fetch(`${ADMIN_API}/schools?${params}`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/schools?${params}`)
       .then(r => r.json())
       .then(setSchools)
   }, [search, filterStatus])

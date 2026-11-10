@@ -25,5 +25,38 @@ test.describe("a subject teacher's gradebook", () => {
     expect(ca2).toEqual({ "stu-ada": 18, "stu-kemi": 20 });
     // CA 1 scores already on the sheet are kept.
     expect(rows.map((row) => Number(row.values[0]))).toEqual([17, 15]);
+
+    // Walk backwards up the desktop spreadsheet hierarchy cleanly.
+    await page.getByRole("link", { name: "Back to Assessments" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets\/sheet-maths$/);
+    await expect(page.getByRole("heading", { name: /Mathematics/ })).toBeVisible();
+
+    await page.getByRole("link", { name: "Back to Spreadsheets" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets$/);
+    await expect(page.getByText(/Showing 1 of 1 spreadsheets/)).toBeVisible();
+
+    await page.getByRole("link", { name: "Back to Overview" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
+  });
+
+  test("warns on unsaved score changes before navigating back", async ({ page }) => {
+    await signIn(page, "teacher");
+    await expect(page).toHaveURL(/\/welcome$/);
+    await page.goto("/dashboard/school/greenfield/spreadsheets/sheet-maths/assessment/1");
+
+    const score = page.getByRole("spinbutton", { name: "Ada Obi" });
+    await score.fill("19");
+
+    await page.getByRole("link", { name: "Back to Assessments" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Unsaved score changes" })).toBeVisible();
+
+    await dialog.getByRole("button", { name: "Stay on page" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(score).toHaveValue("19");
+
+    await page.getByRole("link", { name: "Back to Assessments" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Save & go back" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets\/sheet-maths$/);
   });
 });

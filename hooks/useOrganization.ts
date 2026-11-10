@@ -18,7 +18,12 @@ export interface Organization {
   category?: string;
   type?: string;
   schoolType?: string;
+  idPrefix?: string;
+  nextIdSequence?: number;
+  subscriptionTier?: string;
   paymentStatus?: string;
+  subscriptionType?: string;
+  products?: Record<string, { status?: string; roles?: string[] }>;
   subscription?: {
     plan: string;
     status: string;
@@ -54,7 +59,7 @@ export interface MemberAssignment {
 export interface Member {
   id: string;
   user: MemberUser | null;
-  organization: { id?: string; slug?: string; name?: string } | null;
+  organization: (Partial<Organization> & { id?: string; slug?: string; name?: string }) | null;
   role: "owner" | "admin" | "member" | "parent";
   assignedClasses: Array<{ id?: string; name?: string; level?: string }>;
   memberAssignments?: MemberAssignment[];
@@ -101,13 +106,35 @@ type OrganizationApiResponse = Partial<Organization> & {
   counts?: Organization["counts"];
 };
 
+function resolveSubscription(
+  organization: OrganizationApiResponse,
+): Organization["subscription"] {
+  if (organization.subscription?.plan || organization.subscription?.status) {
+    return {
+      plan: organization.subscription.plan || organization.subscriptionTier || "free",
+      status: organization.subscription.status || organization.paymentStatus || "active",
+    };
+  }
+  const productStatus = organization.products?.HSMS?.status || organization.products?.HCBT?.status;
+  if (organization.subscriptionTier || organization.paymentStatus || productStatus) {
+    return {
+      plan: organization.subscriptionTier || "free",
+      status: productStatus || organization.paymentStatus || "active",
+    };
+  }
+  return undefined;
+}
+
 function normalizeOrganization(
   organization: OrganizationApiResponse,
 ): Organization {
+  const normalizedType = organization?.type || organization?.schoolType || undefined;
+  const subscription = resolveSubscription(organization);
   return {
     ...organization,
-    type: organization?.type || organization?.schoolType || undefined,
-    schoolType: organization?.schoolType || organization?.type || undefined,
+    type: normalizedType,
+    schoolType: organization?.schoolType || normalizedType,
+    ...(subscription ? { subscription } : {}),
     counts: organization?.counts || {
       students: 0,
       teachers: 0,
@@ -126,14 +153,31 @@ const ACCESS_CACHE_PREFIX = "hanoled.access.";
  * sidebar, the school switcher or the report headers without this extra read.
  * Best-effort: a failure just leaves the HCORE fields untouched.
  */
-type OrgBranding = Pick<Organization, "logo" | "primaryColor" | "secondaryColor" | "email" | "phone" | "address">;
+type OrgBranding = Partial<
+  Pick<
+    Organization,
+    "name" | "logo" | "primaryColor" | "secondaryColor" | "email" | "phone" | "address" | "country" | "category" | "type" | "schoolType"
+  >
+>;
 
 async function fetchOrgBranding(slug: string): Promise<OrgBranding | null> {
   try {
     const org = await request<Partial<Organization>>(HSMS_BASE, `/organizations/${slug}`, {
       showErrorToast: false,
     });
-    return { logo: org.logo, primaryColor: org.primaryColor, secondaryColor: org.secondaryColor, email: org.email, phone: org.phone, address: org.address };
+    return {
+      name: org.name,
+      logo: org.logo,
+      primaryColor: org.primaryColor,
+      secondaryColor: org.secondaryColor,
+      email: org.email,
+      phone: org.phone,
+      address: org.address,
+      country: org.country,
+      category: org.category,
+      type: org.type || org.schoolType,
+      schoolType: org.schoolType,
+    };
   } catch {
     return null;
   }
@@ -144,6 +188,18 @@ function definedOnly<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined && value !== null),
   ) as Partial<T>;
+}
+
+function mergeOrganizationDetails(
+  base: Organization,
+  ...sources: Array<Partial<OrganizationApiResponse> | null | undefined>
+): Organization {
+  let merged: OrganizationApiResponse = { ...base };
+  for (const source of sources) {
+    if (!source) continue;
+    merged = { ...merged, ...definedOnly(source) };
+  }
+  return normalizeOrganization(merged);
 }
 
 /**
@@ -221,12 +277,12 @@ export const useOrganization = create<OrgState>((set, get) => ({
       const res = await request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts");
       const orgs = res.organizations || [];
       const normalized = orgs.map(normalizeOrganization);
-      // HCORE owns identity, HSMS owns the school's logo/contact details, so
+      // HCORE owns identity, HSMS owns the school's logo/contact/profile details, so
       // pull the branding for each school once, in parallel, and merge it in.
       const withBranding = await Promise.all(
         normalized.map(async (org: Organization) => {
           const branding = await fetchOrgBranding(org.slug);
-          return branding ? { ...org, ...definedOnly(branding) } : org;
+          return mergeOrganizationDetails(org, branding);
         }),
       );
       set({
@@ -290,16 +346,15 @@ export const useOrganization = create<OrgState>((set, get) => ({
         };
       }
 
-      // Merge the school's HSMS branding (logo, contact details) regardless of
-      // which branch resolves the org below, so the sidebar, switcher and report
-      // headers all show the logo a school uploaded in Settings.
+      // Merge the school's HSMS branding & profile details (logo, contact,
+      // category, schoolType, ID sequence, tier) regardless of which branch resolves below.
       const branding = brandingResult.status === "fulfilled" ? brandingResult.value : null;
-      if (branding) org = { ...org, ...definedOnly(branding) };
+      const hsmsMember = hsmsMemberResult.status === "fulfilled" ? hsmsMemberResult.value : null;
+      org = mergeOrganizationDetails(org, branding, hsmsMember?.organization);
 
       // First try member profile (for admin/teacher/parent users)
       if (memberResult.status === "fulfilled") {
         const member = memberResult.value;
-        const hsmsMember = hsmsMemberResult.status === "fulfilled" ? hsmsMemberResult.value : null;
 
         // Union HCORE's assignments with Hanoled's — same assignment synced
         // from HCORE can appear in both, so de-dupe by id.
@@ -357,7 +412,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
       try {
         const profile = await request<StudentProfile>(HSMS_BASE, `/organizations/${slug}/student-profile`, { showErrorToast: false });
         set({
-          currentOrg: profile.org ? normalizeOrganization(profile.org as unknown as OrganizationApiResponse) : org,
+          currentOrg: profile.org ? mergeOrganizationDetails(org, profile.org as unknown as OrganizationApiResponse) : org,
           currentStudent: profile.student,
           isStudent: true,
           isLoading: false,
@@ -389,10 +444,11 @@ export const useOrganization = create<OrgState>((set, get) => ({
     set((state) => {
       if (!state.currentOrg) return state;
       const slug = state.currentOrg.slug;
+      const nextCurrent = normalizeOrganization({ ...state.currentOrg, ...patch });
       return {
-        currentOrg: { ...state.currentOrg, ...patch },
+        currentOrg: nextCurrent,
         organizations: state.organizations.map((org) =>
-          org.slug === slug ? { ...org, ...patch } : org,
+          org.slug === slug ? normalizeOrganization({ ...org, ...patch }) : org,
         ),
       };
     }),

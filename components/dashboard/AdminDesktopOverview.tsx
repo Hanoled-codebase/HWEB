@@ -85,7 +85,32 @@ const TOOL_CATEGORIES: Record<string, { key: string; icon: LucideIcon }[]> = {
   ],
 };
 
-const cap = (value?: string | null) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "");
+const formatLabel = (value?: string | null) => {
+  if (!value) return "";
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+};
+
+function statusBadgeTone(status?: string | null): string {
+  const normalized = (status || "").trim().toLowerCase();
+  if (normalized.includes("trial")) {
+    return "bg-amber-50 text-amber-700";
+  }
+  if (
+    normalized.includes("past") ||
+    normalized.includes("suspend") ||
+    normalized.includes("inactive") ||
+    normalized.includes("cancel") ||
+    normalized.includes("overdue") ||
+    normalized.includes("fail")
+  ) {
+    return "bg-rose-50 text-rose-700";
+  }
+  return "bg-emerald-50 text-emerald-700";
+}
 
 function localToday() {
   const d = new Date();
@@ -247,7 +272,11 @@ export function AdminDesktopOverview({
   const [activeTool, setActiveTool] = useState<string>("");
   const currentTool = categories.find(([name]) => name === activeTool) ? activeTool : categories[0]?.[0];
 
-  const planLabel = plan ? `${cap(plan)} Plan` : "Free Plan";
+  const categoryLabel = formatLabel(category);
+  const typeLabel = formatLabel(type);
+  const statusLabel = formatLabel(status) || "Active";
+  const formattedPlan = formatLabel(plan) || "Free";
+  const planLabel = /\bplan$/i.test(formattedPlan) ? formattedPlan : `${formattedPlan} Plan`;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -262,11 +291,11 @@ export function AdminDesktopOverview({
           </p>
           <div className="flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-            <span className="font-medium capitalize">{status || "Active"}</span>
-            {category && (
+            <span className="font-medium">{statusLabel}</span>
+            {categoryLabel && (
               <>
                 <span className="text-blue-200">·</span>
-                <span>{cap(category)}</span>
+                <span>{categoryLabel}</span>
               </>
             )}
             <span className="text-blue-200">·</span>
@@ -341,30 +370,45 @@ export function AdminDesktopOverview({
 
       {/* School info + finance snapshot */}
       <div className="grid grid-cols-5 gap-6">
-        <div className={cn("rounded-2xl border border-slate-200 bg-white p-6", isPrivileged ? "col-span-3" : "col-span-5")}>
-          <h3 className="text-base font-bold text-slate-900">School Information</h3>
-          <p className="mb-5 text-sm text-slate-500">Your organization profile details</p>
+        <section
+          aria-labelledby="school-info-heading"
+          className={cn("rounded-2xl border border-slate-200 bg-white p-6", isPrivileged ? "col-span-3" : "col-span-5")}
+        >
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <h3 id="school-info-heading" className="text-base font-bold text-slate-900">School Information</h3>
+              <p className="text-sm text-slate-500">Your organization profile details</p>
+            </div>
+            {isPrivileged && (
+              <Link
+                href={`${base}/settings`}
+                className="shrink-0 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+              >
+                Edit details
+              </Link>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-y-5">
             <div>
               <div className="mb-1 text-xs text-slate-500">Category</div>
-              <div className="text-sm font-medium text-slate-900">{cap(category) || "—"}</div>
+              <div className="text-sm font-medium text-slate-900">{categoryLabel || "—"}</div>
             </div>
             <div>
               <div className="mb-1 text-xs text-slate-500">Type</div>
-              <div className="text-sm font-medium text-slate-900">{cap(type) || "—"}</div>
+              <div className="text-sm font-medium text-slate-900">{typeLabel || "—"}</div>
             </div>
             <div>
               <div className="mb-1 text-xs text-slate-500">Status</div>
-              <span className="inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-700">
-                {status || "Active"}
+              <span className={cn("inline-block rounded-full px-2.5 py-1 text-xs font-semibold", statusBadgeTone(status))}>
+                {statusLabel}
               </span>
             </div>
             <div>
               <div className="mb-1 text-xs text-slate-500">Plan</div>
-              <div className="text-sm font-medium text-slate-900">{cap(plan) || "Free"}</div>
+              <div className="text-sm font-medium text-slate-900">{formattedPlan}</div>
             </div>
           </div>
-        </div>
+        </section>
 
         {isPrivileged && (
           <div className="col-span-2 flex flex-col rounded-2xl border border-slate-200 bg-white p-6">

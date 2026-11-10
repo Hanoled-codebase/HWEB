@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useOrganization, type Organization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DataRetentionCard } from "@/components/dashboard/DataRetentionCard";
 import { useAuth } from "@/hooks/useAuth";
@@ -74,15 +74,15 @@ const PRESET_COLORS = [
 ];
 
 const profileFormSchema = z.object({
-  name: z.string().min(3),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  country: z.string().optional(),
-  category: z.string(),
-  type: z.string(),
-  idPrefix: z.string().max(10).optional().or(z.literal("")),
-  nextIdSequence: z.coerce.number().min(1).optional(),
+  name: z.string().trim().min(3, "School name must be at least 3 characters"),
+  email: z.string().trim().email("Enter a valid official email").optional().or(z.literal("")),
+  phone: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  country: z.string().trim().optional(),
+  category: z.enum(["primary", "secondary", "tertiary"]).or(z.literal("")).optional(),
+  type: z.enum(["private", "public", "federal", "state"]).or(z.literal("")).optional(),
+  idPrefix: z.string().trim().min(1, "ID prefix cannot be empty").max(10, "ID prefix must be 10 characters or fewer").optional().or(z.literal("")),
+  nextIdSequence: z.coerce.number().int().min(1, "Next ID sequence must be at least 1").optional(),
 });
 
 type UploadResponse = {
@@ -205,24 +205,33 @@ export default function SettingsPage() {
         phone: currentOrg.phone || "",
         address: currentOrg.address || "",
         country: currentOrg.country || "Nigeria",
-        category: currentOrg.category,
-        type: currentOrg.type,
-        idPrefix: (currentOrg as any).idPrefix || "HNL",
-        nextIdSequence: (currentOrg as any).nextIdSequence || 1,
+        category: (currentOrg.category as "primary" | "secondary" | "tertiary" | undefined) || "",
+        type: ((currentOrg.type || currentOrg.schoolType) as "private" | "public" | "federal" | "state" | undefined) || "",
+        idPrefix: currentOrg.idPrefix || "HNL",
+        nextIdSequence: currentOrg.nextIdSequence || 1,
       });
     }
   }, [currentOrg, form]);
 
   if (!currentOrg || !currentMember) return null;
 
+  function onInvalid(errors: Record<string, unknown>) {
+    const first = Object.values(errors).find(
+      (err): err is { message: string } =>
+        Boolean(err && typeof err === "object" && "message" in err && typeof (err as { message?: unknown }).message === "string"),
+    );
+    toast.error(first?.message || "Please check the highlighted school details before saving.");
+  }
+
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
     if (!isAdmin) {
       toast.error("You don't have permission to update settings");
       return;
     }
+    if (!currentOrg) return;
 
     setIsUpdating(true);
-    let logoUrl = currentOrg?.logo;
+    let logoUrl = currentOrg.logo;
 
     try {
       if (logoFile) {
@@ -235,35 +244,54 @@ export default function SettingsPage() {
         logoUrl = uploadRes.url;
       }
 
-      const payload = {
-        name: values.name,
-        email: values.email || undefined,
-        phone: values.phone || undefined,
-        address: values.address || undefined,
-        country: values.country || undefined,
-        category: values.category,
-        schoolType: values.type,
-        logo: logoUrl || undefined,
+      const trimmedName = values.name.trim();
+      const trimmedEmail = values.email?.trim() || "";
+      const trimmedPhone = values.phone?.trim() || "";
+      const trimmedAddress = values.address?.trim() || "";
+      const trimmedCountry = values.country?.trim() || "";
+      const trimmedPrefix = values.idPrefix?.trim() || "";
+      const normalizedSequence =
+        typeof values.nextIdSequence === "number" && Number.isFinite(values.nextIdSequence)
+          ? Math.max(1, Math.trunc(values.nextIdSequence))
+          : undefined;
+
+      const payload: Record<string, unknown> = {
+        name: trimmedName,
+        email: trimmedEmail || null,
+        phone: trimmedPhone || null,
+        address: trimmedAddress || null,
+        country: trimmedCountry || null,
+        ...(values.category ? { category: values.category } : {}),
+        ...(values.type ? { schoolType: values.type } : {}),
+        ...(trimmedPrefix ? { idPrefix: trimmedPrefix } : {}),
+        ...(normalizedSequence !== undefined ? { nextIdSequence: normalizedSequence } : {}),
+        ...(logoUrl ? { logo: logoUrl } : {}),
       };
 
-      await apiFetch(`/organizations/${currentOrg?.slug}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      const updatedOrg = await apiFetch<Partial<Organization>>(
+        `/organizations/${currentOrg.slug}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
 
-      // Reflect the new logo/name in the active school immediately — the
-      // sidebar, school switcher and report headers all read it from the
-      // store, and they'd otherwise keep the pre-edit values until a reload.
+      clearTenantBrandingCache(currentOrg.slug);
+
+      // Reflect the updated school profile immediately in Zustand so the
+      // overview card, sidebar, school switcher and PDF headers stay in sync.
       updateCurrentOrg({
-        logo: logoUrl,
-        name: values.name,
-        email: values.email || undefined,
-        phone: values.phone || undefined,
-        address: values.address || undefined,
-        country: values.country || undefined,
-        category: values.category,
-        type: values.type,
-        schoolType: values.type,
+        logo: updatedOrg?.logo ?? logoUrl,
+        name: updatedOrg?.name ?? trimmedName,
+        email: updatedOrg?.email ?? (trimmedEmail || undefined),
+        phone: updatedOrg?.phone ?? (trimmedPhone || undefined),
+        address: updatedOrg?.address ?? (trimmedAddress || undefined),
+        country: updatedOrg?.country ?? (trimmedCountry || undefined),
+        category: updatedOrg?.category ?? (values.category || undefined),
+        type: updatedOrg?.schoolType ?? updatedOrg?.type ?? (values.type || undefined),
+        schoolType: updatedOrg?.schoolType ?? (values.type || undefined),
+        idPrefix: updatedOrg?.idPrefix ?? (trimmedPrefix || undefined),
+        nextIdSequence: updatedOrg?.nextIdSequence ?? normalizedSequence,
       });
       setLogoFile(null);
 
@@ -341,7 +369,7 @@ export default function SettingsPage() {
           <CardContent>
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit as any)}
+                onSubmit={form.handleSubmit(onSubmit as any, onInvalid)}
                 className="space-y-6"
               >
                 {/* Logo Section */}
@@ -429,15 +457,15 @@ export default function SettingsPage() {
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category *</FormLabel>
+                        <FormLabel>Category</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          onValueChange={(val) => field.onChange(val ?? "")}
+                          value={field.value || ""}
                           disabled={!isAdmin}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
+                            <SelectTrigger aria-label="Category">
+                              <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -462,15 +490,15 @@ export default function SettingsPage() {
                     name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Type *</FormLabel>
+                        <FormLabel>Type</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          onValueChange={(val) => field.onChange(val ?? "")}
+                          value={field.value || ""}
                           disabled={!isAdmin}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
+                            <SelectTrigger aria-label="Type">
+                              <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>

@@ -34,10 +34,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { HSMS_BASE } from "@/lib/api";
-
-const API_BASE = HSMS_BASE;
-const ADMIN_API = `${API_BASE}/api/admin`;
+import { ADMIN_API, adminFetch as rawAdminFetch } from "@/lib/admin-api";
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 type TicketPriority = "low" | "medium" | "high" | "urgent";
@@ -83,8 +80,7 @@ const PRIORITY_CONFIG: Record<TicketPriority, { label: string; className: string
 };
 
 async function adminFetch<T>(url: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${ADMIN_API}${url}`, {
-    credentials: "include",
+  const res = await rawAdminFetch(`${ADMIN_API}${url}`, {
     headers: { "Content-Type": "application/json", ...opts?.headers },
     ...opts,
   });
@@ -117,7 +113,7 @@ export default function AdminSupportPage() {
   }, [messages]);
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/auth/me`, { credentials: "include" })
+    rawAdminFetch(`${ADMIN_API}/auth/me`)
       .then(r => r.ok ? r.json() : null)
       .then(data => setAdmin(data?.admin ?? null))
       .catch(() => setAdmin(null));

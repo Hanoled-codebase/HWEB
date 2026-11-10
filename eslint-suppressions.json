@@ -239,7 +239,7 @@
   },
   "app/dashboard/school/[slug]/settings/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 12
+      "count": 10
     }
   },
   "app/dashboard/school/[slug]/settings/transfers/page.tsx": {

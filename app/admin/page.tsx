@@ -19,10 +19,7 @@ import { Button } from "@/components/ui/button"
 import { CardList, Chip, EmptyPanel, SchoolRow as SchoolListRow, SectionHead, naira, rowCard } from "@/components/admin/mobile-kit"
 import { cn } from "@/lib/utils"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 interface DashboardStats {
   totalActiveSchools: number
@@ -92,9 +89,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${ADMIN_API}/dashboard/stats`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${ADMIN_API}/pipeline`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { list: [] })),
-      fetch(`${ADMIN_API}/schools`, { credentials: "include" }).then((r) => (r.ok ? r.json() : [])),
+      adminFetch(`${ADMIN_API}/dashboard/stats`).then((r) => (r.ok ? r.json() : null)),
+      adminFetch(`${ADMIN_API}/pipeline`).then((r) => (r.ok ? r.json() : { list: [] })),
+      adminFetch(`${ADMIN_API}/schools`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([statsData, pipelineData, schoolsData]) => {
       setStats(statsData)
       setPipeline(pipelineData.list || [])

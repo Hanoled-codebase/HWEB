@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackButton } from "@/components/dashboard/shared";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
@@ -234,10 +235,15 @@ export default function SpreadsheetAssessmentsPage() {
     URL.revokeObjectURL(url);
   }
 
+  const sheetsHref = currentOrg?.slug
+    ? `/dashboard/school/${currentOrg.slug}/spreadsheets`
+    : "/dashboard";
+
   /* ── Loading ── */
   if (isLoading) {
     return (
-      <div className="-mx-4 -mt-4 bg-slate-50 px-4 pt-5 pb-10 space-y-4">
+      <div className="-mx-4 -mt-4 space-y-4 bg-slate-50 px-4 pt-5 pb-10 md:mx-0 md:mt-0 md:bg-transparent md:px-0 md:pt-0">
+        <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-44" />
@@ -258,30 +264,41 @@ export default function SpreadsheetAssessmentsPage() {
   /* ── Error ── */
   if (!sheet && loadError) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-        <FileText className="mb-4 h-10 w-10 text-rose-300" />
-        <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
-        <p className="mt-2 text-sm text-slate-500">{loadError}</p>
-        <button onClick={() => void fetchSheet()} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Try Again</button>
+      <div className="space-y-4">
+        <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
+        <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+          <FileText className="mb-4 h-10 w-10 text-rose-300" />
+          <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
+          <p className="mt-2 text-sm text-slate-500">{loadError}</p>
+          <button onClick={() => void fetchSheet()} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Try Again</button>
+        </div>
       </div>
     );
   }
 
   if (!sheet) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-        <FileText className="mb-4 h-10 w-10 text-blue-300" />
-        <h2 className="text-lg font-bold text-slate-800">Spreadsheet Not Found</h2>
-        <p className="mt-2 text-sm text-slate-500">The requested gradebook does not exist.</p>
-        <button onClick={() => router.back()} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Go Back</button>
+      <div className="space-y-4">
+        <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
+        <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+          <FileText className="mb-4 h-10 w-10 text-blue-300" />
+          <h2 className="text-lg font-bold text-slate-800">Spreadsheet Not Found</h2>
+          <p className="mt-2 text-sm text-slate-500">The requested gradebook does not exist.</p>
+          <button onClick={() => router.push(sheetsHref)} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Back to Spreadsheets</button>
+        </div>
       </div>
     );
   }
 
   return (
     /* Bleed edge-to-edge on mobile, matching the layout's p-4 offset */
-    <div className="-mx-4 -mt-4 flex flex-col bg-slate-50">
-      <div className="px-4 pt-5 pb-10">
+    <div className="-mx-4 -mt-4 flex flex-col bg-slate-50 md:mx-0 md:mt-0 md:bg-transparent">
+      <div className="px-4 pt-5 pb-10 md:px-0 md:pt-0">
+        <BackButton
+          label="Back to Spreadsheets"
+          href={sheetsHref}
+          className="mb-4 hidden md:inline-flex"
+        />
 
         {/* ── Context: which sheet this is (the top bar carries "Subject · Class" on phones) ── */}
         <div className="mb-4 flex items-center justify-between gap-3">

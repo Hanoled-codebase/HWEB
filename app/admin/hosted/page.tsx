@@ -8,10 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Chip, EmptyPanel, MList, naira } from "@/components/admin/mobile-kit"
 
-import { HSMS_BASE } from "@/lib/api"
-
-const API_BASE = HSMS_BASE
-const ADMIN_API = `${API_BASE}/api/admin`
+import { ADMIN_API, adminFetch } from "@/lib/admin-api"
 
 interface HostedConfig {
   id: string; organizationId: string; subdomain: string | null
@@ -33,8 +30,8 @@ export default function HostedPage() {
   const [form, setForm] = useState({ organizationId: "", subdomain: "", hostingTier: "planned", dbInstance: "", infraCostMonthly: "", notes: "" })
 
   useEffect(() => {
-    fetch(`${ADMIN_API}/hosted`, { credentials: "include" }).then(r => r.json()).then(setConfigs)
-    fetch(`${ADMIN_API}/auth/me`, { credentials: "include" })
+    adminFetch(`${ADMIN_API}/hosted`).then(r => r.json()).then(setConfigs)
+    adminFetch(`${ADMIN_API}/auth/me`)
       .then(r => r.ok ? r.json() : null)
       .then(data => setCanManageHosted(data?.admin?.role === "SUPER_ADMIN"))
       .catch(() => setCanManageHosted(false))
@@ -50,10 +47,9 @@ export default function HostedPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch(`${ADMIN_API}/hosted`, {
+    const res = await adminFetch(`${ADMIN_API}/hosted`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({
         organizationId: form.organizationId,
         subdomain: form.subdomain || null,
@@ -66,7 +62,7 @@ export default function HostedPage() {
     if (res.ok) {
       setDialogOpen(false)
       setForm({ organizationId: "", subdomain: "", hostingTier: "planned", dbInstance: "", infraCostMonthly: "", notes: "" })
-      const data = await fetch(`${ADMIN_API}/hosted`, { credentials: "include" }).then(r => r.json())
+      const data = await adminFetch(`${ADMIN_API}/hosted`).then(r => r.json())
       setConfigs(data)
     }
   }
