@@ -43,6 +43,14 @@ type NotificationResponse = {
   attentionCount?: number;
 };
 
+const POLL_BASE_MS = 30_000;
+const POLL_MAX_MS = 5 * 60_000;
+
+/** Exponential backoff for the notification poll: 30s, 60s, 120s… capped at 5min. */
+export function nextPollDelay(consecutiveFailures: number): number {
+  return Math.min(POLL_BASE_MS * 2 ** Math.max(0, consecutiveFailures), POLL_MAX_MS);
+}
+
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -50,8 +58,9 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+  /** Fetches quietly; resolves true on success, false on any failure (never throws). */
+  const fetchNotifications = useCallback(async (): Promise<boolean> => {
+    if (!user) return false;
     try {
       // "Today" is the reader's day, not the server's — a school in UTC+1
       // should not be told yesterday's register is still open at 00:30.
@@ -67,18 +76,49 @@ export function useNotifications() {
         );
         setAttention(Array.isArray(data.attention) ? data.attention : []);
       }
+      return true;
     } catch {
       // ignore unauthenticated or network errors gracefully
+      return false;
     } finally {
       setLoading(false);
     }
   }, [user]);
 
+  // Poll on a backoff, not a fixed interval: a healthy session polls every
+  // POLL_BASE_MS, but every consecutive failure doubles the wait (capped at
+  // POLL_MAX_MS). A dead session used to 401-flood the backend every 30s for
+  // as long as the tab stayed open — burning Vercel CPU on both sides with
+  // each poll also firing the token-refresh chain. Failures also pause the
+  // loop entirely while the tab is hidden: nobody is reading the bell badge.
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // 30s poll
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    if (!user) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      if (typeof document !== "undefined" && document.hidden) {
+        scheduleNext(); // hidden: skip the fetch, keep the loop alive
+        return;
+      }
+      const ok = await fetchNotifications();
+      failures = ok ? 0 : failures + 1;
+      scheduleNext();
+    };
+
+    const scheduleNext = () => {
+      if (stopped) return;
+      timer = setTimeout(tick, nextPollDelay(failures));
+    };
+
+    scheduleNext();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [fetchNotifications, user]);
 
   const markAsRead = async (id: string) => {
     // Optimistic local state update
