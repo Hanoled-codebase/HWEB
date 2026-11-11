@@ -51,6 +51,34 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
   });
 
+  // The pupil holds an HSMS STUDENT role as well as the HCBT CANDIDATE one, so
+  // the welcome hub must stay reachable — it carries their "Launch dashboard"
+  // tile into the HSMS student view. Only CBT-only candidates are bounced.
+  test("a pupil visiting the welcome hub keeps their HSMS access", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await page.goto("/welcome");
+    await expect(page.getByRole("link", { name: "Launch dashboard" })).toBeVisible();
+    await expect(page).not.toHaveURL(/\/cbt\/student/);
+  });
+
+  test("a CBT-only candidate visiting the welcome hub is sent to their exam room", async ({ page }) => {
+    await signIn(page, "candidate");
+    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await page.goto("/welcome");
+    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+  });
+
+  // "Back to Suite" in the CBT portal used to fall back to /welcome, which
+  // bounced pupils straight back into the exam room — a one-loop trap.
+  test("a pupil clicking Back to Suite leaves the exam room", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await page.getByRole("link", { name: "Back to Suite" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
+    await expect(page).not.toHaveURL(/\/cbt\/student/);
+  });
+
   test("someone on a school-issued password chooses their own first", async ({ page }) => {
     await signIn(page, "newTeacher");
     await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
