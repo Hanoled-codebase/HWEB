@@ -437,11 +437,6 @@
       "count": 1
     }
   },
-  "hooks/useNotifications.ts": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "hooks/useSchoolNavItems.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1

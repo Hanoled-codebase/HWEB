@@ -64,20 +64,29 @@ export const HSMS_BASE = getHsmsBaseUrl();
 export const HCBT_BASE = getHcbtBaseUrl();
 
 const DEFAULT_SERVER_FETCH_TIMEOUT_MS = 8000;
+// When a fallback URL exists, don't spend the full budget on the primary: a
+// hung primary used to stack 8s per leg (primary + fallback) and push a login
+// well past a minute once several legs chained. Probe the primary briefly,
+// keep the full budget for the fallback that must actually succeed.
+const FALLBACK_PROBE_TIMEOUT_MS = 3000;
 
-function withTimeout(init?: RequestInit): RequestInit {
+function withTimeout(init?: RequestInit, ms: number = DEFAULT_SERVER_FETCH_TIMEOUT_MS): RequestInit {
   if (init?.signal || typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") {
     return init ?? {};
   }
-  return { ...init, signal: AbortSignal.timeout(DEFAULT_SERVER_FETCH_TIMEOUT_MS) };
+  return { ...init, signal: AbortSignal.timeout(ms) };
 }
 
 /**
  * Resilient fetch helper with IPv4/IPv6 dual-stack fallback and cloud domain resolution.
  */
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
+  const hasFallback =
+    (url.includes("localhost:4000") || url.includes("127.0.0.1:4000") || url.includes("core-api.hanoled.com")) &&
+    // The 127.0.0.1 <-> localhost retries only make sense off Vercel.
+    (process.env.VERCEL ? url.includes("core-api.hanoled.com") : true);
   try {
-    return await fetch(url, withTimeout(init));
+    return await fetch(url, withTimeout(init, hasFallback ? FALLBACK_PROBE_TIMEOUT_MS : DEFAULT_SERVER_FETCH_TIMEOUT_MS));
   } catch (err: unknown) {
     if (init?.signal?.aborted) throw err;
     if (url.includes('localhost:4000') && !process.env.VERCEL) {
