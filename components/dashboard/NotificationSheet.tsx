@@ -132,6 +132,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
     unreadNotificationsCount,
     badgeCount,
     loading,
+    refresh,
     markAsRead,
     markAllAsRead,
   } = useNotifications();
@@ -139,6 +140,13 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      void refresh();
+    }
+  };
 
   const effectiveUnreadNotifications =
     unreadNotificationsCount ?? unreadCount;
@@ -159,7 +167,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger
         aria-label={
           badgeCount > 0 ? `Notifications, ${badgeCount} need attention` : "Notifications"

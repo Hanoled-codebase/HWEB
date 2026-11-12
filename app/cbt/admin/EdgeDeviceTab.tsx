@@ -125,8 +125,6 @@ export default function EdgeDeviceTab() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 10000);
-    return () => clearInterval(t);
   }, [load]);
 
   const run = async (key: string, fn: () => Promise<string | void>) => {
