@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "playwright-report/**",
     "blob-report/**",
+    // Netlify CLI build artifacts (gitignored).
+    ".netlify/**",
   ]),
 ]);
 
