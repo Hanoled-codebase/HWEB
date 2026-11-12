@@ -9,6 +9,7 @@ import {
   type ContextOrganization,
   isGenericPostAuthTarget,
   isParentOnlyAccount,
+  resolveOrgDashboardPath,
   resolveParentDashboardPath,
 } from '@/lib/parent-routing';
 import { isPasswordValid, STAFF_PASSWORD_POLICY_MESSAGE } from '@/lib/password-policy';
@@ -260,9 +261,18 @@ async function finishSignIn(
   let redirectUrl = isSafeRedirectUrl(callbackUrl) ? callbackUrl! : '/welcome';
 
   if (isStudent) {
-    // Students ALWAYS land directly in their Student Examination Room!
-    const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
-    redirectUrl = `/cbt/student${orgParam}`;
+    if (allowedPlatforms.includes('HSMS')) {
+      const studentTarget = resolveOrgDashboardPath(
+        contextOrgs,
+        organizationSlugOrId || data.activeOrganization?.slug,
+        organizationSlugOrId || data.activeOrganization?.slug,
+      );
+      redirectUrl = isGenericPostAuthTarget(callbackUrl) ? studentTarget : callbackUrl!;
+    } else {
+      // CBT-only candidates (no HSMS role/entitlement) go straight to their exam room.
+      const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
+      redirectUrl = `/cbt/student${orgParam}`;
+    }
   } else if (parentTarget) {
     // Parents never see the suite welcome screen; land directly on their school dashboard
     // unless they signed in from an explicit feature deep link.

@@ -30,7 +30,7 @@ export async function signIn(page: Page, who: keyof typeof PEOPLE, { path = "/si
   }
   await page.getByPlaceholder(who === "pupil" ? "e.g. GW/2026/001" : "staff@school.edu").fill(person.identifier);
   await page.getByPlaceholder("••••••••").fill(person.password);
-  await page.getByRole("button", { name: /Sign In to Dashboard|Enter CBT Examination Portal/ }).click();
+  await page.getByRole("button", { name: /Sign In to Dashboard|Enter CBT Examination Portal|Sign In to Student Portal/ }).click();
 }
 
 // Every test starts with fresh fake data, and nothing leaves this machine.

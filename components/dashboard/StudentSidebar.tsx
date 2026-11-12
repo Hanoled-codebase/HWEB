@@ -34,6 +34,8 @@ import {
   GraduationCap,
   BookMarked,
   DollarSign,
+  BookOpen,
+  BookText,
 } from "lucide-react";
 
 export function StudentSidebar() {
@@ -57,6 +59,8 @@ export function StudentSidebar() {
 
   const navItems = [
     { title: "Dashboard", url: baseUrl, icon: LayoutDashboard },
+    { title: "Homework", url: `${baseUrl}/student/homework`, icon: BookOpen },
+    { title: "Scheme of Work", url: `${baseUrl}/student/scheme-of-work`, icon: BookText },
     { title: "My Results", url: `${baseUrl}/student/results`, icon: FileText },
     { title: "Pending Exams", url: `${baseUrl}/student/pending`, icon: Clock },
     { title: "Timetable", url: `${baseUrl}/student/timetable`, icon: CalendarDays },
@@ -158,17 +162,14 @@ export function StudentSidebar() {
           {navItems.map((item) => {
             const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
             return (
-              <SidebarMenuItem key={item.title} className="relative">
-                {isActive && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-blue-600 z-10" />
-                )}
+              <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   render={<Link href={item.url} onClick={() => setOpenMobile(false)} />}
                   tooltip={item.title}
                   className={
                     isActive
-                      ? "bg-blue-50/80 text-blue-700 font-medium pointer-coarse:h-11"
-                      : "text-sidebar-foreground/70 pointer-coarse:h-11"
+                      ? "bg-blue-50 text-blue-700 font-semibold pointer-coarse:h-11"
+                      : "text-sidebar-foreground/70 hover:bg-slate-50 hover:text-slate-900 pointer-coarse:h-11"
                   }
                 >
                   <item.icon className="h-4 w-4" />

@@ -4,6 +4,7 @@ const EXAM_TITLE = "JSS 1 Mathematics — First Term Test";
 
 test("a pupil sits an exam and hands it in", async ({ page }) => {
   await signIn(page, "pupil");
+  await page.goto("/cbt/student?orgSlug=greenfield");
   await expect(page.getByText(EXAM_TITLE)).toBeVisible();
 
   await page.getByRole("button", { name: "Start", exact: true }).click();

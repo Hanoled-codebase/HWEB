@@ -39,9 +39,9 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
   });
 
-  test("a pupil signs in with their admission number and goes straight to their exams", async ({ page }) => {
+  test("a pupil signs in with their admission number and lands in their HSMS dashboard", async ({ page }) => {
     await signIn(page, "pupil");
-    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
     const login = (await mockRequests()).find((r) => r.path === "/v1/auth/login");
     expect(login?.body).toMatchObject({ identifierType: "ADMISSION_NUMBER", identifier: "GF/2026/001", organizationSlugOrId: "greenfield" });
   });
@@ -56,7 +56,7 @@ test.describe("signing in", () => {
   // tile into the HSMS student view. Only CBT-only candidates are bounced.
   test("a pupil visiting the welcome hub keeps their HSMS access", async ({ page }) => {
     await signIn(page, "pupil");
-    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
     await page.goto("/welcome");
     await expect(page.getByRole("link", { name: "Launch dashboard" })).toBeVisible();
     await expect(page).not.toHaveURL(/\/cbt\/student/);
@@ -69,11 +69,11 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
   });
 
-  // "Back to Suite" in the CBT portal used to fall back to /welcome, which
-  // bounced pupils straight back into the exam room — a one-loop trap.
+  // "Back to Suite" in the CBT portal returns pupils to their HSMS school dashboard.
   test("a pupil clicking Back to Suite leaves the exam room", async ({ page }) => {
     await signIn(page, "pupil");
-    await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
+    await page.goto("/cbt/student?orgSlug=greenfield");
     await page.getByRole("link", { name: "Back to Suite" }).click();
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
     await expect(page).not.toHaveURL(/\/cbt\/student/);
@@ -93,16 +93,22 @@ test.describe("signing in", () => {
 
   test("a pupil visiting /welcome keeps HSMS access (not bounced to CBT)", async ({ page }) => {
     await signIn(page, "pupil");
-    // Pupil lands in the exam room after sign-in (CBT-first).
-    await expect(page).toHaveURL(/\/cbt\/student/);
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
 
-    // Navigate to the Welcome Hub (the "Back to Suite" destination).
+    // Navigate to the Welcome Hub.
     await page.goto("/welcome");
     await expect(page).toHaveURL(/\/welcome$/);
 
     // The hub renders with the HSMS "Launch dashboard" tile visible and opens the student dashboard.
     await expect(page.getByRole("link", { name: "Launch dashboard" })).toBeVisible();
     await page.getByRole("link", { name: "Launch dashboard" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
+  });
+
+  test("a pupil navigating to a staff-only route is redirected to their school dashboard", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
+    await page.goto("/dashboard/school/greenfield/payroll");
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
   });
 

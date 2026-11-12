@@ -31,7 +31,7 @@ export const AUDIENCE_COPY: Record<SignInAudience, { title: string; subtitle: st
   },
   student: {
     title: 'Candidate & pupil sign in',
-    subtitle: 'Enter your school code and admission number to open your exams.',
+    subtitle: 'Enter your school code and admission number to open your student dashboard and exams.',
   },
 };
 
@@ -477,7 +477,7 @@ export default function SignInForm({
             </>
           ) : (
             <>
-              {tab === 'ADMISSION_NUMBER' ? 'Enter CBT Examination Portal' : 'Sign In to Dashboard'}
+              {tab === 'ADMISSION_NUMBER' ? 'Sign In to Student Portal' : 'Sign In to Dashboard'}
               <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
@@ -553,11 +553,9 @@ export function SignInShell({
       style={tenantVars as unknown as React.CSSProperties}
     >
       {branding && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: generateTenantStyleBlock(":root, [data-school-theme]", branding.theme),
-          }}
-        />
+        <style>
+          {generateTenantStyleBlock(":root, [data-school-theme]", branding.theme)}
+        </style>
       )}
       {/* Decorative Background Elements */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
