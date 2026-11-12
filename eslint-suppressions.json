@@ -42,14 +42,6 @@
       "count": 3
     }
   },
-  "app/admissions/[orgSlug]/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 6
-    },
-    "react/no-unescaped-entities": {
-      "count": 1
-    }
-  },
   "app/cbt/admin/EdgeAppliancesTab.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 8
