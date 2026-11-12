@@ -115,4 +115,33 @@ describe("API timeouts and cold-load token hydration", () => {
     ).rejects.toThrow("Request timed out. Please try again.");
     expect(seen).toEqual(["http://hcore.test/v1/me"]);
   });
+
+  it("resolves Netlify and custom hanoled.com API origins without falling back to localhost:3001", async () => {
+    const prevHsms = process.env.NEXT_PUBLIC_HSMS_URL;
+    const prevHcore = process.env.NEXT_PUBLIC_HCORE_URL;
+    const prevHcbt = process.env.NEXT_PUBLIC_HCBT_URL;
+    try {
+      (globalThis as { window?: unknown }).window = {
+        location: { hostname: "hanoled-web.netlify.app", pathname: "/", href: "" },
+      };
+      process.env.NEXT_PUBLIC_HSMS_URL = "https://api.hanoled.com";
+      process.env.NEXT_PUBLIC_HCORE_URL = "https://core-api.hanoled.com";
+      process.env.NEXT_PUBLIC_HCBT_URL = "https://cbt-api.hanoled.com";
+
+      const endpoints = await import("@/lib/api-endpoints");
+      expect(endpoints.getHsmsBaseUrl()).toBe("https://api.hanoled.com");
+      expect(endpoints.getHcoreBaseUrl()).toBe("https://core-api.hanoled.com");
+      expect(endpoints.getHcbtBaseUrl()).toBe("https://cbt-api.hanoled.com");
+
+      delete process.env.NEXT_PUBLIC_HSMS_URL;
+      expect(endpoints.getHsmsBaseUrl()).toBe("https://api.hanoled.com");
+    } finally {
+      if (prevHsms === undefined) delete process.env.NEXT_PUBLIC_HSMS_URL;
+      else process.env.NEXT_PUBLIC_HSMS_URL = prevHsms;
+      if (prevHcore === undefined) delete process.env.NEXT_PUBLIC_HCORE_URL;
+      else process.env.NEXT_PUBLIC_HCORE_URL = prevHcore;
+      if (prevHcbt === undefined) delete process.env.NEXT_PUBLIC_HCBT_URL;
+      else process.env.NEXT_PUBLIC_HCBT_URL = prevHcbt;
+    }
+  });
 });
