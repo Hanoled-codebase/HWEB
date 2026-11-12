@@ -420,11 +420,22 @@ export default function SignInForm({
             <label htmlFor="signin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Password
             </label>
-            {tab === 'ADMISSION_NUMBER' && (
-              <span className="text-[11px] text-slate-500">
-                Default: Admission No.
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {tab === 'ADMISSION_NUMBER' && (
+                <span className="text-[11px] text-slate-500">
+                  Default: Admission No.
+                </span>
+              )}
+              <Link
+                href={`/forgot-password?${new URLSearchParams({
+                  ...(selectedSchool?.slug || queryOrgSlug || branding?.slug ? { school: selectedSchool?.slug || queryOrgSlug || branding?.slug } : {}),
+                  audience: audience === 'student' || tab === 'ADMISSION_NUMBER' ? 'student' : audience === 'parent' ? 'parent' : 'staff',
+                }).toString()}`}
+                className="text-xs font-semibold text-blue-700 hover:text-blue-600 focus-visible:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
           <div className="relative">
             <input

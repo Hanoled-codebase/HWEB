@@ -354,6 +354,8 @@ const ROUTES = {
       return [200, gradebook()];
     }],
     ["GET", /^\/spreadsheets\/greenfield\/notifications$/, () => [200, []]],
+    ["POST", /^\/auth\/forgot-password$/, (_req, _m, body) => [200, { ok: true }]],
+    ["POST", /^\/auth\/reset-password$/, (_req, _m, body) => [200, { ok: true }]],
     // Sign-out asks HSMS to expire its own cookies (a legacy `accessToken`
     // among them) — see lib/sign-out.ts.
     ["POST", /^\/auth\/logout$/, () => [200, { ok: true }]],
