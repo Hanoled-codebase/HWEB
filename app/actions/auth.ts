@@ -228,7 +228,14 @@ async function finishSignIn(
   }
 
   // Track user identity type for routing
-  const isStudent = identifierType === 'ADMISSION_NUMBER';
+  const activeOrg = contextOrgs.find((o) => o.slug === organizationSlugOrId || o.id === organizationSlugOrId) || contextOrgs[0];
+  const isStudent =
+    identifierType === 'ADMISSION_NUMBER' ||
+    (Array.isArray(data.roles) && data.roles.includes('STUDENT')) ||
+    Boolean(data.studentId) ||
+    Boolean(data.learnerId) ||
+    Boolean(activeOrg?.products?.HSMS?.roles?.includes('STUDENT')) ||
+    contextOrgs.some((org) => org.products?.HSMS?.roles?.includes('STUDENT'));
   const isParentOnly = !isStudent && isParentOnlyAccount(contextOrgs, data.roles);
   const parentTarget = isParentOnly
     ? resolveParentDashboardPath(
