@@ -8,6 +8,8 @@ import {
   BookMarked,
   DollarSign,
   Home,
+  BookOpen,
+  BookText,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -306,6 +308,8 @@ export function useStudentMobileConfig(): MobileShellConfig | null {
     if (!currentOrg || !user) return null;
     const basePath = `/dashboard/school/${currentOrg.slug}`;
 
+    const homework: MobileNavItem = { key: "homework", label: "Homework", href: `${basePath}/student/homework`, icon: BookOpen };
+    const schemeOfWork: MobileNavItem = { key: "scheme-of-work", label: "Scheme of Work", href: `${basePath}/student/scheme-of-work`, icon: BookText };
     const results: MobileNavItem = { key: "results", label: "Results", href: `${basePath}/student/results`, icon: FileText };
     const exams: MobileNavItem = { key: "exams", label: "Exams", href: `${basePath}/student/pending`, icon: Clock };
     const timetable: MobileNavItem = { key: "timetable", label: "Timetable", href: `${basePath}/student/timetable`, icon: CalendarDays };
@@ -319,11 +323,11 @@ export function useStudentMobileConfig(): MobileShellConfig | null {
       basePath,
       tabs: [
         { key: "overview", label: "Home", href: basePath, icon: Home, exact: true },
+        { ...homework, exact: false },
         { ...results, exact: false },
         { ...exams, exact: false },
-        { ...timetable, exact: false },
       ],
-      sections: [{ title: "My school", items: [results, exams, timetable, library, invoices] }],
+      sections: [{ title: "My school", items: [homework, schemeOfWork, results, exams, timetable, library, invoices] }],
       identity: {
         orgName: currentOrg.name,
         orgLogo: currentOrg.logo,

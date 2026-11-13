@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { getTenantBranding, TenantBranding } from "@/lib/tenant-branding";
+import { resolvePostResetRedirect } from "@/lib/reset-password-routing";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,20 +49,38 @@ function ResetForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailQuery = searchParams.get("email") || "";
-  
+  const codeQuery = searchParams.get("code") || searchParams.get("token") || "";
+  const schoolParam = searchParams.get("school") || searchParams.get("orgSlug") || "";
+  const audienceParam = searchParams.get("audience") || "";
+
+  const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Need to capture email manually if not in URL, but standard flow puts it in URL
-  const [email, setEmail] = useState(emailQuery);
+  const [customEmail, setCustomEmail] = useState("");
+  const email = emailQuery || customEmail;
+
+  useEffect(() => {
+    if (schoolParam) {
+      void getTenantBranding(schoolParam).then((res) => {
+        if (res) setBranding(res);
+      });
+    }
+  }, [schoolParam]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      code: "",
+      code: codeQuery,
       newPassword: "",
     },
   });
+
+  // Re-sync code if query param updates or arrives on mount
+  useEffect(() => {
+    if (codeQuery) {
+      form.setValue("code", codeQuery);
+    }
+  }, [codeQuery, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!email) {
@@ -78,25 +99,52 @@ function ResetForm() {
         }),
       });
 
-      toast.success("Password reset successful! You can now sign in.");
-      router.push("/signin");
-
-    } catch (error: any) {
-      toast.error(error.message || "Invalid or expired reset code.");
+      toast.success("Password reset successful! Please sign in with your new password.");
+      const redirectUrl = resolvePostResetRedirect({
+        school: schoolParam,
+        audience: audienceParam,
+      });
+      router.push(redirectUrl);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Invalid or expired reset code.");
     } finally {
       setIsLoading(false);
     }
   }
 
+  const primaryBtnStyle = branding
+    ? { backgroundColor: branding.theme.primary }
+    : undefined;
+
+  const returnSignInUrl = resolvePostResetRedirect({
+    school: schoolParam,
+    audience: audienceParam,
+  });
+
   return (
     <Card className="m-rise w-full max-w-md border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
       <CardHeader className="space-y-2 pt-8">
-        <div className="mb-1 flex justify-center">
-          <HanoledLogo size="lg" variant="blue" iconOnly />
+        <div className="mb-2 flex justify-center">
+          {branding?.logo ? (
+            <Image
+              src={branding.logo}
+              alt={branding.name}
+              width={56}
+              height={56}
+              className="h-14 w-14 rounded-xl object-contain shadow-sm border border-slate-100"
+            />
+          ) : (
+            <HanoledLogo size="lg" variant="blue" iconOnly />
+          )}
         </div>
-        <h1 className="text-2xl font-semibold text-center text-slate-900">Reset your password</h1>
+        <h1 className="text-2xl font-semibold text-center text-slate-900">
+          Reset your password
+        </h1>
         <CardDescription className="text-center text-slate-500">
-          Enter the 6-digit code sent to your email and your new password.
+          {branding
+            ? `Enter the 6-digit code sent for your ${branding.name} account and choose a new password.`
+            : "Enter the 6-digit code sent to your email and your new password."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -105,17 +153,17 @@ function ResetForm() {
             {!emailQuery && (
               <div className="space-y-2">
                 <FormLabel className="text-slate-900">Email Address</FormLabel>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
+                <Input
+                  type="email"
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
                   placeholder="name@example.com"
                   autoComplete="email"
                   required
                 />
               </div>
             )}
-            
+
             <FormField
               control={form.control}
               name="code"
@@ -165,8 +213,13 @@ function ResetForm() {
                 </FormItem>
               )}
             />
-            
-            <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800" disabled={isLoading || !email}>
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium"
+              style={primaryBtnStyle}
+              disabled={isLoading || !email}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Reset Password
             </Button>
@@ -175,7 +228,7 @@ function ResetForm() {
 
         <div className="mt-6 text-center text-sm text-slate-500">
           Return to{" "}
-          <Link href="/signin" className="font-semibold text-blue-700 hover:text-blue-600">
+          <Link href={returnSignInUrl} className="font-semibold text-blue-700 hover:text-blue-600">
             Sign in
           </Link>
         </div>
@@ -187,11 +240,13 @@ function ResetForm() {
 export default function ResetPasswordPage() {
   return (
     <SignInShell>
-      <Suspense fallback={
-        <Card className="flex w-full max-w-md justify-center border-slate-200/80 p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
-        </Card>
-      }>
+      <Suspense
+        fallback={
+          <Card className="flex w-full max-w-md justify-center border-slate-200/80 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
+          </Card>
+        }
+      >
         <ResetForm />
       </Suspense>
     </SignInShell>

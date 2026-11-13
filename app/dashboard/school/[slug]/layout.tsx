@@ -15,6 +15,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { StudentMobileFrame, StudentMobileTopBar } from "@/components/dashboard/StudentMobileFrame";
 import { StaffRouteGuard } from "@/components/dashboard/StaffRouteGuard";
+import { StudentRouteGuard } from "@/components/dashboard/StudentRouteGuard";
 import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
 import { MobileMenuProvider } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { MobileTopBar } from "@/components/dashboard/mobile/MobileTopBar";
@@ -264,7 +265,7 @@ export default function DashboardLayout({
                 {/* pb-safe-nav (tab bar clearance) is plain CSS that outranks Tailwind padding, so desktop needs ! to drop it. */}
                 <main className="flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:!pb-6 lg:p-8 lg:!pb-8">
                   <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
-                    {children}
+                    <StudentRouteGuard slug={slug}>{children}</StudentRouteGuard>
                   </div>
                 </main>
 

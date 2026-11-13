@@ -79,12 +79,25 @@ export function proxy(request: NextRequest) {
     // If a user is intentionally visiting an explicit entrance like /signin/staff, /signin/student, /signin/parent,
     // let them reach the sign-in form.
     if (pathname === '/signin' || pathname === '/signup') {
+      const candidateRedirect = request.cookies.get('hweb_candidate_redirect')?.value;
+      if (isSafeRedirectUrl(candidateRedirect) && candidateRedirect !== '/welcome') {
+        return NextResponse.redirect(new URL(candidateRedirect, request.url));
+      }
       const parentRedirect = request.cookies.get('hweb_parent_redirect')?.value;
       if (isSafeRedirectUrl(parentRedirect) && parentRedirect !== '/welcome') {
         return NextResponse.redirect(new URL(parentRedirect, request.url));
       }
-      if (request.cookies.get('hweb_user_role')?.value === 'PARENT') {
+      const userRole = request.cookies.get('hweb_user_role')?.value;
+      if (userRole === 'PARENT') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+      if (userRole === 'STUDENT') {
+        const primarySlug = request.cookies.get('hweb_primary_org_slug')?.value;
+        const allowed = (request.cookies.get('hweb_allowed_platforms')?.value || '').split(',').filter(Boolean);
+        if (allowed.includes('HSMS')) {
+          return NextResponse.redirect(new URL(primarySlug ? `/dashboard/school/${encodeURIComponent(primarySlug)}` : '/dashboard', request.url));
+        }
+        return NextResponse.redirect(new URL('/cbt/student', request.url));
       }
       return NextResponse.redirect(new URL('/welcome', request.url));
     }

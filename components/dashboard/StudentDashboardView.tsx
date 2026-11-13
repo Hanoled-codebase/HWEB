@@ -31,6 +31,7 @@ import {
   AlertCircle,
   BookMarked,
   Library,
+  BookText,
 } from "lucide-react";
 
 type DashboardData = {
@@ -373,7 +374,43 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
           Quick links
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <Link
+            href={`/dashboard/school/${orgSlug}/student/homework`}
+            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 shrink-0">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-950">Homework</p>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Class assignments & submissions
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-300" />
+          </Link>
+
+          <Link
+            href={`/dashboard/school/${orgSlug}/student/scheme-of-work`}
+            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 shrink-0">
+                <BookText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-950">Scheme of Work</p>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Weekly syllabus for your subjects
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-300" />
+          </Link>
+
           <Link
             href={`/dashboard/school/${orgSlug}/student/results`}
             className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"

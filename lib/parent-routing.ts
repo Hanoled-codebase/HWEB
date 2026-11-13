@@ -39,10 +39,10 @@ export function isParentOnlyAccount(
 }
 
 /**
- * Resolves the school dashboard landing path for a parent account, honoring an
- * explicit organization slug/id when present and falling back to /dashboard.
+ * Resolves the school dashboard landing path for an org-scoped user (parent or student),
+ * honoring an explicit organization slug/id when present and falling back to /dashboard.
  */
-export function resolveParentDashboardPath(
+export function resolveOrgDashboardPath(
   organizations: ContextOrganization[] = [],
   preferredOrgSlugOrId?: string | null,
   fallbackSlug?: string | null,
@@ -58,6 +58,12 @@ export function resolveParentDashboardPath(
   const targetSlug = matched?.slug || organizations[0]?.slug || fallbackSlug || "";
   return targetSlug ? `/dashboard/school/${encodeURIComponent(targetSlug)}` : "/dashboard";
 }
+
+/**
+ * Resolves the school dashboard landing path for a parent account, honoring an
+ * explicit organization slug/id when present and falling back to /dashboard.
+ */
+export const resolveParentDashboardPath = resolveOrgDashboardPath;
 
 /**
  * True when a callbackUrl represents a generic post-auth landing rather than

@@ -31,7 +31,7 @@ export const AUDIENCE_COPY: Record<SignInAudience, { title: string; subtitle: st
   },
   student: {
     title: 'Candidate & pupil sign in',
-    subtitle: 'Enter your school code and admission number to open your exams.',
+    subtitle: 'Enter your school code and admission number to open your student dashboard and exams.',
   },
 };
 
@@ -420,11 +420,22 @@ export default function SignInForm({
             <label htmlFor="signin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Password
             </label>
-            {tab === 'ADMISSION_NUMBER' && (
-              <span className="text-[11px] text-slate-500">
-                Default: Admission No.
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {tab === 'ADMISSION_NUMBER' && (
+                <span className="text-[11px] text-slate-500">
+                  Default: Admission No.
+                </span>
+              )}
+              <Link
+                href={`/forgot-password?${new URLSearchParams({
+                  ...(selectedSchool?.slug || queryOrgSlug || branding?.slug ? { school: selectedSchool?.slug || queryOrgSlug || branding?.slug } : {}),
+                  audience: audience === 'student' || tab === 'ADMISSION_NUMBER' ? 'student' : audience === 'parent' ? 'parent' : 'staff',
+                }).toString()}`}
+                className="text-xs font-semibold text-blue-700 hover:text-blue-600 focus-visible:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
           <div className="relative">
             <input
@@ -477,7 +488,7 @@ export default function SignInForm({
             </>
           ) : (
             <>
-              {tab === 'ADMISSION_NUMBER' ? 'Enter CBT Examination Portal' : 'Sign In to Dashboard'}
+              {tab === 'ADMISSION_NUMBER' ? 'Sign In to Student Portal' : 'Sign In to Dashboard'}
               <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
@@ -553,11 +564,9 @@ export function SignInShell({
       style={tenantVars as unknown as React.CSSProperties}
     >
       {branding && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: generateTenantStyleBlock(":root, [data-school-theme]", branding.theme),
-          }}
-        />
+        <style>
+          {generateTenantStyleBlock(":root, [data-school-theme]", branding.theme)}
+        </style>
       )}
       {/* Decorative Background Elements */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -278,6 +278,41 @@ const ROUTES = {
       todayTimetable: [],
       pendingExams: [],
     }]],
+    ["GET", /^\/student\/greenfield\/scheme-of-work$/, () => [200, [
+      {
+        id: "sow-1",
+        title: "Mathematics First Term Syllabus",
+        term: "Term 1",
+        academicYear: "2026/2027",
+        subject: { id: "maths", name: "Mathematics", code: "MTH" },
+        classLevel: { id: "jss1a", name: "JSS 1A" },
+        createdBy: { user: { name: "Mr Maths" } },
+        weeks: [
+          { week: 1, topic: "Whole numbers and counting", objectives: "Count up to millions" },
+          { week: 2, topic: "Fractions and Decimals", objectives: "Add and divide fractions" },
+        ],
+      },
+    ]]],
+    ["GET", /^\/greenfield\/my-homework$/, () => [200, [
+      {
+        id: "hw-e2e-1",
+        title: "Algebra Exercises 1 to 10",
+        description: "Solve all problems on page 42.",
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
+        totalMarks: 20,
+        classLevelId: "jss1a",
+        subjectId: "maths",
+        subject: { id: "maths", name: "Mathematics", code: "MTH" },
+        classLevel: { id: "jss1a", name: "JSS 1A" },
+        createdBy: { user: { name: "Mr Maths" } },
+        submissions: [],
+      },
+    ]]],
+    ["POST", /^\/greenfield\/homework\/[^/]+\/submit$/, (_req, _m, body) => [201, {
+      id: "sub-1",
+      fileUrl: body.fileUrl,
+      submittedAt: new Date().toISOString(),
+    }]],
     ["GET", /^\/greenfield\/study-materials$/, () => [200, []]],
     // Ada's record, as staff open it from the students list.
     ["GET", /^\/students\/greenfield\/stu-ada$/, () => [200, { ...CHILD, hcoreLearnerId: USERS.pupil.learnerId }]],
@@ -319,6 +354,8 @@ const ROUTES = {
       return [200, gradebook()];
     }],
     ["GET", /^\/spreadsheets\/greenfield\/notifications$/, () => [200, []]],
+    ["POST", /^\/auth\/forgot-password$/, (_req, _m, body) => [200, { ok: true }]],
+    ["POST", /^\/auth\/reset-password$/, (_req, _m, body) => [200, { ok: true }]],
     // Sign-out asks HSMS to expire its own cookies (a legacy `accessToken`
     // among them) — see lib/sign-out.ts.
     ["POST", /^\/auth\/logout$/, () => [200, { ok: true }]],
