@@ -56,13 +56,13 @@ export default async function DashboardRootLayout({
 
   // 3. If the person has no HSMS access, route them to the surface they do have.
   // CBT-only candidates (external exam candidates) hit this after signing in,
-  // or when their sign-in cookies are present but stale — pupils get the exam
-  // room, staff with CBT-admin rights get the admin console.
+  // or when their sign-in cookies are present but stale.
   if (allowedPlatforms && !allowedPlatforms.includes("HSMS")) {
+    if (cookieStore.get("hweb_user_role")?.value === "STUDENT") {
+      // Enrolled students stay on their school dashboard and must not be bounced to CBT.
+      return children;
+    }
     if (allowedPlatforms.includes("HCBT")) {
-      if (cookieStore.get("hweb_user_role")?.value === "STUDENT") {
-        redirect("/cbt/student");
-      }
       redirect("/cbt/admin");
     } else {
       redirect("/welcome");
