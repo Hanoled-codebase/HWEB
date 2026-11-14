@@ -200,6 +200,22 @@ async function finishSignIn(
     }
   }
 
+  // Track user identity type for routing
+  const activeOrg = contextOrgs.find((o) => o.slug === organizationSlugOrId || o.id === organizationSlugOrId) || contextOrgs[0];
+  const isStudent =
+    identifierType === 'ADMISSION_NUMBER' ||
+    (Array.isArray(data.roles) && data.roles.includes('STUDENT')) ||
+    Boolean(activeOrg?.products?.HSMS?.roles?.includes('STUDENT')) ||
+    contextOrgs.some((org) => org.products?.HSMS?.roles?.includes('STUDENT'));
+
+  // If user is an enrolled student, guarantee HSMS entitlement and clear any candidate bounce
+  if (isStudent) {
+    if (!allowedPlatforms.includes('HSMS')) {
+      allowedPlatforms = ['HSMS', ...allowedPlatforms];
+    }
+    cookieStore.delete('hweb_candidate_redirect');
+  }
+
   // Set cookie for strict frontend route enforcement
   cookieStore.set('hweb_allowed_platforms', allowedPlatforms.join(','), {
     httpOnly: true,
@@ -227,13 +243,10 @@ async function finishSignIn(
     cookieStore.delete('hweb_primary_org_slug');
   }
 
-  // Track user identity type for routing
-  const activeOrg = contextOrgs.find((o) => o.slug === organizationSlugOrId || o.id === organizationSlugOrId) || contextOrgs[0];
-  const isStudent =
-    identifierType === 'ADMISSION_NUMBER' ||
-    (Array.isArray(data.roles) && data.roles.includes('STUDENT')) ||
-    Boolean(activeOrg?.products?.HSMS?.roles?.includes('STUDENT')) ||
-    contextOrgs.some((org) => org.products?.HSMS?.roles?.includes('STUDENT'));
+  const isCbtOnlyCandidate = !isStudent && (
+    (Array.isArray(data.roles) && data.roles.includes('CANDIDATE')) ||
+    Boolean(activeOrg?.products?.HCBT?.roles?.includes('CANDIDATE'))
+  );
   const isParentOnly = !isStudent && isParentOnlyAccount(contextOrgs, data.roles);
   const parentTarget = isParentOnly
     ? resolveParentDashboardPath(
@@ -266,19 +279,17 @@ async function finishSignIn(
   let redirectUrl = isSafeRedirectUrl(callbackUrl) ? callbackUrl! : '/welcome';
 
   if (isStudent) {
-    if (allowedPlatforms.includes('HSMS')) {
-      const studentTarget = resolveOrgDashboardPath(
-        contextOrgs,
-        organizationSlugOrId || data.activeOrganization?.slug,
-        organizationSlugOrId || data.activeOrganization?.slug,
-      );
-      redirectUrl = isGenericPostAuthTarget(callbackUrl) ? studentTarget : callbackUrl!;
-    } else {
-      // CBT-only candidates (no HSMS role/entitlement) go straight to their exam room.
-      const targetSlug = organizationSlugOrId || primaryOrgSlug;
-      const orgParam = targetSlug ? `?orgSlug=${encodeURIComponent(targetSlug)}` : '';
-      redirectUrl = `/cbt/student${orgParam}`;
-    }
+    const studentTarget = resolveOrgDashboardPath(
+      contextOrgs,
+      organizationSlugOrId || data.activeOrganization?.slug,
+      organizationSlugOrId || data.activeOrganization?.slug,
+    );
+    redirectUrl = isGenericPostAuthTarget(callbackUrl) ? studentTarget : callbackUrl!;
+  } else if (isCbtOnlyCandidate) {
+    // CBT-only candidates (no HSMS role/entitlement) go straight to their exam room.
+    const targetSlug = organizationSlugOrId || primaryOrgSlug;
+    const orgParam = targetSlug ? `?orgSlug=${encodeURIComponent(targetSlug)}` : '';
+    redirectUrl = `/cbt/student${orgParam}`;
   } else if (parentTarget) {
     // Parents never see the suite welcome screen; land directly on their school dashboard
     // unless they signed in from an explicit feature deep link.
