@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Search } from "lucide-react";
+import { LogOut, ChevronDown, Search, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -291,6 +291,13 @@ export function AppSidebar({
             </div>
           </div>
           <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => router.push("/account/password")}
+            className="cursor-pointer"
+          >
+            <KeyRound className="mr-2 h-4 w-4" />
+            <span>Change password</span>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>

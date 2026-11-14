@@ -36,6 +36,7 @@ import {
   DollarSign,
   BookOpen,
   BookText,
+  KeyRound,
 } from "lucide-react";
 
 export function StudentSidebar() {
@@ -228,6 +229,13 @@ export function StudentSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => router.push("/account/password")}
+                  className="cursor-pointer"
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  <span>Change password</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
                   className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"

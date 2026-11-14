@@ -7,6 +7,7 @@ import {
   Check,
   ChevronRight,
   LogOut,
+  KeyRound,
   Search,
   School,
   ShieldCheck,
@@ -324,6 +325,15 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
               >
                 <School className="h-4 w-4 text-slate-500" /> {switching ? "Back" : "Switch school"}
               </button>
+            )}
+            {!confirmLogout && (
+              <Link
+                href="/account/password"
+                onClick={close}
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 active:bg-slate-50"
+              >
+                <KeyRound className="h-4 w-4 text-slate-500" /> Change password
+              </Link>
             )}
             {confirmLogout ? (
               <div className="col-span-2 grid grid-cols-2 gap-2" role="group" aria-label="Confirm log out">
