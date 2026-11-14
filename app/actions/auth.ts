@@ -228,7 +228,12 @@ async function finishSignIn(
   }
 
   // Track user identity type for routing
-  const isStudent = identifierType === 'ADMISSION_NUMBER';
+  const activeOrg = contextOrgs.find((o) => o.slug === organizationSlugOrId || o.id === organizationSlugOrId) || contextOrgs[0];
+  const isStudent =
+    identifierType === 'ADMISSION_NUMBER' ||
+    (Array.isArray(data.roles) && data.roles.includes('STUDENT')) ||
+    Boolean(activeOrg?.products?.HSMS?.roles?.includes('STUDENT')) ||
+    contextOrgs.some((org) => org.products?.HSMS?.roles?.includes('STUDENT'));
   const isParentOnly = !isStudent && isParentOnlyAccount(contextOrgs, data.roles);
   const parentTarget = isParentOnly
     ? resolveParentDashboardPath(
@@ -270,7 +275,8 @@ async function finishSignIn(
       redirectUrl = isGenericPostAuthTarget(callbackUrl) ? studentTarget : callbackUrl!;
     } else {
       // CBT-only candidates (no HSMS role/entitlement) go straight to their exam room.
-      const orgParam = organizationSlugOrId ? `?orgSlug=${encodeURIComponent(organizationSlugOrId)}` : '';
+      const targetSlug = organizationSlugOrId || primaryOrgSlug;
+      const orgParam = targetSlug ? `?orgSlug=${encodeURIComponent(targetSlug)}` : '';
       redirectUrl = `/cbt/student${orgParam}`;
     }
   } else if (parentTarget) {
