@@ -189,16 +189,28 @@ export default function StudentDashboard() {
         };
       });
 
+      // In random mode, shuffle and slice to selected question count
+      let selectedQuestions = [...normalizedQuestions];
+      if (practiceYearMode === "random") {
+        for (let i = selectedQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedQuestions[i], selectedQuestions[j]] = [selectedQuestions[j], selectedQuestions[i]];
+        }
+      }
+      if (practiceQuestionCount && selectedQuestions.length > practiceQuestionCount) {
+        selectedQuestions = selectedQuestions.slice(0, practiceQuestionCount);
+      }
+
       const practiceSession = {
         examResultId: "practice",
         exam: {
           id: "practice",
-          title: `${practiceBoard.toUpperCase()} ${practiceSubject} Simulator`,
+          title: `${practiceBoard.toUpperCase()} ${practiceSubject} Simulator (HQB)`,
           duration: practiceQuestionCount === 60 ? 90 : 45, // mins
-          totalQuestions: normalizedQuestions.length,
+          totalQuestions: selectedQuestions.length,
           passMark: 50,
         },
-        questions: normalizedQuestions,
+        questions: selectedQuestions,
         startedAt: new Date().toISOString(),
       };
 
@@ -566,7 +578,7 @@ export default function StudentDashboard() {
                     <h2 className="text-lg font-bold">Dynamic Exam Practice Simulator</h2>
                   </div>
                   <p className="text-xs text-blue-100 mt-1 leading-relaxed">
-                    Select a board type (JAMB or NECO), choose your subject, allocate either random years or a specific exam year, and instantly begin a timed dynamic practice assessment.
+                    Powered by Hanoled Question Bank (HQB). Select a board (JAMB, WAEC, or NECO), choose your subject, allocate either random years or a specific exam year, and instantly begin a timed practice session.
                   </p>
                 </div>
 
@@ -574,28 +586,42 @@ export default function StudentDashboard() {
                   {/* Board selection */}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">1. Select Assessment Board</label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("jamb")}
-                        className={`p-4 rounded-sm border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "jamb"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
                         }`}
                       >
-                        <span className="text-sm block">JAMB (UTME) Practice</span>
+                        <span className="text-sm font-bold block">JAMB (UTME)</span>
+                        <span className="text-[11px] text-slate-500 block">UTME Bank</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPracticeBoard("waec")}
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
+                          practiceBoard === "waec"
+                            ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
+                            : "border-slate-200/60 hover:border-slate-300 text-slate-600"
+                        }`}
+                      >
+                        <span className="text-sm font-bold block">WAEC (WASSCE)</span>
+                        <span className="text-[11px] text-slate-500 block">Senior Certificate</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("neco")}
-                        className={`p-4 rounded-sm border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "neco"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
                         }`}
                       >
-                        <span className="text-sm block">NECO SSCE Practice</span>
+                        <span className="text-sm font-bold block">NECO SSCE</span>
+                        <span className="text-[11px] text-slate-500 block">National Exams</span>
                       </button>
                     </div>
                   </div>

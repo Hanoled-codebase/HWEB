@@ -707,7 +707,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Search/Retrieve Questions from Nigeria Past Questions API and Cache them
+  // Search/Retrieve Questions from Hanoled Question Bank (HQB) and Cache them
   const handleQueryPastQuestions = async () => {
     if (!importParams.subject || !importParams.ssceBoard) {
       toast.error("Please select a Subject and an SSCE Board");
@@ -717,7 +717,7 @@ export default function AdminDashboard() {
     setFetchingPastQuestions(true);
     setPreviewQuestionsCount(null);
     try {
-      toast.info(`Querying proxy database for ${importParams.ssceBoard.toUpperCase()} ${importParams.subject}...`);
+      toast.info(`Querying Hanoled Question Bank for ${importParams.ssceBoard.toUpperCase()} ${importParams.subject}...`);
       const res = await cbtApi.fetchPastQuestions(
         importParams.subject,
         importParams.ssceBoard,
@@ -728,18 +728,14 @@ export default function AdminDashboard() {
       setPreviewQuestionsCount(count);
       
       if (count > 0) {
-        const source = res.fromCache ? "cache" : "API";
+        const source = res.fromCache ? "local cache" : "HQB Question Bank";
         toast.success(`Found ${count} questions from ${source}! Click "2. Import Selected" to add them to your exam.`);
       } else {
-        toast.warning("No questions found for this combination in the Nigeria Past Questions API database.");
+        toast.warning("No questions found for this combination in Hanoled Question Bank.");
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("429")) {
-        toast.error("API rate limit reached. Let's try importing already cached records.");
-      } else {
-        toast.error(err.message || "Failed to search proxy past questions API.");
-      }
+      toast.error(err.message || "Failed to search Hanoled Question Bank.");
     } finally {
       setFetchingPastQuestions(false);
     }
@@ -1128,8 +1124,9 @@ export default function AdminDashboard() {
                           onChange={(e) => setImportParams((prev) => ({ ...prev, ssceBoard: e.target.value }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
                         >
-                          <option value="waec">WAEC</option>
-                          <option value="neco">NECO</option>
+                          <option value="waec">WAEC (WASSCE)</option>
+                          <option value="jamb">JAMB (UTME)</option>
+                          <option value="neco">NECO SSCE</option>
                         </select>
                       </div>
 
@@ -1186,7 +1183,7 @@ export default function AdminDashboard() {
                         ) : (
                           <>
                             <Search className="w-3.5 h-3.5" />
-                            <span>1. Search API</span>
+                            <span>1. Search Question Bank</span>
                           </>
                         )}
                       </button>
