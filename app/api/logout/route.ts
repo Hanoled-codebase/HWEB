@@ -10,7 +10,11 @@ import { SESSION_COOKIE_NAMES, sessionCookieClearTargets } from "@/lib/session-c
 // the still-present cookie as "logged in" and bounced back into the app,
 // which hit the same 401 again: an infinite /signin <-> /welcome loop.
 export async function GET(request: NextRequest) {
+  const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
   const url = new URL("/signin", request.url);
+  if (callbackUrl && !callbackUrl.startsWith("/signin") && !callbackUrl.startsWith("/api/")) {
+    url.searchParams.set("callbackUrl", callbackUrl);
+  }
   const response = NextResponse.redirect(url);
   for (const name of SESSION_COOKIE_NAMES) {
     for (const target of sessionCookieClearTargets(name)) response.cookies.delete(target);

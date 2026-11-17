@@ -173,9 +173,11 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (isInitialized && !authLoading && !user) {
-      router.replace(`/signin?callbackUrl=${encodeURIComponent(pathname)}`);
+      if (typeof window !== "undefined") {
+        window.location.href = `/api/logout?callbackUrl=${encodeURIComponent(pathname)}`;
+      }
     }
-  }, [authLoading, isInitialized, pathname, router, user]);
+  }, [authLoading, isInitialized, pathname, user]);
 
   // Load the org context in parallel with checkAuth (/v1/me). Neither needs
   // the other's result (both authenticate via the bearer token), so waiting
@@ -234,7 +236,9 @@ export default function DashboardLayout({
     );
   }
 
-  if (!currentOrg || !user) return null;
+  if (!user || !currentOrg) {
+    return <HanoledLoader />;
+  }
 
   // Student shell: one copy of the page for every width. The phone bars are
   // md:hidden and the desktop header hidden below md, like the staff shell.

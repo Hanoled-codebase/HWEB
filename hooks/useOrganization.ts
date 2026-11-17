@@ -418,7 +418,11 @@ export const useOrganization = create<OrgState>((set, get) => ({
           isLoading: false,
         });
         return;
-      } catch (err) {
+      } catch (err: unknown) {
+        const errorObj = err as { status?: number; code?: string; message?: string } | null;
+        if (errorObj?.status === 401 || errorObj?.code === "INVALID_TOKEN" || errorObj?.code === "UNAUTHORIZED" || errorObj?.message?.includes("expired")) {
+          throw err;
+        }
         // Fallback for HCORE transition if member endpoints don't exist
         console.warn("Member endpoints missing, using generic fallback for HCORE", err);
         set({
