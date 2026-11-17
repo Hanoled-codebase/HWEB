@@ -45,6 +45,8 @@ export default function StudentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  // Which stored result the PDFs render: mid-term (raw stage %) or end-of-term.
+  const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
 
   useEffect(() => {
     async function loadResults() {
@@ -119,19 +121,31 @@ export default function StudentResultsPage() {
               Print / Preview
             </Button>
 
+            <select
+              value={pdfResultType}
+              onChange={(e) =>
+                setPdfResultType(e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")
+              }
+              className="h-9 rounded-md border border-input bg-white px-2 text-sm font-medium"
+              aria-label="Report type for PDF download"
+            >
+              <option value="END_OF_TERM">End-of-term</option>
+              <option value="MID_TERM">Mid-term</option>
+            </select>
+
             <Button
               variant="outline"
               size="sm"
               onClick={async () => {
                 try {
-                  const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027`;
+                  const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027&resultType=${pdfResultType}`;
                   const res = await fetch(url, authFetchInit("hcore"));
                   if (!res.ok) throw new Error("Failed to download");
                   const blob = await res.blob();
                   const blobUrl = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = blobUrl;
-                  a.download = `report-card-${data.student.firstName}-${data.student.lastName}.pdf`;
+                  a.download = `report-card-${data.student.firstName}-${data.student.lastName}${pdfResultType === "MID_TERM" ? "-mid-term" : ""}.pdf`;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
@@ -259,6 +273,7 @@ export default function StudentResultsPage() {
           student={data.student}
           term="First Term"
           academicYear="2026/2027"
+          resultType={pdfResultType}
           results={data.subjects.map((sub) => {
             const score = Math.round(sub.totalScore || 0);
             const gradeObj = computeNigerianGrade(score);

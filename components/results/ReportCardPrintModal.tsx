@@ -3,6 +3,13 @@
 import React, { useRef, useState, useMemo } from "react";
 import { Printer, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { downloadReportCardPdf } from "@/lib/report-card-download";
 import {
   getCurriculumSubjectsForClass,
@@ -55,6 +62,8 @@ export interface ReportCardPrintModalProps {
     absent?: number | string;
   };
   resumptionDate?: string;
+  /** Whether a mid-term result exists to switch to for the backend PDF. */
+  resultType?: "MID_TERM" | "END_OF_TERM";
   onClose: () => void;
 }
 
@@ -125,10 +134,14 @@ export default function ReportCardPrintModal({
   ceoComment: initialCeoComment = "",
   attendance: initialAttendance = { schoolOpen: "", present: "", absent: "" },
   resumptionDate: initialResumptionDate = "",
+  resultType = "END_OF_TERM",
   onClose,
 }: ReportCardPrintModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  // Report type for the backend PDF download; the on-screen preview renders the
+  // sheet rows it is given, so this only steers which stored result is used.
+  const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">(resultType);
 
   // Editable fields in preview
   const [ceoComment, setCeoComment] = useState(initialCeoComment);
@@ -156,6 +169,7 @@ export default function ReportCardPrintModal({
         studentName: studentFullName,
         term,
         academicYear,
+        resultType: pdfResultType,
       });
       if (!ok) {
         // Fallback to native print to PDF if backend PDF endpoint isn't available
@@ -395,6 +409,21 @@ export default function ReportCardPrintModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <Select
+              value={pdfResultType}
+              onValueChange={(v) => setPdfResultType(v === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")}
+            >
+              <SelectTrigger
+                aria-label="Report type for PDF download"
+                className="h-8 w-[7.5rem] border-neutral-700 bg-neutral-900 text-neutral-200 text-xs font-semibold px-3 gap-1"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="END_OF_TERM">End-of-term</SelectItem>
+                <SelectItem value="MID_TERM">Mid-term</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               onClick={handlePrint}

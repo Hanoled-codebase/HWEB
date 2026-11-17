@@ -370,8 +370,13 @@ export default function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [forbidden, setForbidden] = useState(false);
-  const [exportTerm, setExportTerm] = useState("Term 1");
+  // Free-form to match how terms are stored (e.g. "First Term") — the PDF
+  // export looks the stored result up by this exact string.
+  const [exportTerm, setExportTerm] = useState("First Term");
   const [exportYear, setExportYear] = useState("2026/2027");
+  // Which stored result the PDF exports render: mid-term (raw stage %) or
+  // end-of-term (mid-term share + end-of-term components).
+  const [exportResultType, setExportResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
   const [printModalGroup, setPrintModalGroup] = useState<StudentResultGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("all");
@@ -394,7 +399,7 @@ export default function ResultsPage() {
       const res = await fetch(
         `${baseUrl}/export/${currentOrg.slug}/report-card-bundle/${targetClassId}?term=${encodeURIComponent(
           exportTerm
-        )}&academicYear=${encodeURIComponent(exportYear)}`,
+        )}&academicYear=${encodeURIComponent(exportYear)}&resultType=${exportResultType}`,
         authFetchInit("hcore")
       );
 
@@ -411,7 +416,7 @@ export default function ResultsPage() {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `Report_Cards_Bundle_${exportTerm.replace(/\s+/g, "_")}_${exportYear.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;
+      a.download = `Report_Cards_Bundle_${exportTerm.replace(/\s+/g, "_")}${exportResultType === "MID_TERM" ? "_Mid_Term" : ""}_${exportYear.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -593,15 +598,14 @@ export default function ResultsPage() {
               alerts.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <select
+              <input
+                type="text"
                 value={exportTerm}
                 onChange={(e) => setExportTerm(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
-              >
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-              </select>
+                className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                placeholder="Term"
+                aria-label="Term"
+              />
               <input
                 type="text"
                 value={exportYear}
@@ -609,6 +613,19 @@ export default function ResultsPage() {
                 className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
                 placeholder="Year"
               />
+              <select
+                value={exportResultType}
+                onChange={(e) =>
+                  setExportResultType(
+                    e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM",
+                  )
+                }
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                aria-label="Report type for PDF exports"
+              >
+                <option value="END_OF_TERM">End-of-term</option>
+                <option value="MID_TERM">Mid-term</option>
+              </select>
               {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") && (
                 <Button
                   type="button"
@@ -1049,6 +1066,7 @@ export default function ResultsPage() {
                                               studentName: `${group.student.firstName} ${group.student.lastName}`,
                                               term: exportTerm,
                                               academicYear: exportYear,
+                                              resultType: exportResultType,
                                             })
                                           }
                                           className="rounded-lg p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100"
@@ -1090,6 +1108,7 @@ export default function ResultsPage() {
                               studentName: `${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`,
                               term: exportTerm,
                               academicYear: exportYear,
+                              resultType: exportResultType,
                             })
                           }
                           className="h-9 gap-1.5 rounded-xl border-neutral-300 bg-white px-3.5 text-xs font-semibold text-black hover:border-black hover:bg-neutral-50 shadow-xs transition-colors"
@@ -1264,6 +1283,7 @@ export default function ResultsPage() {
                 student={printModalGroup.student}
                 term={exportTerm}
                 academicYear={exportYear}
+                resultType={exportResultType}
                 classStudentCount={
                   resultGroups.filter(
                     (g) =>

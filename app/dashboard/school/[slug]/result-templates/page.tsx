@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Metric = { name: string; label: string; weight: number };
+type Metric = { name: string; label: string; weight: number; stage?: "MID_TERM" | "END_OF_TERM" };
 type GradeLevel = { grade: string; min: number; max: number };
 type Template = {
   id: string;
@@ -39,12 +39,15 @@ type Template = {
   isApproved: boolean;
   approvedAt?: string | null;
   approvedById?: string | null;
+  /** Share (0-100) of the final result the mid-term stage contributes. */
+  midTermTotal: number;
 };
 
 type TermResult = {
   id: string;
   term: string;
   academicYear: string;
+  resultType: string;
   totalScore: number;
   grade: string;
   position: number | null;
@@ -75,8 +78,13 @@ export default function ResultTemplatesPage() {
   
   // Results tab filters
   const [filterClass, setFilterClass] = useState("");
-  const [filterTerm, setFilterTerm] = useState("Term 1");
+  // Free-form to match how terms are stored (e.g. "First Term"), since HCORE
+  // period names — not "Term 1"-style labels — resolve the compute window.
+  const [filterTerm, setFilterTerm] = useState("First Term");
   const [filterYear, setFilterYear] = useState("2026/2027");
+  // Which stored results the tab shows and computes: mid-term rows are the raw
+  // mid-term percentage; end-of-term rows blend the mid-term share in.
+  const [resultType, setResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
   const [computing, setComputing] = useState(false);
   const [weightTerm1, setWeightTerm1] = useState("20");
   const [weightTerm2, setWeightTerm2] = useState("30");
@@ -90,6 +98,8 @@ export default function ResultTemplatesPage() {
   const [formIsApproved, setFormIsApproved] = useState(true);
   const [formMetrics, setFormMetrics] = useState<Metric[]>([]);
   const [formGrades, setFormGrades] = useState<GradeLevel[]>([]);
+  // The share of the final result the mid-term stage contributes (0 = none).
+  const [formMidTermTotal, setFormMidTermTotal] = useState("0");
 
   useEffect(() => {
     if (!currentOrg) return;
@@ -124,7 +134,11 @@ export default function ResultTemplatesPage() {
     if (!currentOrg) return;
     setLoadingR(true);
     try {
-      const params = new URLSearchParams({ term: filterTerm, academicYear: filterYear });
+      const params = new URLSearchParams({
+        term: filterTerm,
+        academicYear: filterYear,
+        resultType,
+      });
       if (filterClass) params.set("classLevelId", filterClass);
       const res = await apiFetch(`/result-templates/results/${currentOrg.slug}?${params}`);
       const d = (res as any).data ?? res;
@@ -135,6 +149,17 @@ export default function ResultTemplatesPage() {
       setLoadingR(false);
     }
   }
+
+  // Mid-term share of the final result, kept in sync with the form input.
+  const formMidTermTotalNum = Math.min(Math.max(Number(formMidTermTotal) || 0, 0), 100);
+  // Per-stage weight sums. Metrics without a stage count as end-of-term
+  // (legacy templates), matching the backend's normalization.
+  const midTermSum = formMetrics
+    .filter((m) => (m.stage ?? "END_OF_TERM") === "MID_TERM")
+    .reduce((sum, m) => sum + (Number(m.weight) || 0), 0);
+  const endTermSum = formMetrics
+    .filter((m) => (m.stage ?? "END_OF_TERM") === "END_OF_TERM")
+    .reduce((sum, m) => sum + (Number(m.weight) || 0), 0);
 
   function resetForm() {
     setFormName("");
@@ -159,6 +184,7 @@ export default function ResultTemplatesPage() {
       { grade: "E8", min: 40, max: 44 },
       { grade: "F9", min: 0, max: 39 },
     ]);
+    setFormMidTermTotal("0");
   }
 
   function openEdit(t: Template) {
@@ -172,8 +198,10 @@ export default function ResultTemplatesPage() {
     setFormClassLevelId(t.classLevelId || "");
     setFormIsDefault(t.isDefault);
     setFormIsApproved(t.isApproved);
-    setFormMetrics(t.metrics);
+    // Legacy rows have no stage field; they all read as end-of-term.
+    setFormMetrics(t.metrics.map((m) => ({ ...m, stage: m.stage === "MID_TERM" ? "MID_TERM" : "END_OF_TERM" })));
     setFormGrades(t.gradeScale);
+    setFormMidTermTotal(String(t.midTermTotal ?? 0));
     setDialogOpen(true);
   }
 
@@ -184,9 +212,26 @@ export default function ResultTemplatesPage() {
       return;
     }
 
-    const totalWeight = formMetrics.reduce((sum, m) => sum + (Number(m.weight) || 0), 0);
-    if (totalWeight !== 100) {
-      toast.error(`Metric weights must sum to 100% (currently ${totalWeight}%)`);
+    // Mirror the backend's validation: each stage's weights must total 100,
+    // and the mid-term share needs matching mid-term components (and vice
+    // versa). Metrics without a stage count as end-of-term.
+    const midTermTotal = Math.min(Math.max(Number(formMidTermTotal) || 0, 0), 100);
+    const hasMidTermMetric = formMetrics.some((m) => m.stage === "MID_TERM");
+
+    if (midTermSum > 0 && Math.abs(midTermSum - 100) > 0.01) {
+      toast.error(`Mid-term component weights must total 100% (currently ${midTermSum}%)`);
+      return;
+    }
+    if (endTermSum > 0 && Math.abs(endTermSum - 100) > 0.01) {
+      toast.error(`End-of-term component weights must total 100% (currently ${endTermSum}%)`);
+      return;
+    }
+    if (midTermTotal > 0 && !hasMidTermMetric) {
+      toast.error("A mid-term share above 0% needs at least one mid-term component");
+      return;
+    }
+    if (midTermTotal === 0 && hasMidTermMetric) {
+      toast.error("Mid-term components need a mid-term share above 0% of the final result");
       return;
     }
 
@@ -198,7 +243,13 @@ export default function ResultTemplatesPage() {
         classLevelId: formClassLevelId ? formClassLevelId : null,
         isDefault: formIsDefault,
         isApproved: formIsApproved,
-        metrics: formMetrics,
+        midTermTotal: formMidTermTotalNum,
+        metrics: formMetrics.map((m) => ({
+          name: m.name,
+          label: m.label,
+          weight: Number(m.weight) || 0,
+          stage: m.stage === "MID_TERM" ? "MID_TERM" : "END_OF_TERM",
+        })),
         gradeScale: formGrades,
       };
 
@@ -294,6 +345,7 @@ export default function ResultTemplatesPage() {
           term: filterTerm,
           academicYear: filterYear,
           templateId: approvedTpl.id,
+          resultType,
         }),
       });
       toast.success(`Results computed using approved template "${approvedTpl.name}"!`);
@@ -336,7 +388,7 @@ export default function ResultTemplatesPage() {
   }
 
   function addMetric() {
-    setFormMetrics([...formMetrics, { name: "", label: "", weight: 0 }]);
+    setFormMetrics([...formMetrics, { name: "", label: "", weight: 0, stage: "END_OF_TERM" as const }]);
   }
 
   function updateMetric(i: number, field: string, value: any) {
@@ -425,7 +477,7 @@ export default function ResultTemplatesPage() {
               </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editItem ? "Edit" : "New"} Class Result Template</DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
@@ -476,6 +528,29 @@ export default function ResultTemplatesPage() {
                   />
                 </div>
 
+                {/* Mid-term share + status toggles */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="text-xs font-bold text-slate-700">
+                    Mid-term share of final result{" "}
+                    <span className="font-normal text-slate-500">(0% = single end-of-term result)</span>
+                  </label>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={formMidTermTotal}
+                      onChange={(e) => setFormMidTermTotal(e.target.value)}
+                      className="w-24 h-8 bg-white text-center font-bold text-sm tabular-nums"
+                    />
+                    <span className="text-xs font-semibold text-slate-500">%</span>
+                    <p className="text-[11px] leading-4 text-slate-500 min-w-[160px] flex-1">
+                      The mid-term result itself is the raw mid-term percentage; the end-of-term result blends it
+                      in at this share, with end-of-term components filling the rest.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Status Toggles */}
                 <div className="flex flex-wrap items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800">
@@ -503,9 +578,15 @@ export default function ResultTemplatesPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-xs font-bold text-slate-800">Assessment Components & Weights</label>
+                      <label className="text-xs font-bold text-slate-800">Assessment Components &amp; Weights</label>
                       <p className="text-[11px] text-slate-500">
-                        Weights must total 100% (Current: {formMetrics.reduce((s, m) => s + (Number(m.weight) || 0), 0)}%)
+                        {midTermSum > 0 ? (
+                          <>
+                            Mid-term: {midTermSum}% &middot; End-of-term: {endTermSum}% — each stage must total 100%
+                          </>
+                        ) : (
+                          <>Weights must total 100% (Current: {endTermSum}%)</>
+                        )}
                       </p>
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={addMetric} className="h-7 text-xs">
@@ -515,33 +596,45 @@ export default function ResultTemplatesPage() {
 
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {formMetrics.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                      <div key={i} className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                         <Input
                           placeholder="Internal Name (e.g. CA 1)"
                           value={m.name}
                           onChange={(e) => updateMetric(i, "name", e.target.value)}
-                          className="flex-1 text-xs h-8 bg-white"
+                          className="flex-1 min-w-[140px] text-xs h-8 bg-white"
                         />
                         <Input
                           placeholder="Display Label"
                           value={m.label}
                           onChange={(e) => updateMetric(i, "label", e.target.value)}
-                          className="w-[110px] text-xs h-8 bg-white"
+                          className="w-full sm:w-[110px] text-xs h-8 bg-white"
                         />
-                        <div className="flex items-center gap-1">
+                        <Select
+                          value={(m.stage ?? "END_OF_TERM") as string}
+                          onValueChange={(v) => updateMetric(i, "stage", v)}
+                        >
+                          <SelectTrigger className="w-[110px] h-8 bg-white text-xs shrink-0" aria-label="Stage">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="END_OF_TERM">End-of-term</SelectItem>
+                            <SelectItem value="MID_TERM">Mid-term</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-1 shrink-0">
                           <Input
                             type="number"
                             placeholder="Weight"
                             value={m.weight}
                             onChange={(e) => updateMetric(i, "weight", Number(e.target.value))}
-                            className="w-[70px] text-xs h-8 bg-white text-center font-bold"
+                            className="w-16 text-xs h-8 bg-white text-center font-bold tabular-nums"
                           />
                           <span className="text-xs font-semibold text-slate-500">%</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeMetric(i)}
-                          className="text-slate-400 hover:text-red-600 px-1.5 text-xs font-bold"
+                          className="text-slate-400 hover:text-red-600 px-1.5 text-xs font-bold shrink-0"
                         >
                           ✕
                         </button>
@@ -710,6 +803,11 @@ export default function ResultTemplatesPage() {
                                 Default Fallback
                               </Badge>
                             )}
+                            {(t.midTermTotal ?? 0) > 0 && (
+                              <Badge variant="outline" className="text-[10px] text-sky-700 border-sky-200 bg-sky-50">
+                                Mid-term {t.midTermTotal}%
+                              </Badge>
+                            )}
                           </div>
                         </div>
 
@@ -814,7 +912,7 @@ export default function ResultTemplatesPage() {
                     </span>
                     <p className="text-[11px] opacity-80 font-normal">
                       {activeClassApprovedTemplate
-                        ? `Weighted: ${activeClassApprovedTemplate.metrics.map((m) => `${m.label} (${m.weight}%)`).join(" + ")}`
+                        ? `Weighted: ${activeClassApprovedTemplate.metrics.map((m) => `${m.label} (${m.weight}%)`).join(" + ")}${(activeClassApprovedTemplate.midTermTotal ?? 0) > 0 ? ` — mid-term share ${activeClassApprovedTemplate.midTermTotal}%` : ""}`
                         : "Results can only reflect what has been approved from the result template for this class."}
                     </p>
                   </div>
@@ -896,16 +994,13 @@ export default function ResultTemplatesPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={filterTerm} onValueChange={(v: unknown) => setFilterTerm(v as string)}>
-                <SelectTrigger className="w-[110px] h-9 text-xs sm:w-[130px] sm:text-sm font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Term 1">Term 1</SelectItem>
-                  <SelectItem value="Term 2">Term 2</SelectItem>
-                  <SelectItem value="Term 3">Term 3</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={filterTerm}
+                onChange={(e) => setFilterTerm(e.target.value)}
+                className="w-[110px] h-9 text-xs sm:w-[130px] font-semibold"
+                placeholder="Term"
+                aria-label="Term"
+              />
 
               <Input
                 value={filterYear}
@@ -913,6 +1008,19 @@ export default function ResultTemplatesPage() {
                 className="w-[100px] h-9 text-xs sm:w-[120px] font-semibold"
                 placeholder="Year"
               />
+
+              <Select value={resultType} onValueChange={(v: unknown) => setResultType(v as "MID_TERM" | "END_OF_TERM")}>
+                <SelectTrigger
+                  className="w-[120px] h-9 text-xs sm:w-[140px] sm:text-sm font-semibold"
+                  aria-label="Result type"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="END_OF_TERM">End-of-term</SelectItem>
+                  <SelectItem value="MID_TERM">Mid-term</SelectItem>
+                </SelectContent>
+              </Select>
 
               <Button
                 variant="outline"
@@ -997,8 +1105,13 @@ export default function ResultTemplatesPage() {
                     className="flex items-center gap-2 px-4 py-3 text-xs sm:gap-4 sm:text-sm hover:bg-slate-50/50"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-900">
-                        {r.student.firstName} {r.student.lastName}
+                      <p className="font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                        <span>{r.student.firstName} {r.student.lastName}</span>
+                        {r.resultType === "MID_TERM" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 font-semibold text-sky-700 border-sky-200 bg-sky-50">
+                            Mid-term
+                          </Badge>
+                        )}
                       </p>
                       <p className="text-xs text-slate-500">
                         {r.classLevel.name} &middot; {r.term} &middot; Template: {r.template.name}

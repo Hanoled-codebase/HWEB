@@ -8,6 +8,8 @@ type ReportCardDownload = {
   studentName: string;
   term: string;
   academicYear: string;
+  /** Which stored result the PDF renders. Defaults to the end-of-term row. */
+  resultType?: "MID_TERM" | "END_OF_TERM";
 };
 
 /**
@@ -24,11 +26,14 @@ export async function downloadReportCardPdf({
   studentName,
   term,
   academicYear,
+  resultType,
 }: ReportCardDownload): Promise<boolean> {
   try {
     const url = `${HSMS_BASE}/export/${orgSlug}/report-card/${studentId}?term=${encodeURIComponent(
       term,
-    )}&academicYear=${encodeURIComponent(academicYear)}`;
+    )}&academicYear=${encodeURIComponent(academicYear)}${
+      resultType ? `&resultType=${encodeURIComponent(resultType)}` : ""
+    }`;
     const res = await fetch(url, authFetchInit("hcore"));
 
     if (!res.ok) {
@@ -39,7 +44,7 @@ export async function downloadReportCardPdf({
     const blobUrl = URL.createObjectURL(await res.blob());
     const a = document.createElement("a");
     a.href = blobUrl;
-    a.download = `Report_Card_${studentName.trim().replace(/\s+/g, "_")}_${term.replace(/\s+/g, "_")}.pdf`;
+    a.download = `Report_Card_${studentName.trim().replace(/\s+/g, "_")}_${term.replace(/\s+/g, "_")}${resultType === "MID_TERM" ? "_Mid_Term" : ""}.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
