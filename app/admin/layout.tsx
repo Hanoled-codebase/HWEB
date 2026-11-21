@@ -26,29 +26,39 @@ export const useAdmin = () => useContext(AdminContext)
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [checked, setChecked] = useState(false)
   const [openTickets, setOpenTickets] = useState(0)
   const router = useRouter()
   const pathname = usePathname()
+  const isLoginPage = pathname.includes("/login")
+  const loading = !isLoginPage && !admin && !checked
 
   useEffect(() => {
+    if (isLoginPage || admin) return
+    let cancelled = false
     adminFetch(`${ADMIN_API}/auth/me`)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => (r.ok ? r.json() : null))
       .then(data => {
-        if (data?.admin) setAdmin(data.admin)
-        else if (!pathname.includes("/login")) {
+        if (cancelled) return
+        if (data?.admin) {
+          setAdmin(data.admin)
+        } else {
           clearAdminToken()
           router.push("/admin/login")
         }
       })
       .catch(() => {
-        if (!pathname.includes("/login")) {
-          clearAdminToken()
-          router.push("/admin/login")
-        }
+        if (cancelled) return
+        clearAdminToken()
+        router.push("/admin/login")
       })
-      .finally(() => setLoading(false))
-  }, [pathname, router])
+      .finally(() => {
+        if (!cancelled) setChecked(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isLoginPage, admin, router])
 
   // The phone bell links to Support and shows a dot only while tickets are open.
   // Background fetch, once per signed-in admin; a failure just leaves the dot off.
@@ -73,14 +83,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     clearAdminToken()
     setAdmin(null)
+    setChecked(false)
     router.push("/admin/login")
   }, [router])
 
-  if (pathname.includes("/login")) return <>{children}</>
+  if (isLoginPage) return <>{children}</>
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-muted/30 text-sm text-muted-foreground">
+      <div className="flex min-h-dvh items-center justify-center bg-muted/30 text-sm text-muted-foreground">
         Loading...
       </div>
     )
@@ -134,7 +145,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <MobileMenuProvider config={mobileConfig}>
-    <div className="flex h-screen flex-col bg-muted/30 md:flex-row">
+    <div className="flex min-h-dvh flex-col bg-muted/30 md:h-dvh md:flex-row">
       <MobileTopBar title={currentTitle} isHome={pathname === "/admin"} />
       {/* md to lg: a labelled icon rail (six destinations fit a tablet held upright); lg and up: the full sidebar. */}
       <aside className="hidden w-20 shrink-0 flex-col border-r border-border bg-white md:flex lg:w-60">
@@ -154,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors lg:flex-row lg:gap-2.5 lg:rounded-md lg:px-3 lg:py-2 lg:text-sm lg:font-normal pointer-coarse:min-h-11 ${
+                className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-medium transition-colors lg:flex-row lg:gap-2.5 lg:rounded-md lg:px-3 lg:py-2 lg:text-sm lg:font-normal pointer-coarse:min-h-11 ${
                   active
                     ? "bg-primary/10 font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"

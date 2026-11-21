@@ -47,12 +47,13 @@ type ClassLevel = { id: string; name: string };
 // ─────────────────────────────────────────────────────────────────────────────
 const MESSAGING_PARKED = true;
 export default function MessagingPage() {
+  const { currentOrg } = useOrganization();
   if (MESSAGING_PARKED) {
     return (
       <ComingSoonCard
         title="Messaging is coming soon"
         blurb="Broadcasts to parents and staff over WhatsApp, SMS and email arrive in the next release."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }

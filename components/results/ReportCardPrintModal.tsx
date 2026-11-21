@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useRef, useState, useMemo } from "react";
-import { Printer, Download, X } from "lucide-react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Printer, Download, Eye, X, ZoomIn, Smartphone } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { downloadReportCardPdf } from "@/lib/report-card-download";
+import { apiFetch } from "@/lib/api";
 import {
-  getCurriculumSubjectsForClass,
-  matchSubjectAlias,
-} from "@/lib/student-performance";
+  LEADERSHIP_SKILLS,
+  scoreToAffectiveLetter,
+} from "@/lib/leadership-skills";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { downloadReportCardPdf, openReportCardPdf } from "@/lib/report-card-download";
 
 export interface ReportCardStudent {
   id: string;
@@ -55,8 +65,26 @@ export interface ReportCardPrintModalProps {
     absent?: number | string;
   };
   resumptionDate?: string;
+  /** Whether a mid-term result exists to switch to for the backend PDF. */
+  resultType?: "MID_TERM" | "END_OF_TERM";
   onClose: () => void;
 }
+
+type GradeBand = { grade: string; min: number; max: number };
+type AffectiveCategory = { id: string; label: string; active: boolean };
+type CommentRule = { min: number; max: number; comment: string };
+type ResultSettings = {
+  ceoSignatureUrl?: string | null;
+  ceoCommentRules?: CommentRule[];
+  affectiveCategories?: AffectiveCategory[];
+};
+type ResultTemplate = {
+  id: string;
+  classLevelId?: string | null;
+  isApproved?: boolean;
+  isDefault?: boolean;
+  gradeScale?: GradeBand[];
+};
 
 // 9-point WAEC Nigerian Grading scale
 export function computeNigerianGrade(score: number): {
@@ -77,39 +105,8 @@ export function computeNigerianGrade(score: number): {
   return { grade: "F9", letter: "P" }; // F9 / P9 category
 }
 
-const DEFAULT_SAMPLE_SUBJECTS: string[] = [
-  "Agricultural Science",
-  "Basic Science",
-  "Basic Technology",
-  "Business Studies",
-  "Christian Religious Studies",
-  "Civic/Security Education",
-  "Computer Studies",
-  "English Language",
-  "Fine Art",
-  "French Language",
-  "Home Economics",
-  "Mathematics",
-  "Music",
-  "Physical Health Education",
-  "Social Studies",
-  "Yoruba Language",
-];
-
-const DEFAULT_LEADERSHIP_SKILLS = [
-  "Confidence",
-  "Team Spirit",
-  "Listening/Concentrating Ability",
-  "Social Ability/Friendliness",
-  "Creative /Organizational Ability",
-  "Communication / Public Speaking Skills",
-  "Inquisitiveness",
-  "Sense of Responsibility",
-  "Ethical/Moral Skills(Politeness, Honesty, perseverance etc)",
-  "Sports/Games",
-  "Handwriting",
-  "Musical skills",
-];
+const DEFAULT_AFFECTIVE_CATEGORIES: AffectiveCategory[] =
+  LEADERSHIP_SKILLS.map((label) => ({ id: label, label, active: true }));
 
 export default function ReportCardPrintModal({
   orgSlug,
@@ -118,53 +115,208 @@ export default function ReportCardPrintModal({
   orgAddress = "",
   orgEmail = "",
   student,
-  term = "1st Mid-Term",
+  term = "",
   academicYear = "2026/2027",
-  classStudentCount = 17,
+  classStudentCount,
   results = [],
   ceoComment: initialCeoComment = "",
   attendance: initialAttendance = { schoolOpen: "", present: "", absent: "" },
   resumptionDate: initialResumptionDate = "",
+  resultType = "END_OF_TERM",
   onClose,
 }: ReportCardPrintModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const previewTrigger = useRef<HTMLElement | null>(null);
+  const [pdfAction, setPdfAction] = useState<"view" | "download" | null>(null);
+  // Report type for the backend PDF download; the on-screen preview renders the
+  // sheet rows it is given, so this only steers which stored result is used.
+  const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">(resultType);
+  const [gradeScale, setGradeScale] = useState<GradeBand[]>([]);
+  const [affectiveCategories, setAffectiveCategories] =
+    useState<AffectiveCategory[]>(DEFAULT_AFFECTIVE_CATEGORIES);
+  const [ceoSignatureUrl, setCeoSignatureUrl] = useState<string | null>(null);
+  const [commentRules, setCommentRules] = useState<CommentRule[]>([]);
 
-  // Editable fields in preview
-  const [ceoComment, setCeoComment] = useState(initialCeoComment);
-  const [schoolOpen, setSchoolOpen] = useState(initialAttendance.schoolOpen ?? "");
-  const [schoolPresent, setSchoolPresent] = useState(initialAttendance.present ?? "");
-  const [schoolAbsent, setSchoolAbsent] = useState(initialAttendance.absent ?? "");
-  const [resumption, setResumption] = useState(initialResumptionDate ?? "");
+  const [customCeoComment, setCustomCeoComment] = useState<string | null>(null);
+  const schoolOpen = initialAttendance.schoolOpen ?? "";
+  const schoolPresent = initialAttendance.present ?? "";
+  const schoolAbsent = initialAttendance.absent ?? "";
+  const resumption = initialResumptionDate ?? "";
 
   // Skills rating state (1 to 5)
   const [skillRatings, setSkillRatings] = useState<Record<string, string | number>>({});
+
+  // Mobile viewport scaling state
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [scaleFit, setScaleFit] = useState(true);
+  const [measuredScale, setMeasuredScale] = useState(1);
+  const [sheetWidth, setSheetWidth] = useState(760);
+  const [sheetHeight, setSheetHeight] = useState(1000);
+  const scale = scaleFit ? measuredScale : 1;
+
+  useEffect(() => {
+    if (!scaleFit) return;
+    const updateScale = () => {
+      const scrollEl = scrollAreaRef.current;
+      const sheetEl = printRef.current;
+      if (scrollEl && sheetEl) {
+        const areaWidth = scrollEl.clientWidth - 16;
+        const sWidth = sheetEl.offsetWidth || 760;
+        const sHeight = sheetEl.offsetHeight || 1000;
+        setSheetWidth(sWidth);
+        setSheetHeight(sHeight);
+        if (areaWidth > 0 && sWidth > 0 && areaWidth < sWidth) {
+          const nextScale = Number((areaWidth / sWidth).toFixed(3));
+          setMeasuredScale(Math.max(0.3, Math.min(1, nextScale)));
+        } else {
+          setMeasuredScale(1);
+        }
+      }
+    };
+    const t = setTimeout(updateScale, 50);
+    const ro = new ResizeObserver(updateScale);
+    if (scrollAreaRef.current) ro.observe(scrollAreaRef.current);
+    if (printRef.current) ro.observe(printRef.current);
+    window.addEventListener("resize", updateScale);
+    return () => {
+      clearTimeout(t);
+      ro.disconnect();
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [scaleFit]);
+
+  useEffect(() => {
+    if (!orgSlug) return;
+    let cancelled = false;
+    const classLevelId = student.classLevel?.id;
+    Promise.all([
+      apiFetch<{ data: ResultSettings }>(`/result-settings/${orgSlug}`, {
+        showErrorToast: false,
+      }),
+      apiFetch<{ data?: ResultTemplate[] } | ResultTemplate[]>(
+        `/result-templates/templates/${orgSlug}`,
+        {
+          params: {
+            ...(classLevelId ? { classLevelId } : {}),
+            resultType: pdfResultType,
+          },
+          showErrorToast: false,
+        },
+      ),
+    ])
+      .then(([settingsResponse, templateResponse]) => {
+        if (cancelled) return;
+        const settings = settingsResponse.data;
+        setCeoSignatureUrl(settings.ceoSignatureUrl || null);
+        setCommentRules(settings.ceoCommentRules || []);
+        if (Array.isArray(settings.affectiveCategories)) {
+          setAffectiveCategories(
+            settings.affectiveCategories.filter((category) => category.active),
+          );
+        }
+        const templates = Array.isArray(templateResponse)
+          ? templateResponse
+          : templateResponse.data || [];
+        const selected =
+          templates.find(
+            (template) =>
+              template.classLevelId === classLevelId && template.isApproved,
+          ) ||
+          templates.find(
+            (template) => template.isDefault && template.isApproved,
+          ) ||
+          templates.find((template) => template.isApproved);
+        setGradeScale(selected?.gradeScale || []);
+      })
+      .catch(() => {
+        // The generated PDF remains available if preview settings cannot load.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgSlug, pdfResultType, student.classLevel?.id]);
+
+  useEffect(() => {
+    if (!orgSlug || !student.id || !term || !academicYear) return;
+    let cancelled = false;
+    apiFetch<{ data: { comment?: string } | null }>(
+      `/result-settings/${orgSlug}/comment-override`,
+      {
+        params: {
+          studentId: student.id,
+          term,
+          academicYear,
+          resultType: pdfResultType,
+        },
+        showErrorToast: false,
+      },
+    )
+      .then(({ data }) => {
+        if (!cancelled && data?.comment) setCustomCeoComment(data.comment);
+      })
+      .catch(() => {
+        // Non-admin viewers cannot read draft overrides; published PDF snapshot remains authoritative.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [academicYear, orgSlug, pdfResultType, student.id, term]);
+
+  // Prefill the leadership/affective GRADES cells from the stored scores for
+  // this student and term (letters A–E). Typed values win over the prefill.
+  useEffect(() => {
+    if (!orgSlug || !student?.id || !term) return;
+    let cancelled = false;
+    apiFetch<{ studentId: string; metric: string; score: number }[]>(
+      `/affective/${orgSlug}/affective`,
+      {
+        params: {
+          studentId: student.id,
+          term,
+          academicYear,
+          resultType: pdfResultType,
+        },
+      },
+    )
+      .then((scores) => {
+        if (cancelled || !Array.isArray(scores)) return;
+        const map: Record<string, string> = {};
+        for (const entry of scores) {
+          const letter = scoreToAffectiveLetter(entry.score);
+          if (letter) map[entry.metric] = letter;
+        }
+        setSkillRatings((prev) => ({ ...map, ...prev }));
+      })
+      .catch(() => {
+        // Cells stay empty if the scores can't be loaded.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [academicYear, orgSlug, pdfResultType, student?.id, term]);
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownloadPDF = async () => {
-    setIsDownloading(true);
+  const handlePdf = async (action: "view" | "download") => {
+    setPdfAction(action);
+    const options = {
+      orgSlug,
+      studentId: student.id,
+      studentName: studentFullName,
+      term,
+      academicYear,
+      resultType: pdfResultType,
+    };
     try {
-      const studentFullName = [student.firstName, student.middleName, student.lastName]
-        .filter(Boolean)
-        .join(" ");
-      const ok = await downloadReportCardPdf({
-        orgSlug,
-        studentId: student.id,
-        studentName: studentFullName,
-        term,
-        academicYear,
-      });
-      if (!ok) {
-        // Fallback to native print to PDF if backend PDF endpoint isn't available
+      if (action === "view") {
+        await openReportCardPdf(options);
+      } else if (!(await downloadReportCardPdf(options))) {
         window.print();
       }
-    } catch {
-      window.print();
     } finally {
-      setIsDownloading(false);
+      setPdfAction(null);
     }
   };
 
@@ -175,9 +327,14 @@ export default function ReportCardPrintModal({
         const hasScore =
           match.score !== undefined && match.score !== null && !isNaN(Number(match.score));
         const numericScore = typeof match.score === "number" ? match.score : Number(match.score);
-        const gradeObj = computeNigerianGrade(
-          Number.isFinite(numericScore) ? numericScore : 0,
-        );
+        const gradeObj = gradeScale.length > 0
+          ? {
+              grade:
+                [...gradeScale]
+                  .sort((left, right) => right.min - left.min)
+                  .find((band) => numericScore >= band.min)?.grade || "—",
+            }
+          : { grade: "—" };
 
         return {
           subject: match.subject,
@@ -221,7 +378,21 @@ export default function ReportCardPrintModal({
     }
 
     return [];
-  }, [results]);
+  }, [gradeScale, results]);
+
+  const ceoComment = useMemo(() => {
+    if (customCeoComment) return customCeoComment;
+    if (initialCeoComment.trim()) return initialCeoComment;
+    const recorded = displayResults
+      .map((item) => Number(item.score))
+      .filter(Number.isFinite);
+    if (recorded.length === 0) return "";
+    const average = recorded.reduce((sum, score) => sum + score, 0) / recorded.length;
+    const rule = commentRules.find(
+      (candidate) => average >= candidate.min && average <= candidate.max,
+    );
+    return rule?.comment || "";
+  }, [commentRules, customCeoComment, displayResults, initialCeoComment]);
 
   // Dynamic Grade Breakdown counts for "SUMMARY OF ACADEMIC REPORT"
   const summaryCounts = useMemo(() => {
@@ -252,22 +423,15 @@ export default function ReportCardPrintModal({
   const studentClass =
     student.classLevel?.name ||
     student.classLevel?.level ||
-    "JSS 1A";
+    "—";
 
   const studentAdmissionNo = student.admissionNumber || "—";
-  const studentSex = student.gender ? student.gender.toUpperCase() : "FEMALE";
-
-  // Title formatting: "Report Sheet For 1st Mid-Term Result, 2025/2026 Session"
-  const formattedTerm = useMemo(() => {
-    if (term.toLowerCase().includes("result")) return term;
-    if (term === "Term 1") return "1st Mid-Term Result";
-    if (term === "Term 2") return "2nd Mid-Term Result";
-    if (term === "Term 3") return "3rd Mid-Term Result";
-    return `${term} Result`;
-  }, [term]);
+  const studentSex = student.gender?.toUpperCase() || "—";
 
   return (
-    <div className="report-card-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto font-sans">
+    <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="report-card-modal-backdrop fixed inset-0 z-50 flex items-end justify-center overflow-y-auto overscroll-contain bg-[#0B1220]/55 p-0 backdrop-blur-[2px] font-sans md:items-center md:p-4">
       {/* High-fidelity CSS for Native Browser Print & Pixel-Perfect Screen Render */}
       <style>{`
         @page {
@@ -280,11 +444,15 @@ export default function ReportCardPrintModal({
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            color: #000000 !important;
+            color: var(--color-neutral-950) !important;
             height: auto !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+          }
+
+          body > :not(.report-card-modal-backdrop):not(:has(.report-card-modal-backdrop)) {
+            display: none !important;
           }
 
           body * {
@@ -300,8 +468,7 @@ export default function ReportCardPrintModal({
           }
 
           .report-card-modal-backdrop {
-            position: absolute !important;
-            inset: 0 !important;
+            position: static !important;
             background: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
@@ -317,6 +484,7 @@ export default function ReportCardPrintModal({
             border: none !important;
             box-shadow: none !important;
             max-width: 100% !important;
+            max-height: none !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -335,13 +503,21 @@ export default function ReportCardPrintModal({
             display: block !important;
             width: 100% !important;
             max-width: 100% !important;
+            min-width: 0 !important;
             margin: 0 auto !important;
             padding: 0 !important;
             background: #ffffff !important;
             box-shadow: none !important;
             border: none !important;
-            page-break-inside: avoid !important;
             page-break-after: avoid !important;
+          }
+
+          .report-card-score-table {
+            overflow: visible !important;
+          }
+
+          #report-sheet-print-container tr {
+            break-inside: avoid;
           }
 
           .no-print {
@@ -363,7 +539,7 @@ export default function ReportCardPrintModal({
           white-space: nowrap;
           text-align: center;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 12px;
           letter-spacing: -0.2px;
         }
 
@@ -374,63 +550,171 @@ export default function ReportCardPrintModal({
         }
       `}</style>
 
-      <div className="report-card-modal-wrapper relative w-full max-w-4xl rounded-2xl bg-neutral-950 shadow-2xl overflow-hidden my-4 border border-neutral-800 flex flex-col max-h-[96vh]">
+      <Dialog.Content
+        aria-describedby={undefined}
+        onOpenAutoFocus={() => {
+          previewTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          previewTrigger.current?.focus();
+        }}
+        className="report-card-modal-wrapper relative flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-xl overscroll-contain pb-safe md:my-4 md:max-h-[92dvh] md:rounded-2xl md:pb-0"
+      >
+        <div
+          aria-hidden="true"
+          className="no-print mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-slate-300 md:hidden"
+        />
         {/* Top Control Bar (Hidden during Print) */}
-        <div className="no-print flex items-center justify-between border-b border-neutral-800 bg-black px-4 sm:px-6 py-3.5 text-white shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900 border border-neutral-700 text-white font-black text-xs shadow-xs">
-              RC
-            </div>
-            <div>
-              <h2 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-                Official Report Sheet Preview
-                <span className="rounded bg-neutral-900 px-2 py-0.5 text-[10px] font-bold uppercase text-neutral-300 border border-neutral-700">
+        <div className="no-print flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 text-[#0B1220] sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Dialog.Title className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-tight text-[#0B1220] sm:text-base">
+                <span>Official Report Sheet Preview</span>
+                <span className="rounded-md border border-blue-200/80 bg-[#EEF0FF] px-2 py-0.5 text-xs font-semibold text-[#1447E6]">
                   {term}
                 </span>
-              </h2>
-              <p className="text-xs text-neutral-400">
+              </Dialog.Title>
+              <p className="mt-0.5 truncate text-xs text-slate-600">
                 {studentFullName} &bull; {studentClass} &bull; {studentAdmissionNo}
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              onClick={handlePrint}
-              className="bg-white hover:bg-neutral-200 text-black font-bold gap-1.5 shadow-sm text-xs h-8 px-3.5 cursor-pointer border border-white"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print Template
-            </Button>
-            <Button
-              type="button"
-              onClick={handleDownloadPDF}
-              disabled={isDownloading}
-              variant="outline"
-              className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 hover:text-white font-semibold gap-1.5 text-xs h-8 px-3.5 cursor-pointer"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {isDownloading ? "Downloading..." : "Download PDF"}
-            </Button>
             <Button
               type="button"
               onClick={onClose}
+              aria-label="Close report preview"
               variant="ghost"
               size="icon"
-              className="text-neutral-400 hover:text-white hover:bg-neutral-900 h-8 w-8 cursor-pointer ml-1"
+              className="shrink-0 rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" aria-hidden="true" />
             </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Select
+              value={pdfResultType}
+              onValueChange={(v) => setPdfResultType(v === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")}
+            >
+              <SelectTrigger
+                aria-label="PDF report type"
+                size="sm"
+                className="rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" disablePortal>
+                <SelectItem value="END_OF_TERM">End-of-term</SelectItem>
+                <SelectItem value="MID_TERM">Mid-term</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="button"
+              onClick={() => void handlePdf("download")}
+              disabled={pdfAction !== null}
+              size="sm"
+              className="gap-1.5 rounded-xl bg-[#1447E6] px-3 text-xs font-semibold text-white hover:bg-[#0F36B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-4"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              {pdfAction === "download" ? "Downloading..." : "Download PDF"}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={() => void handlePdf("view")}
+              disabled={pdfAction !== null}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-3"
+            >
+              <Eye className="size-4" aria-hidden="true" />
+              {pdfAction === "view" ? "Opening..." : "View PDF"}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handlePrint}
+              variant="outline"
+              size="sm"
+              className="hidden gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-2 sm:inline-flex"
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Print Template
+            </Button>
+
+            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-100 p-0.5 sm:hidden">
+              <button
+                type="button"
+                onClick={() => setScaleFit(true)}
+                className={cn(
+                  "flex min-h-10 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors",
+                  scaleFit
+                    ? "bg-white font-bold text-[#1447E6] shadow-xs"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                <Smartphone className="size-3.5" aria-hidden="true" />
+                Fit
+              </button>
+              <button
+                type="button"
+                onClick={() => setScaleFit(false)}
+                className={cn(
+                  "flex min-h-10 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors",
+                  !scaleFit
+                    ? "bg-white font-bold text-[#1447E6] shadow-xs"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                <ZoomIn className="size-3.5" aria-hidden="true" />
+                100%
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Scrollable Preview Canvas */}
-        <div className="report-card-scroll-area p-3 sm:p-6 overflow-y-auto bg-neutral-200/90 flex-1">
+        {/* Scrollable Preview Canvas with Responsive Mobile Fit */}
+        <div
+          ref={scrollAreaRef}
+          role="region"
+          aria-label="Scrollable report sheet"
+          tabIndex={0}
+          className="report-card-scroll-area p-2 sm:p-6 overflow-auto bg-slate-100/95 flex-1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          <div
+            style={
+              scale < 1
+                ? {
+                    width: `${Math.round(sheetWidth * scale)}px`,
+                    height: `${Math.round(sheetHeight * scale)}px`,
+                    overflow: "hidden",
+                    margin: "0 auto",
+                  }
+                : {
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "center",
+                  }
+            }
+          >
+            <div
+              style={
+                scale < 1
+                  ? {
+                      transform: `scale(${scale})`,
+                      transformOrigin: "top left",
+                      width: `${sheetWidth}px`,
+                      minWidth: `${sheetWidth}px`,
+                    }
+                  : undefined
+              }
+            >
           <div
             id="report-sheet-print-container"
             ref={printRef}
-            className="mx-auto bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black max-w-[820px] font-sans text-xs leading-tight"
+            className="mx-auto min-w-[620px] max-w-[820px] bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black font-sans text-xs leading-tight"
           >
             {/* ── ROW 1 & 2: School Logo & Branding ── */}
             <div className="text-center pt-1 pb-1">
@@ -454,18 +738,18 @@ export default function ReportCardPrintModal({
 
             {/* ── ROW 3: School Address and Email ── */}
             {(orgAddress || orgEmail) && (
-              <div className="text-center text-[10.5px] font-bold text-black border-t border-black pt-1.5 pb-1 mt-1">
+              <div className="text-center text-xs font-bold text-black border-t border-black pt-1.5 pb-1 mt-1">
                 {[orgAddress, orgEmail].filter(Boolean).join(" • ")}
               </div>
             )}
 
             {/* ── ROW 4: Title Banner (Solid Black fill with White text) ── */}
-            <div className="text-center text-sm sm:text-base font-black text-white bg-black border border-black py-1.5 tracking-wider uppercase">
-              Report Sheet For {formattedTerm}, {academicYear} Session
+            <div className="text-center text-sm sm:text-base font-black text-white bg-black border border-black px-3 py-2 tracking-wider uppercase">
+              Report Sheet{term ? ` for ${term},` : " •"} {academicYear} Session
             </div>
 
             {/* ── ROW 5-7: Student Metadata Grid (Bordered table) ── */}
-            <div className="border-x border-b border-black text-[11px] font-semibold divide-y divide-black">
+            <div className="border-x border-b border-black text-xs font-semibold divide-y divide-black">
               <div className="grid grid-cols-12 divide-x divide-black">
                 <div className="col-span-6 px-2 py-1 flex items-center gap-1.5">
                   <span className="font-bold text-black">Name:</span>
@@ -492,14 +776,14 @@ export default function ReportCardPrintModal({
                 </div>
                 <div className="col-span-6 px-2 py-1 flex items-center gap-1.5">
                   <span className="font-bold text-black">No. in Class:</span>
-                  <span className="font-extrabold text-black">{classStudentCount}</span>
+                  <span className="font-extrabold text-black">{classStudentCount ?? "—"}</span>
                 </div>
               </div>
             </div>
 
             {/* ── MAIN ACADEMIC ASSESSMENT TABLE ── */}
-            <div className="mt-1 border border-black overflow-hidden">
-              <table className="w-full border-collapse text-left text-[11px]">
+            <div className="report-card-score-table mt-2 border border-black">
+              <table className="w-full border-collapse text-left text-xs">
                 <thead>
                   {/* Rows 8-13 Header Lockup */}
                   <tr className="border-b border-black">
@@ -511,32 +795,28 @@ export default function ReportCardPrintModal({
                       <div className="flex h-full min-h-[145px]">
                         {/* Solid Black Vertical Bar on Left */}
                         <div className="w-12 bg-black text-white font-extrabold flex flex-col items-center justify-end p-1.5 border-r border-black">
-                          <span className="grades-vertical-text tracking-widest text-[11px] pb-1">
+                          <span className="grades-vertical-text tracking-widest text-xs pb-1">
                             GRADES
                           </span>
                         </div>
 
-                        {/* Two-column Grade Scale reference box */}
-                        <div className="flex-1 p-2 bg-[#F8F9FA] text-[9.5px] font-bold text-black flex flex-col justify-center">
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                            <div>A1** : 90 - 100</div>
-                            <div>C5 : 60 - 64</div>
-
-                            <div>A1* : 85 - 89</div>
-                            <div>C6 : 55 - 59</div>
-
-                            <div>A1 : 80 - 84</div>
-                            <div>D7 : 50 - 54</div>
-
-                            <div>B2 : 75 - 79</div>
-                            <div>E8 : 40 - 49</div>
-
-                            <div>B3 : 70 - 74</div>
-                            <div>F9 : 0 - 39</div>
-
-                            <div>C4 : 65 - 69</div>
-                            <div></div>
-                          </div>
+                        {/* Tenant-approved Grade Scale reference box */}
+                        <div className="flex flex-1 flex-col justify-center bg-[#F8F9FA] p-2 text-xs font-bold text-black">
+                          {gradeScale.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                              {[...gradeScale]
+                                .sort((left, right) => right.min - left.min)
+                                .map((band) => (
+                                  <div key={`${band.grade}-${band.min}-${band.max}`}>
+                                    {band.grade} : {band.min} - {band.max}
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <div className="text-center text-neutral-500">
+                              Grade bands come from the approved result template.
+                            </div>
+                          )}
                         </div>
                       </div>
                     </th>
@@ -544,7 +824,7 @@ export default function ReportCardPrintModal({
                     {/* Grouped Header: Continuous Assessment (spanning 3 CA columns) */}
                     <th
                       colSpan={3}
-                      className="text-center font-black text-black bg-[#F1F3F5] border-r border-b border-black py-1 text-[10.5px]"
+                      className="text-center font-black text-black bg-[#F1F3F5] border-r border-b border-black py-1 text-xs"
                     >
                       Continuous
                       <br />
@@ -556,7 +836,7 @@ export default function ReportCardPrintModal({
                       rowSpan={2}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
                         Mid-Term Exam Scores
                       </div>
                     </th>
@@ -565,7 +845,7 @@ export default function ReportCardPrintModal({
                       rowSpan={2}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
                         Total Scores
                       </div>
                     </th>
@@ -574,7 +854,7 @@ export default function ReportCardPrintModal({
                       rowSpan={2}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[8%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
                         Grades
                       </div>
                     </th>
@@ -583,7 +863,7 @@ export default function ReportCardPrintModal({
                       rowSpan={2}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
                         Highest Score
                       </div>
                     </th>
@@ -592,7 +872,7 @@ export default function ReportCardPrintModal({
                       rowSpan={2}
                       className="bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
-                      <div className="header-vertical-text mx-auto pb-1.5 h-28 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
                         Lowest Score
                       </div>
                     </th>
@@ -601,24 +881,24 @@ export default function ReportCardPrintModal({
                   {/* CA Subheaders (vertical text) */}
                   <tr className="border-b border-black">
                     <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
                         Class Exercises
                       </div>
                     </th>
                     <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
                         Assignments
                       </div>
                     </th>
                     <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 h-20 flex items-center justify-center font-bold text-black">
+                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
                         Periodic Tests
                       </div>
                     </th>
                   </tr>
 
                   {/* ── ROW 14: Mark Obtainable Row (Solid Black) ── */}
-                  <tr className="bg-black font-black text-white border-b border-black text-center text-[10.5px]">
+                  <tr className="bg-black font-black text-white border-b border-black text-center text-xs">
                     <td className="text-left px-3 py-1 font-extrabold border-r border-neutral-700">
                       Mark obtainable
                     </td>
@@ -677,8 +957,8 @@ export default function ReportCardPrintModal({
                           {item.score}
                         </td>
 
-                        {/* Grades (Subtle light gray fill: #E9ECEF) */}
-                        <td className="text-center border-r border-black py-1 font-black text-black bg-[#E9ECEF] tabular-nums">
+                        {/* Grades */}
+                        <td className="text-center border-r border-black py-1 font-black text-black bg-neutral-200 tabular-nums">
                           {item.grade}
                         </td>
 
@@ -699,11 +979,11 @@ export default function ReportCardPrintModal({
             </div>
 
             {/* ── LOWER SECTION: Leadership Skills (Left) & Academic Summary (Right) ── */}
-            <div className="grid grid-cols-12 border-x border-b border-black text-[10.5px]">
+            <div className="grid grid-cols-12 border-x border-b border-black text-xs">
               {/* ── LEFT COLUMN (Cols 1-7): Leadership / Psychomotor Skills ── */}
               <div className="col-span-7 border-r border-black flex flex-col">
                 {/* Header */}
-                <div className="grid grid-cols-12 bg-[#F1F3F5] font-black text-black border-b border-black py-1">
+                <div className="grid grid-cols-12 font-black text-black border-b border-black py-1.5">
                   <div className="col-span-9 px-2">
                     Leadership Skills / Affective / Psychomotor Skills
                   </div>
@@ -712,30 +992,18 @@ export default function ReportCardPrintModal({
                   </div>
                 </div>
 
-                {/* 12 Skills Rows */}
+                {/* School-selected skills */}
                 <div className="divide-y divide-black font-medium">
-                  {DEFAULT_LEADERSHIP_SKILLS.map((skillName, sIdx) => (
+                  {affectiveCategories.map((category) => (
                     <div
-                      key={sIdx}
-                      className="grid grid-cols-12 py-0.5 hover:bg-neutral-50"
+                      key={category.id}
+                      className="grid grid-cols-12 py-1 hover:bg-neutral-50"
                     >
-                      <div className="col-span-9 px-2 text-black font-semibold truncate">
-                        {skillName}
+                      <div className="col-span-9 break-words px-2 text-black font-semibold">
+                        {category.label}
                       </div>
                       <div className="col-span-3 text-center border-l border-black font-bold text-black">
-                        <input
-                          type="text"
-                          maxLength={3}
-                          value={skillRatings[skillName] ?? ""}
-                          onChange={(e) =>
-                            setSkillRatings({
-                              ...skillRatings,
-                              [skillName]: e.target.value,
-                            })
-                          }
-                          placeholder=""
-                          className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold text-black focus:outline-none focus:bg-neutral-100"
-                        />
+                        {skillRatings[category.id] ?? "—"}
                       </div>
                     </div>
                   ))}
@@ -746,7 +1014,7 @@ export default function ReportCardPrintModal({
               <div className="col-span-5 flex flex-col justify-between">
                 <div>
                   {/* Summary Header (Solid Black) */}
-                  <div className="bg-black font-black text-white text-center py-1 border-b border-black text-[11px] uppercase tracking-wider">
+                  <div className="bg-black font-black text-white text-center px-2 py-1.5 border-b border-black text-xs uppercase tracking-wider">
                     SUMMARY OF ACADEMIC REPORT
                   </div>
 
@@ -787,12 +1055,12 @@ export default function ReportCardPrintModal({
                   </div>
 
                   {/* Grade Keys Header (Solid Black) */}
-                  <div className="bg-black font-black text-white px-2 py-0.5 border-b border-black text-[11px] uppercase tracking-wider">
+                  <div className="bg-black font-black text-white px-2 py-1.5 border-b border-black text-xs uppercase tracking-wider">
                     Grade Keys
                   </div>
 
                   {/* Skills Rating Scale (5-1) and Attendance Table */}
-                  <div className="grid grid-cols-12 divide-x divide-black border-b border-black text-[10px]">
+                  <div className="grid grid-cols-12 divide-x divide-black border-b border-black text-xs">
                     {/* Left side: 5 - Excellent scale */}
                     <div className="col-span-5 p-1.5 font-bold space-y-0.5 text-black">
                       <div>5 - Excellent</div>
@@ -804,39 +1072,15 @@ export default function ReportCardPrintModal({
 
                     {/* Right side: Attendance Table */}
                     <div className="col-span-7 flex flex-col">
-                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-[8.5px] leading-tight border-b border-black">
-                        <div className="p-1">No of Times School Open</div>
-                        <div className="p-1">No of Times Present</div>
-                        <div className="p-1">No of Times Absent</div>
+                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-xs leading-tight border-b border-black">
+                        <div className="px-2 py-1.5">School days</div>
+                        <div className="px-2 py-1.5">Present</div>
+                        <div className="px-2 py-1.5">Absent</div>
                       </div>
                       <div className="grid grid-cols-3 divide-x divide-black text-center font-bold text-black flex-1 min-h-[50px] items-center">
-                        <div className="p-1">
-                          <input
-                            type="text"
-                            value={schoolOpen}
-                            onChange={(e) => setSchoolOpen(e.target.value)}
-                            placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
-                          />
-                        </div>
-                        <div className="p-1">
-                          <input
-                            type="text"
-                            value={schoolPresent}
-                            onChange={(e) => setSchoolPresent(e.target.value)}
-                            placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
-                          />
-                        </div>
-                        <div className="p-1">
-                          <input
-                            type="text"
-                            value={schoolAbsent}
-                            onChange={(e) => setSchoolAbsent(e.target.value)}
-                            placeholder=""
-                            className="w-full text-center bg-transparent border-0 p-0 text-[11px] font-black text-black focus:outline-none"
-                          />
-                        </div>
+                        <div className="p-1">{schoolOpen || "—"}</div>
+                        <div className="p-1">{schoolPresent || "—"}</div>
+                        <div className="p-1">{schoolAbsent || "—"}</div>
                       </div>
                     </div>
                   </div>
@@ -844,24 +1088,18 @@ export default function ReportCardPrintModal({
 
                 {/* Resumption Bar */}
                 <div>
-                  <div className="bg-black font-black text-white text-center py-1 border-t border-black text-[11px] uppercase tracking-wider">
+                  <div className="bg-black font-black text-white text-center py-1 border-t border-black text-xs uppercase tracking-wider">
                     Resumption
                   </div>
                   <div className="p-1 text-center font-bold text-black min-h-[22px] bg-white">
-                    <input
-                      type="text"
-                      value={resumption}
-                      onChange={(e) => setResumption(e.target.value)}
-                      placeholder="Next term resumption date..."
-                      className="w-full text-center bg-transparent border-0 p-0 text-[10.5px] font-bold text-black focus:outline-none"
-                    />
+                    {resumption || "—"}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* ── FOOTER: C.E.O's Comment & C.E.O's Signature ── */}
-            <div className="border-x border-b border-black p-2 text-[11px] font-bold text-black">
+            <div className="border-x border-b border-black p-2 text-xs font-bold text-black">
               <div className="grid grid-cols-12 gap-3 items-end">
                 {/* Left: C.E.O's Comment */}
                 <div className="col-span-8 flex flex-col justify-between min-h-[75px]">
@@ -869,38 +1107,28 @@ export default function ReportCardPrintModal({
                     <span className="font-extrabold text-black">
                       C.E.O's Comment:
                     </span>
-                    <textarea
-                      rows={2}
-                      value={ceoComment}
-                      onChange={(e) => setCeoComment(e.target.value)}
-                      placeholder="Commendable performance, keep soaring higher."
-                      className="w-full mt-1 bg-transparent border-0 border-b border-dotted border-black p-1 text-[11px] font-semibold text-black focus:outline-none focus:border-black resize-none"
-                    />
+                    <div className="mt-1 min-h-9 w-full border-b border-dotted border-black p-1 text-xs font-semibold text-black">
+                      {ceoComment || "—"}
+                    </div>
                   </div>
                 </div>
 
                 {/* Right: C.E.O's Signature */}
                 <div className="col-span-4 text-center flex flex-col items-center justify-end pb-1">
                   <div className="h-10 flex items-center justify-center">
-                    {/* Elegant Cursive CEO Signature Scribble */}
-                    <svg
-                      viewBox="0 0 160 45"
-                      className="h-9 w-36 stroke-black fill-none"
-                    >
-                      <path
-                        d="M 12 32 C 16 14, 22 10, 26 28 C 30 14, 36 20, 42 27 C 48 34, 54 12, 60 24 C 66 34, 76 18, 86 24 C 96 30, 110 22, 120 28 C 130 33, 140 26, 150 29"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                    {ceoSignatureUrl ? (
+                      // Signature URL is validated and uploaded through the school admin settings.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ceoSignatureUrl}
+                        alt="C.E.O signature"
+                        className="h-9 w-36 object-contain"
                       />
-                      <path
-                        d="M 28 35 L 145 32"
-                        strokeWidth="1.2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                    ) : (
+                      <span className="text-xs font-medium text-neutral-600">Not configured</span>
+                    )}
                   </div>
-                  <div className="text-[11px] font-extrabold text-black tracking-wide border-t border-black pt-0.5 w-3/4 mx-auto">
+                  <div className="text-xs font-extrabold text-black tracking-wide border-t border-black pt-0.5 w-3/4 mx-auto">
                     C.E.O's Signature
                   </div>
                 </div>
@@ -910,5 +1138,9 @@ export default function ReportCardPrintModal({
         </div>
       </div>
     </div>
+  </Dialog.Content>
+        </Dialog.Overlay>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

@@ -202,7 +202,7 @@ export default function StudentHomeworkPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <Link
             href={`/dashboard/school/${slug}`}
             aria-label="Back to dashboard"
@@ -226,7 +226,7 @@ export default function StudentHomeworkPage({
           <TabsTrigger value="assignments" className="gap-2 text-xs font-semibold sm:text-sm">
             <BookOpen className="h-4 w-4" />
             <span>Assignments</span>
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+            <span className="rounded-full bg-[#EEF0FF] px-2 py-0.5 text-xs font-bold text-[#1447E6]">
               {homeworkList.length}
             </span>
           </TabsTrigger>

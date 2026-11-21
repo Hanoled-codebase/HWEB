@@ -330,7 +330,10 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
               <Link
                 href="/account/password"
                 onClick={close}
-                className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 active:bg-slate-50"
+                className={cn(
+                  "flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 active:bg-slate-50",
+                  !(organizations.length > 1 && config.profile !== "student") && "col-span-2",
+                )}
               >
                 <KeyRound className="h-4 w-4 text-slate-500" /> Change password
               </Link>

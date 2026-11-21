@@ -120,7 +120,7 @@ export default function StudentSchemeOfWorkPage({
         >
           <ArrowLeft className="h-4 w-4 text-slate-700" />
         </Link>
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
             Scheme of Work
           </h1>

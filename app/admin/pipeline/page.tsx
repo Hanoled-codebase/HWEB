@@ -10,15 +10,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { ChipTabs, EmptyPanel, MList } from "@/components/admin/mobile-kit"
 
 import { ADMIN_API, adminFetch } from "@/lib/admin-api"
+import { toast } from "sonner"
 
 const STAGES = [
   { key: "prospect", label: "Prospect", color: "bg-slate-100 text-slate-700" },
-  { key: "contacted", label: "Contacted", color: "bg-blue-100 text-blue-700" },
-  { key: "demo_scheduled", label: "Demo Scheduled", color: "bg-indigo-100 text-indigo-700" },
-  { key: "proposal_sent", label: "Proposal Sent", color: "bg-purple-100 text-purple-700" },
-  { key: "committed", label: "Committed", color: "bg-yellow-100 text-yellow-700" },
-  { key: "onboarding", label: "Onboarding", color: "bg-orange-100 text-orange-700" },
-  { key: "active", label: "Active", color: "bg-green-100 text-green-700" },
+  { key: "contacted", label: "Contacted", color: "bg-blue-50 text-blue-700" },
+  { key: "demo_scheduled", label: "Demo Scheduled", color: "bg-[#EEF0FF] text-[#1447E6]" },
+  { key: "proposal_sent", label: "Proposal Sent", color: "bg-slate-200/80 text-slate-800" },
+  { key: "committed", label: "Committed", color: "bg-amber-100 text-amber-800" },
+  { key: "onboarding", label: "Onboarding", color: "bg-blue-100 text-blue-800" },
+  { key: "active", label: "Active", color: "bg-emerald-100 text-emerald-800" },
 ]
 
 interface PipelineItem {
@@ -58,6 +59,10 @@ export default function PipelinePage() {
       setForm({ name: "", location: "", estimatedStudents: "", stage: "prospect", nextAction: "", notes: "" })
       const data = await adminFetch(`${ADMIN_API}/pipeline`).then(r => r.json())
       setItems(data.list)
+      toast.success("School added to pipeline")
+    } else {
+      const err = await res.json().catch(() => null)
+      toast.error(err?.error || err?.message || "Failed to add school")
     }
   }
 
@@ -65,11 +70,16 @@ export default function PipelinePage() {
     const idx = STAGES.findIndex(s => s.key === currentStage)
     if (idx < STAGES.length - 1) {
       const nextStage = STAGES[idx + 1].key
-      await adminFetch(`${ADMIN_API}/pipeline/${id}`, {
+      const res = await adminFetch(`${ADMIN_API}/pipeline/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stage: nextStage }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        toast.error(err?.error || err?.message || "Failed to advance stage")
+        return
+      }
       const data = await adminFetch(`${ADMIN_API}/pipeline`).then(r => r.json())
       setItems(data.list)
     }
@@ -81,7 +91,7 @@ export default function PipelinePage() {
         <h1 className="hidden text-2xl font-bold text-slate-900 md:block">Onboarding Pipeline</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button className="max-md:w-full">Add School</Button></DialogTrigger>
-          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
+          <DialogContent>
             <DialogHeader><DialogTitle>Add to Pipeline</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="School name" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />

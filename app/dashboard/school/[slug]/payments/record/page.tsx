@@ -51,6 +51,7 @@ const CHANNELS: Array<{ key: OfflineChannel; label: string; icon: LucideIcon; re
 ];
 
 export default function RecordPaymentPage() {
+  const { currentOrg } = useOrganization();
 // ─────────────────────────────────────────────────────────────────────────────
 // MVP LAUNCH (PARKED — read me, agent!)
 // The full implementation below is deliberately gated behind PARKED_FOR_MVP
@@ -64,7 +65,7 @@ const PARKED_FOR_MVP = true;
       <ComingSoonCard
         title="Recording payments is coming soon"
         blurb="Cash and transfer payments recorded against student bills arrive in the next release. Keep the bursary book until then."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }

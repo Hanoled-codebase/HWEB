@@ -194,7 +194,7 @@ export default function StudentLibraryPage() {
         >
           <ArrowLeft className="h-4 w-4 text-slate-600" />
         </Link>
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
             Library
           </h1>

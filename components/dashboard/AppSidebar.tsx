@@ -64,7 +64,7 @@ function NavGroup({
   if (items.length === 0) return null;
   return (
     <div className="mb-1">
-      {title && <div className="px-3 pb-1 pt-4 text-xs font-medium text-slate-400">{title}</div>}
+      {title && <div className="px-3 pb-1 pt-4 text-xs font-medium text-slate-600">{title}</div>}
       {items.map((item) => {
         // A nested destination (Payments › Record Payment) lights up alone.
         const matches = (url: string) => pathname === url || pathname.startsWith(`${url}/`);
@@ -206,14 +206,14 @@ export function AppSidebar({
                 <div className="truncate text-sm font-semibold capitalize text-slate-900">{currentOrg.name}</div>
                 <div className="truncate text-xs text-slate-500">{roleLabel}</div>
               </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-slate-600" />
             </button>
           }
         />
         <DropdownMenuContent align="start" className="w-[250px]">
           {userRole !== "parent" && (
             <>
-              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hanoled Products</div>
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600">Hanoled Products</div>
               <DropdownMenuItem
                 render={
                   <div className="flex w-full items-center justify-between px-1 py-1">
@@ -253,7 +253,7 @@ export function AppSidebar({
 
           {organizations.length > 1 && (
             <>
-              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Switch School</div>
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600">Switch School</div>
               {organizations.map((org) => (
                 <DropdownMenuItem
                   key={org.id}
@@ -323,13 +323,13 @@ export function AppSidebar({
       {/* Search */}
       <div className="px-3 pt-3">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Find anything..."
             aria-label="Find a page"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-sm pointer-coarse:min-h-11 outline-none placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-sm pointer-coarse:min-h-11 outline-none placeholder:text-slate-600 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
           />
         </div>
       </div>
@@ -340,7 +340,7 @@ export function AppSidebar({
           results.length ? (
             <NavGroup title="Results" items={results} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
           ) : (
-            <div className="px-3 py-6 text-center text-sm text-slate-400">No matches</div>
+            <div className="px-3 py-6 text-center text-sm text-slate-600">No matches</div>
           )
         ) : (
           <>
@@ -360,7 +360,7 @@ export function AppSidebar({
       </nav>
 
       {/* Bottom utility */}
-      <div className="border-t border-slate-100 px-2 py-2">
+      <div className="border-t border-slate-100 px-3 py-3">
         <NavGroup items={pick(BOTTOM)} pathname={pathname} onHover={prefetchRoute} onNavigate={onNavigate} />
       </div>
     </>

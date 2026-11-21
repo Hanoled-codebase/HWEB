@@ -11,6 +11,7 @@ import { AlertTriangle } from "lucide-react"
 import { EmptyPanel, MList, PaymentChip, naira } from "@/components/admin/mobile-kit"
 
 import { ADMIN_API, adminFetch } from "@/lib/admin-api"
+import { toast } from "sonner"
 
 interface PaymentRecord {
   id: string; schoolId: string; schoolName: string; term: string
@@ -83,6 +84,10 @@ function PlatformPaymentsLive() {
       const data = await adminFetch(`${ADMIN_API}/payments`).then(r => r.json())
       setRecords(data.records)
       setSummary(data.summary)
+      toast.success("Payment recorded")
+    } else {
+      const err = await res.json().catch(() => null)
+      toast.error(err?.error || err?.message || "Failed to record payment")
     }
   }
 
@@ -94,7 +99,7 @@ function PlatformPaymentsLive() {
           <DialogTrigger asChild>
             <Button className="max-md:w-full">Record Payment</Button>
           </DialogTrigger>
-          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
+          <DialogContent>
             <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="Organization ID" value={form.organizationId} onChange={e => setForm(p => ({ ...p, organizationId: e.target.value }))} required />

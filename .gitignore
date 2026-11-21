@@ -23,6 +23,12 @@
 # misc
 .DS_Store
 *.pem
+*CREDENTIALS*.md
+*CREDENTIALS*.xlsx
+*CREDENTIALS*.pdf
+*Credentials*.md
+*Credentials*.xlsx
+*Credentials*.pdf
 
 # debug
 npm-debug.log*

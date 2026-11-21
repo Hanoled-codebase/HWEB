@@ -16,6 +16,13 @@ import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
 import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History, Key } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PastResult {
   id: string;
@@ -189,16 +196,28 @@ export default function StudentDashboard() {
         };
       });
 
+      // In random mode, shuffle and slice to selected question count
+      let selectedQuestions = [...normalizedQuestions];
+      if (practiceYearMode === "random") {
+        for (let i = selectedQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedQuestions[i], selectedQuestions[j]] = [selectedQuestions[j], selectedQuestions[i]];
+        }
+      }
+      if (practiceQuestionCount && selectedQuestions.length > practiceQuestionCount) {
+        selectedQuestions = selectedQuestions.slice(0, practiceQuestionCount);
+      }
+
       const practiceSession = {
         examResultId: "practice",
         exam: {
           id: "practice",
-          title: `${practiceBoard.toUpperCase()} ${practiceSubject} Simulator`,
+          title: `${practiceBoard.toUpperCase()} ${practiceSubject} Simulator (HQB)`,
           duration: practiceQuestionCount === 60 ? 90 : 45, // mins
-          totalQuestions: normalizedQuestions.length,
+          totalQuestions: selectedQuestions.length,
           passMark: 50,
         },
-        questions: normalizedQuestions,
+        questions: selectedQuestions,
         startedAt: new Date().toISOString(),
       };
 
@@ -385,12 +404,12 @@ export default function StudentDashboard() {
         suiteHref={EDGE_MODE ? undefined : suiteHref}
         onSignOut={handleSignOut}
       />
-      <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="hidden md:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-2">
             <Logo className="w-7 h-7 sm:w-8 sm:h-8" size="sm" badgeText="STUDENT" textColor="text-[#0B1220]" />
 
-            <div className="hidden sm:flex items-center gap-2.5 min-w-0">
+            <div className="hidden md:flex items-center gap-2.5 min-w-0">
               {studentName && (
                 <span className="text-sm font-semibold text-[#0B1220] truncate">{studentName}</span>
               )}
@@ -464,12 +483,12 @@ export default function StudentDashboard() {
             <UnsentSubmissions />
 
             {/* Tab Navigation Switches */}
-            <div className="hidden sm:flex space-x-1 bg-slate-200/60 p-1.5 rounded-sm border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
+            <div className="hidden md:flex space-x-1 bg-slate-200/60 p-1.5 rounded-xl border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
               <button
                 onClick={() => setActiveTab("assigned")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "assigned"
-                    ? "bg-white text-blue-700 shadow-sm"
+                    ? "bg-white text-[#1447E6] shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
                 }`}
               >
@@ -478,20 +497,20 @@ export default function StudentDashboard() {
               </button>
               <button
                 onClick={() => setActiveTab("practice")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "practice"
-                    ? "bg-white text-blue-700 shadow-sm"
+                    ? "bg-white text-[#1447E6] shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
                 }`}
               >
-                <PlayCircle className="w-4 h-4 text-amber-505" />
+                <PlayCircle className="w-4 h-4 text-amber-500" />
                 <span>Practice Simulator</span>
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-sm text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`snap-start shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === "history"
-                    ? "bg-white text-blue-700 shadow-sm"
+                    ? "bg-white text-[#1447E6] shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
                 }`}
               >
@@ -506,12 +525,12 @@ export default function StudentDashboard() {
                 {/* 1. School Assigned Exams */}
                 <div>
                   <div className="flex items-center space-x-2 mb-4">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
-                    <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">School Exams</h2>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1447E6]"></span>
+                    <h2 className="text-base font-bold text-[#0B1220] uppercase tracking-wide">School Exams</h2>
                   </div>
 
                   {schoolExams.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-sm p-8 text-center text-slate-500 text-sm">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-600 text-sm">
                       No active class exams are currently assigned to you.
                     </div>
                   ) : (
@@ -532,8 +551,8 @@ export default function StudentDashboard() {
                 {/* 2. SSCE Practice Exams */}
                 <div className="pt-4">
                   <div className="flex items-center space-x-2 mb-4">
-                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
-                    <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">SSCE Practice Center</h2>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1447E6]"></span>
+                    <h2 className="text-base font-bold text-[#0B1220] uppercase tracking-wide">SSCE Practice Center</h2>
                   </div>
 
                   {ssceExams.length === 0 ? (
@@ -560,13 +579,13 @@ export default function StudentDashboard() {
             {/* TAB CONTENT: Practice Simulator Form */}
             {activeTab === "practice" && (
               <div className="m-page max-w-2xl mx-auto bg-white rounded-sm shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-6 text-white">
+                <div className="bg-[#0B1220] p-6 text-white">
                   <div className="flex items-center space-x-2">
                     <PlayCircle className="w-5 h-5 text-amber-300 animate-pulse" />
                     <h2 className="text-lg font-bold">Dynamic Exam Practice Simulator</h2>
                   </div>
                   <p className="text-xs text-blue-100 mt-1 leading-relaxed">
-                    Select a board type (JAMB or NECO), choose your subject, allocate either random years or a specific exam year, and instantly begin a timed dynamic practice assessment.
+                    Powered by Hanoled Question Bank (HQB). Select a board (JAMB, WAEC, or NECO), choose your subject, allocate either random years or a specific exam year, and instantly begin a timed practice session.
                   </p>
                 </div>
 
@@ -574,28 +593,42 @@ export default function StudentDashboard() {
                   {/* Board selection */}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">1. Select Assessment Board</label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("jamb")}
-                        className={`p-4 rounded-sm border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "jamb"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
                         }`}
                       >
-                        <span className="text-sm block">JAMB (UTME) Practice</span>
+                        <span className="text-sm font-bold block">JAMB (UTME)</span>
+                        <span className="text-[11px] text-slate-500 block">UTME Bank</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPracticeBoard("waec")}
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
+                          practiceBoard === "waec"
+                            ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
+                            : "border-slate-200/60 hover:border-slate-300 text-slate-600"
+                        }`}
+                      >
+                        <span className="text-sm font-bold block">WAEC (WASSCE)</span>
+                        <span className="text-[11px] text-slate-500 block">Senior Certificate</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPracticeBoard("neco")}
-                        className={`p-4 rounded-sm border-2 text-center transition-all ${
+                        className={`p-3.5 rounded-sm border-2 text-center transition-all ${
                           practiceBoard === "neco"
                             ? "border-blue-600 bg-blue-50/60 text-blue-700 font-extrabold shadow-sm"
                             : "border-slate-200/60 hover:border-slate-300 text-slate-600"
                         }`}
                       >
-                        <span className="text-sm block">NECO SSCE Practice</span>
+                        <span className="text-sm font-bold block">NECO SSCE</span>
+                        <span className="text-[11px] text-slate-500 block">National Exams</span>
                       </button>
                     </div>
                   </div>
@@ -711,7 +744,7 @@ export default function StudentDashboard() {
                   <button
                     type="submit"
                     disabled={initializingPractice || fetchingPracticeSubjects || !practiceSubject}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm py-3.5 rounded-sm shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+                    className="w-full min-h-12 bg-[#1447E6] hover:bg-[#0F36B8] text-white font-bold text-sm py-3.5 rounded-xl shadow-sm active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                   >
                     {initializingPractice ? (
                       <>
@@ -772,7 +805,7 @@ export default function StudentDashboard() {
                                     <span className={`px-2.5 py-1 rounded-sm font-semibold ${
                                       result.exam.examType === "school"
                                         ? "bg-blue-50 text-blue-700"
-                                        : "bg-indigo-50 text-indigo-700"
+                                        : "bg-[#EEF0FF] text-[#1447E6]"
                                     }`}>
                                       {result.exam.examType === "school" ? "School" : "SSCE Practice"}
                                     </span>
@@ -846,7 +879,7 @@ export default function StudentDashboard() {
                             <span className={`inline-flex mt-2 text-xs font-bold px-2.5 py-0.5 rounded-sm border ${
                               result.exam.examType === "school"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
-                                : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                                : "bg-[#EEF0FF] text-[#1447E6] border-[#1447E6]/20"
                             }`}>
                               {result.exam.examType === "school" ? "School" : "SSCE Practice"}
                             </span>
@@ -894,7 +927,7 @@ export default function StudentDashboard() {
 
       {!authError && !loading && (
         <MobileSegmentBar
-          className="sm:hidden"
+          className="md:hidden"
           value={activeTab}
           onChange={setActiveTab}
           items={[
@@ -906,83 +939,96 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* Exam Instructions / Start Modal */}
-      {isStartModalOpen && selectedExam && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-sm max-w-lg w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:p-8 relative">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Exam Rules & Guidelines</h3>
-            <p className="text-slate-500 text-xs mb-6">Exam: <strong className="text-slate-700">{selectedExam.title}</strong></p>
+      {/* Exam Instructions / Start Modal (shared accessible Dialog) */}
+      <Dialog
+        open={isStartModalOpen && Boolean(selectedExam)}
+        onOpenChange={(open) => {
+          if (!open) setIsStartModalOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          {selectedExam && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Exam Rules &amp; Guidelines</DialogTitle>
+                <DialogDescription>
+                  Exam: <strong className="text-slate-700">{selectedExam.title}</strong>
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-sm border border-slate-100">
-                <Clock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">Time Limit: {selectedExam.duration} Minutes</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">The timer starts as soon as you load the screen. Once started, it cannot be paused.</p>
+              <div className="space-y-3 my-2">
+                <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <Clock className="w-5 h-5 text-[#1447E6] mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-bold text-[#0B1220]">Time Limit: {selectedExam.duration} Minutes</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">The timer starts as soon as you load the screen. Once started, it cannot be paused.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <FileText className="w-5 h-5 text-[#1447E6] mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-bold text-[#0B1220]">{selectedExam.totalQuestions} Questions</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">Answer all questions carefully. The pass mark is set to {selectedExam.passMark}%.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3 bg-red-50/60 p-4 rounded-xl border border-red-200/70">
+                  <Info className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-bold text-red-900">Browser Security Notice</h4>
+                    <p className="text-xs text-red-700 mt-0.5">Do not close the page, reload, or navigate away. Your answers are auto-saved locally, but dropping connection will risk automatic submission.</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-start space-x-3 bg-slate-50 p-4 rounded-sm border border-slate-100">
-                <FileText className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">{selectedExam.totalQuestions} Multiple-Choice Questions</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">Answer all questions carefully. The pass mark is set to {selectedExam.passMark}%.</p>
+              {selectedExam.passkeyRequired && (
+                <div className="my-2">
+                  <label className="text-xs font-bold text-[#0B1220] flex items-center gap-1.5 mb-2">
+                    <Key className="w-3.5 h-3.5 text-amber-800" />
+                    Exam Passkey
+                  </label>
+                  <input
+                    type="text"
+                    value={passkeyInput}
+                    onChange={(e) => {
+                      setPasskeyInput(e.target.value);
+                      if (passkeyError) setPasskeyError(null);
+                    }}
+                    placeholder="Ask your teacher or admin for this code"
+                    autoComplete="off"
+                    className={`w-full font-mono tracking-[0.2em] text-center text-lg font-bold px-4 py-3 rounded-xl border bg-amber-50/40 text-[#0B1220] placeholder:font-sans placeholder:tracking-normal placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1447E6]/30 ${
+                      passkeyError ? "border-red-500" : "border-amber-300"
+                    }`}
+                  />
+                  {passkeyError && (
+                    <p className="text-xs font-semibold text-red-600 mt-1.5">{passkeyError}</p>
+                  )}
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-start space-x-3 bg-rose-50/50 p-4 rounded-sm border border-rose-100">
-                <Info className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold text-rose-800">Browser Security Notice</h4>
-                  <p className="text-xs text-rose-500 mt-0.5">Do not close the page, reload, or navigate away. Your answers are auto-saved locally, but dropping connection will risk automatic submission.</p>
-                </div>
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsStartModalOpen(false)}
+                  className="flex-1 min-h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-3 px-4 rounded-xl border border-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartExamNow}
+                  disabled={startingExamId === selectedExam.id}
+                  className="flex-1 min-h-11 bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs font-semibold py-3 px-4 rounded-xl shadow-xs transition-all disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+                >
+                  {startingExamId === selectedExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{startingExamId === selectedExam.id ? "Starting..." : "Start Exam Now"}</span>
+                </button>
               </div>
-            </div>
-
-            {selectedExam.passkeyRequired && (
-              <div className="mb-6">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
-                  <Key className="w-3.5 h-3.5 text-[#8a5c10]" />
-                  Exam Passkey
-                </label>
-                <input
-                  type="text"
-                  value={passkeyInput}
-                  onChange={(e) => {
-                    setPasskeyInput(e.target.value);
-                    if (passkeyError) setPasskeyError(null);
-                  }}
-                  placeholder="Ask your teacher or admin for this code"
-                  autoComplete="off"
-                  className={`w-full font-mono tracking-[0.2em] text-center text-lg font-bold px-4 py-3 rounded-sm border bg-[#F5A623]/5 text-[#0B1220] placeholder:font-sans placeholder:tracking-normal placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1447E6]/30 ${
-                    passkeyError ? "border-[#F04438]" : "border-[#F5A623]/40"
-                  }`}
-                />
-                {passkeyError && (
-                  <p className="text-xs font-semibold text-[#F04438] mt-1.5">{passkeyError}</p>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setIsStartModalOpen(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-3 px-4 rounded-sm border border-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleStartExamNow}
-                disabled={startingExamId === selectedExam.id}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold py-3 px-4 rounded-sm shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0 inline-flex items-center justify-center gap-1.5"
-              >
-                {startingExamId === selectedExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{startingExamId === selectedExam.id ? "Starting..." : "Start Exam Now"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

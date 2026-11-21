@@ -293,7 +293,7 @@ export default function PayrollPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="hidden md:block">
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Banknote className="h-6 w-6 text-violet-600" />
+            <Banknote className="h-6 w-6 text-[#1447E6]" />
             Payroll &amp; Compensation
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage staff salary records, dynamic bonuses, and session calculations</p>

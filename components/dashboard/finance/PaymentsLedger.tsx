@@ -80,7 +80,7 @@ export function PaymentsLedger({ slug }: { slug: string }) {
 
   const header = (
     <header className="flex flex-wrap items-end justify-between gap-3">
-      <div>
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Payments</h1>
         <p className="mt-1 text-sm text-slate-500">Every fee payment, newest first — at the bursary and online.</p>
       </div>

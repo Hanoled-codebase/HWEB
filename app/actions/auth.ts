@@ -92,7 +92,7 @@ type HcoreSignInResponse = {
 };
 
 export type SignInResult =
-  | { success: true; redirectUrl: string; hcoreToken?: string; hcbtToken?: string | null }
+  | { success: true; redirectUrl: string; userRole?: 'STUDENT' | 'PARENT' | 'STAFF'; hcoreToken?: string; hcbtToken?: string | null }
   | { passwordChangeRequired: true; changeToken: string; context: SignInContext }
   | { error: string; reference?: string; expired?: boolean };
 
@@ -268,7 +268,8 @@ async function finishSignIn(
     cookieStore.delete('hweb_parent_redirect');
   }
 
-  cookieStore.set('hweb_user_role', isStudent ? 'STUDENT' : isParentOnly ? 'PARENT' : 'STAFF', {
+  const userRole: 'STUDENT' | 'PARENT' | 'STAFF' = isStudent ? 'STUDENT' : isParentOnly ? 'PARENT' : 'STAFF';
+  cookieStore.set('hweb_user_role', userRole, {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax',
@@ -298,7 +299,7 @@ async function finishSignIn(
     redirectUrl = '/welcome';
   }
 
-  return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
+  return { success: true, redirectUrl, userRole, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
 }
 
 export async function loginAction(prevState: unknown, formData: FormData): Promise<SignInResult> {
@@ -547,7 +548,7 @@ export async function registerAction(prevState: unknown, formData: FormData) {
       // Always route to welcome screen post-registration for a playful onboarding experience
       const redirectUrl = '/welcome';
       console.log('Redirecting to:', redirectUrl);
-      return { success: true, redirectUrl, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
+      return { success: true, redirectUrl, userRole: 'STAFF' as const, hcoreToken: exposeTokensToBrowser() ? data.token : undefined, hcbtToken: exposeTokensToBrowser() ? hcbtToken : null };
     }
 
     return { error: 'No token received' };

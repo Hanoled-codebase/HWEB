@@ -46,6 +46,29 @@ test.describe("signing in", () => {
     expect(login?.body).toMatchObject({ identifierType: "ADMISSION_NUMBER", identifier: "GF/2026/001", organizationSlugOrId: "greenfield" });
   });
 
+  test("the school picker recovers from an invalid directory response on mobile", async ({ page }) => {
+    let calls = 0;
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/v1/public/organizations", (route) => {
+      calls++;
+      return calls === 1 ? route.fulfill({ json: [{ slug: "greenfield" }] }) : route.fallback();
+    });
+
+    await page.goto("/signin");
+    await page.getByRole("button", { name: "Student / Candidate" }).click();
+    await page.getByRole("button", { name: /Select your school/ }).click();
+    await expect(page.getByText(/School directory unavailable/)).toBeVisible();
+    const retry = page.getByRole("button", { name: "Try again" });
+    await retry.focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: /Greenfield Academy/ }).click();
+    await expect(page.getByText("Greenfield Academy", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    expect(calls).toBe(2);
+    expect(pageErrors).toEqual([]);
+  });
+
   test("an exam candidate who signs in by email is taken to their exams", async ({ page }) => {
     await signIn(page, "candidate");
     await expect(page).toHaveURL(/\/cbt\/student\?orgSlug=greenfield/);

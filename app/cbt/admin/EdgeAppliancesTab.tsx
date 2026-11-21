@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { Server, Download, ShieldOff, CheckCircle2, Clock, Info, Copy, BookOpen } from "lucide-react";
 import { cbtApi, type EdgePlatform } from "@/lib/api-cbt";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string; exams: any[] }) {
   const [nodes, setNodes] = useState<any[]>([]);
@@ -301,128 +308,128 @@ export default function EdgeAppliancesTab({ orgSlug, exams }: { orgSlug: string;
       )}
 
       {/* Export Modal */}
-      {isExportOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Download className="w-4 h-4 text-blue-600" />
-                Export Exam Package
-              </h3>
-              <button onClick={() => setIsExportOpen(false)} aria-label="Close" className="-mr-2 flex h-11 w-11 items-center justify-center text-xl text-slate-400 hover:text-slate-600 sm:mr-0 sm:h-auto sm:w-auto sm:text-base">×</button>
+      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-[#1447E6]" />
+              Export Exam Package
+            </DialogTitle>
+            <DialogDescription>
+              Generate an encrypted exam package locked to this Edge Appliance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleExport} className="space-y-4">
+            {exportError && (
+              <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs font-medium border border-red-200">
+                {exportError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Select Published Exam</label>
+              <select
+                className="w-full min-h-11 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1447E6]/30 focus:border-[#1447E6]"
+                value={selectedExamId}
+                onChange={(e) => setSelectedExamId(e.target.value)}
+                required
+              >
+                <option value="">-- Choose Exam --</option>
+                {publishedExams.map(ex => (
+                  <option key={ex.id} value={ex.id}>{ex.title}</option>
+                ))}
+              </select>
             </div>
-            
-            <form onSubmit={handleExport} className="p-6 space-y-4">
-              {exportError && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100">
-                  {exportError}
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Select Published Exam</label>
-                <select 
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={selectedExamId}
-                  onChange={(e) => setSelectedExamId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Choose Exam --</option>
-                  {publishedExams.map(ex => (
-                    <option key={ex.id} value={ex.id}>{ex.title}</option>
-                  ))}
-                </select>
-              </div>
 
-              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
-                This will generate an encrypted <code>.hcbtexam</code> file locked to <strong>{selectedNode?.label || selectedNode?.id.substring(0,8)}</strong>. Move this file to the local server via USB or local network to import it into the Edge Appliance.
-              </div>
+            <div className="bg-[#EEF0FF] p-3 rounded-xl border border-[#1447E6]/15 text-xs text-[#0B1220] leading-relaxed">
+              This will generate an encrypted <code>.hcbtexam</code> file locked to <strong>{selectedNode?.label || selectedNode?.id.substring(0,8)}</strong>. Move this file to the local server via USB or local network to import it into the Edge Appliance.
+            </div>
 
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsExportOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedExamId || !!exportingId}
-                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
-                >
-                  {exportingId ? "Generating..." : "Download Package"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsExportOpen(false)}
+                className="min-h-11 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!selectedExamId || !!exportingId}
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#0F36B8] rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {exportingId ? "Generating..." : "Download Package"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Practice Pack Modal */}
-      {isPracticeOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-                Build Practice Pack
-              </h3>
-              <button onClick={() => setIsPracticeOpen(false)} aria-label="Close" className="-mr-2 flex h-11 w-11 items-center justify-center text-xl text-slate-400 hover:text-slate-600 sm:mr-0 sm:h-auto sm:w-auto sm:text-base">×</button>
+      <Dialog open={isPracticeOpen} onOpenChange={setIsPracticeOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#1447E6]" />
+              Build Practice Pack
+            </DialogTitle>
+            <DialogDescription>
+              Package cached past-question sets for offline practice on the Edge Appliance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {practiceError && (
+              <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs font-medium border border-red-200">
+                {practiceError}
+              </div>
+            )}
+
+            <div className="bg-[#EEF0FF] p-3 rounded-xl border border-[#1447E6]/15 text-xs text-[#0B1220] leading-relaxed">
+              Only sets already fetched by students/teachers online are cached and exportable — this never calls the practice-question provider itself, so it never spends the shared quota.
             </div>
 
-            <div className="p-6 space-y-4">
-              {practiceError && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100">
-                  {practiceError}
-                </div>
-              )}
-
-              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
-                Only sets already fetched by students/teachers online are cached and exportable — this never calls the practice-question provider itself, so it never spends the shared quota.
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Select cached subject/board/year sets</label>
+              <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+                {practiceSets.length === 0 ? (
+                  <div className="p-4 text-xs text-slate-600 text-center">Nothing cached yet — have a student or teacher use Practice Simulator online first.</div>
+                ) : (
+                  practiceSets.map((s) => {
+                    const key = setKey(s);
+                    return (
+                      <label key={key} className="flex min-h-11 items-center gap-2.5 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50">
+                        <input type="checkbox" checked={selectedSets.has(key)} onChange={() => toggleSet(key)} className="rounded border-slate-300" />
+                        <span className="flex-1 font-medium text-slate-800">{s.subject} · {s.ssceBoard.toUpperCase()} · {s.year}</span>
+                        <span className="text-xs text-slate-500 tabular-nums">{s.questionCount} Q</span>
+                      </label>
+                    );
+                  })
+                )}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Select cached subject/board/year sets</label>
-                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-                  {practiceSets.length === 0 ? (
-                    <div className="p-4 text-xs text-slate-500 text-center">Nothing cached yet — have a student or teacher use Practice Simulator online first.</div>
-                  ) : (
-                    practiceSets.map((s) => {
-                      const key = setKey(s);
-                      return (
-                        <label key={key} className="flex items-center gap-2.5 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50">
-                          <input type="checkbox" checked={selectedSets.has(key)} onChange={() => toggleSet(key)} className="rounded border-slate-300" />
-                          <span className="flex-1 font-medium text-slate-700">{s.subject} · {s.ssceBoard.toUpperCase()} · {s.year}</span>
-                          <span className="text-xs text-slate-500">{s.questionCount} Q</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPracticeOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportPractice}
-                  disabled={selectedSets.size === 0 || practiceExporting}
-                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
-                >
-                  {practiceExporting ? "Building..." : `Download Pack (${selectedSets.size})`}
-                </button>
-              </div>
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPracticeOpen(false)}
+                className="min-h-11 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPractice}
+                disabled={selectedSets.size === 0 || practiceExporting}
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#0F36B8] rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {practiceExporting ? "Building..." : `Download Pack (${selectedSets.size})`}
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

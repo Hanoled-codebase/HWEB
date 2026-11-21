@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Send, Loader2, User } from "lucide-react";
+import { MessageSquare, Send, Loader2 } from "lucide-react";
 
 type Comment = {
   id: string;
@@ -70,8 +70,8 @@ export function DiscussionBoard({
       if (res.success) {
         setComments(res.data);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load discussions");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to load discussions");
     } finally {
       setLoading(false);
     }
@@ -92,8 +92,8 @@ export function DiscussionBoard({
         setComments((prev) => [...prev, res.data]);
         setNewComment("");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to post comment");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to post comment");
     } finally {
       setSubmitting(false);
     }
@@ -101,19 +101,23 @@ export function DiscussionBoard({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col h-full bg-white p-0 gap-0">
-        <SheetHeader className="p-4 border-b border-slate-100">
-          <SheetTitle className="text-base font-bold flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-[#1447E6]" />
+      <SheetContent className="flex h-dvh w-full flex-col gap-0 bg-white p-0 sm:max-w-md max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:h-[88dvh] max-md:rounded-t-3xl max-md:border-l-0 max-md:border-t max-md:pt-0">
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-2.5 hidden h-1 w-10 shrink-0 rounded-full bg-slate-300 max-md:block"
+        />
+        <SheetHeader className="border-b border-slate-200/80 p-4 pr-14">
+          <SheetTitle className="flex items-center gap-2 text-base font-bold text-[#0B1220]">
+            <MessageSquare className="h-5 w-5 text-[#1447E6]" aria-hidden="true" />
             Digital Classroom Q&A
           </SheetTitle>
-          <SheetDescription className="text-xs line-clamp-1">
+          <SheetDescription className="line-clamp-1 text-xs text-slate-600">
             Discussing: {studyMaterialTitle}
           </SheetDescription>
         </SheetHeader>
 
         {/* Message Feed */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+        <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain bg-slate-50/70 p-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-[#1447E6]" />
@@ -174,13 +178,14 @@ export function DiscussionBoard({
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-slate-100 bg-white">
-          <div className="flex gap-2 items-end">
+        <div className="border-t border-slate-200/80 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-end gap-2">
             <Textarea
               placeholder="Ask a question..."
+              aria-label="Ask a question"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              className="resize-none min-h-[44px] h-[44px] max-h-[120px] rounded-xl border-slate-200 focus:border-[#1447E6] text-sm"
+              className="h-[44px] max-h-[120px] min-h-[44px] resize-none rounded-xl border-slate-200 text-base focus:border-[#1447E6] sm:text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -190,14 +195,15 @@ export function DiscussionBoard({
             />
             <Button
               size="icon"
+              aria-label="Send comment"
               onClick={handlePostComment}
               disabled={submitting || !newComment.trim()}
-              className="bg-[#1447E6] hover:bg-[#1447E6]/90 rounded-xl shrink-0 h-11 w-11"
+              className="h-11 w-11 shrink-0 rounded-xl bg-[#1447E6] hover:bg-[#0F36B8]"
             >
               {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           </div>

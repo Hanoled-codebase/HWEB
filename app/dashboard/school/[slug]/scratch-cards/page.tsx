@@ -90,12 +90,13 @@ type ValidationResult = {
 // ─────────────────────────────────────────────────────────────────────────────
 const SCRATCH_CARD_PARKED = true;
 export default function ScratchCardsPage() {
+  const { currentOrg } = useOrganization();
   if (SCRATCH_CARD_PARKED) {
     return (
       <ComingSoonCard
         title="Scratch cards are coming soon"
         blurb="Serial + PIN result unlocking arrives in the next release. Until then, results open straight from the dashboard."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }
@@ -548,7 +549,7 @@ function ScratchCardsLive() {
 
       {/* PIN Display Dialog */}
       <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Printer className="h-5 w-5 text-blue-600" />

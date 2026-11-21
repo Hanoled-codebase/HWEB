@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Chip, EmptyPanel, MList, naira } from "@/components/admin/mobile-kit"
 
 import { ADMIN_API, adminFetch } from "@/lib/admin-api"
+import { toast } from "sonner"
 
 interface HostedConfig {
   id: string; organizationId: string; subdomain: string | null
@@ -39,7 +40,7 @@ export default function HostedPage() {
 
   const tierBadge = (tier: string) => {
     switch (tier) {
-      case "hosted_dedicated": return <Badge className="bg-purple-100 text-purple-700">Hosted (Dedicated)</Badge>
+      case "hosted_dedicated": return <Badge className="bg-[#EEF0FF] text-[#1447E6]">Hosted (Dedicated)</Badge>
       case "planned": return <Badge className="bg-blue-100 text-blue-700">Planned</Badge>
       default: return <Badge variant="secondary">Shared SaaS</Badge>
     }
@@ -64,6 +65,10 @@ export default function HostedPage() {
       setForm({ organizationId: "", subdomain: "", hostingTier: "planned", dbInstance: "", infraCostMonthly: "", notes: "" })
       const data = await adminFetch(`${ADMIN_API}/hosted`).then(r => r.json())
       setConfigs(data)
+      toast.success("Hosted configuration saved")
+    } else {
+      const err = await res.json().catch(() => null)
+      toast.error(err?.error || err?.message || "Failed to save hosted configuration")
     }
   }
 
@@ -74,7 +79,7 @@ export default function HostedPage() {
         {canManageHosted && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button className="max-md:w-full">Add Hosted School</Button></DialogTrigger>
-          <DialogContent className="max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:max-h-[92dvh]">
+          <DialogContent>
             <DialogHeader><DialogTitle>Add Hosted Configuration</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input placeholder="Organization ID" value={form.organizationId} onChange={e => setForm(p => ({ ...p, organizationId: e.target.value }))} required />

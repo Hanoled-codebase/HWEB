@@ -507,17 +507,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background-color: oklch(0.556 0.02 263.4 / 40%);
+    background-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: oklch(0.488 0.243 264.376 / 60%);
+    background-color: color-mix(in srgb, var(--primary) 60%, transparent);
     background-clip: padding-box;
   }
   html {
-    scrollbar-color: oklch(0.556 0.02 263.4 / 40%) transparent;
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent) transparent;
   }
 }
 
@@ -678,49 +678,65 @@
   }
 }
 
-/* HCBT Variables */
+/* HCBT Variables — Tailwind v4 valid color values aligned to Hanoled brand palette */
 .cbt-theme {
-  --background: 220 33% 98%;
-  --foreground: 220 49% 9%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 49% 9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 220 49% 9%;
-  --primary: 226 84% 49%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 36 91% 55%;
-  --secondary-foreground: 220 49% 9%;
-  --muted: 220 20% 94%;
-  --muted-foreground: 220 14% 46%;
-  --accent: 226 100% 97%;
-  --accent-foreground: 226 84% 49%;
-  --destructive: 4 87% 58%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 220 20% 90%;
-  --input: 220 20% 90%;
-  --ring: 226 84% 49%;
+  --background: hsl(220 33% 98%);
+  --foreground: hsl(220 49% 9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220 49% 9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220 49% 9%);
+  --primary: hsl(226 84% 49%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(36 91% 55%);
+  --secondary-foreground: hsl(220 49% 9%);
+  --muted: hsl(220 20% 94%);
+  --muted-foreground: hsl(220 14% 40%);
+  --accent: hsl(226 100% 97%);
+  --accent-foreground: hsl(226 84% 49%);
+  --destructive: hsl(4 87% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(220 20% 90%);
+  --input: hsl(220 20% 90%);
+  --ring: hsl(226 84% 49%);
   --radius: 0.75rem;
 }
 .cbt-theme.dark {
-  --background: 220 49% 9%;
-  --foreground: 220 20% 98%;
-  --card: 220 40% 13%;
-  --card-foreground: 220 20% 98%;
-  --popover: 220 40% 13%;
-  --popover-foreground: 220 20% 98%;
-  --primary: 226 84% 56%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 36 91% 55%;
-  --secondary-foreground: 220 49% 9%;
-  --muted: 220 30% 18%;
-  --muted-foreground: 220 15% 65%;
-  --accent: 220 35% 20%;
-  --accent-foreground: 226 84% 70%;
-  --destructive: 4 87% 58%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 220 30% 20%;
-  --input: 220 30% 20%;
-  --ring: 226 84% 56%;
+  --background: hsl(220 49% 9%);
+  --foreground: hsl(220 20% 98%);
+  --card: hsl(220 40% 13%);
+  --card-foreground: hsl(220 20% 98%);
+  --popover: hsl(220 40% 13%);
+  --popover-foreground: hsl(220 20% 98%);
+  --primary: hsl(226 84% 56%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(36 91% 55%);
+  --secondary-foreground: hsl(220 49% 9%);
+  --muted: hsl(220 30% 18%);
+  --muted-foreground: hsl(220 15% 70%);
+  --accent: hsl(220 35% 20%);
+  --accent-foreground: hsl(226 84% 70%);
+  --destructive: hsl(4 87% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(220 30% 20%);
+  --input: hsl(220 30% 20%);
+  --ring: hsl(226 84% 56%);
+}
+
+@layer base {
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  dialog:modal {
+    overscroll-behavior: contain;
+  }
+  dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
 }
 
 /* Mobile app shell: notch / home-indicator safe areas. Requires viewport-fit=cover (see app/layout.tsx). */
@@ -735,19 +751,18 @@
 
 /* Phones. Deliberately unlayered so they win over page-level utility overrides. */
 @media (max-width: 767px) {
-  /* iOS Safari zooms into any focused field under 16px. Pages shrink fields with text-xs/text-sm;
-     phones always get 16px, desktop keeps the compact size. */
-  :is(input, textarea, select):is(
-    .text-xs, .text-sm,
-    [class*="text-[10px]"], [class*="text-[11px]"], [class*="text-[12px]"],
-    [class*="text-[13px]"], [class*="text-[14px]"], [class*="text-[15px]"]
-  ) {
+  html {
+    scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* iOS Safari zooms into any focused field under 16px. Enforce 16px on phones for all text controls. */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), textarea, select) {
     font-size: 16px;
   }
 
   /* The shared Dialog is a bottom sheet on phones (components/ui/dialog.tsx): it rises, it doesn't pop. */
   [data-slot="dialog-content"][data-state="open"] {
-    animation: m-sheet-up 420ms var(--ease-spring) backwards;
+    animation: m-sheet-up 340ms var(--ease-out-smooth) backwards;
   }
   [data-slot="dialog-content"][data-state="closed"] {
     animation: m-fade 160ms ease-in reverse forwards;
@@ -820,9 +835,9 @@
   .m-rise { animation: m-rise var(--dur-base) var(--ease-out-smooth) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
   .m-fade { animation: m-fade 220ms ease-out backwards; }
   .m-pop { animation: m-pop 280ms var(--ease-out-smooth) backwards; transform-origin: var(--origin, center); }
-  .m-sheet-up { animation: m-sheet-up 420ms var(--ease-spring) backwards; }
+  .m-sheet-up { animation: m-sheet-up 340ms var(--ease-out-smooth) backwards; }
   /* Dialog panel: rises from the bottom edge on phones (where it is a sheet), pops from centre elsewhere. */
-  .m-sheet { animation: m-sheet-up 420ms var(--ease-spring) backwards; }
+  .m-sheet { animation: m-sheet-up 340ms var(--ease-out-smooth) backwards; }
   @media (min-width: 640px) { .m-sheet { animation: m-pop 280ms var(--ease-out-smooth) backwards; } }
 
   /* Children enter one after another (max 8 steps, then together). */

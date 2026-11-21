@@ -1,8 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -170,111 +178,110 @@ export default function BulkStudentImportModal({
   const validCount = parsedRows.filter((r) => r.isValid).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1220]/75 p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-6 flex flex-col font-['Poppins',sans-serif]">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-[#0B1220] px-6 py-4 text-white">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1447E6] text-white shadow-md">
-              <FileSpreadsheet className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#1447E6]">
+              <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white">Bulk Student Onboarding</h2>
-              <p className="text-xs text-slate-500">Import student roster from Excel / CSV spreadsheet</p>
+            <div className="min-w-0">
+              <DialogTitle>Bulk Student Onboarding</DialogTitle>
+              <DialogDescription className="mt-0.5 text-xs text-slate-600">
+                Import your student roster from a CSV or TXT file.
+              </DialogDescription>
             </div>
           </div>
-          <Button
-            type="button"
-            onClick={onClose}
-            variant="ghost"
-            size="icon"
-            className="text-slate-400 hover:text-white hover:bg-slate-800"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        </DialogHeader>
 
-        {/* Content Body */}
-        <div className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
+        <div className="space-y-4 py-1">
           {/* Download Template Banner */}
-          <div className="flex items-center justify-between rounded-xl bg-blue-50/80 p-4 border border-blue-100">
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-200/80 bg-[#EEF0FF]/70 p-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
-              <p className="text-xs font-bold text-[#1447E6]">Need an Excel / CSV Template?</p>
-              <p className="text-xs text-slate-600">Download formatted headers (FirstName, LastName, AdmissionNo, Gender, Class)</p>
+              <p className="text-xs font-bold text-[#1447E6]">Need a CSV Template?</p>
+              <p className="text-xs text-slate-600">
+                Download formatted headers (FirstName, LastName, AdmissionNo, Gender, Class)
+              </p>
             </div>
             <Button
               type="button"
               onClick={handleDownloadTemplate}
               variant="outline"
               size="sm"
-              className="border-blue-200 text-[#1447E6] hover:bg-blue-100 font-semibold gap-1.5 text-xs h-8"
+              className="w-full shrink-0 gap-1.5 border-blue-200 bg-white text-xs font-semibold text-[#1447E6] hover:bg-blue-50 sm:w-auto"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
               Download Template
             </Button>
           </div>
 
-          {/* File Upload Drag Box */}
-          <div className="relative rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#1447E6] bg-slate-50/50 p-8 text-center transition-all">
+          {/* File Upload Dropzone */}
+          <label className="relative block cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-6 text-center transition-colors hover:border-[#1447E6] focus-within:border-[#1447E6] focus-within:ring-2 focus-within:ring-[#1447E6]/20 sm:p-8">
             <input
               type="file"
-              accept=".csv, .txt, .xlsx"
+              accept=".csv,.txt,text/csv,text/plain"
+              aria-label="Upload student roster CSV or TXT file"
               onChange={handleFileChange}
-              className="absolute inset-0 z-10 w-full h-full opacity-0 cursor-pointer"
+              className="sr-only"
             />
             <div className="flex flex-col items-center justify-center space-y-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-200 text-[#1447E6]">
-                <Upload className="h-6 w-6" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[#1447E6] shadow-xs">
+                <Upload className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">
-                  {file ? file.name : "Click or drag your student roster file here"}
+                <p className="text-sm font-bold text-[#0B1220]">
+                  {file ? file.name : "Tap to choose or drag your student roster"}
                 </p>
-                <p className="text-xs text-slate-500 mt-0.5">Supports CSV or TXT spreadsheet files</p>
+                <p className="mt-0.5 text-xs text-slate-600">Supports CSV or TXT files (export Excel sheets as CSV)</p>
               </div>
             </div>
-          </div>
+          </label>
 
           {/* Parsed Rows Preview Table */}
           {parsedRows.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 uppercase tracking-wider text-xs">
-                  Roster Preview ({validCount} / {parsedRows.length} Valid Rows)
+                <span className="font-bold text-slate-700">
+                  Roster Preview ({validCount}/{parsedRows.length} valid)
                 </span>
-                <span className="text-emerald-600 font-semibold">{validCount} Ready to Import</span>
+                <span className="font-semibold text-emerald-700 tabular-nums">{validCount} ready</span>
               </div>
 
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#0B1220] text-white font-semibold text-xs sticky top-0">
+              <div
+                role="region"
+                aria-label="Parsed student roster preview"
+                tabIndex={0}
+                className="max-h-52 overflow-auto rounded-xl border border-slate-200 bg-white focus-visible:outline-2 focus-visible:outline-[#1447E6]"
+              >
+                <table className="w-full min-w-[520px] border-collapse text-left text-xs">
+                  <thead className="sticky top-0 bg-[#0B1220] text-xs font-semibold text-white">
                     <tr>
-                      <th className="px-3 py-2">#</th>
-                      <th className="px-3 py-2">Student Name</th>
-                      <th className="px-3 py-2">Admission No</th>
-                      <th className="px-3 py-2">Gender</th>
-                      <th className="px-3 py-2">Class</th>
-                      <th className="px-3 py-2 text-center">Status</th>
+                      <th scope="col" className="px-3 py-2">#</th>
+                      <th scope="col" className="px-3 py-2">Student Name</th>
+                      <th scope="col" className="px-3 py-2">Admission No</th>
+                      <th scope="col" className="px-3 py-2">Gender</th>
+                      <th scope="col" className="px-3 py-2">Class</th>
+                      <th scope="col" className="px-3 py-2 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-700">
                     {parsedRows.map((row, index) => (
-                      <tr key={index} className={row.isValid ? "bg-white" : "bg-rose-50/50"}>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-500">{index + 1}</td>
-                        <td className="px-3 py-2 font-semibold text-slate-900">
+                      <tr key={index} className={row.isValid ? "bg-white" : "bg-red-50/50"}>
+                        <td className="px-3 py-2 font-mono text-xs tabular-nums text-slate-600">{index + 1}</td>
+                        <td className="px-3 py-2 font-semibold text-[#0B1220]">
                           {row.firstName} {row.lastName}
                         </td>
-                        <td className="px-3 py-2 font-medium">{row.admissionNumber || "—"}</td>
+                        <td className="px-3 py-2 font-medium tabular-nums">{row.admissionNumber || "—"}</td>
                         <td className="px-3 py-2 capitalize">{row.gender}</td>
-                        <td className="px-3 py-2 font-medium text-blue-900">{row.className || "—"}</td>
+                        <td className="px-3 py-2 font-medium text-[#0B1220]">{row.className || "—"}</td>
                         <td className="px-3 py-2 text-center">
                           {row.isValid ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              <CheckCircle2 className="h-3 w-3" /> Valid
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Valid
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-xs bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                              <AlertCircle className="h-3 w-3" /> {row.errorReason}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700">
+                              <AlertCircle className="h-3 w-3" aria-hidden="true" /> {row.errorReason}
                             </span>
                           )}
                         </td>
@@ -287,23 +294,21 @@ export default function BulkStudentImportModal({
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-4">
-          <Button type="button" onClick={onClose} variant="outline" className="border-slate-300">
+        <DialogFooter className="border-t border-slate-100 pt-3">
+          <Button type="button" onClick={onClose} variant="outline" className="w-full sm:w-auto">
             Cancel
           </Button>
-
           <Button
             type="button"
             onClick={handleUploadSubmit}
             disabled={isSubmitting || validCount === 0}
-            className="bg-[#1447E6] hover:bg-[#1447E6]/90 text-white font-semibold gap-2 px-6"
+            className="w-full gap-2 bg-[#1447E6] px-6 font-semibold text-white hover:bg-[#0F36B8] sm:w-auto"
           >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
             Import {validCount > 0 ? `${validCount} Students` : ""}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

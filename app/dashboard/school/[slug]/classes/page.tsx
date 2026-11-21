@@ -21,7 +21,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -56,6 +55,9 @@ import {
   Trash2,
   Loader2,
   Users,
+  GraduationCap,
+  User,
+  Layers,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -172,18 +174,42 @@ export default function ClassesPage() {
     { enabled: !!orgSlug && isPrivileged, initial: [] },
   );
   const isLoading = classesLoading || teachersLoading;
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState("ALL");
+  const [selectedTeacherFilter, setSelectedTeacherFilter] = useState("ALL");
 
-  const filteredClasses = classes.filter((cls) => {
-    // Teachers only see classes they have at least one subject assigned to
-    if (assignedClassIds !== null && !assignedClassIds.has(cls.id)) {
-      return false;
-    }
-    // Apply search query
-    return (
-      cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (cls.level || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
+  const allLevels = useMemo(() => {
+    const set = new Set<string>();
+    classes.forEach((c) => {
+      if (c.level) set.add(c.level);
+    });
+    return Array.from(set).sort();
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    return classes.filter((cls) => {
+      // Teachers only see classes they have at least one subject assigned to
+      if (assignedClassIds !== null && !assignedClassIds.has(cls.id)) {
+        return false;
+      }
+      // Apply search query
+      const matchesSearch =
+        cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(cls.level ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // Apply level filter
+      if (selectedLevelFilter !== "ALL" && cls.level !== selectedLevelFilter) {
+        return false;
+      }
+
+      // Apply teacher filter
+      if (selectedTeacherFilter !== "ALL" && cls.assignedTeacher?.id !== selectedTeacherFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [classes, assignedClassIds, searchQuery, selectedLevelFilter, selectedTeacherFilter]);
 
   const handleDelete = async (classId: string) => {
     if (!currentOrg) return;
@@ -265,9 +291,10 @@ export default function ClassesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
-        <div className="hidden md:block">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Desktop Header */}
+      <div className="hidden md:flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
+        <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Classes
           </h1>
@@ -277,56 +304,67 @@ export default function ClassesPage() {
         </div>
 
         {isPrivileged && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 md:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Class
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingClass ? "Edit Class" : "Create New Class"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingClass
-                    ? "Update the class details below."
-                    : "Enter the details for the new class."}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4 py-4"
-                >
+          <Button
+            type="button"
+            onClick={() => {
+              setEditingClass(null);
+              form.reset({ name: "", level: "", capacity: 30, assignedTeacher: "none" });
+              setIsDialogOpen(true);
+            }}
+            className="bg-[#1447E6] hover:bg-[#0F36B8] text-white"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Class
+          </Button>
+        )}
+      </div>
+
+      {/* Create / Edit Class Dialog (root-mounted for mobile and desktop) */}
+      {isPrivileged && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingClass ? "Edit Class" : "Create New Class"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingClass
+                  ? "Update the class details below."
+                  : "Enter the details for the new class."}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4 py-4"
+              >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Class Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Primary 1A" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="level"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Class Name *</FormLabel>
+                        <FormLabel>Level *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Primary 1A" {...field} />
+                          <Input placeholder="e.g. Grade 1" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="level"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Level *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Grade 1" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <FormField
                       control={form.control}
                       name="capacity"
@@ -399,9 +437,189 @@ export default function ClassesPage() {
             </DialogContent>
           </Dialog>
         )}
+
+      {/* Phones: Hairline Directory List */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {isPrivileged && (
+          <Button
+            type="button"
+            onClick={() => {
+              setEditingClass(null);
+              form.reset({ name: "", level: "", capacity: 30, assignedTeacher: "none" });
+              setIsDialogOpen(true);
+            }}
+            className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs active:scale-[0.98] transition"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Class</span>
+          </Button>
+        )}
+
+        {/* Mobile Search */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="search"
+            placeholder="Search classes by name or level..."
+            aria-label="Search classes"
+            className="rounded-xl bg-white pl-9 border-slate-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Mobile 2-Column Filters */}
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={selectedLevelFilter} onValueChange={(v) => setSelectedLevelFilter(v ? String(v) : "ALL")}>
+            <SelectTrigger aria-label="Filter by level" className="bg-white border-slate-200 text-sm text-slate-700 rounded-xl">
+              <div className="flex items-center gap-1.5 truncate">
+                <Layers className="size-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+                <SelectValue placeholder="All Levels" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Levels</SelectItem>
+              {allLevels.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedTeacherFilter} onValueChange={(v) => setSelectedTeacherFilter(v ? String(v) : "ALL")}>
+            <SelectTrigger aria-label="Filter by teacher" className="bg-white border-slate-200 text-sm text-slate-700 rounded-xl">
+              <div className="flex items-center gap-1.5 truncate">
+                <User className="size-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+                <SelectValue placeholder="All Teachers" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Teachers</SelectItem>
+              {teachers.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.user?.name || "Teacher"}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Quiet 1-line summary */}
+        <p className="px-1 text-xs font-medium text-slate-600 tabular-nums">
+          {filteredClasses.length} {filteredClasses.length === 1 ? "class" : "classes"}
+          <span className="mx-1.5 text-slate-300">·</span>
+          {classes.reduce((sum, c) => sum + (c.totalStudents || 0), 0)} students total
+        </p>
+
+        {/* Mobile Single-Container Hairline List */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white divide-y divide-slate-100">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+                <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-44" />
+                </div>
+              </div>
+            ))
+          ) : filteredClasses.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-sm font-semibold text-slate-800">
+                {searchQuery
+                  ? "No classes match your search"
+                  : isTeacher
+                    ? "No classes assigned to you yet"
+                    : "No classes yet"}
+              </p>
+              {!searchQuery && isTeacher && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Ask an admin to assign a subject and class to your profile.
+                </p>
+              )}
+            </div>
+          ) : (
+            filteredClasses.map((cls) => {
+              const teacherName = cls.assignedTeacher?.user?.name;
+              const href = `/dashboard/school/${currentOrg?.slug}/classes/${cls.id}`;
+              const studentCount = cls.totalStudents || 0;
+
+              return (
+                <div
+                  key={cls.id}
+                  className="group flex items-center gap-2 pr-2 transition-colors"
+                >
+                  <Link
+                    href={href}
+                    className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 active:bg-slate-50"
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-200/70 bg-blue-50 text-blue-600">
+                      <GraduationCap className="size-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-[15px] font-semibold text-[#0B1220] group-hover:text-blue-600">
+                        {cls.name}
+                      </h2>
+                      <p className="mt-0.5 truncate text-xs text-slate-600 tabular-nums">
+                        {cls.level || "General"}
+                        <span className="mx-1 text-slate-300">·</span>
+                        {studentCount} {studentCount === 1 ? "student" : "students"}
+                        {teacherName ? (
+                          <>
+                            <span className="mx-1 text-slate-300">·</span>
+                            {teacherName}
+                          </>
+                        ) : (
+                          <>
+                            <span className="mx-1 text-slate-300">·</span>
+                            <span className="text-slate-500">No form teacher</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    {!isPrivileged && (
+                      <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                    )}
+                  </Link>
+
+                  {isPrivileged && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 shrink-0 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                            aria-label={`Options for ${cls.name}`}
+                          >
+                            <MoreHorizontal className="size-5" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => router.push(href)}>
+                          View Class
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(cls)}>
+                          <Pencil className="mr-2 size-4" />
+                          Edit Class
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(cls.id)}
+                          className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </section>
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="hidden md:flex items-center space-x-2">
         <div className="relative flex-1 md:max-w-[384px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
@@ -415,60 +633,7 @@ export default function ClassesPage() {
         </div>
       </div>
 
-      {/* Phones: one grouped list, a whole row opens the class */}
-      {!isLoading && filteredClasses.length > 0 && (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white md:hidden">
-          {filteredClasses.map((cls) => (
-            <li key={cls.id} className="flex items-center gap-1 pr-2">
-              <Link
-                href={`/dashboard/school/${currentOrg?.slug}/classes/${cls.id}`}
-                className="flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 active:bg-slate-50"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold text-slate-900">{cls.name}</span>
-                  <span className="block truncate text-sm text-slate-500">
-                    {cls.assignedTeacher?.user?.name ? `Form teacher: ${cls.assignedTeacher.user.name}` : "No form teacher yet"}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right text-sm tabular-nums text-slate-500">
-                  <span className="font-semibold text-slate-900">{cls.totalStudents || 0}</span>
-                  {cls.limit ? ` / ${cls.limit}` : ""}
-                  <span className="block text-xs">learners</span>
-                </span>
-              </Link>
-              {isPrivileged ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button variant="ghost" aria-label={`Actions for ${cls.name}`} className="h-11 w-11 shrink-0 rounded-xl p-0 text-slate-500">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    }
-                  />
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openEditDialog(cls)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Class
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => handleDelete(cls.id)}
-                      className="text-red-600 focus:bg-red-50 focus:text-red-700"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <ChevronRight className="mr-2 h-5 w-5 shrink-0 text-slate-300" aria-hidden="true" />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${!isLoading && filteredClasses.length > 0 ? "max-md:hidden" : ""}`}>
+      <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="shadow-sm border-slate-200">

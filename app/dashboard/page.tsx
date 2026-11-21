@@ -10,6 +10,21 @@ function isValidOrgSlug(slug: string | undefined): slug is string {
   return Boolean(slug && /^[a-zA-Z0-9_-]+$/.test(slug));
 }
 
+function isLikelyValidToken(token: string | undefined): boolean {
+  if (!token || typeof token !== "string") return false;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return false;
+    const payload = parts[1];
+    if (!payload) return false;
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (typeof decoded.exp !== "number") return false;
+    return decoded.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 async function fetchContexts(token: string) {
   return fetchWithFallback(`${HCORE_BASE}/v1/me/contexts`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -20,8 +35,9 @@ async function fetchContexts(token: string) {
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("hcore_session")?.value || cookieStore.get("accessToken")?.value;
+  const refreshToken = cookieStore.get("hcore_refresh_web")?.value;
 
-  if (!token) {
+  if (!token && !refreshToken) {
     redirect("/signin?callbackUrl=/dashboard");
   }
 
@@ -29,8 +45,8 @@ export default async function DashboardPage() {
   const allowedPlatforms = cookieStore.get("hweb_allowed_platforms")?.value || "";
   const userRole = cookieStore.get("hweb_user_role")?.value;
 
-  // Fast path: sign-in already cached the primary school slug and HSMS entitlement.
-  if (isValidOrgSlug(primaryOrgSlug) && (!allowedPlatforms || allowedPlatforms.includes("HSMS"))) {
+  // Fast path: only if token is currently valid and not expired
+  if (isLikelyValidToken(token) && isValidOrgSlug(primaryOrgSlug) && (!allowedPlatforms || allowedPlatforms.includes("HSMS"))) {
     redirect(`/dashboard/school/${encodeURIComponent(primaryOrgSlug)}`);
   }
 
@@ -39,7 +55,7 @@ export default async function DashboardPage() {
   let loadError: string | null = null;
 
   try {
-    let meRes = await fetchContexts(token);
+    let meRes = token ? await fetchContexts(token) : ({ status: 401, ok: false } as unknown as Response);
 
     if (meRes.status === 401) {
       const refreshToken = cookieStore.get("hcore_refresh_web")?.value;

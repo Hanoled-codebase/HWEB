@@ -6,10 +6,12 @@ import { format } from "date-fns";
 import {
   AlertTriangle,
   BookOpen,
+  Calculator,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Loader2,
   Printer,
   RefreshCw,
@@ -17,7 +19,12 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { downloadReportCardPdf } from "@/lib/report-card-download";
+import {
+  downloadReportCardPdf,
+  downloadReportCardBundle,
+  openReportCardBundle,
+  openReportCardPdf,
+} from "@/lib/report-card-download";
 
 import ReportCardPrintModal, {
   computeNigerianGrade,
@@ -204,51 +211,42 @@ function getMobileBadgeClass(label: string) {
   const normalized = label.toLowerCase();
 
   if (normalized === "distinction") {
-    return "bg-black text-white font-bold border border-black";
+    return "bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold";
   }
 
   if (normalized === "merit") {
-    return "bg-neutral-200 text-black font-bold border border-neutral-300";
+    return "bg-blue-50 text-[#1447E6] border border-blue-200 font-bold";
   }
 
   if (normalized === "pass") {
-    return "bg-neutral-100 text-neutral-800 border border-neutral-300 font-semibold";
+    return "bg-slate-100 text-slate-700 border border-slate-200 font-semibold";
   }
 
   if (normalized === "grading in progress") {
-    return "bg-neutral-50 text-neutral-600 border border-dashed border-neutral-300 italic";
+    return "bg-amber-50 text-amber-800 border border-amber-200 italic";
   }
 
   if (normalized === "waiting for score") {
-    return "bg-neutral-50 text-neutral-500 border border-dotted border-neutral-300";
+    return "bg-slate-50 text-slate-500 border border-dotted border-slate-300";
   }
 
-  return "bg-neutral-100 text-neutral-700 border border-neutral-300";
-}
-
-function getScoreTone(percentage: number | null) {
-  if (percentage === null) {
-    return { stroke: "#E5E7EB", text: "text-neutral-400" };
-  }
-
-  return { stroke: "#000000", text: "text-black" };
+  return "bg-slate-100 text-slate-700 border border-slate-200";
 }
 
 function MobileScoreRing({ percentage }: { percentage: number | null }) {
-  const radius = 18;
+  const radius = 17;
   const circumference = 2 * Math.PI * radius;
   const bounded = Math.max(0, Math.min(percentage ?? 0, 100));
-  const tone = getScoreTone(percentage);
 
   return (
-    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
-      <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48">
+    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48">
         <circle
           cx="24"
           cy="24"
           r={radius}
           fill="none"
-          stroke="#F3F4F6"
+          className="stroke-slate-100"
           strokeWidth="4"
         />
         {percentage !== null && (
@@ -257,7 +255,7 @@ function MobileScoreRing({ percentage }: { percentage: number | null }) {
             cy="24"
             r={radius}
             fill="none"
-            stroke={tone.stroke}
+            className="stroke-[#1447E6]"
             strokeLinecap="round"
             strokeWidth="4"
             strokeDasharray={circumference}
@@ -265,7 +263,7 @@ function MobileScoreRing({ percentage }: { percentage: number | null }) {
           />
         )}
       </svg>
-      <span className={`text-sm font-black tabular-nums ${tone.text}`}>
+      <span className={`relative z-10 text-xs font-bold tabular-nums ${percentage === null ? "text-slate-400" : "text-slate-900"}`}>
         {percentage === null ? "--" : `${Math.round(bounded)}%`}
       </span>
     </div>
@@ -289,9 +287,9 @@ function MobileSubjectBreakdown({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto rounded-t-[2rem] border-slate-200 p-6 sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="pr-8 text-xl font-bold text-slate-950">
+          <DialogTitle className="pr-8 text-xl font-bold text-[#0B1220]">
             {getSubjectName(subject)}
           </DialogTitle>
           <DialogDescription>
@@ -370,59 +368,25 @@ export default function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [forbidden, setForbidden] = useState(false);
-  const [exportTerm, setExportTerm] = useState("Term 1");
+  // Free-form to match how terms are stored (e.g. "First Term") — the PDF
+  // export looks the stored result up by this exact string.
+  const [exportTerm, setExportTerm] = useState("First Term");
   const [exportYear, setExportYear] = useState("2026/2027");
+  // Which stored result the PDF exports render: mid-term (raw stage %) or
+  // end-of-term (mid-term share + end-of-term components).
+  const [exportResultType, setExportResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
+  // Term/year options come from the school's HCORE academic periods — free-text
+  // terms silently computed as 0, so typing is no longer offered.
+  const [periodOptions, setPeriodOptions] = useState<{ academicYear: string; term: string }[]>([]);
+  // Computed template results for the selected term/year/type, shown per student.
+  const [computedResults, setComputedResults] = useState<
+    Record<string, { totalScore: number; grade: string; position: number | null; published: boolean }>
+  >({});
   const [printModalGroup, setPrintModalGroup] = useState<StudentResultGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [isDownloadingBatch, setIsDownloadingBatch] = useState(false);
   const [isRosterOpen, setIsRosterOpen] = useState(false);
-
-  const handleBatchExport = async () => {
-    const targetClassId =
-      selectedClassId !== "all"
-        ? selectedClassId
-        : resultGroups[0]?.student?.classLevel?.id;
-    if (!targetClassId || !currentOrg?.slug) {
-      toast.error("Please select a class level to export batch bundle.");
-      return;
-    }
-
-    try {
-      setIsDownloadingBatch(true);
-      const baseUrl = HSMS_BASE;
-      const res = await fetch(
-        `${baseUrl}/export/${currentOrg.slug}/report-card-bundle/${targetClassId}?term=${encodeURIComponent(
-          exportTerm
-        )}&academicYear=${encodeURIComponent(exportYear)}`,
-        authFetchInit("hcore")
-      );
-
-      if (!res.ok) {
-        const errJson = await res
-          .json()
-          .catch(() => ({ error: "Failed to generate report cards bundle" }));
-        throw new Error(
-          errJson.error || errJson.message || "Failed to generate batch PDF"
-        );
-      }
-
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `Report_Cards_Bundle_${exportTerm.replace(/\s+/g, "_")}_${exportYear.replace(/[/\\?%*:|"<>]/g, "_")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(blobUrl);
-      toast.success("Batch report cards PDF downloaded successfully!");
-    } catch (err: any) {
-      toast.error(err.message || "Error downloading batch report cards PDF");
-    } finally {
-      setIsDownloadingBatch(false);
-    }
-  };
 
   const availableClassOptions = useMemo(() => {
     const classMap = new Map<string, string>();
@@ -504,6 +468,64 @@ export default function ResultsPage() {
     fetchParentData();
   }, [fetchParentData]);
 
+  // Load the school's academic periods once so the term control is a real
+  // select backed by HCORE instead of free text.
+  useEffect(() => {
+    if (!currentOrg?.slug) return;
+    let cancelled = false;
+    apiFetch<{ success: boolean; data: { academicYear: string; term: string }[] }>(
+      `/result-templates/periods/${currentOrg.slug}`,
+    )
+      .then(({ data: periods }) => {
+        if (!cancelled && Array.isArray(periods)) setPeriodOptions(periods);
+      })
+      .catch(() => {
+        // Periods stay empty; the select falls back to the current values.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrg?.slug]);
+
+  // Computed results for the selected term/year/type, keyed by student, so the
+  // on-screen cards reflect the chosen result type (mid-term vs end-of-term).
+  useEffect(() => {
+    if (!currentOrg?.slug || !exportTerm || !exportYear) return;
+    let cancelled = false;
+    apiFetch<
+      { success: boolean; data: {
+        studentId: string;
+        totalScore: number;
+        grade: string;
+        position: number | null;
+        publishedAt: string | null;
+      }[] }
+    >(
+      `/result-templates/results/${currentOrg.slug}?term=${encodeURIComponent(
+        exportTerm,
+      )}&academicYear=${encodeURIComponent(exportYear)}&resultType=${exportResultType}`,
+    )
+      .then(({ data: rows }) => {
+        if (cancelled) return;
+        const map: typeof computedResults = {};
+        for (const row of rows || []) {
+          map[row.studentId] = {
+            totalScore: row.totalScore,
+            grade: row.grade,
+            position: row.position,
+            published: Boolean(row.publishedAt),
+          };
+        }
+        setComputedResults(map);
+      })
+      .catch(() => {
+        if (!cancelled) setComputedResults({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrg?.slug, exportTerm, exportYear, exportResultType]);
+
   useEffect(() => {
     if (resultGroups.length === 0) {
       setSelectedStudentId("");
@@ -525,6 +547,10 @@ export default function ResultsPage() {
       null,
     [resultGroups, selectedStudentId],
   );
+
+  // The selected student's computed result for the currently selected
+  // term/year/result type (mid-term vs end-of-term), if one was computed.
+  const computedResult = selectedGroup ? computedResults[selectedGroup.student.id] : undefined;
 
   const currentIndex = useMemo(() => {
     if (!selectedGroup) return -1;
@@ -553,6 +579,43 @@ export default function ResultsPage() {
     }
   }, [hasNext, filteredResultGroups, currentIndex]);
 
+  const batchClassId = () =>
+    selectedClassId !== "all"
+      ? selectedClassId
+      : resultGroups[0]?.student?.classLevel?.id;
+
+  const handleBatchExport = async (mode: "download" | "view") => {
+    const targetClassId = batchClassId();
+    if (!targetClassId || !currentOrg?.slug) {
+      toast.error("Please select a class level to export batch bundle.");
+      return;
+    }
+
+    try {
+      setIsDownloadingBatch(true);
+      const options = {
+        orgSlug: currentOrg.slug,
+        classLevelId: targetClassId,
+        className:
+          availableClassOptions.find((c) => c.id === targetClassId)?.name ||
+          selectedGroup?.student?.classLevel?.name ||
+          "class",
+        term: exportTerm,
+        academicYear: exportYear,
+        resultType: exportResultType,
+      };
+      if (mode === "view") {
+        await openReportCardBundle(options);
+      } else if (await downloadReportCardBundle(options)) {
+        toast.success("Batch report cards PDF downloaded successfully!");
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error opening batch report cards PDF");
+    } finally {
+      setIsDownloadingBatch(false);
+    }
+  };
+
   const selectedNotifications = useMemo(() => {
     if (!selectedGroup) {
       return notifications;
@@ -580,51 +643,136 @@ export default function ResultsPage() {
     : performanceSubjects.slice(0, 4);
 
   return (
-    <div className="min-h-full bg-slate-50/60 pb-16">
+    <div className="min-h-full bg-slate-50/60 pb-16 md:bg-transparent md:pb-0">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
-        <div className="hidden flex-col items-start justify-between gap-5 md:flex md:flex-row md:items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        {/* Desktop Header & Mobile Controls Row */}
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-start">
+          <div className="w-full min-w-0">
+            <h1 className="hidden md:block text-2xl font-bold tracking-tight text-[#0B1220] md:text-4xl">
               Published Results
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-              Review each child&apos;s academic record in a visual format,
-              including subject averages, assessment progress, and low-score
-              alerts.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+
+            {/* Row 1: Period + Term Selects */}
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
               <select
-                value={exportTerm}
-                onChange={(e) => setExportTerm(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                value={`${exportYear}|${exportTerm}`}
+                onChange={(e) => {
+                  const [year, term] = e.target.value.split("|");
+                  if (year && term) {
+                    setExportYear(year);
+                    setExportTerm(term);
+                  }
+                }}
+                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-3 sm:text-sm md:pointer-fine:min-h-0 md:pointer-fine:h-10"
+                aria-label="Academic period"
               >
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
+                {periodOptions.length > 0 ? (
+                  periodOptions.map((p) => (
+                    <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
+                      {p.term} — {p.academicYear}
+                    </option>
+                  ))
+                ) : (
+                  <option value={`${exportYear}|${exportTerm}`}>
+                    {exportTerm} — {exportYear}
+                  </option>
+                )}
               </select>
-              <input
-                type="text"
-                value={exportYear}
-                onChange={(e) => setExportYear(e.target.value)}
-                className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 font-semibold"
-                placeholder="Year"
-              />
+
+              <select
+                value={exportResultType}
+                onChange={(e) =>
+                  setExportResultType(
+                    e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM",
+                  )
+                }
+                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-3 sm:text-sm md:pointer-fine:min-h-0 md:pointer-fine:h-10"
+                aria-label="Report type for PDF exports"
+              >
+                <option value="END_OF_TERM">End-of-term</option>
+                <option value="MID_TERM">Mid-term</option>
+              </select>
+
+              {/* Desktop Button Bundle */}
               {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") && (
-                <Button
-                  type="button"
-                  onClick={handleBatchExport}
-                  disabled={isDownloadingBatch}
-                  className="bg-black hover:bg-neutral-800 text-white text-xs font-semibold h-8 gap-1.5 px-3 rounded-lg shadow-sm border border-black"
-                >
-                  {isDownloadingBatch ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Printer className="h-3.5 w-3.5" />
-                  )}
-                  Batch Class Bundle (PDF)
-                </Button>
+                <div className="hidden sm:flex sm:items-center sm:gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => void handleBatchExport("view")}
+                    disabled={isDownloadingBatch}
+                    className="bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-semibold h-9.5 gap-1.5 px-3 rounded-xl shadow-2xs border border-slate-200 cursor-pointer"
+                    title="Open the class bundle PDF in a new tab"
+                  >
+                    <Eye className="size-4 text-slate-500" />
+                    View Bundle
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void handleBatchExport("download")}
+                    disabled={isDownloadingBatch}
+                    className="bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs sm:text-sm font-bold h-9.5 gap-1.5 px-3 rounded-xl shadow-xs border border-transparent cursor-pointer"
+                  >
+                    {isDownloadingBatch ? (
+                      <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <Printer className="size-4" />
+                    )}
+                    Download Bundle
+                  </Button>
+                </div>
               )}
             </div>
+
+            {/* Mobile Action Row: Staff get Bundle Export + Refresh; Parents get Refresh only */}
+            {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") ? (
+              <div className="grid grid-cols-3 gap-2 mt-2 sm:hidden">
+                <Button
+                  type="button"
+                  onClick={() => void handleBatchExport("view")}
+                  disabled={isDownloadingBatch}
+                  className="bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold gap-1 px-2 rounded-xl shadow-2xs border border-slate-200 cursor-pointer truncate"
+                >
+                  <Eye className="size-3.5 text-slate-500 shrink-0" />
+                  <span className="truncate">View Bundle</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleBatchExport("download")}
+                  disabled={isDownloadingBatch}
+                  className="bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs font-bold gap-1 px-2 rounded-xl shadow-xs border border-transparent cursor-pointer truncate"
+                >
+                  {isDownloadingBatch ? (
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />
+                  ) : (
+                    <Download className="size-3.5 shrink-0" />
+                  )}
+                  <span className="truncate">Download</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fetchParentData({ refresh: true, showSuccessToast: true })}
+                  disabled={isLoading || isRefreshing}
+                  className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1 px-2 rounded-xl shadow-2xs border border-slate-200 cursor-pointer truncate"
+                >
+                  <RefreshCw className={cn("size-3.5 shrink-0", isRefreshing && "animate-spin")} />
+                  <span className="truncate">Refresh</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-2 sm:hidden">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fetchParentData({ refresh: true, showSuccessToast: true })}
+                  disabled={isLoading || isRefreshing}
+                  className="w-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1.5 rounded-xl shadow-2xs border border-slate-200 cursor-pointer"
+                >
+                  <RefreshCw className={cn("size-3.5 shrink-0", isRefreshing && "animate-spin")} />
+                  <span>Refresh Results</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           <Button
@@ -634,12 +782,12 @@ export default function ResultsPage() {
               fetchParentData({ refresh: true, showSuccessToast: true })
             }
             disabled={isLoading || isRefreshing}
-            className="h-11 shrink-0 rounded-2xl border-neutral-300 bg-white px-5 text-sm font-semibold text-black shadow-xs hover:bg-neutral-50"
+            className="hidden sm:inline-flex h-9.5 shrink-0 rounded-xl border-slate-200 bg-white px-3.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 cursor-pointer"
           >
             {isRefreshing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             )}
             Refresh
           </Button>
@@ -685,7 +833,7 @@ export default function ResultsPage() {
                   aria-label="Search students"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 bg-white pl-10 md:text-sm"
+                  className="h-9.5 rounded-xl border-slate-200 bg-white pl-10 text-xs sm:text-sm placeholder:text-slate-500"
                 />
               </div>
 
@@ -695,7 +843,7 @@ export default function ResultsPage() {
                     value={selectedClassId}
                     onValueChange={(val) => setSelectedClassId(String(val ?? "all"))}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-9.5 rounded-xl border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-800">
                       <SelectValue placeholder="All Class Levels" />
                     </SelectTrigger>
                     <SelectContent>
@@ -729,8 +877,8 @@ export default function ResultsPage() {
                             setSelectedSubject(null);
                           }}
                           className={cn(
-                            "min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold capitalize",
-                            isActive ? "border-black bg-black text-white font-bold" : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50",
+                            "min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold capitalize transition-colors cursor-pointer",
+                            isActive ? "border-[#1447E6] bg-[#1447E6] text-white font-bold" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
                           )}
                         >
                           {group.student.firstName} {group.student.lastName}
@@ -747,7 +895,7 @@ export default function ResultsPage() {
                       setSelectedSubject(null);
                     }}
                   >
-                    <SelectTrigger aria-label="Choose a learner" className="h-12 w-full rounded-xl bg-white capitalize">
+                    <SelectTrigger aria-label="Choose a learner" className="w-full rounded-xl border-slate-200 bg-white text-sm font-semibold capitalize">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -761,25 +909,45 @@ export default function ResultsPage() {
                   </Select>
                 ) : null}
 
-                <div className={cn("mt-4 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4", resultGroups.length > 4 ? "hidden" : "flex")}>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-bold uppercase text-black border border-neutral-200">
-                    {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-bold capitalize text-slate-900">
-                      {selectedGroup.student.firstName} {selectedGroup.student.lastName}
-                    </h2>
-                    <p className="truncate text-sm text-slate-600">
-                      {selectedGroup.student.classLevel?.name || "Not in a class"}
-                      <span className="mx-1.5 text-slate-300">·</span>
-                      {getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}
-                    </p>
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-2xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EEF0FF] text-sm font-bold uppercase text-[#1447E6] border border-[#1447E6]/15">
+                      {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-base font-bold capitalize text-[#0B1220]">
+                        {selectedGroup.student.firstName} {selectedGroup.student.lastName}
+                      </h2>
+                      <p className="truncate text-xs text-slate-600 font-medium">
+                        {selectedGroup.student.classLevel?.name || "Not in a class"}
+                        <span className="mx-1.5 text-slate-300">·</span>
+                        {getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}
+                      </p>
+                      {computedResult && (
+                        <p className="mt-0.5 text-xs font-bold tabular-nums text-[#0B1220]">
+                          {exportResultType === "MID_TERM" ? "Mid-term" : "End-of-term"}:{" "}
+                          {computedResult.totalScore} · {computedResult.grade}
+                          {computedResult.position ? ` · #${computedResult.position}` : ""}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                {currentOrg?.slug && (
+                  <Button
+                    type="button"
+                    onClick={() => setPrintModalGroup(selectedGroup)}
+                    className="mt-3 w-full h-11 gap-2 rounded-xl bg-[#1447E6] hover:bg-[#0F36B8] font-bold text-sm text-white shadow-xs cursor-pointer flex items-center justify-center"
+                  >
+                    <Printer className="size-4" />
+                    Print Report
+                  </Button>
+                )}
+
                 <div className="mt-6 flex items-baseline justify-between gap-3">
-                  <h2 className="text-base font-semibold text-slate-900">Subjects</h2>
-                  <p className="text-sm text-slate-500">{performanceSubjects.length} enrolled subjects</p>
+                  <h2 className="text-base font-semibold text-[#0B1220]">Subjects</h2>
+                  <p className="text-sm text-slate-600">{performanceSubjects.length} enrolled subjects</p>
                 </div>
 
                 <div className="mt-3 space-y-3">
@@ -794,42 +962,46 @@ export default function ResultsPage() {
                         type="button"
                         onClick={() => setSelectedSubject(subject)}
                         className={cn(
-                          "flex w-full flex-col gap-2 rounded-2xl border bg-white p-4 text-left",
+                          "flex w-full items-center justify-between gap-3 rounded-2xl border bg-white p-3.5 sm:p-4 text-left transition-all hover:bg-slate-50/70 shadow-2xs cursor-pointer",
                           inProgress
                             ? "border-dashed border-slate-300"
                             : "border-slate-200",
                         )}
                       >
-                        <div className="flex w-full items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#1447E6]/15 bg-[#EEF0FF] text-[#1447E6]">
+                            <Calculator className="h-5 w-5" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm sm:text-base font-bold text-[#0B1220]">
+                              {getSubjectName(subject)}
+                            </p>
+                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                              {inProgress
+                                ? `${summary.enteredCount}/${summary.totalCount} scores · in progress`
+                                : `${summary.enteredCount} of ${summary.totalCount} assessments`}
+                            </p>
+                            {!inProgress && (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold mt-1.5",
+                                  getMobileBadgeClass(label)
+                                )}
+                              >
+                                {label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
                           {inProgress ? (
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-neutral-100 text-black">
-                              <BookOpen className="h-6 w-6" />
-                            </div>
+                            <span className="text-xs font-semibold text-slate-500">Grading</span>
                           ) : (
                             <MobileScoreRing percentage={summary.percentage} />
                           )}
-
-                          <p className="min-w-0 flex-1 truncate text-base font-bold text-slate-950">
-                            {getSubjectName(subject)}
-                          </p>
-
-                          <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 pl-[68px]">
-                          <p className="min-w-0 truncate text-sm font-medium text-slate-500">
-                            {inProgress
-                              ? `${summary.enteredCount} of ${summary.totalCount} scores in · grading in progress`
-                              : `${summary.enteredCount} of ${summary.totalCount} assessments`}
-                          </p>
-
-                          {inProgress ? null : (
-                            <span
-                              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${getMobileBadgeClass(label)}`}
-                            >
-                              {label}
-                            </span>
-                          )}
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                         </div>
                       </button>
                     );
@@ -839,14 +1011,14 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       onClick={() => setShowAllMobileSubjects((value) => !value)}
-                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-neutral-300 bg-white text-sm font-bold text-black hover:bg-neutral-50"
+                      className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
                     >
                       {showAllMobileSubjects
                         ? "Show Less"
                         : `View ${performanceSubjects.length - 4} More Subjects`}
                       <ChevronDown
                         className={cn(
-                          "h-5 w-5 transition-transform",
+                          "h-4 w-4 transition-transform",
                           showAllMobileSubjects && "rotate-180",
                         )}
                       />
@@ -870,7 +1042,7 @@ export default function ResultsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   {/* Left: Active Student Info with Quick Dropdown */}
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-base font-black text-white shadow-xs border border-black">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-base font-black text-[#1447E6] shadow-2xs border border-blue-200">
                       {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
                     </div>
                     <div className="min-w-0">
@@ -908,12 +1080,19 @@ export default function ResultsPage() {
                         <span className="font-semibold text-slate-900">{performanceSubjects.length} subjects</span>
                         <span>&middot;</span>
                         {selectedGroup.isTemplateApproved ? (
-                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
                             ✓ Template Approved
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-[10px] font-bold">
+                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800 text-xs font-bold">
                             Template Pending Approval
+                          </Badge>
+                        )}
+                        {computedResult && (
+                          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-[#1447E6] text-xs font-bold">
+                            {exportResultType === "MID_TERM" ? "Mid-term" : "End-of-term"}:{" "}
+                            {computedResult.totalScore} · {computedResult.grade}
+                            {computedResult.position ? ` · #${computedResult.position}` : ""}
                           </Badge>
                         )}
                       </div>
@@ -962,11 +1141,11 @@ export default function ResultsPage() {
                           type="button"
                           variant="outline"
                           onClick={() => setIsRosterOpen(true)}
-                          className="h-9 gap-2 rounded-xl border-neutral-300 bg-white px-3.5 text-xs font-semibold text-black hover:bg-neutral-50 shadow-xs"
+                          className="h-9 gap-2 rounded-xl border-neutral-300 bg-white px-3.5 text-sm font-semibold text-black hover:bg-neutral-50 shadow-xs"
                         >
                           <Users className="h-3.5 w-3.5 text-neutral-500" />
                           <span>Browse Roster</span>
-                          <Badge variant="secondary" className="ml-0.5 h-5 rounded-full px-1.5 text-[10px] font-bold">
+                          <Badge variant="secondary" className="ml-0.5 h-5 rounded-full px-1.5 text-xs font-bold">
                             {filteredResultGroups.length}
                           </Badge>
                         </Button>
@@ -980,7 +1159,7 @@ export default function ResultsPage() {
                                 Select a student to view their published academic record.
                               </SheetDescription>
                               <div className="mt-3 relative">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 <Input
                                   type="search"
                                   placeholder="Search roster..."
@@ -1035,10 +1214,29 @@ export default function ResultsPage() {
                                         <button
                                           type="button"
                                           onClick={() => setPrintModalGroup(group)}
-                                          className="rounded-lg p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100"
+                                          className="rounded-lg p-1.5 text-neutral-600 hover:text-black hover:bg-neutral-100"
                                           title="Print Report Card"
+                                          aria-label={`Print report card for ${group.student.firstName} ${group.student.lastName}`}
                                         >
                                           <Printer className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void openReportCardPdf({
+                                              orgSlug: currentOrg.slug,
+                                              studentId: group.student.id,
+                                              studentName: `${group.student.firstName} ${group.student.lastName}`,
+                                              term: exportTerm,
+                                              academicYear: exportYear,
+                                              resultType: exportResultType,
+                                            })
+                                          }
+                                          className="rounded-lg p-1.5 text-neutral-600 hover:text-black hover:bg-neutral-100"
+                                          title="View PDF"
+                                          aria-label={`View PDF report card for ${group.student.firstName} ${group.student.lastName}`}
+                                        >
+                                          <Eye className="h-3.5 w-3.5" />
                                         </button>
                                         <button
                                           type="button"
@@ -1049,10 +1247,12 @@ export default function ResultsPage() {
                                               studentName: `${group.student.firstName} ${group.student.lastName}`,
                                               term: exportTerm,
                                               academicYear: exportYear,
+                                              resultType: exportResultType,
                                             })
                                           }
-                                          className="rounded-lg p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100"
+                                          className="rounded-lg p-1.5 text-neutral-600 hover:text-black hover:bg-neutral-100"
                                           title="Download PDF"
+                                          aria-label={`Download PDF report card for ${group.student.firstName} ${group.student.lastName}`}
                                         >
                                           <Download className="h-3.5 w-3.5" />
                                         </button>
@@ -1074,11 +1274,30 @@ export default function ResultsPage() {
                           type="button"
                           variant="outline"
                           onClick={() => setPrintModalGroup(selectedGroup)}
-                          className="h-9 gap-1.5 rounded-xl border-black bg-black px-3.5 text-xs font-bold text-white hover:bg-neutral-800 shadow-xs transition-colors"
+                          className="h-9 gap-1.5 rounded-xl bg-[#1447E6] px-3.5 text-xs sm:text-sm font-bold text-white hover:bg-[#1447E6]/90 shadow-xs cursor-pointer"
                           title="Print or preview report card"
                         >
                           <Printer className="h-3.5 w-3.5" />
                           <span>Print Report</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            void openReportCardPdf({
+                              orgSlug: currentOrg.slug,
+                              studentId: selectedGroup.student.id,
+                              studentName: `${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`,
+                              term: exportTerm,
+                              academicYear: exportYear,
+                              resultType: exportResultType,
+                            })
+                          }
+                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                          title="View PDF in a new tab"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>View</span>
                         </Button>
                         <Button
                           type="button"
@@ -1090,9 +1309,10 @@ export default function ResultsPage() {
                               studentName: `${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`,
                               term: exportTerm,
                               academicYear: exportYear,
+                              resultType: exportResultType,
                             })
                           }
-                          className="h-9 gap-1.5 rounded-xl border-neutral-300 bg-white px-3.5 text-xs font-semibold text-black hover:border-black hover:bg-neutral-50 shadow-xs transition-colors"
+                          className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
                           title="Download PDF"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1106,14 +1326,14 @@ export default function ResultsPage() {
                 {/* Bottom Row of Bar: Search and Class Filter */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
                   <div className="relative flex-1 min-w-[200px]">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                     <Input
                       type="search"
                       placeholder="Search students by name or admission no..."
                       aria-label="Search students"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-9 bg-slate-50/60 pl-9 text-xs"
+                      className="h-12 bg-slate-50/60 pl-9 text-sm placeholder:text-slate-600"
                     />
                   </div>
                   {availableClassOptions.length > 0 && (
@@ -1122,7 +1342,7 @@ export default function ResultsPage() {
                         value={selectedClassId}
                         onValueChange={(val) => setSelectedClassId(String(val ?? "all"))}
                       >
-                        <SelectTrigger className="h-9 text-xs bg-slate-50/60 border-slate-200">
+                        <SelectTrigger aria-label="Class level" className="border-slate-300 bg-slate-50/60 text-sm">
                           <SelectValue placeholder="All Class Levels" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1185,62 +1405,62 @@ export default function ResultsPage() {
             )}
 
             {selectedNotifications.length > 0 && (
-              <section className="hidden rounded-3xl border border-neutral-300 bg-white p-6 shadow-xs sm:p-8 md:block">
+              <section className="rounded-2xl border border-red-200/80 bg-white p-4 shadow-xs sm:p-6 md:rounded-3xl">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-black border border-neutral-200">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600">
                       <AlertTriangle className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-500">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
                         Alerts
                       </p>
-                      <h2 className="mt-0.5 text-base sm:text-xl font-black text-black">
+                      <h2 className="mt-0.5 text-base sm:text-xl font-bold text-[#0B1220]">
                         Low score notices
                       </h2>
                     </div>
                   </div>
                   <Badge
                     variant="outline"
-                    className="rounded-full border-black bg-black px-3 py-1 text-sm font-bold text-white"
+                    className="self-start sm:self-auto rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700"
                   >
                     {selectedNotifications.length} active
                   </Badge>
                 </div>
 
-                <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
                   {selectedNotifications.map((notification) => (
                     <article
                       key={notification.id}
-                      className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5"
+                      className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-black">
+                          <h3 className="text-sm font-bold text-[#0B1220]">
                             {notification.assessmentName}
                           </h3>
-                          <p className="mt-1 text-sm leading-5 text-neutral-600">
+                          <p className="mt-1 text-sm leading-5 text-slate-600">
                             {notification.message}
                           </p>
                         </div>
                         <Badge
                           variant="outline"
-                          className="shrink-0 rounded-full border-black bg-black px-2.5 py-0.5 text-xs font-black text-white tabular-nums"
+                          className="shrink-0 rounded-full border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-700 tabular-nums"
                         >
                           {formatScore(notification.percentage)}%
                         </Badge>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-black">
-                        <span className="rounded-full border border-neutral-300 bg-white px-3 py-1">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
                           {notification.subject?.name || "Subject"}
                         </span>
-                        <span className="rounded-full border border-neutral-300 bg-white px-3 py-1 tabular-nums">
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 tabular-nums">
                           {formatScore(notification.score)}/
                           {formatScore(notification.expectedTotal)}
                         </span>
                         {notification.updatedAt && (
-                          <span className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-neutral-500 font-medium">
+                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-500 font-medium">
                             {format(
                               new Date(notification.updatedAt),
                               "MMM d, yyyy",
@@ -1264,13 +1484,15 @@ export default function ResultsPage() {
                 student={printModalGroup.student}
                 term={exportTerm}
                 academicYear={exportYear}
-                classStudentCount={
+                resultType={exportResultType}
+                classStudentCount={Math.max(
+                  1,
                   resultGroups.filter(
                     (g) =>
                       g.student.classLevel?.id ===
                       printModalGroup.student.classLevel?.id
-                  ).length || 17
-                }
+                  ).length,
+                )}
                 results={printModalGroup.results
                   .filter((r) =>
                     r.values.some(

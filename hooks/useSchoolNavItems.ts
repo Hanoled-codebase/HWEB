@@ -121,7 +121,7 @@ export function useSchoolNavItems() {
       { key: "spreadsheets", title: "Spreadsheets", url: `${baseUrl}/spreadsheets`, icon: TableProperties, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "timetable", title: "Timetable", url: `${baseUrl}/timetable`, icon: CalendarDays, show: isPrivileged || can("timetable.view"), section: "ACADEMICS" },
       { key: "attendance", title: "Attendance", url: `${baseUrl}/attendance`, icon: ClipboardCheck, show: isPrivileged || can("attendance.view"), section: "ACADEMICS" },
-      { key: "affective", title: "Affective", url: `${baseUrl}/affective`, icon: Heart, show: isPrivileged, section: "ACADEMICS" },
+      { key: "affective", title: "Affective", url: `${baseUrl}/affective`, icon: Heart, show: isPrivileged || isClassTeacher, section: "ACADEMICS" },
       { key: "scheme-of-work", title: "Scheme of Work", url: `${baseUrl}/scheme-of-work`, icon: BookText, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "lesson-notes", title: "Lesson Notes", url: `${baseUrl}/lesson-notes`, icon: FileText, show: isPrivileged || isTeacher, section: "ACADEMICS" },
       { key: "question-bank", title: "Question Bank", url: `${baseUrl}/question-bank`, icon: HelpCircle, show: isPrivileged || can("cbt.manage"), section: "ACADEMICS" },

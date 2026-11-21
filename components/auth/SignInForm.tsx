@@ -67,6 +67,8 @@ export default function SignInForm({
   const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
   const [isSchoolPickerOpen, setIsSchoolPickerOpen] = useState(false);
   const [loadingSchools, setLoadingSchools] = useState(false);
+  const [schoolDirectoryUnavailable, setSchoolDirectoryUnavailable] = useState(false);
+  const [schoolDirectoryAttempt, setSchoolDirectoryAttempt] = useState(0);
 
   const [state, formAction, pending] = useActionState(loginAction, null);
   const isRedirecting = Boolean(state && 'success' in state);
@@ -99,7 +101,7 @@ export default function SignInForm({
 
   // Load public organizations for discovery (only needed on generic portal with no school set).
   useEffect(() => {
-    if (tab !== 'ADMISSION_NUMBER' || queryOrgSlug || branding) return;
+    if (tab !== 'ADMISSION_NUMBER' || queryOrgSlug || initialBranding) return;
     let isMounted = true;
     (async () => {
       setLoadingSchools(true);
@@ -107,29 +109,16 @@ export default function SignInForm({
         const orgs = await api.getPublicOrganizations();
         if (isMounted && Array.isArray(orgs)) {
           setSchools(orgs);
+          setSchoolDirectoryUnavailable(false);
 
-          // 1. If query param provided, match it
-          if (queryOrgSlug) {
-            const matched = orgs.find(
-              (o) => o.slug.toLowerCase() === queryOrgSlug.toLowerCase() || o.id === queryOrgSlug
-            );
-            if (matched) {
-              setSelectedSchool(matched);
-              return;
-            }
-          }
-
-          // 2. Otherwise try localStorage
           const savedSlug = localStorage.getItem('hanoled_student_school_slug');
-          if (savedSlug && !selectedSchool) {
+          if (savedSlug) {
             const savedMatch = orgs.find((o) => o.slug === savedSlug || o.id === savedSlug);
-            if (savedMatch) {
-              setSelectedSchool(savedMatch);
-            }
+            if (savedMatch) setSelectedSchool((school) => school ?? savedMatch);
           }
         }
-      } catch (err) {
-        console.warn('Failed to load public schools list:', err);
+      } catch {
+        if (isMounted) setSchoolDirectoryUnavailable(true);
       } finally {
         if (isMounted) setLoadingSchools(false);
       }
@@ -137,7 +126,7 @@ export default function SignInForm({
     return () => {
       isMounted = false;
     };
-  }, [tab, queryOrgSlug, selectedSchool]);
+  }, [tab, queryOrgSlug, initialBranding, schoolDirectoryAttempt]);
 
   // Handle school selection
   const handleSelectSchool = (school: { id: string; name: string; slug: string }) => {
@@ -153,6 +142,12 @@ export default function SignInForm({
       // protected layouts re-hydrate cleanly while keeping SPA hydration instant.
       useAuth.setState({ user: null, isAuthenticated: false, isInitialized: false, error: null });
       useOrganization.getState().clear();
+      try {
+        if (state.userRole) window.sessionStorage.setItem('hweb_role_hint', state.userRole);
+        else window.sessionStorage.removeItem('hweb_role_hint');
+      } catch {
+        // Ignore storage errors in restricted browsing modes
+      }
       router.replace(state.redirectUrl);
     }
   }, [state, router]);
@@ -268,7 +263,7 @@ export default function SignInForm({
         <div role="alert" className="bg-rose-50 text-rose-600 p-3 rounded-lg text-xs sm:text-sm mb-4 flex flex-col gap-1 border border-rose-200">
           <span>{state.error}</span>
           {state.reference && (
-            <span className="text-[11px] sm:text-xs">
+            <span className="text-xs">
               Reference: <span className="font-mono select-all break-all">{state.reference}</span>
             </span>
           )}
@@ -301,7 +296,7 @@ export default function SignInForm({
                     <span className="block text-xs font-bold text-blue-950 truncate">
                       {selectedSchool.name}
                     </span>
-                    <span className="text-[11px] text-blue-600 font-mono">
+                    <span className="text-xs text-blue-700 font-mono">
                       Code: {selectedSchool.slug}
                     </span>
                   </div>
@@ -322,6 +317,7 @@ export default function SignInForm({
                 <button
                   type="button"
                   onClick={() => setIsSchoolPickerOpen(!isSchoolPickerOpen)}
+                  aria-expanded={isSchoolPickerOpen}
                   className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 cursor-pointer"
                 >
                   <div className="flex items-center space-x-2 text-slate-600 text-sm">
@@ -341,16 +337,36 @@ export default function SignInForm({
                         value={schoolSearchQuery}
                         onChange={(e) => setSchoolSearchQuery(e.target.value)}
                         placeholder="Search school by name or slug..."
+                        aria-label="Search school by name or slug"
                         className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-600 md:text-sm"
                       />
                     </div>
 
-                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                    {schoolDirectoryUnavailable && (
+                      <div className="px-3 text-center text-sm text-slate-700">
+                        <p role="status">
+                          {loadingSchools
+                            ? 'Retrying school directory…'
+                            : 'School directory unavailable. Try again or enter your school code.'}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={loadingSchools}
+                          onClick={() => setSchoolDirectoryAttempt((attempt) => attempt + 1)}
+                          className="min-h-11 min-w-11 rounded px-3 font-semibold text-blue-700 enabled:hover:underline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-60"
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    )}
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100" aria-busy={loadingSchools}>
                       {filteredSchools.length === 0 ? (
                         <div className="p-3 text-center text-sm text-slate-500">
                           {schoolSearchQuery ? (
                             <div>
-                              <p>No registered school matches &quot;{schoolSearchQuery}&quot;.</p>
+                              {!schoolDirectoryUnavailable && !loadingSchools && (
+                                <p>No registered school matches &quot;{schoolSearchQuery}&quot;.</p>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -362,13 +378,13 @@ export default function SignInForm({
                                 Use &quot;{schoolSearchQuery}&quot; as custom code
                               </button>
                             </div>
-                          ) : loadingSchools ? (
+                          ) : loadingSchools && !schoolDirectoryUnavailable ? (
                             <div className="flex items-center justify-center gap-1.5 py-2 text-slate-600">
                               <Loader2 className="w-4 h-4 animate-spin" />
                               <span>Loading registered schools...</span>
                             </div>
                           ) : (
-                            'No schools available'
+                            !schoolDirectoryUnavailable && 'No schools available'
                           )}
                         </div>
                       ) : (
@@ -416,26 +432,19 @@ export default function SignInForm({
 
         {/* PASSWORD FIELD */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <label htmlFor="signin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Password
             </label>
-            <div className="flex items-center gap-3">
-              {tab === 'ADMISSION_NUMBER' && (
-                <span className="text-[11px] text-slate-500">
-                  Default: Admission No.
-                </span>
-              )}
-              <Link
-                href={`/forgot-password?${new URLSearchParams({
-                  ...(selectedSchool?.slug || queryOrgSlug || branding?.slug ? { school: selectedSchool?.slug || queryOrgSlug || branding?.slug } : {}),
-                  audience: audience === 'student' || tab === 'ADMISSION_NUMBER' ? 'student' : audience === 'parent' ? 'parent' : 'staff',
-                }).toString()}`}
-                className="text-xs font-semibold text-blue-700 hover:text-blue-600 focus-visible:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
+            <Link
+              href={`/forgot-password?${new URLSearchParams({
+                ...(selectedSchool?.slug || queryOrgSlug || branding?.slug ? { school: selectedSchool?.slug || queryOrgSlug || branding?.slug } : {}),
+                audience: audience === 'student' || tab === 'ADMISSION_NUMBER' ? 'student' : audience === 'parent' ? 'parent' : 'staff',
+              }).toString()}`}
+              className="-my-2.5 inline-flex min-h-11 items-center whitespace-nowrap text-xs font-semibold text-blue-700 hover:text-blue-600 focus-visible:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
           <div className="relative">
             <input
@@ -459,6 +468,11 @@ export default function SignInForm({
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          {tab === 'ADMISSION_NUMBER' && (
+            <p className="text-xs text-slate-600">
+              Default password is your admission number.
+            </p>
+          )}
         </div>
 
         <button
@@ -501,7 +515,7 @@ export default function SignInForm({
             <p className="text-xs text-slate-500">
               Need assistance signing in to <span className="font-semibold text-slate-700">{branding.name}</span>?
             </p>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
               <span>Powered by</span>
               <Link href="/" className="inline-flex items-center gap-1 font-bold text-slate-600 hover:text-slate-800 transition-colors">
                 <HanoledLogo size="sm" variant="blue" iconOnly />
@@ -572,16 +586,16 @@ export function SignInShell({
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_2px,transparent_2px)] [background-size:32px_32px] opacity-70" />
         <div
-          className="absolute -top-40 -left-40 h-96 w-96 rounded-full opacity-30 mix-blend-multiply blur-[100px] animate-blob"
-          style={{ backgroundColor: branding ? branding.theme.light : '#93c5fd' }}
+          className="absolute -top-40 -left-40 h-96 w-96 rounded-full opacity-30 mix-blend-multiply blur-[100px]"
+          style={{ backgroundColor: branding?.theme.light ?? 'var(--color-blue-300)' }}
         />
         <div
-          className="absolute top-1/4 -right-20 h-80 w-80 rounded-full opacity-25 mix-blend-multiply blur-[100px] animate-blob animation-delay-2000"
-          style={{ backgroundColor: branding ? branding.theme.primary : '#3b82f6' }}
+          className="absolute top-1/4 -right-20 h-80 w-80 rounded-full opacity-25 mix-blend-multiply blur-[100px]"
+          style={{ backgroundColor: branding?.theme.primary ?? 'var(--color-blue-500)' }}
         />
         <div
-          className="absolute -bottom-40 left-1/4 h-96 w-96 rounded-full opacity-25 mix-blend-multiply blur-[100px] animate-blob animation-delay-4000"
-          style={{ backgroundColor: branding ? branding.theme.light : '#60a5fa' }}
+          className="absolute -bottom-40 left-1/4 h-96 w-96 rounded-full opacity-25 mix-blend-multiply blur-[100px]"
+          style={{ backgroundColor: branding?.theme.light ?? 'var(--color-blue-400)' }}
         />
       </div>
 

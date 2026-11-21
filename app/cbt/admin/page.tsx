@@ -25,7 +25,6 @@ import {
   Calendar,
   Layers,
   Clock,
-  MoreHorizontal,
   ChevronRight,
   Loader2,
   X,
@@ -45,6 +44,13 @@ import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import EdgeAppliancesTab from "./EdgeAppliancesTab";
 import EdgeDeviceTab from "./EdgeDeviceTab";
 import AccountsTab from "./AccountsTab";
@@ -467,7 +473,7 @@ export default function AdminDashboard() {
       if (isForbiddenError(err)) {
         setAccessDenied(true);
       } else {
-        toast.error(err.message || "Failed to load admin panel data. Make sure the database is migrated and backend is running.");
+        toast.error(err.message || "Unable to load exam management data. Please refresh and try again.");
       }
     } finally {
       setLoading(false);
@@ -707,7 +713,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Search/Retrieve Questions from Nigeria Past Questions API and Cache them
+  // Search/Retrieve Questions from Hanoled Question Bank (HQB) and Cache them
   const handleQueryPastQuestions = async () => {
     if (!importParams.subject || !importParams.ssceBoard) {
       toast.error("Please select a Subject and an SSCE Board");
@@ -717,7 +723,7 @@ export default function AdminDashboard() {
     setFetchingPastQuestions(true);
     setPreviewQuestionsCount(null);
     try {
-      toast.info(`Querying proxy database for ${importParams.ssceBoard.toUpperCase()} ${importParams.subject}...`);
+      toast.info(`Querying Hanoled Question Bank for ${importParams.ssceBoard.toUpperCase()} ${importParams.subject}...`);
       const res = await cbtApi.fetchPastQuestions(
         importParams.subject,
         importParams.ssceBoard,
@@ -728,18 +734,14 @@ export default function AdminDashboard() {
       setPreviewQuestionsCount(count);
       
       if (count > 0) {
-        const source = res.fromCache ? "cache" : "API";
+        const source = res.fromCache ? "local cache" : "HQB Question Bank";
         toast.success(`Found ${count} questions from ${source}! Click "2. Import Selected" to add them to your exam.`);
       } else {
-        toast.warning("No questions found for this combination in the Nigeria Past Questions API database.");
+        toast.warning("No questions found for this combination in Hanoled Question Bank.");
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("429")) {
-        toast.error("API rate limit reached. Let's try importing already cached records.");
-      } else {
-        toast.error(err.message || "Failed to search proxy past questions API.");
-      }
+      toast.error(err.message || "Failed to search Hanoled Question Bank.");
     } finally {
       setFetchingPastQuestions(false);
     }
@@ -844,17 +846,17 @@ export default function AdminDashboard() {
         suiteHref={EDGE_MODE ? undefined : suiteHref}
         onSignOut={() => void signOutEverywhere()}
       />
-      <header className="hidden sm:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+      <header className="hidden md:block sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center justify-between gap-2">
           <Logo className="w-8 h-8 shrink-0" badgeText={isAdmin ? "ADMIN" : "TEACHER"} textColor="text-[#0B1220]" />
 
           <div className="flex items-center gap-2 sm:gap-6 shrink-0">
             {displayName && (
-              <span className="hidden sm:inline max-w-[200px] truncate text-[13px] font-semibold text-[#0B1220]" title={displayName}>
+              <span className="hidden md:inline max-w-[200px] truncate text-[13px] font-semibold text-[#0B1220]" title={displayName}>
                 {displayName}
               </span>
             )}
-            <div className="hidden sm:flex items-center gap-1.5 bg-[#F8FAFC] px-3.5 py-1.5 rounded-full">
+            <div className="hidden md:flex items-center gap-1.5 bg-slate-50 px-3.5 py-1.5 rounded-full">
               <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-emerald-500" : "bg-blue-400"}`}></span>
               <span className="text-[12px] font-semibold text-slate-500">
                 {isAdmin ? "Admin Privileges" : "Teacher Access"}
@@ -977,7 +979,7 @@ export default function AdminDashboard() {
                   onClick={() => handleOpenPasskey(designerExam)}
                   className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 border ${
                     designerExam.passkeyRequired
-                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-[#8a5c10] hover:bg-[#F5A623]/20"
+                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-amber-800 hover:bg-[#F5A623]/20"
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
@@ -1128,8 +1130,9 @@ export default function AdminDashboard() {
                           onChange={(e) => setImportParams((prev) => ({ ...prev, ssceBoard: e.target.value }))}
                           className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
                         >
-                          <option value="waec">WAEC</option>
-                          <option value="neco">NECO</option>
+                          <option value="waec">WAEC (WASSCE)</option>
+                          <option value="jamb">JAMB (UTME)</option>
+                          <option value="neco">NECO SSCE</option>
                         </select>
                       </div>
 
@@ -1186,7 +1189,7 @@ export default function AdminDashboard() {
                         ) : (
                           <>
                             <Search className="w-3.5 h-3.5" />
-                            <span>1. Search API</span>
+                            <span>1. Search Question Bank</span>
                           </>
                         )}
                       </button>
@@ -1640,7 +1643,7 @@ export default function AdminDashboard() {
               {/* Admins see 4 tabs, which don't fit a phone-width screen —
                   scroll horizontally instead of silently clipping "Edge
                   Appliances" off the edge with no way to reach it. */}
-              <div className="hidden sm:flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
+              <div className="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">
                 <button
                   onClick={() => setActiveTab("overview")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -1798,14 +1801,11 @@ export default function AdminDashboard() {
                         className="bg-white rounded-[20px] shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden p-4 sm:p-6 flex flex-col justify-between sm:min-h-[220px]"
                       >
                         <div>
-                          {/* Top row: title & More icon */}
+                          {/* Top row: title */}
                           <div className="flex justify-between items-start gap-4">
-                            <h4 className="text-[15px] font-bold text-slate-900 leading-snug">
+                            <h4 className="text-[15px] font-bold text-[#0B1220] leading-snug">
                               {exam.title}
                             </h4>
-                            <button className="text-slate-300 hover:text-slate-500 flex-shrink-0">
-                              <MoreHorizontal className="w-5 h-5" />
-                            </button>
                           </div>
                           
                           <p className="text-[13px] italic text-slate-500 mt-3 line-clamp-2 pr-4">
@@ -1985,7 +1985,7 @@ export default function AdminDashboard() {
 
       {!accessDenied && !designerExam && (
         <MobileSegmentBar
-          className="sm:hidden"
+          className="md:hidden"
           value={activeTab}
           onChange={setActiveTab}
           items={[
@@ -2003,21 +2003,14 @@ export default function AdminDashboard() {
       )}
 
       {/* CREATE EXAM TEMPLATE FORM MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
-            
-            <button
-              onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Exam Template</DialogTitle>
+            <DialogDescription>Set up parameters for your newly created test sheet.</DialogDescription>
+          </DialogHeader>
 
-            <h3 className="text-lg font-extrabold text-slate-800 mb-2">Create Exam Template</h3>
-            <p className="text-slate-500 text-xs mb-6">Set up parameters for your newly created test sheet.</p>
-
-            <form onSubmit={handleCreateExam} className="space-y-4">
+          <form onSubmit={handleCreateExam} className="space-y-4">
               {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Exam Title</label>
@@ -2255,7 +2248,7 @@ export default function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={creatingExam || (assignTarget === "class" && !targetClassId) || (assignTarget === "student" && (!targetClassId || !targetStudentId))}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md shadow-blue-500/10 transition-all flex items-center justify-center space-x-1.5"
+                  className="flex-1 min-h-11 bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs font-bold py-3 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5"
                 >
                   {creatingExam ? (
                     <>
@@ -2268,25 +2261,18 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* ASSIGN EXAM MODAL */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto border border-slate-200 shadow-2xl p-6 pb-safe sm:pb-6 relative">
-            <button
-              onClick={() => setShowAssignModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Assign Exam</DialogTitle>
+            <DialogDescription>Select target and publish this exam.</DialogDescription>
+          </DialogHeader>
 
-            <h3 className="text-lg font-extrabold text-slate-800 mb-2">Assign Exam</h3>
-            <p className="text-slate-500 text-xs mb-6">Select target and publish this exam.</p>
-
-            <div className="space-y-4">
+          <div className="space-y-4">
               {/* Target type toggle */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Assign To</label>
@@ -2389,23 +2375,23 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* RESULTS MODAL */}
-      {resultsModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
-            <button
-              onClick={() => setResultsModal(null)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-extrabold text-slate-800 mb-1">{resultsModal.exam?.title || "Exam Results"}</h3>
-            <p className="text-xs text-slate-500 mb-5">Student submissions and performance overview</p>
+      <Dialog
+        open={Boolean(resultsModal)}
+        onOpenChange={(open) => {
+          if (!open) setResultsModal(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          {resultsModal && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{resultsModal.exam?.title || "Exam Results"}</DialogTitle>
+                <DialogDescription>Student submissions and performance overview</DialogDescription>
+              </DialogHeader>
 
             {!loadingResults && resultsModal.exam?.examType === "school" && (
               <div className={`flex items-center justify-between gap-3 mb-5 p-3.5 rounded-xl border ${
@@ -2522,36 +2508,39 @@ export default function AdminDashboard() {
               </>
             )}
 
-            <div className="mt-6">
+            <div className="mt-4">
               <button
+                type="button"
                 onClick={() => setResultsModal(null)}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
+                className="w-full min-h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
               >
                 Close
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* PASSKEY MODAL */}
-      {passkeyModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
-            <button
-              onClick={() => setPasskeyModal(null)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-extrabold text-[#0B1220] mb-1 flex items-center gap-2">
-              <Key className="w-4 h-4 text-[#1447E6]" />
-              {passkeyModal.examTitle}
-            </h3>
-            <p className="text-xs text-slate-500 mb-5">
-              Students must enter this passkey before they can start the exam.
-            </p>
+      <Dialog
+        open={Boolean(passkeyModal)}
+        onOpenChange={(open) => {
+          if (!open) setPasskeyModal(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          {passkeyModal && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-[#1447E6]" />
+                  {passkeyModal.examTitle}
+                </DialogTitle>
+                <DialogDescription>
+                  Students must enter this passkey before they can start the exam.
+                </DialogDescription>
+              </DialogHeader>
 
             {loadingPasskey ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-[#1447E6] animate-spin" /></div>
@@ -2563,8 +2552,8 @@ export default function AdminDashboard() {
                     : "bg-slate-50 border-slate-200"
                 }`}>
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Key className={`w-4 h-4 shrink-0 ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-400"}`} />
-                    <p className={`text-xs font-semibold leading-snug ${passkeyModal.passkeyRequired ? "text-[#8a5c10]" : "text-slate-600"}`}>
+                    <Key className={`w-4 h-4 shrink-0 ${passkeyModal.passkeyRequired ? "text-amber-800" : "text-slate-400"}`} />
+                    <p className={`text-xs font-semibold leading-snug ${passkeyModal.passkeyRequired ? "text-amber-800" : "text-slate-600"}`}>
                       {passkeyModal.passkeyRequired
                         ? `Passkey required — ${passkeyModal.passkeyMode === "shared" ? "one shared code for the class" : "a unique code per student"}.`
                         : "No passkey required — any assigned student can start this exam directly."}
@@ -2585,7 +2574,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => handleGeneratePasskey("shared")}
                     disabled={generatingPasskey}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#1139c2] px-3.5 py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-[#1447E6] hover:bg-[#0F36B8] px-3.5 py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-50"
                   >
                     {generatingPasskey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : passkeyModal.passkeyMode === "shared" ? <RefreshCw className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
                     <span>{passkeyModal.passkeyMode === "shared" ? "Regenerate Shared Code" : "Generate Shared Code"}</span>
@@ -2626,7 +2615,7 @@ export default function AdminDashboard() {
                           passkeyModal.students.map((s) => `${s.lastName} ${s.firstName} (${s.admissionNumber}): ${s.code}`).join("\n"),
                           "Student code list"
                         )}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1447E6] hover:text-[#1139c2]"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1447E6] hover:text-[#0F36B8]"
                       >
                         <Copy className="w-3 h-3" />
                         <span>Copy All</span>
@@ -2656,28 +2645,38 @@ export default function AdminDashboard() {
               </>
             )}
 
-            <div className="mt-6">
+            <div className="mt-4">
               <button
+                type="button"
                 onClick={() => setPasskeyModal(null)}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
+                className="w-full min-h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
               >
                 Close
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* STUDENT DETAIL MODAL */}
-      {studentDetail && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm m-fade">
-          <div className="m-sheet bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92dvh] sm:max-h-[85vh] shadow-xl p-6 pb-safe sm:pb-6 relative overflow-y-auto">
-            <button
-              onClick={() => { setStudentDetail(null); setSelectedExamResult(null); setViewingQuestions(false); }}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      <Dialog
+        open={Boolean(studentDetail)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setStudentDetail(null);
+            setSelectedExamResult(null);
+            setViewingQuestions(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Student Exam Detail</DialogTitle>
+            <DialogDescription>Performance summary and question breakdown for the selected student.</DialogDescription>
+          </DialogHeader>
+          {studentDetail && (
+            <>
 
             {loadingStudentDetail ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
@@ -2804,17 +2803,19 @@ export default function AdminDashboard() {
               </>
             )}
 
-            <div className="mt-6">
+            <div className="mt-4">
               <button
+                type="button"
                 onClick={() => { setStudentDetail(null); setSelectedExamResult(null); setViewingQuestions(false); }}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
+                className="w-full min-h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-3 px-4 rounded-xl transition-colors"
               >
                 Close
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -11,6 +11,22 @@ import http from "node:http";
 export const PORTS = { hcore: 4911, hsms: 4912, hcbt: 4913 };
 
 const ORG = { id: "0f5f1a52-0000-4000-8000-000000000001", name: "Greenfield Academy", slug: "greenfield" };
+const RESULTS_PERIOD = { term: "First Term", academicYear: "2026/2027" };
+const RESULTS_CLASS = { id: "jss1a", name: "JSS 1A" };
+const RESULTS_TEMPLATE = {
+  id: "greenfield-results",
+  name: "Greenfield Results",
+  classLevelId: RESULTS_CLASS.id,
+  classLevel: RESULTS_CLASS,
+  isApproved: true,
+  isDefault: true,
+  midTermTotal: 40,
+  metrics: [
+    { name: "Continuous Assessment 1", label: "CA 1", weight: 100, stage: "MID_TERM" },
+    { name: "Terminal Examination", label: "Exam", weight: 100, stage: "END_OF_TERM" },
+  ],
+  gradeScale: [{ grade: "A", min: 70, max: 100 }],
+};
 
 // Tokens are unsigned JWT-shaped strings: Hweb's proxy only reads their expiry.
 function token(sub, extra = {}) {
@@ -135,6 +151,74 @@ function reset() {
     tokens: new Map(),
     submitted: null,
     gradebook: null,
+    termResults: new Map([
+      ["END_OF_TERM", {
+        id: "END_OF_TERM",
+        ...RESULTS_PERIOD,
+        resultType: "END_OF_TERM",
+        studentId: CHILD.id,
+        student: CHILD,
+        classLevel: RESULTS_CLASS,
+        template: RESULTS_TEMPLATE,
+        metrics: [],
+        totalScore: 86,
+        grade: "A",
+        position: 1,
+        publishedAt: null,
+      }],
+      ["MID_TERM", {
+        id: "MID_TERM",
+        ...RESULTS_PERIOD,
+        resultType: "MID_TERM",
+        studentId: CHILD.id,
+        student: CHILD,
+        classLevel: RESULTS_CLASS,
+        template: RESULTS_TEMPLATE,
+        metrics: [],
+        totalScore: 85,
+        grade: "A",
+        position: 1,
+        publishedAt: null,
+      }],
+    ]),
+    tickets: [],
+    relationalSheet: {
+      id: "sheet-physics-rel",
+      title: "Physics - JSS 1A (End-Term)",
+      status: "pending",
+      version: 1,
+      assessmentStorageMode: "RELATIONAL",
+      templateId: "template-relational",
+      template: {
+        id: "template-relational",
+        name: "Standard 10/10/10/70 Template",
+        assessmentCategories: [
+          { id: "cat-cw", name: "Classwork", label: "CW", maxMarks: 10, isSingleInstance: false, position: 0 },
+          { id: "cat-asgn", name: "Assignments", label: "ASGN", maxMarks: 10, isSingleInstance: false, position: 1 },
+          { id: "cat-prj", name: "Projects", label: "PRJ", maxMarks: 10, isSingleInstance: false, position: 2 },
+          { id: "cat-exam", name: "Examination", label: "Exam", maxMarks: 70, isSingleInstance: true, position: 3 },
+        ],
+      },
+      classLevel: { id: "jss1a", name: "JSS 1A" },
+      subject: { id: "maths", name: "Physics" },
+      subAssessments: [
+        { id: "sub-cw1", categoryId: "cat-cw", name: "Classwork 1", maxMarks: 10, isSystemGenerated: false, position: 0 },
+        { id: "sub-cw2", categoryId: "cat-cw", name: "Classwork 2", maxMarks: 10, isSystemGenerated: false, position: 1 },
+        { id: "sub-asgn1", categoryId: "cat-asgn", name: "Assignment 1", maxMarks: 5, isSystemGenerated: false, position: 0 },
+        { id: "sub-asgn2", categoryId: "cat-asgn", name: "Assignment 2", maxMarks: 5, isSystemGenerated: false, position: 1 },
+        { id: "sub-prj1", categoryId: "cat-prj", name: "Project 1", maxMarks: 10, isSystemGenerated: false, position: 0 },
+        { id: "sub-prj2", categoryId: "cat-prj", name: "Project 2", maxMarks: 10, isSystemGenerated: false, position: 1 },
+        { id: "sub-exam", categoryId: "cat-exam", name: "Examination", maxMarks: 70, isSystemGenerated: true, position: 0 },
+      ],
+      scores: {},
+    },
+    templates: [{
+      ...RESULTS_TEMPLATE,
+      assessmentCategories: [
+        { id: "cat-1", name: "Continuous Assessment 1", label: "CA 1", maxMarks: 20, isSingleInstance: false, position: 0 },
+        { id: "cat-2", name: "Terminal Examination", label: "Exam", maxMarks: 80, isSingleInstance: true, position: 1 },
+      ],
+    }],
     org: {
       ...ORG,
       country: "Nigeria",
@@ -203,6 +287,7 @@ function gradebook() {
     id: "sheet-maths",
     title: "Mathematics - JSS 1A",
     status: "pending",
+    version: state.gradebookVersion ?? 1,
     classLevel: { id: "jss1a", name: "JSS 1A" },
     subject: { id: "maths", name: "Mathematics" },
     assessments: [{ name: "CA 1", total: 20 }, { name: "CA 2", total: 20 }, { name: "Exam", total: 60 }],
@@ -212,6 +297,152 @@ function gradebook() {
       { student: { id: "stu-kemi", firstName: "Kemi", lastName: "Bello", admissionNumber: "GF/2026/002" }, values: [15, null, null] },
     ],
   };
+}
+
+function relationalGradebook() {
+  const sheet = state.relationalSheet;
+  const categories = sheet.template.assessmentCategories;
+  const catById = new Map(categories.map((c) => [c.id, c]));
+  const roster = [
+    CHILD,
+    { id: "stu-kemi", firstName: "Kemi", lastName: "Bello", admissionNumber: "GF/2026/002" },
+  ];
+  const orderedSubs = [...sheet.subAssessments].sort((a, b) => {
+    const ca = catById.get(a.categoryId)?.position ?? 0;
+    const cb = catById.get(b.categoryId)?.position ?? 0;
+    return ca - cb || a.position - b.position;
+  });
+  const assessments = orderedSubs.map((sub) => {
+    const cat = catById.get(sub.categoryId);
+    const recordedScoreCount = roster.filter((stu) => {
+      const v = sheet.scores[`${stu.id}:${sub.id}`];
+      return v !== undefined && v !== null;
+    }).length;
+    return {
+      id: sub.id,
+      categoryId: sub.categoryId,
+      categoryName: cat?.name,
+      categoryMaxMarks: cat?.maxMarks,
+      isSingleInstance: Boolean(cat?.isSingleInstance),
+      isSystemGenerated: Boolean(sub.isSystemGenerated),
+      name: sub.name,
+      total: sub.maxMarks,
+      maxObtainableScore: sub.maxMarks,
+      position: sub.position,
+      recordedScoreCount,
+    };
+  });
+  const data = roster.map((student) => ({
+    student,
+    values: orderedSubs.map((sub) => {
+      const v = sheet.scores[`${student.id}:${sub.id}`];
+      return v === undefined || v === null ? "" : v;
+    }),
+  }));
+  const categoryAllocations = categories.map((cat) => {
+    const subs = orderedSubs.filter((s) => s.categoryId === cat.id);
+    const allocatedMarks = subs.reduce((sum, s) => sum + s.maxMarks, 0);
+    return {
+      categoryId: cat.id,
+      name: cat.name,
+      label: cat.label,
+      maxMarks: cat.maxMarks,
+      allocatedMarks,
+      rawMaxTotal: allocatedMarks,
+      remainingMarks: 0,
+      isSingleInstance: Boolean(cat.isSingleInstance),
+      isComplete: subs.length > 0,
+      isOverAllocated: false,
+      subAssessmentCount: subs.length,
+      position: cat.position,
+    };
+  });
+  return {
+    id: sheet.id,
+    title: sheet.title,
+    status: sheet.status,
+    version: sheet.version,
+    assessmentStorageMode: sheet.assessmentStorageMode,
+    templateId: sheet.templateId,
+    template: sheet.template,
+    assessmentCategories: categories,
+    categoryAllocations,
+    classLevel: sheet.classLevel,
+    subject: sheet.subject,
+    assessments,
+    columns: assessments.map((a) => a.name),
+    data,
+  };
+}
+
+function computeFixtureResults(_req, _match, body, user) {
+  if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+  const { classLevelId, term, academicYear, templateId, resultType } = body;
+  if (
+    classLevelId !== RESULTS_CLASS.id || term !== RESULTS_PERIOD.term ||
+    academicYear !== RESULTS_PERIOD.academicYear || templateId !== RESULTS_TEMPLATE.id ||
+    !["MID_TERM", "END_OF_TERM"].includes(resultType)
+  ) return [400, { error: "Unexpected result selection" }];
+  const row = {
+    id: resultType,
+    ...RESULTS_PERIOD,
+    resultType,
+    studentId: CHILD.id,
+    student: CHILD,
+    classLevel: RESULTS_CLASS,
+    template: RESULTS_TEMPLATE,
+    metrics: [],
+    totalScore: resultType === "MID_TERM" ? 85 : 86,
+    grade: "A",
+    position: 1,
+    publishedAt: state.termResults.get(resultType)?.publishedAt ?? null,
+  };
+  state.termResults.set(resultType, row);
+  return [200, { data: { results: [row] } }];
+}
+
+function setFixturePublication(_req, match, body, user) {
+  if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+  const resultType = body.resultType || "END_OF_TERM";
+  let row = state.termResults.get(resultType);
+  if (!row) {
+    row = {
+      id: resultType,
+      term: body.term || RESULTS_PERIOD.term,
+      academicYear: body.academicYear || RESULTS_PERIOD.academicYear,
+      resultType,
+      studentId: CHILD.id,
+      student: CHILD,
+      classLevel: RESULTS_CLASS,
+      template: RESULTS_TEMPLATE,
+      metrics: [],
+      totalScore: 86,
+      grade: "A",
+      position: 1,
+      publishedAt: null,
+    };
+    state.termResults.set(resultType, row);
+  }
+  row.publishedAt = match[1] === "publish" ? new Date().toISOString() : null;
+  return [200, { success: true }];
+}
+
+function blankFixturePdf() {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << >> >>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = objects.map((object, index) => {
+    const offset = pdf.length;
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    return offset;
+  });
+  const xref = pdf.length;
+  pdf += "xref\n0 4\n0000000000 65535 f \n";
+  pdf += offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  return Buffer.from(`${pdf}trailer\n<< /Root 1 0 R /Size 4 >>\nstartxref\n${xref}\n%%EOF\n`);
 }
 
 // [method, path pattern, handler(req, match, body, user) => [status, body]]
@@ -234,7 +465,16 @@ const ROUTES = {
       ? [200, { id: user.principalId, displayName: user.displayName, primaryEmail: user.identifier, status: "ACTIVE", loginIdentifiers: [] }]
       : [401, { error: "Unauthorized" }]],
     ["GET", /^\/v1\/me\/contexts$/, (_req, _m, _b, user) => (user ? [200, contexts(user)] : [401, { error: "Unauthorized" }])],
+    ["POST", /^\/v1\/me\/select-context$/, (_req, _match, body, user) => {
+      if (!user) return [401, { error: "Unauthorized" }];
+      if (body.organizationId !== ORG.id) return [404, { error: "Organization not found" }];
+      const contextToken = token(user.principalId, { orgId: ORG.id });
+      state.tokens.set(contextToken, user);
+      return [200, { token: contextToken }];
+    }],
     ["GET", /^\/v1\/directory\/organizations\/greenfield\/member-profile$/, (_req, _m, _b, user) => memberProfile(user)],
+    ["GET", new RegExp(`^/v1/organizations/${ORG.id}/staff-roles$`), () => [200, { staff: [] }]],
+    ["GET", new RegExp(`^/v1/organizations/${ORG.id}/privacy-settings$`), () => [200, { leaverRetentionYears: null }]],
     ["POST", /^\/v1\/auth\/logout$/, () => [200, { ok: true }]],
     // A school admin gives someone a temporary password (shown once).
     ["POST", /^\/v1\/organizations\/([^/]+)\/password-resets$/, (_req, match, body, user) => {
@@ -257,6 +497,38 @@ const ROUTES = {
       category: state.org.category,
       schoolType: state.org.schoolType,
       country: state.org.country,
+    }]],
+    ["GET", /^\/organizations\/greenfield\/live-counts$/, () => [200, { students: 2, teachers: 1, parents: 1 }]],
+    ["GET", /^\/organizations\/greenfield\/members$/, () => [200, [
+      member(USERS.admin), member(USERS.teacher), member(USERS.parent),
+    ]]],
+    ["GET", /^\/admin\/invite\/pending\/greenfield$/, () => [200, []]],
+    ["GET", /^\/attendance\/greenfield\/reports$/, () => [200, { overallStats: { totalRecords: 0, attendanceRate: 0 } }]],
+    ["GET", /^\/debt\/overview\/greenfield$/, () => [200, { summary: { unpaidCount: 0, partialCount: 0 } }]],
+    ["GET", /^\/attendance\/greenfield\/my-classes$/, (req) => [200, {
+      date: new URL(req.url, "http://localhost").searchParams.get("date"),
+      canTakeAnyRegister: true,
+      register: [],
+      subjects: [],
+    }]],
+    // These modules open in their empty state at the fixture school. Every
+    // route is listed explicitly so unexpected requests still fail loudly.
+    ["GET", /^\/timetable\/greenfield$/, () => [200, []]],
+    ["GET", /^\/lesson-planner\/(questions|notes)\/greenfield$/, () => [200, []]],
+    ["GET", /^\/admissions\/admin\/greenfield$/, () => [200, []]],
+    ["GET", /^\/greenfield\/(library|library-loans|bus-routes|homework|hostel\/rooms)$/, () => [200, []]],
+    ["GET", /^\/scheme-of-work\/greenfield$/, () => [200, []]],
+    ["GET", /^\/hr\/greenfield\/(teachers|departments)$/, () => [200, []]],
+    ["GET", /^\/staff-attendance\/greenfield\/summary\/\d{4}-\d{2}-\d{2}$/, () => [200, { success: true, data: [] }]],
+    ["GET", /^\/clinic\/greenfield$/, () => [200, { success: true, data: [] }]],
+    ["GET", /^\/billing\/greenfield\/payment-history$/, () => [200, { success: true, data: [] }]],
+    ["GET", /^\/feature-flags\/greenfield$/, () => [200, { data: {} }]],
+    ["GET", /^\/payroll\/greenfield$/, () => [200, { success: true, data: [] }]],
+    ["GET", /^\/payroll\/greenfield\/summary\/\d{4}-\d{2}$/, () => [200, {
+      success: true, data: [], summary: { total: 0, paid: 0, pending: 0, count: 0, paidCount: 0, pendingCount: 0 },
+    }]],
+    ["GET", /^\/payroll\/greenfield\/session-summary$/, () => [200, {
+      success: true, data: { totalMonthly: 0, totalTermly: 0, totalSession: 0, staffCount: 0, staffWithSalaryCount: 0, staffWithoutSalaryCount: 0, staff: [] },
     }]],
     ["PATCH", /^\/organizations\/greenfield$/, (_req, _m, body, user) => {
       if (!user) return [401, { error: "Unauthorized" }];
@@ -315,6 +587,7 @@ const ROUTES = {
     }]],
     ["GET", /^\/greenfield\/study-materials$/, () => [200, []]],
     // Ada's record, as staff open it from the students list.
+    ["GET", /^\/students\/greenfield$/, () => [200, [{ ...CHILD, classLevel: RESULTS_CLASS }]]],
     ["GET", /^\/students\/greenfield\/stu-ada$/, () => [200, { ...CHILD, hcoreLearnerId: USERS.pupil.learnerId }]],
     ["GET", /^\/students\/greenfield\/stu-ada\/results$/, () => [200, { student: PUPIL, subjects: [] }]],
     ["GET", /^\/students\/greenfield\/stu-ada\/guardians$/, () => [200, []]],
@@ -351,9 +624,214 @@ const ROUTES = {
     ["GET", /^\/spreadsheets\/greenfield\/sheet-maths$/, () => [200, gradebook()]],
     ["PATCH", /^\/spreadsheets\/greenfield\/sheet-maths$/, (_req, _m, body) => {
       state.gradebook = body.data;
+      state.gradebookVersion = (state.gradebookVersion ?? 1) + 1;
       return [200, gradebook()];
     }],
+    // Relational assessment spreadsheet fixture (10/10/10/70 admin-locked categories).
+    ["GET", /^\/spreadsheets\/greenfield\/sheet-physics-rel$/, () => [200, relationalGradebook()]],
+    ["POST", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments$/, (_req, _m, body) => {
+      const sheet = state.relationalSheet;
+      const cat = sheet.template.assessmentCategories.find((c) => c.id === body.categoryId);
+      if (!cat) return [404, { error: "Template category not found" }];
+      if (cat.isSingleInstance) return [409, { error: `${cat.name} is fixed by the administrator` }];
+      const created = {
+        id: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        categoryId: cat.id,
+        name: String(body.name).trim(),
+        maxMarks: Number(body.maxMarks),
+        isSystemGenerated: false,
+        position: sheet.subAssessments.filter((s) => s.categoryId === cat.id).length,
+      };
+      sheet.subAssessments.push(created);
+      sheet.version += 1;
+      return [201, { success: true, data: created, remainingMarks: 0, version: sheet.version }];
+    }],
+    ["PATCH", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments\/([^/]+)$/, (_req, match, body) => {
+      const sheet = state.relationalSheet;
+      const item = sheet.subAssessments.find((s) => s.id === match[1]);
+      if (!item) return [404, { error: "Sub-assessment not found" }];
+      if (item.isSystemGenerated) return [409, { error: "Fixed by the administrator" }];
+      const nextMarks = body.maxMarks !== undefined ? Number(body.maxMarks) : item.maxMarks;
+      if (body.name !== undefined) item.name = String(body.name).trim();
+      item.maxMarks = nextMarks;
+      sheet.version += 1;
+      return [200, { success: true, data: item, version: sheet.version }];
+    }],
+    ["DELETE", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments\/([^/]+)$/, (_req, match) => {
+      const sheet = state.relationalSheet;
+      const idx = sheet.subAssessments.findIndex((s) => s.id === match[1]);
+      if (idx === -1) return [404, { error: "Sub-assessment not found" }];
+      const item = sheet.subAssessments[idx];
+      if (item.isSystemGenerated) return [409, { error: "Fixed by the administrator" }];
+      sheet.subAssessments.splice(idx, 1);
+      sheet.version += 1;
+      return [200, { success: true, version: sheet.version }];
+    }],
+    ["PUT", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/scores$/, (_req, _m, body) => {
+      const sheet = state.relationalSheet;
+      if (body.expectedVersion !== sheet.version) {
+        return [409, { error: "Spreadsheet changed. Refresh before saving." }];
+      }
+      const subById = new Map(sheet.subAssessments.map((s) => [s.id, s]));
+      for (const entry of body.scores || []) {
+        const sub = subById.get(entry.subAssessmentId);
+        if (!sub) return [404, { error: "Sub-assessment not found" }];
+        if (entry.score !== null && (entry.score < 0 || entry.score > sub.maxMarks)) {
+          return [400, { error: `${sub.name} score cannot exceed ${sub.maxMarks}` }];
+        }
+        sheet.scores[`${entry.studentId}:${entry.subAssessmentId}`] = entry.score;
+      }
+      sheet.version += 1;
+      return [200, { success: true, data: { version: sheet.version, saved: (body.scores || []).length } }];
+    }],
     ["GET", /^\/spreadsheets\/greenfield\/notifications$/, () => [200, []]],
+    ["GET", /^\/affective\/greenfield\/affective$/, () => [200, []]],
+    ["GET", /^\/result-settings\/greenfield$/, () => [200, { success: true, data: {
+      ceoSignatureUrl: null,
+      ceoCommentRules: [],
+      affectiveCategories: [{ id: "confidence", label: "Confidence", active: true, position: 0 }],
+    } }]],
+    ["GET", /^\/result-settings\/greenfield\/comment-override$/, () => [200, { success: true, data: null }]],
+    ["GET", /^\/result-templates\/periods\/greenfield$/, () => [200, { success: true, data: [RESULTS_PERIOD] }]],
+    ["GET", /^\/result-templates\/templates\/greenfield$/, () => [200, state.templates]],
+    ["GET", /^\/result-templates\/templates\/greenfield\/([^/]+)$/, (_req, match) => {
+      const tmpl = state.templates.find((t) => t.id === match[1]);
+      return tmpl ? [200, { success: true, data: tmpl }] : [404, { error: "Template not found" }];
+    }],
+    ["POST", /^\/result-templates\/templates\/greenfield$/, (_req, _match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      const created = {
+        id: `template-${Date.now()}`,
+        name: body.name,
+        description: body.description || null,
+        classLevelId: body.classLevelId || null,
+        classLevel: RESULTS_CLASS,
+        isDefault: Boolean(body.isDefault),
+        isApproved: Boolean(body.isApproved),
+        midTermTotal: body.midTermTotal || 0,
+        schoolSection: body.schoolSection || "ALL",
+        resultType: body.resultType || "BOTH",
+        termType: body.termType || "END_TERM",
+        metrics: body.metrics || [],
+        assessmentCategories: (body.metrics || []).map((m, idx) => ({
+          id: m.id || `cat-${idx + 1}`,
+          name: m.name,
+          label: m.label || m.name,
+          maxMarks: Number(m.maxMarks || m.weight || 0),
+          isSingleInstance: Boolean(m.isSingleInstance),
+          position: idx,
+        })),
+        gradeScale: body.gradeScale || [],
+      };
+      state.templates.push(created);
+      return [201, { success: true, data: created }];
+    }],
+    ["PUT", /^\/result-templates\/templates\/greenfield\/([^/]+)$/, (_req, match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      const idx = state.templates.findIndex((t) => t.id === match[1]);
+      const existing = idx >= 0 ? state.templates[idx] : null;
+      const updated = {
+        ...(existing || { id: match[1], classLevelId: RESULTS_CLASS.id, classLevel: RESULTS_CLASS }),
+        name: body.name ?? existing?.name,
+        description: body.description ?? existing?.description,
+        classLevelId: body.classLevelId ?? existing?.classLevelId ?? null,
+        classLevel: RESULTS_CLASS,
+        isDefault: body.isDefault !== undefined ? Boolean(body.isDefault) : (existing?.isDefault ?? false),
+        isApproved: body.isApproved !== undefined ? Boolean(body.isApproved) : (existing?.isApproved ?? true),
+        midTermTotal: body.midTermTotal ?? existing?.midTermTotal ?? 0,
+        schoolSection: body.schoolSection ?? existing?.schoolSection ?? "ALL",
+        resultType: body.resultType ?? existing?.resultType ?? "BOTH",
+        termType: body.termType ?? existing?.termType ?? "END_TERM",
+        metrics: body.metrics ?? existing?.metrics ?? [],
+        assessmentCategories: (body.metrics || existing?.metrics || []).map((m, i) => ({
+          id: m.id || `cat-${i + 1}`,
+          name: m.name,
+          label: m.label || m.name,
+          maxMarks: Number(m.maxMarks || m.weight || 0),
+          isSingleInstance: Boolean(m.isSingleInstance),
+          position: i,
+        })),
+        gradeScale: body.gradeScale ?? existing?.gradeScale ?? [],
+      };
+      if (idx >= 0) {
+        state.templates[idx] = updated;
+      } else {
+        state.templates.push(updated);
+      }
+      return [200, { success: true, data: updated }];
+    }],
+    ["PATCH", /^\/result-templates\/templates\/greenfield\/([^/]+)\/(approve|disapprove)$/, (_req, match, _b, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      const tmpl = state.templates.find((t) => t.id === match[1]);
+      if (!tmpl) return [404, { error: "Template not found" }];
+      tmpl.isApproved = match[2] === "approve";
+      return [200, { success: true, data: tmpl }];
+    }],
+    ["DELETE", /^\/result-templates\/templates\/greenfield\/([^/]+)$/, (_req, match, _b, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      state.templates = state.templates.filter((t) => t.id !== match[1]);
+      return [200, { success: true }];
+    }],
+    ["GET", /^\/result-templates\/results\/greenfield$/, (req) => {
+      const params = new URL(req.url, "http://localhost").searchParams;
+      const row = state.termResults.get(params.get("resultType"));
+      return [200, { success: true, data: row ? [row] : [] }];
+    }],
+    ["POST", /^\/result-templates\/bulk-compute\/greenfield$/, computeFixtureResults],
+    ["POST", /^\/result-templates\/(publish|unpublish)\/greenfield$/, setFixturePublication],
+    ["GET", /^\/export\/greenfield\/(report-card\/stu-ada|report-card-bundle\/jss1a)$/, (_req, _match, _body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      return [200, blankFixturePdf()];
+    }],
+    ["GET", /^\/support-tickets$/, (req) => {
+      const isDevTicket = new URL(req.url, "http://localhost").searchParams.get("isDevTicket") === "true";
+      return [200, state.tickets.filter((ticket) => ticket.isDevTicket === isDevTicket)];
+    }],
+    ["POST", /^\/support-tickets$/, (_req, _match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      if (!body.subject || !body.description || body.orgSlug !== ORG.slug) return [400, { error: "Invalid ticket" }];
+      const ticket = {
+        ...body,
+        id: `ticket-${state.tickets.length + 1}`,
+        status: "open",
+        createdAt: new Date().toISOString(),
+        messages: [],
+      };
+      state.tickets.push(ticket);
+      return [201, ticket];
+    }],
+    ["GET", /^\/support-tickets\/(ticket-\d+)\/messages$/, (_req, match) => {
+      const ticket = state.tickets.find(({ id }) => id === match[1]);
+      return ticket ? [200, ticket.messages] : [404, { error: "Ticket not found" }];
+    }],
+    ["POST", /^\/support-tickets\/(ticket-\d+)\/messages$/, (_req, match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      const ticket = state.tickets.find(({ id }) => id === match[1]);
+      if (!ticket) return [404, { error: "Ticket not found" }];
+      if (!body.message || body.orgSlug !== ORG.slug) return [400, { error: "Invalid message" }];
+      const sender = member(user);
+      const message = {
+        id: `message-${ticket.messages.length + 1}`,
+        ticketId: ticket.id,
+        message: body.message,
+        createdAt: new Date().toISOString(),
+        senderId: sender.id,
+        sender,
+        adminSender: null,
+      };
+      ticket.messages.push(message);
+      return [201, message];
+    }],
+    ["PATCH", /^\/support-tickets\/(ticket-\d+)$/, (_req, match, body, user) => {
+      if (user?.memberRole !== "admin") return [403, { error: "Admin required" }];
+      const ticket = state.tickets.find(({ id }) => id === match[1]);
+      if (!ticket) return [404, { error: "Ticket not found" }];
+      if (!["open", "resolved"].includes(body.status) || body.orgSlug !== ORG.slug) {
+        return [400, { error: "Invalid status update" }];
+      }
+      ticket.status = body.status;
+      return [200, ticket];
+    }],
     ["POST", /^\/auth\/forgot-password$/, (_req, _m, body) => [200, { ok: true }]],
     ["POST", /^\/auth\/reset-password$/, (_req, _m, body) => [200, { ok: true }]],
     // Sign-out asks HSMS to expire its own cookies (a legacy `accessToken`
@@ -361,7 +839,7 @@ const ROUTES = {
     ["POST", /^\/auth\/logout$/, () => [200, { ok: true }]],
   ],
   hcbt: [
-    ["POST", /^\/api\/auth\/callback$/, (_req, _m, body) => {
+    ["POST", /^\/api\/auth\/(exchange-session|callback)$/, (_req, _m, body) => {
       const user = Object.values(USERS).find((u) => u.principalId === body.principalId);
       if (!user) return [401, { error: "Unknown person" }];
       const hcbt = token(user.principalId, { product: "HCBT" });
@@ -431,11 +909,12 @@ function member(user) {
 }
 
 function send(res, origin, status, body) {
+  const isPdf = Buffer.isBuffer(body);
   res.writeHead(status, {
-    "content-type": "application/json",
+    "content-type": isPdf ? "application/pdf" : "application/json",
     ...(origin ? { "access-control-allow-origin": origin, "access-control-allow-credentials": "true", vary: "Origin" } : {}),
   });
-  res.end(JSON.stringify(body));
+  res.end(isPdf ? body : JSON.stringify(body));
 }
 
 function serve(backend) {

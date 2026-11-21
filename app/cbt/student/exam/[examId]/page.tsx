@@ -208,11 +208,11 @@ function ActiveExam() {
   }, [examId, session, handleTabSwitch]);
 
   useEffect(() => {
-    if (!fullscreenEnabled || !session) return;
+    if (!fullscreenEnabled) return;
     const onChange = () => {
       const active = Boolean(document.fullscreenElement);
       setInFullscreen(active);
-      if (!active && !leavingRef.current) handleTabSwitch();
+      if (!active && !leavingRef.current && session) handleTabSwitch();
     };
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
@@ -230,7 +230,7 @@ function ActiveExam() {
   const enterFullscreen = () => {
     let settled = false;
     document.documentElement.requestFullscreen().then(
-      () => { settled = true; },
+      () => { settled = true; setInFullscreen(true); },
       () => { settled = true; setFullscreenRefused(true); },
     );
     // Some kiosk and in-app browsers neither enter full screen nor refuse;
@@ -433,14 +433,14 @@ function ActiveExam() {
       <header className="bg-slate-950/80 backdrop-blur border-b border-slate-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-sm text-white shrink-0">
+            <div className="bg-[#1447E6] p-2 rounded-xl text-white shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <h1 className="text-sm font-bold tracking-tight text-white leading-tight truncate">
                 {session.exam.title}
               </h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase truncate">
+              <p className="text-xs text-slate-300 font-medium tracking-wide uppercase truncate">
                 Secure Testing Room
               </p>
             </div>
@@ -448,8 +448,8 @@ function ActiveExam() {
 
           <div className="flex items-center space-x-3">
             {tabSwitchCount > 0 && !proctorViolation && (
-              <div className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                tabSwitchCount >= 2 ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+              <div className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                tabSwitchCount >= 2 ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
               }`}>
                 <ShieldAlert className="w-3 h-3" />
                 <span>{tabSwitchCount}/{MAX_TAB_SWITCHES}</span>
@@ -537,41 +537,41 @@ function ActiveExam() {
           <div className="bg-slate-800/40 p-5 rounded-sm border border-slate-700/50 shadow-md">
             <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-4">Exam Summary</h3>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-slate-800/60 p-2.5 rounded-sm">
-                <p className="text-base font-bold text-blue-400">{answeredCount}</p>
-                <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Answered</p>
+              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+                <p className="text-base font-bold tabular-nums text-blue-400">{answeredCount}</p>
+                <p className="text-xs font-semibold text-slate-300 mt-0.5">Answered</p>
               </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-sm">
-                <p className="text-base font-bold text-amber-400">{flaggedCount}</p>
-                <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Flagged</p>
+              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+                <p className="text-base font-bold tabular-nums text-amber-400">{flaggedCount}</p>
+                <p className="text-xs font-semibold text-slate-300 mt-0.5">Flagged</p>
               </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-sm">
-                <p className="text-base font-bold text-slate-300">{remainingCount}</p>
-                <p className="text-[9px] font-semibold text-slate-500 uppercase mt-0.5">Unanswered</p>
+              <div className="bg-slate-800/60 p-2.5 rounded-xl">
+                <p className="text-base font-bold tabular-nums text-slate-200">{remainingCount}</p>
+                <p className="text-xs font-semibold text-slate-300 mt-0.5">Left</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-950 p-6 rounded-sm border border-slate-800/80 shadow-md flex flex-col">
-            <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-5">Question Navigator</h3>
+          <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-md flex flex-col">
+            <h3 className="text-xs font-bold tracking-wider text-slate-300 uppercase mb-5">Question Navigator</h3>
             <div className="grid grid-cols-5 gap-2.5 max-h-[260px] overflow-y-auto p-1">
               {session.questions.map((q, idx) => {
                 const isSelected = currentIdx === idx;
                 const answered = isAnswered(answers[q.id]);
                 const isFlagged = flaggedQuestions[q.id];
-                let blockClass = "bg-slate-800/60 border-transparent text-slate-500 hover:bg-slate-700/60 hover:text-slate-300";
-                if (answered) blockClass = "bg-blue-500/15 border-blue-500/25 text-blue-400 hover:bg-blue-500/25";
-                if (isFlagged) blockClass = "bg-amber-500/20 border-amber-500/40 text-amber-400 hover:bg-amber-500/30";
-                if (isSelected) blockClass = "bg-blue-500 text-white border-blue-500 outline-2 outline-blue-500 outline-offset-1";
+                let blockClass = "bg-slate-800/60 border-transparent text-slate-300 hover:bg-slate-700/60 hover:text-white";
+                if (answered) blockClass = "bg-blue-500/15 border-blue-500/25 text-blue-300 hover:bg-blue-500/25";
+                if (isFlagged) blockClass = "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30";
+                if (isSelected) blockClass = "bg-[#1447E6] text-white border-[#1447E6] outline-2 outline-[#1447E6] outline-offset-1";
                 return (
                   <button key={q.id} onClick={() => setCurrentIdx(idx)}
-                    className={`h-10 text-xs font-bold rounded-sm border flex items-center justify-center transition-all ${blockClass}`}>
+                    className={`h-11 text-xs font-bold rounded-lg border flex items-center justify-center transition-all ${blockClass}`}>
                     {idx + 1}
                   </button>
                 );
               })}
             </div>
-            <div className="mt-5 pt-4 border-t border-slate-700/50 flex flex-col space-y-2 text-[10px] font-semibold text-slate-500">
+            <div className="mt-5 pt-4 border-t border-slate-700/50 flex flex-col space-y-2 text-xs font-medium text-slate-300">
               <div className="flex items-center space-x-2">
                 <span className="h-3 w-3 rounded-sm bg-blue-500/25 inline-block"></span>
                 <span>Answered</span>
@@ -629,16 +629,16 @@ function ActiveExam() {
             </div>
             <h3 className="text-lg font-bold text-white mb-2">You Left the Exam Screen</h3>
             <p className="text-sm text-slate-300 mb-6 leading-relaxed">{proctorMessage}</p>
-            <div className="bg-slate-950 rounded-sm p-5 border border-slate-800 mb-4">
-              <p className="text-3xl font-extrabold text-amber-400">{proctorTimer}</p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Seconds to return</p>
+            <div className="bg-slate-950 rounded-xl p-5 border border-slate-800 mb-4">
+              <p className="text-3xl font-extrabold tabular-nums text-amber-400">{proctorTimer}</p>
+              <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Seconds to return</p>
             </div>
             <div className="flex items-center justify-center space-x-1.5">
               {[1, 2, 3].map((i) => (
                 <div key={i} className={`w-2.5 h-2.5 rounded-full ${i <= tabSwitchCount ? "bg-amber-500" : "bg-slate-700"}`} />
               ))}
             </div>
-            <p className="text-[10px] text-slate-500 mt-3 font-medium">
+            <p className="text-xs text-slate-300 mt-3 font-medium">
               Violation {tabSwitchCount} of {MAX_TAB_SWITCHES} — {MAX_TAB_SWITCHES - tabSwitchCount} remaining before auto-fail
             </p>
           </div>
@@ -647,37 +647,37 @@ function ActiveExam() {
 
       {isSubmitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 rounded-sm max-w-md w-full border border-slate-800 shadow-2xl p-6 sm:p-8 text-center relative">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full border border-slate-800 shadow-2xl p-6 sm:p-8 text-center relative">
             <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-5">
               <AlertTriangle className="w-7 h-7" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2">Submit Your Exam?</h3>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            <p className="text-xs text-slate-300 mb-6 leading-relaxed">
               Are you ready to submit your exam paper? You will not be able to change your answers after submission.
             </p>
-            <div className="bg-slate-950 rounded-sm p-4 border border-slate-800 flex justify-around text-center mb-8">
+            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 flex justify-around text-center mb-8">
               <div>
-                <p className="text-xs font-bold text-slate-400">Answered</p>
-                <p className="text-base font-extrabold text-blue-400 mt-0.5">{answeredCount}</p>
+                <p className="text-xs font-bold text-slate-300">Answered</p>
+                <p className="text-base font-extrabold tabular-nums text-blue-400 mt-0.5">{answeredCount}</p>
               </div>
               <div className="h-8 w-px bg-slate-800 self-center"></div>
               <div>
-                <p className="text-xs font-bold text-slate-400">Remaining</p>
-                <p className="text-base font-extrabold text-slate-300 mt-0.5">{remainingCount}</p>
+                <p className="text-xs font-bold text-slate-300">Remaining</p>
+                <p className="text-base font-extrabold tabular-nums text-slate-200 mt-0.5">{remainingCount}</p>
               </div>
             </div>
             {tabSwitchCount > 0 && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-sm p-3 text-left mb-4 flex items-start space-x-2.5">
-                <ShieldAlert className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-[10px] font-medium text-amber-400 leading-normal">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-left mb-4 flex items-start space-x-2.5">
+                <ShieldAlert className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs font-medium text-amber-300 leading-normal">
                   Proctoring: {tabSwitchCount} tab switch violation{tabSwitchCount > 1 ? "s" : ""} recorded.
                 </p>
               </div>
             )}
             {remainingCount > 0 && (
-              <div className="bg-rose-500/10 border border-rose-500/20 rounded-sm p-3.5 text-left mb-6 flex items-start space-x-2.5">
-                <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
-                <p className="text-[10px] font-medium text-rose-400 leading-normal">
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 text-left mb-6 flex items-start space-x-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
+                <p className="text-xs font-medium text-rose-300 leading-normal">
                   Warning: You have {remainingCount} unanswered question{remainingCount > 1 ? "s" : ""}. These will be marked as zero.
                 </p>
               </div>
@@ -685,13 +685,13 @@ function ActiveExam() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setIsSubmitModalOpen(false)}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-3 px-4 rounded-sm border border-slate-700 transition-colors"
+                className="flex-1 min-h-11 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 px-4 rounded-xl border border-slate-700 transition-colors"
               >
                 Go Back
               </button>
               <button
                 onClick={() => executeSubmission(false)}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold py-3 px-4 rounded-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                className="flex-1 min-h-11 bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg active:scale-95 transition-all"
               >
                 Yes, Submit Now
               </button>

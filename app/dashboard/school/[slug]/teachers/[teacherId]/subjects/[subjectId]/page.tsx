@@ -169,7 +169,7 @@ export default function TeacherSubjectPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="hidden md:block text-2xl font-bold tracking-tight text-[#0B1220]">
               {subjectName}
             </h1>
             <p className="text-slate-500 capitalize">
