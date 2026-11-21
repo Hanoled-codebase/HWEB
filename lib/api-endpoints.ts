@@ -14,7 +14,8 @@ function isCloudEnvironment(): boolean {
     return (
       host.includes("hanoled.com") ||
       host.endsWith(".vercel.app") ||
-      host.endsWith(".netlify.app")
+      host.endsWith(".netlify.app") ||
+      host.endsWith(".workers.dev")
     );
   }
   return Boolean(

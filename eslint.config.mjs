@@ -22,6 +22,10 @@ const eslintConfig = defineConfig([
     "blob-report/**",
     // Netlify CLI build artifacts (gitignored).
     ".netlify/**",
+    // Cloudflare Workers / Vite build artifacts (gitignored).
+    ".cloudflare/**",
+    ".vinext/**",
+    "dist/**",
   ]),
 ]);
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   AlertCircle,
   Check,
   ChevronDown,
   ChevronUp,
+  Download,
   FileSpreadsheet,
   FileText,
   Keyboard,
@@ -58,6 +59,15 @@ import {
   resolveSpreadsheetCategories,
   sanitizeSpreadsheetRows,
 } from "@/lib/spreadsheets";
+import {
+  buildSpreadsheetDraftKey,
+  clearSpreadsheetDraft,
+  downloadSpreadsheetBackupCsv,
+  extractDirtyAssessmentDraft,
+  loadSpreadsheetDraft,
+  mergeDraftIntoSpreadsheetRows,
+  saveSpreadsheetDraft,
+} from "@/lib/spreadsheet-drafts";
 import { cn } from "@/lib/utils";
 
 function getNumericValue(row: SpreadsheetRow, assessmentIndex: number): number | null {
@@ -95,7 +105,16 @@ export default function AssessmentEntryPage() {
   const [search, setSearch] = useState("");
   const [controlsOpen, setControlsOpen] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorIsConflict, setSaveErrorIsConflict] = useState(false);
+  const [restoredDraftCount, setRestoredDraftCount] = useState(0);
+  const [reloadSeq, setReloadSeq] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const draftKey =
+    currentOrg?.slug && sheetId
+      ? buildSpreadsheetDraftKey(currentOrg.slug, sheetId, `assessment:${assessmentIndex}`)
+      : null;
 
   const assessmentsHref = currentOrg?.slug
     ? `/dashboard/school/${currentOrg.slug}/spreadsheets/${sheetId}`
@@ -206,37 +225,74 @@ export default function AssessmentEntryPage() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasChanges]);
 
-  const fetchSheet = useCallback(async () => {
-    if (!currentOrg || !sheetId) return;
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const data = await apiFetch<SpreadsheetDetail>(
-        `/spreadsheets/${currentOrg.slug}/${sheetId}`,
-      );
-      const rawA =
-        Array.isArray(data.assessments) && data.assessments.length > 0
-          ? data.assessments
-          : Array.isArray(data.columns)
-            ? data.columns.map((name) => ({ name, total: undefined }))
-            : [];
-      const sanitizedData = sanitizeSpreadsheetRows(data.data, rawA);
-      setSheet({ ...data, data: sanitizedData });
-      setLocalData(sanitizedData);
-    } catch (error) {
-      const message = getErrorMessage(error, "Failed to load spreadsheet");
-      setSheet(null);
-      setLocalData([]);
-      setLoadError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentOrg, sheetId]);
+  const orgSlug = currentOrg?.slug;
+
+  const fetchSheet = () => {
+    setReloadSeq((n) => n + 1);
+  };
 
   useEffect(() => {
-    fetchSheet();
-  }, [fetchSheet]);
+    if (!orgSlug || !sheetId) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const data = await apiFetch<SpreadsheetDetail>(
+          `/spreadsheets/${orgSlug}/${sheetId}`,
+        );
+        if (cancelled) return;
+        const rawA =
+          Array.isArray(data.assessments) && data.assessments.length > 0
+            ? data.assessments
+            : Array.isArray(data.columns)
+              ? data.columns.map((name) => ({ name, total: undefined }))
+              : [];
+        const sanitizedData = sanitizeSpreadsheetRows(data.data, rawA);
+        const savedDraft = loadSpreadsheetDraft(
+          buildSpreadsheetDraftKey(orgSlug, sheetId, `assessment:${assessmentIndex}`),
+        );
+        if (savedDraft) {
+          const merged = mergeDraftIntoSpreadsheetRows(sanitizedData, rawA, savedDraft.valuesByStudent);
+          setSheet({ ...data, data: sanitizedData });
+          setLocalData(merged.rows);
+          setRestoredDraftCount(merged.restoredCount);
+        } else {
+          setSheet({ ...data, data: sanitizedData });
+          setLocalData(sanitizedData);
+          setRestoredDraftCount(0);
+        }
+        setSaveError(null);
+        setSaveErrorIsConflict(false);
+      } catch (error) {
+        if (cancelled) return;
+        const message = getErrorMessage(error, "Failed to load spreadsheet");
+        setSheet(null);
+        setLocalData([]);
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentIndex, orgSlug, reloadSeq, sheetId]);
+
+  // Persist unsaved score changes locally so network drops or API errors never erase teacher input.
+  useEffect(() => {
+    if (!draftKey || !sheet || !selectedAssessment) return;
+    const colKey = selectedAssessment.id || String(selectedAssessment.originalIndex);
+    const dirty = extractDirtyAssessmentDraft(
+      sheet.data || [],
+      localData,
+      selectedAssessment.originalIndex,
+      colKey,
+    );
+    saveSpreadsheetDraft(draftKey, dirty);
+  }, [draftKey, localData, selectedAssessment, sheet]);
 
   const handleScoreChange = (rowIndex: number, value: string) => {
     if (!effectiveCanEdit || !selectedAssessment) return;
@@ -297,6 +353,10 @@ export default function AssessmentEntryPage() {
         );
         setSheet({ ...sheet, version: response.data.version, data: sanitizedData });
         setLocalData(sanitizedData);
+        setSaveError(null);
+        setSaveErrorIsConflict(false);
+        setRestoredDraftCount(0);
+        if (draftKey) clearSpreadsheetDraft(draftKey);
         toast.success(`${selectedAssessment.name} saved successfully`);
         return true;
       }
@@ -318,11 +378,21 @@ export default function AssessmentEntryPage() {
       );
       setSheet({ ...updatedSheet, data: normalizedData });
       setLocalData(normalizedData);
+      setSaveError(null);
+      setSaveErrorIsConflict(false);
+      setRestoredDraftCount(0);
+      if (draftKey) clearSpreadsheetDraft(draftKey);
       toast.success(`${selectedAssessment?.name || "Assessment"} saved successfully`);
       return true;
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to save spreadsheet"));
-      fetchSheet();
+      const message = getErrorMessage(error, "Failed to save spreadsheet");
+      const status =
+        typeof error === "object" && error !== null && "status" in error
+          ? Number((error as { status?: number }).status)
+          : undefined;
+      setSaveError(message);
+      setSaveErrorIsConflict(status === 409);
+      toast.error(`${message} — your scores are kept safely on this device.`);
       return false;
     } finally {
       setIsSaving(false);
@@ -389,7 +459,7 @@ export default function AssessmentEntryPage() {
       toast.success("Synchronized with current class roster");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to synchronize students"));
-      fetchSheet();
+      if (!hasChanges) fetchSheet();
     } finally {
       setIsSyncing(false);
     }
@@ -503,6 +573,106 @@ export default function AssessmentEntryPage() {
             </span>
           </div>
         </div>
+
+        {saveError && (
+          <div
+            role="alert"
+            className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-950"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-rose-950">
+                  Could not save to server: {saveError}
+                </p>
+                <p className="mt-0.5 text-rose-900">
+                  Your entered scores are preserved locally on this device. Retry saving or download a CSV backup.
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => void handleSave()}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#1447E6] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-[#0F36B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] disabled:opacity-60 md:pointer-fine:min-h-8"
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />}
+                    Retry save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadSpreadsheetBackupCsv(
+                        `${sheet.subject?.name || "scores"}-${selectedAssessment.name}`,
+                        [selectedAssessment],
+                        localData.map((row) => ({
+                          student: row.student,
+                          values: [row.values[selectedAssessment.originalIndex] ?? ""],
+                        })),
+                      )
+                    }
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3.5 text-xs font-semibold text-rose-900 transition-colors hover:bg-rose-100/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    Download CSV backup
+                  </button>
+                  {saveErrorIsConflict && (
+                    <button
+                      type="button"
+                      onClick={() => void fetchSheet()}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                      Reload latest
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!saveError && restoredDraftCount > 0 && hasChanges && (
+          <div
+            role="status"
+            className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-950"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium tabular-nums">
+                Restored {restoredDraftCount} unsaved {restoredDraftCount === 1 ? "score" : "scores"} from this device. Tap Save to sync to the school record.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadSpreadsheetBackupCsv(
+                      `${sheet.subject?.name || "scores"}-${selectedAssessment.name}`,
+                      [selectedAssessment],
+                      localData.map((row) => ({
+                        student: row.student,
+                        values: [row.values[selectedAssessment.originalIndex] ?? ""],
+                      })),
+                    )
+                  }
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  Download CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (draftKey) clearSpreadsheetDraft(draftKey);
+                    setLocalData(sheet.data || []);
+                    setRestoredDraftCount(0);
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-amber-900 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                >
+                  Discard draft
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isAllocationBlocked && (
           <div
@@ -788,6 +958,7 @@ export default function AssessmentEntryPage() {
               disabled={isSaving}
               className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
               onClick={() => {
+                if (draftKey) clearSpreadsheetDraft(draftKey);
                 setShowLeaveDialog(false);
                 router.push(assessmentsHref);
               }}
