@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { DismissableLayerBranch } from "@radix-ui/react-dismissable-layer";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -28,7 +27,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 overflow-hidden overscroll-contain bg-[#0B1220]/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -101,9 +100,13 @@ const DialogContent = React.forwardRef<
           {...rest}
         >
           <DialogPopupContext.Provider value={true}>
+            <div
+              aria-hidden="true"
+              className="mx-auto -mt-3 mb-0.5 hidden h-1 w-10 shrink-0 rounded-full bg-slate-300 max-md:block"
+            />
             {children}
-            <DialogPrimitive.Close className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-slate-500 ring-offset-background transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none sm:right-3 sm:top-3">
-              <X className="h-5 w-5" />
+            <DialogPrimitive.Close className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-slate-600 ring-offset-background transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none sm:right-3 sm:top-3">
+              <X className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           </DialogPopupContext.Provider>
@@ -149,7 +152,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "text-lg font-bold leading-snug tracking-tight text-[#0B1220] text-balance",
       className,
     )}
     {...props}

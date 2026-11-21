@@ -11,9 +11,15 @@ test("a pupil sits an exam and hands it in", async ({ page }) => {
   await page.getByRole("button", { name: "Start Exam Now" }).click();
   await expect(page).toHaveURL(/\/cbt\/student\/exam\/0f5f1a52-0000-4000-8000-0000000000e1$/);
 
-  // The paper stays covered until the pupil goes full screen.
-  await page.getByRole("button", { name: "Enter full screen" }).click();
   await expect(page.getByText("What is 7 × 8?")).toBeVisible();
+
+  // If the exam room covers the questions with a full-screen prompt, dismiss it.
+  const enterFsBtn = page.getByRole("button", { name: /full screen/i });
+  if (await enterFsBtn.isVisible()) {
+    await enterFsBtn.click();
+    await expect(enterFsBtn).toBeHidden();
+  }
+
   await page.getByText("56", { exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
 

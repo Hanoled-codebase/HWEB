@@ -15,8 +15,18 @@ import { cn } from "@/lib/utils";
 import { invoiceStatusLabel, termLabel } from "@/lib/finance";
 import {
   DollarSign, Loader2, ExternalLink, CheckCircle2, GraduationCap,
-  History, Bus, AlertCircle, CreditCard, Wallet,
+  History, Bus, AlertCircle, CreditCard,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type FeeItem = {
   id: string; name: string; category: string; amount: number;
@@ -91,6 +101,7 @@ function ParentInvoicesLive() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [confirmPayTarget, setConfirmPayTarget] = useState<{ invoiceId: string; amount: number; term: string } | null>(null);
 
   useEffect(() => {
     if (!currentOrg) return;
@@ -174,10 +185,10 @@ function ParentInvoicesLive() {
                       type="button"
                       onClick={() => setSelectedStudentId(s.student.id)}
                       className={cn(
-                        "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold",
+                        "min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold",
                         active
-                          ? "border-blue-700 bg-blue-700 text-white"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
+                          ? "border-[#1447E6] bg-[#1447E6] text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
                       )}
                     >
                       {s.student.firstName} {s.student.lastName}
@@ -201,13 +212,13 @@ function ParentInvoicesLive() {
                         </span>
                       )}
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-600">
                       {selected.student.classLevel?.name || "Unassigned"}
                       {selected.student.studentType === "boarding" && (
-                        <span className="ml-2 text-purple-600 font-medium">· Boarding</span>
+                        <span className="ml-2 text-slate-700 font-medium">· Boarding</span>
                       )}
                       {selected.student.usesBus && (
-                        <span className="ml-2 text-amber-600 font-medium">· Uses Bus</span>
+                        <span className="ml-2 text-slate-700 font-medium">· Uses Bus</span>
                       )}
                     </p>
                   </div>
@@ -215,39 +226,41 @@ function ParentInvoicesLive() {
 
                 {/* Fee Summary Card */}
                 <Card className="border-slate-200 shadow-sm overflow-hidden">
-                  <div className="h-1.5 bg-blue-600" />
+                  <div className="h-1.5 bg-[#1447E6]" />
                   <CardContent className="p-5">
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="text-center">
-                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">
                           Total Fee
                         </p>
-                        <p className="mt-1 text-2xl font-bold text-slate-900">
-                          ₦{selected.feeSummary.totalFee.toLocaleString()}
+                        <p className="mt-1 text-2xl font-bold tabular-nums text-[#0B1220]">
+                          {selected.feeSummary.totalFee > 0 ? `₦${selected.feeSummary.totalFee.toLocaleString()}` : "—"}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {selected.feeSummary.assignedFees.length} fee items
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">
                           Paid
                         </p>
-                        <p className="mt-1 text-2xl font-bold text-emerald-600">
-                          ₦{selected.feeSummary.totalPaid.toLocaleString()}
+                        <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
+                          {selected.feeSummary.totalPaid > 0 ? `₦${selected.feeSummary.totalPaid.toLocaleString()}` : "—"}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">
+                        <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">
                           Balance
                         </p>
                         <p className={cn(
-                          "mt-1 text-2xl font-bold",
+                          "mt-1 text-2xl font-bold tabular-nums",
                           selected.feeSummary.balance <= 0
-                            ? "text-emerald-600"
-                            : "text-rose-600",
+                            ? "text-emerald-700"
+                            : "text-red-600",
                         )}>
-                          ₦{selected.feeSummary.balance.toLocaleString()}
+                          {selected.feeSummary.totalFee === 0 && selected.feeSummary.balance === 0
+                            ? "—"
+                            : `₦${selected.feeSummary.balance.toLocaleString()}`}
                         </p>
                       </div>
                     </div>
@@ -310,42 +323,22 @@ function ParentInvoicesLive() {
                                 variant="outline"
                                 className={cn(
                                   "rounded-full text-xs px-2 py-0 font-medium",
-                                  fee.category === "tuition" && "border-blue-200 bg-blue-50 text-blue-700",
-                                  fee.category === "boarding" && "border-purple-200 bg-purple-50 text-purple-700",
-                                  fee.category === "transport" && "border-amber-200 bg-amber-50 text-amber-700",
+                                  fee.category === "tuition"
+                                    ? "border-[#1447E6]/20 bg-[#EEF0FF] text-[#1447E6]"
+                                    : "border-slate-200 bg-slate-50 text-slate-700",
                                 )}
                               >
                                 {fee.category}
                               </Badge>
                               <span className="text-slate-700">{fee.name}</span>
                             </div>
-                            <span className="font-medium text-slate-900">
+                            <span className="font-medium tabular-nums text-[#0B1220]">
                               ₦{fee.amount.toLocaleString()}
                             </span>
                           </div>
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-
-                {/* Wallet — Coming Soon */}
-                <Card className="border-dashed border-slate-300 bg-slate-50/50">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200">
-                          <Wallet className="h-5 w-5 text-slate-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700">Wallet</p>
-                          <p className="text-xs text-slate-500">Fund your wallet and pay fees easily</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 px-3 py-1">
-                        Coming Soon
-                      </Badge>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -479,30 +472,36 @@ function ParentInvoicesLive() {
                               </div>
 
                               {!isPaid && (
-                                <div className="mt-3 flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                                <div className="mt-3 flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-slate-100">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-500">Amount</span>
+                                    <label htmlFor={`pay-amt-${inv.id}`} className="text-xs font-medium text-slate-600">
+                                      Amount
+                                    </label>
                                     <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">₦</span>
+                                      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">₦</span>
                                       <input
+                                        id={`pay-amt-${inv.id}`}
                                         type="number"
+                                        inputMode="numeric"
                                         min={1}
                                         max={inv.balance}
                                         value={customAmounts[inv.id] ?? inv.balance}
                                         onChange={(e) =>
                                           setCustomAmounts((prev) => ({ ...prev, [inv.id]: e.target.value }))
                                         }
-                                        className="w-24 rounded-md border border-slate-300 py-1.5 pl-5 pr-2 text-xs focus:border-blue-500 focus:outline-none"
+                                        className="min-h-11 w-28 rounded-xl border border-slate-300 py-2 pl-6 pr-2.5 text-sm font-semibold tabular-nums focus:border-[#1447E6] focus:outline-none md:min-h-9"
                                       />
                                     </div>
                                   </div>
                                   <Button
                                     size="sm"
-                                    onClick={() =>
-                                      handlePay(inv.id, customAmounts[inv.id] ? Number(customAmounts[inv.id]) : undefined)
-                                    }
+                                    onClick={() => {
+                                      const parsed = customAmounts[inv.id] ? Number(customAmounts[inv.id]) : inv.balance;
+                                      const payAmt = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, inv.balance) : inv.balance;
+                                      setConfirmPayTarget({ invoiceId: inv.id, amount: payAmt, term: termLabel(inv.academicTerm) });
+                                    }}
                                     disabled={payingId === inv.id}
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-[#1447E6] hover:bg-[#0F36B8] text-white"
                                   >
                                     {payingId === inv.id ? (
                                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -570,6 +569,41 @@ function ParentInvoicesLive() {
           </>
         )}
       </div>
+
+      <AlertDialog
+        open={Boolean(confirmPayTarget)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmPayTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Proceed to payment checkout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be redirected to Paystack to pay{" "}
+              <strong className="tabular-nums text-[#0B1220]">
+                ₦{confirmPayTarget?.amount.toLocaleString()}
+              </strong>{" "}
+              for {confirmPayTarget?.term}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-[#1447E6] text-white hover:bg-[#0F36B8]"
+              onClick={() => {
+                if (confirmPayTarget) {
+                  const { invoiceId, amount } = confirmPayTarget;
+                  setConfirmPayTarget(null);
+                  void handlePay(invoiceId, amount);
+                }
+              }}
+            >
+              Continue to Paystack
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -44,7 +44,7 @@ const STATE_STYLE: Record<string, string> = {
   UNPAIRED: "bg-slate-100 text-slate-600",
   PAIRED: "bg-blue-50 text-[#1447E6]",
   PACKAGE_IMPORTED: "bg-blue-50 text-[#1447E6]",
-  EXAM_ARMED: "bg-amber-50 text-[#8a5c10]",
+  EXAM_ARMED: "bg-amber-50 text-amber-800",
   EXAM_RUNNING: "bg-emerald-50 text-emerald-700",
 };
 
@@ -249,7 +249,7 @@ export default function EdgeDeviceTab() {
           )}
           {status.cbtPending?.conflicts?.length > 0 && (
             <div className="mb-3 rounded-xl border border-[#F5A623]/40 bg-[#F5A623]/10 p-3 space-y-2">
-              <p className="text-xs font-bold text-[#8a5c10]">These exams were changed on Cloud too, so they were not overwritten:</p>
+              <p className="text-xs font-bold text-amber-800">These exams were changed on Cloud too, so they were not overwritten:</p>
               {status.cbtPending.conflicts.map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
                   <span className="font-semibold text-slate-700 truncate">{c.title}</span>
@@ -312,7 +312,7 @@ export default function EdgeDeviceTab() {
                       <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${p.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {p.unlocked ? "Unlocked" : "Locked"}
                       </span>
-                      <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${p.armed ? "bg-amber-50 text-[#8a5c10]" : "bg-slate-100 text-slate-500"}`}>
+                      <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${p.armed ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
                         {p.armed ? "Armed" : "Not armed"}
                       </span>
                     </div>

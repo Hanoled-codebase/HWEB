@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { CardList, Chip, PaymentChip, SectionHead, naira, rowCard } from "@/components/admin/mobile-kit"
+import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider"
 import { cn } from "@/lib/utils"
 
 export interface SchoolDetailData {
@@ -42,6 +43,7 @@ export interface SchoolDetailData {
 
 /** ₦90K, ₦1.2M — short enough for a three-across stat card. */
 function compactNaira(n: number) {
+  if (!n || n <= 0) return "—"
   if (n >= 1_000_000) return `₦${+(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `₦${+(n / 1_000).toFixed(1)}K`
   return naira(n)
@@ -64,6 +66,7 @@ function initials(name?: string | null) {
  * the desktop layout; this renders the same data as stacked cards below md.
  */
 export function SchoolDetailMobile({ school }: { school: SchoolDetailData }) {
+  useMobilePageTitle(school.name)
   const status = (school.paymentRecords[0]?.status ?? "pending").replace("_", " ")
   // Contacts are the school's staff (owner, admins, teachers); parents are counted in Members only.
   const contacts = school.members.filter((m) => m.user && m.role !== "parent")
@@ -92,7 +95,7 @@ export function SchoolDetailMobile({ school }: { school: SchoolDetailData }) {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <h1 className="min-w-0 text-[22px] font-bold leading-tight text-foreground">{school.name}</h1>
+        <h2 className="min-w-0 text-lg font-bold leading-tight text-foreground">{school.name}</h2>
         <div className="shrink-0 pt-0.5">
           <PaymentChip status={status} />
         </div>
@@ -168,8 +171,8 @@ export function SchoolDetailMobile({ school }: { school: SchoolDetailData }) {
                     </div>
                     <div className="flex flex-col-reverse">
                       <dt className="text-xs text-muted-foreground">Owed</dt>
-                      <dd className={cn("text-sm font-semibold tabular-nums", owed > 0 ? "text-destructive" : "text-foreground")}>
-                        {naira(owed)}
+                      <dd className={cn("text-sm font-semibold tabular-nums", owed > 0 ? "text-destructive" : "text-muted-foreground")}>
+                        {owed > 0 ? naira(owed) : "—"}
                       </dd>
                     </div>
                   </dl>

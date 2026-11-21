@@ -209,13 +209,13 @@ export default function AdminSupportPage() {
     <div className="space-y-6">
       <div className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4", !showMobileList && "max-lg:hidden")}>
         <div>
-          <h1 className="hidden text-xl font-bold tracking-tight text-slate-900 sm:block sm:text-2xl">
+          <h1 className="hidden text-xl font-bold tracking-tight text-slate-900 md:block md:text-2xl">
             Support Tickets
           </h1>
-          <p className="text-slate-500">
+          <p className="text-sm text-slate-600">
             Manage dev-team support tickets from schools.
             {unreadCount > 0 && (
-              <span className="ml-2 text-amber-600 font-medium">
+              <span className="ml-2 text-amber-700 font-medium">
                 {unreadCount} open
               </span>
             )}
@@ -230,7 +230,7 @@ export default function AdminSupportPage() {
       {/* Filters */}
       <div className={cn("grid grid-cols-2 gap-3 sm:flex sm:items-center", !showMobileList && "max-lg:hidden")}>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as string)}>
-          <SelectTrigger className="w-full bg-white sm:w-[140px]">
+          <SelectTrigger aria-label="Filter tickets by status" className="w-full bg-white sm:w-[140px]">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -242,7 +242,7 @@ export default function AdminSupportPage() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as string)}>
-          <SelectTrigger className="w-full bg-white sm:w-[140px]">
+          <SelectTrigger aria-label="Filter tickets by priority" className="w-full bg-white sm:w-[140px]">
             <SelectValue placeholder="All Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -271,7 +271,7 @@ export default function AdminSupportPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="lg:h-[calc(100vh-420px)]">
+              <ScrollArea className="lg:h-[calc(100dvh-420px)]">
                 {isLoading ? (
                   <div className="space-y-2 p-4">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -318,27 +318,27 @@ export default function AdminSupportPage() {
                           <p className="truncate text-sm font-semibold text-slate-800">
                             {ticket.subject}
                           </p>
-                          <p className="mt-1 truncate text-xs text-slate-400">
+                          <p className="mt-1 truncate text-xs text-slate-500">
                             {ticket.organization?.name && (
-                              <span className="font-medium text-slate-500">{ticket.organization.name} · </span>
+                              <span className="font-medium text-slate-600">{ticket.organization.name} · </span>
                             )}
                             {format(new Date(ticket.createdAt), "MMM d, yyyy")}
                           </p>
                           {ticket.member?.user?.name && (
-                            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                            <p className="mt-0.5 truncate text-xs text-slate-500">
                               {ticket.member.user.name}
                               {ticket.member.role && ` · ${ticket.member.role}`}
                             </p>
                           )}
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <Badge variant="outline" className={cn("px-2 py-0 text-[11px] font-medium", statusCfg.className)}>
+                            <Badge variant="outline" className={cn("px-2 py-0 text-xs font-medium", statusCfg.className)}>
                               {statusCfg.label}
                             </Badge>
-                            <Badge variant="outline" className={cn("px-2 py-0 text-[11px] font-medium", priorityCfg.className)}>
+                            <Badge variant="outline" className={cn("px-2 py-0 text-xs font-medium", priorityCfg.className)}>
                               {priorityCfg.label}
                             </Badge>
                             {msgCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-[11px] text-slate-400">
+                              <span className="flex items-center gap-0.5 text-xs text-slate-500">
                                 <MessageSquare className="h-3 w-3" />
                                 {msgCount}
                               </span>
@@ -357,29 +357,29 @@ export default function AdminSupportPage() {
         {/* ── Chat / Detail View ────────────────────────────────── */}
         <div className={cn("lg:block", showMobileList && "hidden")}>
           {selectedTicket ? (
-            <Card className="flex h-[calc(100dvh-10.5rem)] flex-col border-slate-200 shadow-sm lg:h-[calc(100vh-420px)]">
+            <Card className="flex h-[calc(100dvh-10.5rem)] flex-col border-slate-200 shadow-sm lg:h-[calc(100dvh-420px)]">
               {/* Header */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                 <button
                   type="button"
                   onClick={handleBackToList}
-                  aria-label="Back to tickets" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+                  aria-label="Back to tickets" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h3 className="line-clamp-2 text-sm font-bold text-slate-900 sm:truncate">
+                    <h3 className="line-clamp-2 text-sm font-bold text-[#0B1220] sm:truncate">
                       {selectedTicket.subject}
                     </h3>
-                    <Badge variant="outline" className={cn("shrink-0 px-2 py-0 text-[11px] font-medium", STATUS_CONFIG[selectedTicket.status].className)}>
+                    <Badge variant="outline" className={cn("shrink-0 px-2 py-0 text-xs font-medium", STATUS_CONFIG[selectedTicket.status].className)}>
                       {STATUS_CONFIG[selectedTicket.status].label}
                     </Badge>
-                    <Badge variant="outline" className={cn("shrink-0 px-2 py-0 text-[11px] font-medium", PRIORITY_CONFIG[selectedTicket.priority].className)}>
+                    <Badge variant="outline" className={cn("shrink-0 px-2 py-0 text-xs font-medium", PRIORITY_CONFIG[selectedTicket.priority].className)}>
                       {PRIORITY_CONFIG[selectedTicket.priority].label}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-500">
                     {selectedTicket.organization?.name && (
                       <span className="font-medium">{selectedTicket.organization.name}</span>
                     )}
@@ -445,7 +445,7 @@ export default function AdminSupportPage() {
                               ? "bg-blue-600 text-white"
                               : "border border-slate-200 bg-white text-slate-800",
                           )}>
-                            <p className={cn("mb-1 text-[11px] font-semibold", mine ? "text-white/70" : "text-slate-500")}>
+                            <p className={cn("mb-1 text-xs font-semibold", mine ? "text-white/80" : "text-slate-600")}>
                               {senderName(msg)}
                             </p>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.message}</p>

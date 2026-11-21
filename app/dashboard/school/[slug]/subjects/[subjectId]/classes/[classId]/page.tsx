@@ -270,7 +270,7 @@ export default function SubjectClassResultsPage() {
           ) : data ? (
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-950">
+                <h1 className="hidden md:block text-3xl font-bold tracking-tight text-[#0B1220]">
                   {data.subject.name} - {data.classLevel.name}
                 </h1>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -318,16 +318,16 @@ export default function SubjectClassResultsPage() {
           ) : forbidden ? (
             <div className="text-center">
               <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
-              <h1 className="mt-4 text-xl font-bold text-slate-900">
+              <h2 className="mt-4 text-xl font-bold text-slate-900">
                 You don&apos;t have access to this class&apos;s results
-              </h1>
+              </h2>
             </div>
           ) : (
             <div className="text-center">
               <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
-              <h1 className="mt-4 text-xl font-bold text-slate-900">
+              <h2 className="mt-4 text-xl font-bold text-slate-900">
                 Subject record unavailable
-              </h1>
+              </h2>
             </div>
           )}
         </section>

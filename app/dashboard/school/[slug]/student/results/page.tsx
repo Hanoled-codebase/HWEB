@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { DataStateCard } from "@/components/dashboard/shared";
-import { authFetchInit } from "@/lib/auth-tokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText, BarChart3, Printer } from "lucide-react";
 import { useOrganization } from "@/hooks/useOrganization";
+import { downloadReportCardPdf } from "@/lib/report-card-download";
 import ReportCardPrintModal, {
   computeNigerianGrade,
 } from "@/components/results/ReportCardPrintModal";
@@ -30,11 +30,25 @@ type SubjectResult = {
   }>;
 };
 
+type PublishedTermResult = {
+  id: string;
+  resultType: string;
+  term: string;
+  academicYear: string;
+  totalScore: number;
+  grade: string;
+  position: number | null;
+  publishedAt: string | null;
+  template?: { name?: string; midTermTotal?: number | null } | null;
+};
+
 type ResultsData = {
   student: { id: string; firstName: string; lastName: string; admissionNumber?: string; gender?: string; classLevel: { id: string; name: string } | null };
   subjects: SubjectResult[];
   approvedTemplate?: { id: string; name: string; isApproved: boolean } | null;
   isTemplateApproved?: boolean;
+  /** Published results only — the backend filters on publishedAt. */
+  termResults?: PublishedTermResult[];
 };
 
 export default function StudentResultsPage() {
@@ -47,6 +61,30 @@ export default function StudentResultsPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   // Which stored result the PDFs render: mid-term (raw stage %) or end-of-term.
   const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
+  // Term/year come from the school's HCORE academic periods — free-text terms
+  // silently computed as 0, so typing is no longer offered.
+  const [periodOptions, setPeriodOptions] = useState<{ academicYear: string; term: string }[]>([]);
+  const [term, setTerm] = useState("First Term");
+  const [year, setYear] = useState("2026/2027");
+
+  // Load the school's academic periods and default to the most recent one.
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    apiFetch<{ success: boolean; data: { academicYear: string; term: string }[] }>(`/result-templates/periods/${slug}`)
+      .then(({ data: periods }) => {
+        if (cancelled || !Array.isArray(periods) || periods.length === 0) return;
+        setPeriodOptions(periods);
+        setYear(periods[0].academicYear);
+        setTerm(periods[0].term);
+      })
+      .catch(() => {
+        // Keep the fallback term/year.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   useEffect(() => {
     async function loadResults() {
@@ -55,7 +93,11 @@ export default function StudentResultsPage() {
         // Resolves the caller's own student record server-side from the JWT
         // (requireStudentAccess) — the org slug in the path is still required
         // to scope which organization's result data is being requested.
-        const res = await apiFetch<ResultsData>(`/student/${slug}/results`);
+        const res = await apiFetch<ResultsData>(
+          `/student/${slug}/results?term=${encodeURIComponent(term)}&academicYear=${encodeURIComponent(
+            year,
+          )}&resultType=${pdfResultType}`,
+        );
         setData(res);
       } catch (error) {
         if (isForbiddenError(error)) setForbidden(true);
@@ -64,7 +106,7 @@ export default function StudentResultsPage() {
       }
     }
     loadResults();
-  }, [slug]);
+  }, [slug, term, year, pdfResultType]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 md:p-6">
@@ -122,6 +164,31 @@ export default function StudentResultsPage() {
             </Button>
 
             <select
+              value={`${year}|${term}`}
+              onChange={(e) => {
+                const [y, t] = e.target.value.split("|");
+                if (y && t) {
+                  setYear(y);
+                  setTerm(t);
+                }
+              }}
+              className="h-9 rounded-md border border-input bg-white px-2 text-sm font-medium"
+              aria-label="Academic period"
+            >
+              {periodOptions.length > 0 ? (
+                periodOptions.map((p) => (
+                  <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
+                    {p.term} — {p.academicYear}
+                  </option>
+                ))
+              ) : (
+                <option value={`${year}|${term}`}>
+                  {term} — {year}
+                </option>
+              )}
+            </select>
+
+            <select
               value={pdfResultType}
               onChange={(e) =>
                 setPdfResultType(e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")
@@ -136,23 +203,15 @@ export default function StudentResultsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
-                try {
-                  const url = `${HSMS_BASE}/export/${slug}/report-card/${data.student.id}?term=Term%201&academicYear=2026%2F2027&resultType=${pdfResultType}`;
-                  const res = await fetch(url, authFetchInit("hcore"));
-                  if (!res.ok) throw new Error("Failed to download");
-                  const blob = await res.blob();
-                  const blobUrl = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = blobUrl;
-                  a.download = `report-card-${data.student.firstName}-${data.student.lastName}${pdfResultType === "MID_TERM" ? "-mid-term" : ""}.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(blobUrl);
-                } catch {
-                  // silent
-                }
+              onClick={() => {
+                void downloadReportCardPdf({
+                  orgSlug: slug,
+                  studentId: data.student.id,
+                  studentName: `${data.student.firstName} ${data.student.lastName}`,
+                  term,
+                  academicYear: year,
+                  resultType: pdfResultType,
+                });
               }}
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -168,7 +227,7 @@ export default function StudentResultsPage() {
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
-      ) : !data || data.subjects.length === 0 ? (
+      ) : !data || (data.subjects.length === 0 && (data.termResults || []).length === 0) ? (
         <Card className="border-dashed border-slate-300">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-12 w-12 text-slate-300 mb-4" />
@@ -180,6 +239,43 @@ export default function StudentResultsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
+          {/* Published computed results for the selected term and report type.
+              Only types the school has published ever appear here. */}
+          {(data.termResults || []).length > 0 && (
+            <div className="space-y-2">
+              {(data.termResults ?? []).map((result) => (
+                <Card key={result.id} className="border-black shadow-sm">
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {result.resultType === "MID_TERM" ? "Mid-term result" : "End-of-term result"}
+                        {result.template?.name ? ` · ${result.template.name}` : ""}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {result.term} · {result.academicYear}
+                        {result.template?.midTermTotal != null &&
+                        result.template.midTermTotal > 0 &&
+                        result.resultType !== "MID_TERM"
+                          ? ` · Mid-term counts as ${result.template.midTermTotal}%`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {result.position != null && (
+                        <Badge variant="outline" className="border-slate-200 text-[11px] font-bold">
+                          #{result.position}
+                        </Badge>
+                      )}
+                      <span className="text-lg font-black tabular-nums text-slate-900">
+                        {result.totalScore}
+                      </span>
+                      <Badge className="bg-black text-white text-xs font-bold">{result.grade}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
           {data.subjects.map((subject) => {
             const avgPercentage =
               subject.assessments.length > 0
@@ -271,8 +367,8 @@ export default function StudentResultsPage() {
           orgAddress={currentOrg?.address || undefined}
           orgEmail={currentOrg?.email ? `Email: ${currentOrg.email}` : undefined}
           student={data.student}
-          term="First Term"
-          academicYear="2026/2027"
+          term={term}
+          academicYear={year}
           resultType={pdfResultType}
           results={data.subjects.map((sub) => {
             const score = Math.round(sub.totalScore || 0);

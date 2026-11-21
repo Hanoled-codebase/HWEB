@@ -68,8 +68,20 @@ export const api = {
   getProducts: () =>
     request<any[]>(HCORE_BASE, '/v1/products').catch(() => []),
 
-  getPublicOrganizations: () =>
-    request<Array<{ id: string; name: string; slug: string }>>(HCORE_BASE, '/v1/public/organizations').catch(() => []),
+  getPublicOrganizations: async (): Promise<Array<{ id: string; name: string; slug: string }>> => {
+    const response = await fetch(`${HCORE_BASE}/v1/public/organizations`, {
+      credentials: 'omit',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) throw new Error(`School directory returned HTTP ${response.status}`);
+    const organizations: unknown = await response.json();
+    if (!Array.isArray(organizations) || !organizations.every((school) =>
+      school && typeof school.id === 'string' && typeof school.slug === 'string' && typeof school.name === 'string',
+    )) {
+      throw new Error('Invalid school directory response');
+    }
+    return organizations;
+  },
 
   getProductPlans: (productCode: string) =>
     request<any[]>(HCORE_BASE, `/v1/products/${productCode}/plans`).catch(() => []),

@@ -5,6 +5,7 @@ import { ChevronRight, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 import { EmptyNote, HomeGreeting, SectionTitle, ToolGrid, type HomeTool } from "./HomeKit";
+import { useOptionalMobileMenu } from "./MobileMenuProvider";
 import { greetingName } from "@/lib/greeting-name";
 
 export type ParentResultGroup = {
@@ -13,6 +14,7 @@ export type ParentResultGroup = {
     id: string;
     title: string;
     subject: { name: string };
+    assessments?: Array<{ total?: number; maxObtainableScore?: number }>;
     values: number[];
     updatedAt: string;
   }>;
@@ -38,9 +40,11 @@ export function ParentHome({
 }) {
   const { user } = useAuth();
   const { visibleNavItems } = useSchoolNavItems();
+  const menu = useOptionalMobileMenu();
+  const inTabBar = new Set((menu?.config.tabs ?? []).map((tab) => tab.key));
   const byKey = new Map(visibleNavItems.map((item) => [item.key, item]));
 
-  const tools: HomeTool[] = PARENT_TOOLS.filter((key) => byKey.has(key)).map((key) => {
+  const tools: HomeTool[] = PARENT_TOOLS.filter((key) => byKey.has(key) && !inTabBar.has(key)).map((key) => {
     const item = byKey.get(key)!;
     return { key, label: key === "invoices" ? "Fees & invoices" : item.title, href: item.url, icon: item.icon };
   });
@@ -88,17 +92,27 @@ export function ParentHome({
                   </div>
                   {latest && latest.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {latest.map((r) => (
-                        <span
-                          key={r.id}
-                          className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-100"
-                        >
-                          {r.subject.name}{" "}
-                          <span className="font-bold tabular-nums text-slate-900">
-                            {r.values.reduce((sum, value) => sum + (Number(value) || 0), 0)}
+                      {latest.map((r) => {
+                        const earned = r.values.reduce((sum, value) => sum + (Number(value) || 0), 0);
+                        const possible = Array.isArray(r.assessments)
+                          ? r.assessments.reduce(
+                              (sum, a) => sum + (Number(a.maxObtainableScore ?? a.total) || 0),
+                              0,
+                            )
+                          : 0;
+                        return (
+                          <span
+                            key={r.id}
+                            className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200/80"
+                          >
+                            {r.subject.name}{" "}
+                            <span className="font-bold tabular-nums text-[#0B1220]">
+                              {earned}
+                              {possible > 0 ? `/${possible}` : ""}
+                            </span>
                           </span>
-                        </span>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </Link>

@@ -15,7 +15,6 @@ import {
   Upload,
   Download,
   Check,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BackButton } from "@/components/dashboard/shared";
+import { RelationalSpreadsheetWorkspace } from "@/components/spreadsheets/RelationalSpreadsheetWorkspace";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
@@ -33,9 +33,18 @@ import {
   getErrorMessage,
   getOrderedAssessments,
   getSpreadsheetLabel,
-  getStatusClassName,
   parseRouteParam,
 } from "@/lib/spreadsheets";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -57,11 +66,11 @@ import { cn } from "@/lib/utils";
 function AssessmentIcon({ name }: { name: string }) {
   const isAssignment = name.trim().toLowerCase().includes("assignment");
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEF0FF]">
       {isAssignment ? (
-        <ScrollText className="h-5 w-5 text-indigo-500" />
+        <ScrollText className="h-5 w-5 text-[#1447E6]" />
       ) : (
-        <FileText className="h-5 w-5 text-indigo-500" />
+        <FileText className="h-5 w-5 text-[#1447E6]" />
       )}
     </div>
   );
@@ -85,7 +94,7 @@ function StatusDot({ status }: { status: string }) {
 export default function SpreadsheetAssessmentsPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, currentMember } = useOrganization();
   const sheetId = parseRouteParam(params.sheetId);
 
   const [sheet, setSheet] = useState<SpreadsheetDetail | null>(null);
@@ -97,6 +106,7 @@ export default function SpreadsheetAssessmentsPage() {
   const [saving, setSaving] = useState(false);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [editingQuestionIdx, setEditingQuestionIdx] = useState<number | null>(null);
+  const [deleteQuestionIdx, setDeleteQuestionIdx] = useState<number | null>(null);
   const [questionForm, setQuestionForm] = useState({ text: "", options: "", correctAnswer: "", score: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,23 +152,77 @@ export default function SpreadsheetAssessmentsPage() {
     );
   }, [className, displayAssessments, searchQuery, subjectName]);
 
+  const isPrivileged =
+    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canEdit =
+    isPrivileged ||
+    (currentMember?.role === "member" && sheet?.status !== "inactive");
+  const isRelational = sheet?.assessmentStorageMode === "RELATIONAL";
+
   const selectedAssessment = rawAssessments[selectedAssessmentIdx] || null;
   const questions = selectedAssessment?.questions || [];
 
   async function saveQuestions(newQuestions: SpreadsheetQuestion[]) {
-    if (!currentOrg || !sheet) return;
+    if (!currentOrg || !sheet || typeof sheet.version !== "number") {
+      toast.error("Spreadsheet version missing. Refreshing...");
+      fetchSheet();
+      return;
+    }
     setSaving(true);
     try {
       const updatedAssessments = rawAssessments.map((a, i) =>
         i === selectedAssessmentIdx ? { ...a, questions: newQuestions } : a,
       );
-      await apiFetch(`/spreadsheets/${currentOrg.slug}/${sheet.id}`, {
+      if (isRelational) {
+        if (!selectedAssessment?.id) {
+          toast.error("Select a sub-assessment before saving questions.");
+          return;
+        }
+        const response = await apiFetch<{ data?: { version?: number }; version?: number }>(
+          `/spreadsheets/${currentOrg.slug}/${sheet.id}/questions`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              expectedVersion: sheet.version,
+              subAssessmentId: selectedAssessment.id,
+              questions: newQuestions,
+            }),
+          },
+        );
+        const nextVersion = response?.data?.version ?? response?.version ?? sheet.version + 1;
+        setSheet((prev) =>
+          prev
+            ? {
+                ...prev,
+                assessments: updatedAssessments,
+                version: nextVersion,
+              }
+            : prev,
+        );
+        toast.success("Questions saved");
+        return;
+      }
+      const updated = await apiFetch<SpreadsheetDetail>(`/spreadsheets/${currentOrg.slug}/${sheet.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ assessments: updatedAssessments }),
+        body: JSON.stringify({
+          assessments: updatedAssessments,
+          expectedVersion: sheet.version,
+        }),
       });
-      setSheet(prev => prev ? { ...prev, assessments: updatedAssessments } : prev);
+      setSheet((prev) =>
+        prev
+          ? {
+              ...prev,
+              assessments: updatedAssessments,
+              version: updated.version,
+            }
+          : prev,
+      );
       toast.success("Questions saved");
-    } catch { /* handled by toast */ } finally {
+    } catch {
+      /* handled by toast */
+      fetchSheet();
+    } finally {
       setSaving(false);
     }
   }
@@ -270,7 +334,7 @@ export default function SpreadsheetAssessmentsPage() {
           <FileText className="mb-4 h-10 w-10 text-rose-300" />
           <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
           <p className="mt-2 text-sm text-slate-500">{loadError}</p>
-          <button onClick={() => void fetchSheet()} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Try Again</button>
+          <button onClick={() => void fetchSheet()} className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]">Try Again</button>
         </div>
       </div>
     );
@@ -284,7 +348,7 @@ export default function SpreadsheetAssessmentsPage() {
           <FileText className="mb-4 h-10 w-10 text-blue-300" />
           <h2 className="text-lg font-bold text-slate-800">Spreadsheet Not Found</h2>
           <p className="mt-2 text-sm text-slate-500">The requested gradebook does not exist.</p>
-          <button onClick={() => router.push(sheetsHref)} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Back to Spreadsheets</button>
+          <button onClick={() => router.push(sheetsHref)} className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]">Back to Spreadsheets</button>
         </div>
       </div>
     );
@@ -348,64 +412,75 @@ export default function SpreadsheetAssessmentsPage() {
           </button>
         </div>
 
-        {/* ── Assessments tab ── */}
+        {/* ── Assessments / Spreadsheet tab ── */}
         {activeTab === "assessments" && (
-          <>
-            {/* Search */}
-            <div className="relative mb-4">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="search"
-                placeholder="Search assessment"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition"
-              />
-            </div>
-
-            {/* Assessment list */}
-            {filteredAssessments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
-                {displayAssessments.length === 0
-                  ? "No assessments defined for this spreadsheet."
-                  : "No assessments match your search."}
+          isRelational && currentOrg ? (
+            <RelationalSpreadsheetWorkspace
+              orgSlug={currentOrg.slug}
+              sheet={sheet}
+              canEdit={canEdit}
+              isPrivileged={isPrivileged}
+              onRefresh={fetchSheet}
+              onSheetChange={(next) => setSheet(next)}
+            />
+          ) : (
+            <>
+              {/* Search */}
+              <div className="relative mb-4">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  placeholder="Search assessment"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 shadow-sm outline-none focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 transition"
+                />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredAssessments.map((assessment) => (
-                  <button
-                    key={`${assessment.originalIndex}-${assessment.name}`}
-                    type="button"
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheetId}/assessment/${assessment.originalIndex}`,
-                      )
-                    }
-                    className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-                  >
-                    <AssessmentIcon name={assessment.name} />
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-800 group-hover:text-indigo-700">
-                        {assessment.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {className} · {subjectName}
-                      </p>
-                    </div>
+              {/* Assessment list */}
+              {filteredAssessments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
+                  {displayAssessments.length === 0
+                    ? "No assessments defined for this spreadsheet."
+                    : "No assessments match your search."}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredAssessments.map((assessment) => (
+                    <button
+                      key={`${assessment.originalIndex}-${assessment.name}`}
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheetId}/assessment/${assessment.originalIndex}`,
+                        )
+                      }
+                      className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                    >
+                      <AssessmentIcon name={assessment.name} />
 
-                    {typeof assessment.total === "number" && (
-                      <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 ring-1 ring-indigo-100">
-                        Max {assessment.total}
-                      </span>
-                    )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-[#0B1220] group-hover:text-[#1447E6]">
+                          {assessment.name}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {className} · {subjectName}
+                        </p>
+                      </div>
 
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-indigo-600" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
+                      {typeof assessment.total === "number" && (
+                        <span className="shrink-0 rounded-full bg-[#EEF0FF] px-3 py-1 text-xs font-bold tabular-nums text-[#1447E6] ring-1 ring-[#1447E6]/15">
+                          Max {assessment.total}
+                        </span>
+                      )}
+
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#1447E6]" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )
         )}
 
         {/* ── Questions tab ── */}
@@ -443,27 +518,30 @@ export default function SpreadsheetAssessmentsPage() {
                 {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">
                   <button
+                    type="button"
                     onClick={openAddQuestion}
-                    className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                    className="flex min-h-11 items-center gap-1.5 rounded-xl bg-[#1447E6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]"
                   >
                     <Plus className="h-4 w-4" /> Add Question
                   </button>
                   <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
                     <Upload className="h-4 w-4" /> Import
                   </button>
                   <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
                   {questions.length > 0 && (
                     <button
+                      type="button"
                       onClick={exportQuestions}
-                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
                       <Download className="h-4 w-4" /> Export
                     </button>
                   )}
-                  {saving && <Loader2 className="h-5 w-5 animate-spin self-center text-indigo-600" />}
+                  {saving && <Loader2 className="h-5 w-5 animate-spin self-center text-[#1447E6]" />}
                 </div>
 
                 {/* Questions list */}
@@ -478,8 +556,8 @@ export default function SpreadsheetAssessmentsPage() {
                       <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <p className="text-sm font-semibold text-slate-800">
-                              <span className="text-indigo-500 mr-2">Q{idx + 1}.</span>
+                            <p className="text-sm font-semibold text-[#0B1220]">
+                              <span className="text-[#1447E6] mr-2">Q{idx + 1}.</span>
                               {q.text}
                             </p>
                             {Array.isArray(q.options) && q.options.length > 0 && (
@@ -502,16 +580,26 @@ export default function SpreadsheetAssessmentsPage() {
                             )}
                             <div className="mt-2 flex gap-3 text-xs text-slate-500">
                               {q.correctAnswer && (
-                                <span>Answer: <span className="font-semibold text-emerald-600">{q.correctAnswer}</span></span>
+                                <span>Answer: <span className="font-semibold text-emerald-700">{q.correctAnswer}</span></span>
                               )}
-                              {q.score && <span>Marks: {q.score}</span>}
+                              {q.score && <span className="tabular-nums">Marks: {q.score}</span>}
                             </div>
                           </div>
                           <div className="flex shrink-0 gap-1">
-                            <button onClick={() => openEditQuestion(idx)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => openEditQuestion(idx)}
+                              aria-label={`Edit question ${idx + 1}`}
+                              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 md:pointer-fine:h-8 md:pointer-fine:w-8"
+                            >
                               <Edit3 className="h-4 w-4" />
                             </button>
-                            <button onClick={() => deleteQuestion(idx)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                            <button
+                              type="button"
+                              onClick={() => setDeleteQuestionIdx(idx)}
+                              aria-label={`Delete question ${idx + 1}`}
+                              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 md:pointer-fine:h-8 md:pointer-fine:w-8"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
@@ -528,7 +616,7 @@ export default function SpreadsheetAssessmentsPage() {
 
       {/* ── Add / Edit Question dialog ── */}
       <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
-        <DialogContent className="max-w-[512px]">
+        <DialogContent className="sm:max-w-[512px]">
           <DialogHeader>
             <DialogTitle>{editingQuestionIdx !== null ? "Edit" : "Add"} Question</DialogTitle>
             <DialogDescription>
@@ -580,13 +668,44 @@ export default function SpreadsheetAssessmentsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowQuestionDialog(false)}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={saveQuestionForm} disabled={saving}>
+            <Button className="bg-[#1447E6] hover:bg-[#0F36B8] text-white" onClick={saveQuestionForm} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               {editingQuestionIdx !== null ? "Update" : "Add"} Question
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Delete Question confirmation ── */}
+      <AlertDialog
+        open={deleteQuestionIdx !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteQuestionIdx(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Question</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove question {deleteQuestionIdx !== null ? deleteQuestionIdx + 1 : ""} from {selectedAssessment?.name || "this assessment"}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={async () => {
+                if (deleteQuestionIdx !== null) {
+                  await deleteQuestion(deleteQuestionIdx);
+                  setDeleteQuestionIdx(null);
+                }
+              }}
+            >
+              Delete Question
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

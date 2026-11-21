@@ -97,12 +97,13 @@ type Transaction = {
 // ─────────────────────────────────────────────────────────────────────────────
 const PARKED_FOR_MVP = true;
 export default function PaymentsPage() {
+  const { currentOrg } = useOrganization();
   if (PARKED_FOR_MVP) {
     return (
       <ComingSoonCard
         title="School fees payments are coming soon"
         blurb="Recording fee payments, receipts and the payments ledger arrives in the next release. Use the bursary's existing process for now."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }

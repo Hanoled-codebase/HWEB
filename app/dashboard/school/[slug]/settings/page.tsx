@@ -714,18 +714,18 @@ export default function SettingsPage() {
               </div>
 
               {/* Live Interactive Preview Box */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Palette className="w-3.5 h-3.5 text-slate-500" />
                     Live Component Preview
                   </span>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Text foreground: {previewTheme.foreground}
+                  <span className="text-xs text-slate-500 font-mono">
+                    Foreground: {previewTheme.foreground}
                   </span>
                 </div>
 
-                <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+                <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
                   {/* Primary Button Preview */}
                   <button
                     type="button"

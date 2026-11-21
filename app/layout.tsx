@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { QueryProvider } from "@/components/app/QueryProvider";
 import { ServiceWorkerCleanup } from "@/components/app/ServiceWorkerCleanup";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 const poppins = Poppins({ 
   subsets: ["latin"],

@@ -136,7 +136,7 @@
   },
   "app/dashboard/school/[slug]/debt/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 7
+      "count": 6
     },
     "react-hooks/immutability": {
       "count": 1
@@ -191,15 +191,7 @@
       "count": 5
     }
   },
-  "app/dashboard/school/[slug]/result-templates/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/dashboard/school/[slug]/results/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -321,11 +313,6 @@
       "count": 2
     }
   },
-  "components/cbt/ExamCard.tsx": {
-    "react/no-unescaped-entities": {
-      "count": 1
-    }
-  },
   "components/core/Navbar.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 3
@@ -382,9 +369,6 @@
     }
   },
   "components/dashboard/DiscussionBoard.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    },
     "react-hooks/immutability": {
       "count": 1
     }
@@ -397,11 +381,6 @@
   "components/results/ReportCardPrintModal.tsx": {
     "react/no-unescaped-entities": {
       "count": 2
-    }
-  },
-  "components/ui/select.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
     }
   },
   "hooks/use-mobile.ts": {

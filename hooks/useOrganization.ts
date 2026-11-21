@@ -222,16 +222,83 @@ function rememberAccess(slug: string, access: AccessPolicy | undefined): AccessP
   }
 }
 
-function getSessionOrgId(): string | null {
+const STAFF_OR_PARENT_ROLES = new Set([
+  "ORG_OWNER",
+  "ORG_ADMIN",
+  "SCHOOL_ADMIN",
+  "ADMIN",
+  "OWNER",
+  "PRINCIPAL",
+  "TEACHER",
+  "STAFF",
+  "ACCOUNTANT",
+  "BURSAR",
+  "LIBRARIAN",
+  "PARENT",
+  "GUARDIAN",
+  "MEMBER",
+]);
+
+function getSessionPayload(): Record<string, unknown> | null {
   if (typeof window === "undefined") return null;
   const token = getHcoreToken();
   if (!token) return null;
   try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return payload.orgId || payload.organizationId || null;
+    const segment = token.split(".")[1];
+    if (!segment) return null;
+    return JSON.parse(atob(segment.replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
   } catch {
     return null;
   }
+}
+
+function getSessionOrgId(): string | null {
+  const payload = getSessionPayload();
+  if (!payload) return null;
+  const orgId = payload.orgId || payload.organizationId;
+  return typeof orgId === "string" ? orgId : null;
+}
+
+function getRoleHint(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem("hweb_role_hint");
+  } catch {
+    return null;
+  }
+}
+
+function setRoleHint(role: "STUDENT" | "STAFF" | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (role) window.sessionStorage.setItem("hweb_role_hint", role);
+    else window.sessionStorage.removeItem("hweb_role_hint");
+  } catch {
+    // Ignore storage errors in restricted browsing modes
+  }
+}
+
+function isStudentOnlySession(org?: Organization): boolean {
+  const orgRoles = org?.products?.HSMS?.roles;
+  if (Array.isArray(orgRoles) && orgRoles.length > 0) {
+    const upper = orgRoles.map((r) => String(r).toUpperCase());
+    if (upper.some((r) => STAFF_OR_PARENT_ROLES.has(r))) return false;
+    if (upper.includes("STUDENT")) return true;
+  }
+  const roleHint = getRoleHint();
+  if (roleHint === "STUDENT") return true;
+  if (roleHint === "STAFF" || roleHint === "PARENT") return false;
+  const payload = getSessionPayload();
+  if (!payload) return false;
+  const rawRoles: string[] = [];
+  if (Array.isArray(payload.roles)) {
+    for (const r of payload.roles) rawRoles.push(String(r).toUpperCase());
+  }
+  if (typeof payload.role === "string") {
+    rawRoles.push(payload.role.toUpperCase());
+  }
+  if (rawRoles.some((r) => STAFF_OR_PARENT_ROLES.has(r))) return false;
+  return Boolean(payload.studentId || payload.learnerId || rawRoles.includes("STUDENT"));
 }
 
 async function syncSessionOrg(targetOrgId: string): Promise<void> {
@@ -305,17 +372,72 @@ export const useOrganization = create<OrgState>((set, get) => ({
       set({ isLoading: true, error: null, isStudent: false, currentMember: null, currentStudent: null });
       let org = get().organizations.find((o) => o.slug === slug);
 
-      // Run org context discovery, member profiles, and HSMS branding together so
+      // Run org context discovery, profile lookup, and HSMS branding together so
       // cold school loads don't pay multiple serial round trips behind the splash.
       const contextsPromise = org
         ? Promise.resolve(null)
         : request<{ organizations?: OrganizationApiResponse[] }>(HCORE_BASE, "/v1/me/contexts", { showErrorToast: false });
+      const brandingPromise = fetchOrgBranding(slug);
+
+      if (isStudentOnlySession(org)) {
+        const [contextsResult, studentResult, brandingResult] = await Promise.allSettled([
+          contextsPromise,
+          request<StudentProfile>(HSMS_BASE, `/organizations/${slug}/student-profile`, { showErrorToast: false }),
+          brandingPromise,
+        ]);
+
+        if (!org && contextsResult.status === "fulfilled" && contextsResult.value) {
+          const contextOrgs = contextsResult.value.organizations || [];
+          const normalizedOrgs = contextOrgs.map(normalizeOrganization);
+          set({ organizations: normalizedOrgs, hasFetchedOrganizations: true });
+          org = normalizedOrgs.find((o: Organization) => o.slug === slug);
+        }
+
+        if (org?.id) {
+          void syncSessionOrg(org.id);
+        }
+
+        if (!org) {
+          const formattedName = slug
+            .split("-")
+            .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+            .join(" ");
+          org = {
+            id: slug,
+            name: formattedName,
+            slug,
+            counts: { students: 0, teachers: 0, parents: 0 },
+          };
+        }
+
+        const branding = brandingResult.status === "fulfilled" ? brandingResult.value : null;
+        org = mergeOrganizationDetails(org, branding);
+
+        if (studentResult.status === "fulfilled") {
+          const profile = studentResult.value;
+          setRoleHint("STUDENT");
+          set({
+            currentOrg: profile.org
+              ? mergeOrganizationDetails(org, profile.org as unknown as OrganizationApiResponse)
+              : org,
+            currentStudent: profile.student,
+            isStudent: true,
+            isLoading: false,
+          });
+          return;
+        }
+
+        const errObj = studentResult.reason as { status?: number; code?: string; message?: string } | null;
+        if (errObj?.status === 401 || errObj?.code === "INVALID_TOKEN" || errObj?.code === "UNAUTHORIZED" || errObj?.message?.includes("expired")) {
+          throw studentResult.reason;
+        }
+      }
 
       const [contextsResult, memberResult, hsmsMemberResult, brandingResult] = await Promise.allSettled([
         contextsPromise,
         request<Member>(HCORE_BASE, `/v1/directory/organizations/${slug}/member-profile`, { showErrorToast: false }),
         request<Member>(HSMS_BASE, `/organizations/${slug}/member-profile`, { showErrorToast: false }),
-        fetchOrgBranding(slug),
+        brandingPromise,
       ]);
 
       if (!org && contextsResult.status === "fulfilled" && contextsResult.value) {
@@ -457,13 +579,16 @@ export const useOrganization = create<OrgState>((set, get) => ({
       };
     }),
 
-  clear: () => set({
-    organizations: [],
-    currentOrg: null,
-    currentMember: null,
-    currentStudent: null,
-    isStudent: false,
-    error: null,
-    hasFetchedOrganizations: false,
-  }),
+  clear: () => {
+    setRoleHint(null);
+    set({
+      organizations: [],
+      currentOrg: null,
+      currentMember: null,
+      currentStudent: null,
+      isStudent: false,
+      error: null,
+      hasFetchedOrganizations: false,
+    });
+  },
 }));

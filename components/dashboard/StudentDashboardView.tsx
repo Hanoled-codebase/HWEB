@@ -271,7 +271,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             <Button
               variant="ghost"
               size="sm"
-              className="text-[#1447E6] hover:text-[#1447E6] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
+              className="text-[#1447E6] hover:text-[#1447E6] hover:bg-[#EEF0FF]/70 font-bold text-xs flex items-center p-0 cursor-pointer"
             >
               Full Timetable
               <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
@@ -328,7 +328,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-[#1447E6] hover:text-[#1447E6] hover:bg-indigo-50/50 font-bold text-xs flex items-center p-0 cursor-pointer"
+                className="text-[#1447E6] hover:text-[#1447E6] hover:bg-[#EEF0FF]/70 font-bold text-xs flex items-center p-0 cursor-pointer"
               >
                 View All
                 <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
@@ -416,7 +416,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 shrink-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#1447E6] shrink-0">
                 <BarChart3 className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -434,7 +434,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 shrink-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#1447E6] shrink-0">
                 <CalendarDays className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -452,7 +452,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
             className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-slate-100/50 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 shrink-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#1447E6] shrink-0">
                 <BookMarked className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -486,7 +486,7 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3 hover:bg-slate-100 transition-colors"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-[#1447E6]">
                     <Library className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">

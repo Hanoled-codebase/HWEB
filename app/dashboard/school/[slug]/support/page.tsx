@@ -429,15 +429,16 @@ export default function SupportPage() {
         {/* ── Chat / Detail View ────────────────────────────────── */}
         <div className={cn("lg:block", showMobileList && "hidden")}>
           {selectedTicket ? (
-            <Card className="flex h-[calc(100vh-320px)] flex-col border-slate-200 shadow-sm">
+            <Card className="flex min-h-[60dvh] h-[calc(100dvh-260px)] flex-col border-slate-200 shadow-sm">
               {/* Header */}
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                 <button
                   type="button"
                   onClick={handleBackToList}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 lg:hidden"
+                  aria-label="Back to ticket list"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

@@ -482,7 +482,7 @@ export default function HomeworkPage() {
                     Create Assignment
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-4 sm:p-6 max-h-[90vh] overflow-y-auto mx-auto">
+                <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>Create Assignment</DialogTitle>
                     <DialogDescription>
@@ -876,7 +876,7 @@ export default function HomeworkPage() {
                     Upload Material
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-4 sm:p-6 max-h-[90vh] overflow-y-auto mx-auto">
+                <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>Upload Study Material</DialogTitle>
                     <DialogDescription>

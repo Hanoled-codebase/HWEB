@@ -427,7 +427,7 @@ export default function SchemeOfWorkPage() {
             }
           }}
         >
-          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-3xl">
             <DialogHeader>
               <DialogTitle>
                 {editItem ? "Edit Scheme of Work" : "New Scheme of Work"}

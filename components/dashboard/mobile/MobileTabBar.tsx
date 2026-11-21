@@ -68,7 +68,7 @@ function MobileTabBarInner() {
 
   if (hidden) return null;
 
-  const slot = "flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition-opacity duration-100 active:opacity-70 max-[389px]:px-0";
+  const slot = "flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 transition-opacity duration-100 active:opacity-70 max-[389px]:px-0";
   const pillWrap = (active: boolean) =>
     pillStyle
       ? cn("relative z-10 flex flex-col items-center gap-1 rounded-2xl px-3.5 py-1.5 transition-colors duration-200", active ? "text-blue-600" : "text-slate-500")
@@ -81,7 +81,7 @@ function MobileTabBarInner() {
 
   return (
     <nav aria-label="Primary" className="m-glass fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 pb-safe md:hidden">
-      <ul ref={listRef} className="relative mx-auto flex max-w-[520px] items-stretch gap-0.5 px-2 pb-1.5 pt-1.5">
+      <ul ref={listRef} className="relative mx-auto flex max-w-[520px] items-stretch gap-0.5 px-1 pb-1.5 pt-1.5">
         {/* One shared highlight that glides between tabs with a small spring. */}
         {box && (
           <span

@@ -187,7 +187,7 @@ export default function QuestionBankPage() {
             <DialogTrigger asChild>
               <Button className="h-11 w-full shrink-0 bg-blue-600 font-semibold hover:bg-blue-700 md:h-9 md:w-auto md:px-4"><Plus className="mr-2 h-4 w-4" />New question</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editItem ? "Edit" : "New"} Question</DialogTitle>
                 <DialogDescription className="sr-only">Form to add or edit questions in the question bank.</DialogDescription>

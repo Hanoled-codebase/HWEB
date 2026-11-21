@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronLeft, LogOut } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -37,13 +38,13 @@ export function CbtMobileTopBar({
   onOpenAccount: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-40 flex min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 pt-safe backdrop-blur-md sm:hidden">
+    <header className="sticky top-0 z-40 flex min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 pt-safe backdrop-blur-md md:hidden">
       <Logo className="h-7 w-7 shrink-0" size="sm" badgeText={roleLabel.toUpperCase()} textColor="text-[#0B1220]" />
       <button
         type="button"
         onClick={onOpenAccount}
         aria-label={name ? `Account: ${name}` : "Account"}
-        className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700 ring-1 ring-blue-100 active:bg-blue-100"
+        className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EEF0FF] text-sm font-bold text-[#1447E6] ring-1 ring-[#1447E6]/15 active:bg-blue-100"
       >
         {initialsOf(name)}
       </button>
@@ -63,17 +64,17 @@ export function CbtGreeting({
   detail?: string;
 }) {
   return (
-    <section className="rounded-3xl bg-[#0B1220] px-5 pb-5 pt-4 text-white sm:hidden">
-      <p className="text-xs font-medium text-white/60">{timeOfDay()},</p>
-      <h2 className="mt-0.5 break-words text-2xl font-bold capitalize leading-tight tracking-tight">
+    <section className="rounded-2xl border border-slate-200/90 bg-white px-4 py-3.5 text-[#0B1220] md:hidden">
+      <p className="text-xs font-medium text-slate-500">{timeOfDay()},</p>
+      <h2 className="mt-0.5 break-words text-xl font-bold capitalize leading-tight tracking-tight text-[#0B1220]">
         {name || "Welcome"}
       </h2>
-      <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-        <span className="inline-flex items-center rounded-full bg-[#F5A623] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-[#0B1220]">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="inline-flex items-center rounded-full bg-[#EEF0FF] px-2.5 py-0.5 text-xs font-semibold text-[#1447E6]">
           {roleLabel}
         </span>
-        {school && <span className="min-w-0 truncate text-xs font-medium text-white/80">{school}</span>}
-        {detail && <span className="text-xs text-white/60">{detail}</span>}
+        {school && <span className="min-w-0 truncate text-xs font-medium text-slate-600">{school}</span>}
+        {detail && <span className="text-xs text-slate-500">{detail}</span>}
       </div>
     </section>
   );
@@ -99,19 +100,27 @@ export function CbtAccountSheet({
   suiteHref?: string;
   onSignOut: () => void;
 }) {
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setConfirmingSignOut(false);
+        onOpenChange(next);
+      }}
+    >
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 duration-300 ease-[var(--ease-out-smooth)] sm:hidden"
+        className="gap-0 rounded-t-[28px] border-t-0 bg-slate-50 p-0 duration-300 ease-[var(--ease-out-smooth)] md:hidden"
       >
         <SheetTitle className="sr-only">Account</SheetTitle>
         <SheetDescription className="sr-only">Your account details and sign out</SheetDescription>
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-slate-300" aria-hidden="true" />
 
         <div className="flex items-center gap-3.5 px-5 pb-4 pt-4">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#1447E6] text-lg font-bold text-white">
             {initialsOf(name)}
           </span>
           <div className="min-w-0">
@@ -134,13 +143,35 @@ export function CbtAccountSheet({
                 <ChevronLeft className="h-4 w-4 text-slate-500" /> Back to Suite
               </a>
             )}
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-semibold text-[#F04438] active:bg-red-100"
-            >
-              <LogOut className="h-4 w-4" /> Sign out
-            </button>
+            {confirmingSignOut ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingSignOut(false)}
+                  className="flex min-h-[48px] items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 active:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmingSignOut(false);
+                    onSignOut();
+                  }}
+                  className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 text-sm font-semibold text-white active:bg-red-700"
+                >
+                  <LogOut className="h-4 w-4" /> Confirm sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingSignOut(true)}
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-600 active:bg-red-100"
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </button>
+            )}
           </div>
         </div>
       </SheetContent>

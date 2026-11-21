@@ -44,12 +44,13 @@ type InvoiceRow = {
 // ─────────────────────────────────────────────────────────────────────────────
 const PARKED_FOR_MVP = true;
 export default function DebtPage() {
+  const { currentOrg } = useOrganization();
   if (PARKED_FOR_MVP) {
     return (
       <ComingSoonCard
         title="The debt profile is coming soon"
         blurb="The live debtor dashboard and top-debtor tracking arrive in the next release."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }
@@ -85,15 +86,16 @@ function DebtLive() {
     } catch { /* */ } finally { setLoading(false); }
   }
 
-  async function fetchInvoices() {
+  async function fetchInvoices(statusOverride?: string) {
     if (!currentOrg) return;
     setInvLoading(true);
     try {
+      const activeStatus = statusOverride !== undefined ? statusOverride : filterStatus;
       const params = new URLSearchParams();
-      if (filterStatus) params.set("status", filterStatus);
+      if (activeStatus) params.set("status", activeStatus);
       const res = await apiFetch(`/debt/invoices/${currentOrg.slug}?${params}`);
-      const d = (res as any).data ?? res;
-      setInvoices(Array.isArray(res) ? res : d);
+      const d = (res as { data?: InvoiceRow[] }).data ?? res;
+      setInvoices(Array.isArray(res) ? res : (Array.isArray(d) ? d : []));
     } catch { /* */ } finally { setInvLoading(false); }
   }
 
@@ -171,14 +173,19 @@ function DebtLive() {
           ? <Card className="border-dashed border-slate-300"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><CheckCircle2 className="h-10 w-10 text-slate-300" /><p className="text-sm text-slate-600">No outstanding fees. Every invoice is paid.</p></CardContent></Card>
           : <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white md:rounded-lg">
               {debtors.map((d) => (
-                <div key={d.studentId} className="flex min-h-16 items-center gap-3 px-4 py-3 sm:gap-4">
+                <button
+                  key={d.studentId}
+                  type="button"
+                  onClick={() => viewStudentDetail(d)}
+                  className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 sm:gap-4"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-900 sm:text-sm">{d.firstName} {d.lastName}</p>
-                    <p className="text-xs text-slate-500">{d.className} · {d.invoiceCount} invoice{d.invoiceCount > 1 ? "s" : ""}</p>
+                    <p className="text-sm font-medium text-[#0B1220]">{d.firstName} {d.lastName}</p>
+                    <p className="text-xs text-slate-600">{d.className} · {d.invoiceCount} invoice{d.invoiceCount > 1 ? "s" : ""}</p>
                   </div>
-                  <div className="text-xs font-bold text-rose-600 shrink-0 sm:text-sm">₦{d.totalDebt.toLocaleString()}</div>
-                  <button type="button" onClick={() => viewStudentDetail(d)} className="shrink-0 text-slate-300 hover:text-blue-600"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                </div>
+                  <div className="text-sm font-bold tabular-nums text-red-600 shrink-0">₦{d.totalDebt.toLocaleString()}</div>
+                  <Eye className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                </button>
               ))}
             </div>
         )}
@@ -186,7 +193,14 @@ function DebtLive() {
         {tab === "invoices" && (
           <>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <Select value={filterStatus} onValueChange={(v: unknown) => { setFilterStatus(v as string); setTimeout(fetchInvoices, 0); }}>
+              <Select
+                value={filterStatus}
+                onValueChange={(v: unknown) => {
+                  const next = String(v ?? "");
+                  setFilterStatus(next);
+                  void fetchInvoices(next);
+                }}
+              >
                 <SelectTrigger aria-label="Filter by status" className="h-11 w-full sm:h-9 sm:w-[180px] sm:text-sm"><SelectValue placeholder="All status" /></SelectTrigger>
                 <SelectContent><SelectItem value="">All</SelectItem><SelectItem value="UNPAID">Unpaid</SelectItem><SelectItem value="PARTIALLY_PAID">Partial</SelectItem><SelectItem value="PAID">Paid</SelectItem></SelectContent>
               </Select>
@@ -225,10 +239,10 @@ function DebtLive() {
             </DialogHeader>
             {studentLoading ? <Skeleton className="h-40 w-full" /> : studentInvoices && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">Total Billed</p><p className="font-bold text-lg">₦{studentInvoices.totalBilled?.toLocaleString()}</p></div>
-                  <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs text-emerald-600">Total Paid</p><p className="font-bold text-lg text-emerald-700">₦{studentInvoices.totalPaid?.toLocaleString()}</p></div>
-                  <div className="rounded-lg bg-rose-50 p-3"><p className="text-xs text-rose-600">Balance</p><p className="font-bold text-lg text-rose-700">₦{studentInvoices.balance?.toLocaleString()}</p></div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-600">Total Billed</p><p className="font-bold text-base sm:text-lg tabular-nums">₦{studentInvoices.totalBilled?.toLocaleString()}</p></div>
+                  <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Total Paid</p><p className="font-bold text-base sm:text-lg tabular-nums text-emerald-700">₦{studentInvoices.totalPaid?.toLocaleString()}</p></div>
+                  <div className="rounded-lg bg-red-50 p-3"><p className="text-xs text-red-700">Balance</p><p className="font-bold text-base sm:text-lg tabular-nums text-red-700">₦{studentInvoices.balance?.toLocaleString()}</p></div>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {studentInvoices.invoices?.map((inv: any) => (

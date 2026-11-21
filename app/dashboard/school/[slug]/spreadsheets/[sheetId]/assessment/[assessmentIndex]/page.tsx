@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  AlertCircle,
   Check,
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
   FileText,
   Keyboard,
+  Lock,
   Loader2,
   Minus,
   Plus,
@@ -40,16 +42,20 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { apiFetch } from "@/lib/api";
 import {
+  SpreadsheetAssessment,
   SpreadsheetDetail,
   SpreadsheetRow,
   SpreadsheetStatus,
-  clampAssessmentScore,
+  computeCategoryAllocationSummary,
+  computeStudentRelationalTotals,
+  formatScore,
   getErrorMessage,
   getInitials,
   getOrderedAssessments,
   getStudentName,
   parseIntegerParam,
   parseRouteParam,
+  resolveSpreadsheetCategories,
   sanitizeSpreadsheetRows,
 } from "@/lib/spreadsheets";
 import { cn } from "@/lib/utils";
@@ -101,17 +107,45 @@ export default function AssessmentEntryPage() {
     isPrivileged ||
     (currentMember?.role === "member" && sheet?.status !== "inactive");
 
-  const rawAssessments =
-    Array.isArray(sheet?.assessments) && sheet.assessments.length > 0
-      ? sheet.assessments
-      : Array.isArray(sheet?.columns)
-        ? sheet.columns.map((name) => ({ name, total: undefined }))
-        : [];
+  const rawAssessments = useMemo<SpreadsheetAssessment[]>(
+    () =>
+      Array.isArray(sheet?.assessments) && sheet.assessments.length > 0
+        ? sheet.assessments
+        : Array.isArray(sheet?.columns)
+          ? sheet.columns.map((name) => ({ name, total: undefined }))
+          : [],
+    [sheet],
+  );
   const displayAssessments = getOrderedAssessments(rawAssessments);
   const selectedAssessment =
     displayAssessments.find(
       (assessment) => assessment.originalIndex === assessmentIndex,
     ) || null;
+
+  const isRelational = sheet?.assessmentStorageMode === "RELATIONAL";
+  const templateCategories = useMemo(
+    () => resolveSpreadsheetCategories(sheet),
+    [sheet],
+  );
+  const categoryAllocations = useMemo(
+    () =>
+      isRelational
+        ? computeCategoryAllocationSummary(
+            templateCategories,
+            rawAssessments.map((item) => ({
+              categoryId: item.categoryId,
+              maxMarks: Number(item.maxObtainableScore ?? item.total) || 0,
+            })),
+          )
+        : [],
+    [isRelational, rawAssessments, templateCategories],
+  );
+  const incompleteAllocations = useMemo(
+    () => categoryAllocations.filter((cat) => !cat.isComplete),
+    [categoryAllocations],
+  );
+  const isAllocationBlocked = isRelational && incompleteAllocations.length > 0;
+  const effectiveCanEdit = canEdit && !isAllocationBlocked;
 
   const hasChanges = useMemo(() => {
     return JSON.stringify(localData) !== JSON.stringify(sheet?.data || []);
@@ -205,9 +239,17 @@ export default function AssessmentEntryPage() {
   }, [fetchSheet]);
 
   const handleScoreChange = (rowIndex: number, value: string) => {
-    if (!canEdit || !selectedAssessment) return;
-    const clampedValue = clampAssessmentScore(value, selectedAssessment.total);
-    const normalizedValue = clampedValue === "" ? "" : String(clampedValue);
+    if (!effectiveCanEdit || !selectedAssessment) return;
+    const trimmed = value.trim();
+    if (trimmed !== "") {
+      const numeric = Number(trimmed);
+      const maximum = selectedAssessment.maxObtainableScore ?? selectedAssessment.total;
+      if (!Number.isFinite(numeric) || numeric < 0 || (maximum !== undefined && numeric > maximum)) {
+        toast.error(`Enter a score from 0 to ${maximum ?? "the assessment maximum"}`);
+        return;
+      }
+    }
+    const normalizedValue = trimmed;
     setLocalData((currentRows) =>
       currentRows.map((row, i) => {
         if (i !== rowIndex) return row;
@@ -227,15 +269,45 @@ export default function AssessmentEntryPage() {
   };
 
   const saveScores = async (): Promise<boolean> => {
-    if (!currentOrg || !sheet) return false;
+    if (!currentOrg || !sheet || typeof sheet.version !== "number") {
+      toast.error("Spreadsheet version missing. Refreshing...");
+      fetchSheet();
+      return false;
+    }
     setIsSaving(true);
     try {
       const sanitizedData = sanitizeSpreadsheetRows(localData, rawAssessments);
+      if (sheet.assessmentStorageMode === "RELATIONAL") {
+        if (!selectedAssessment?.id) throw new Error("Assessment identifier is missing");
+        const response = await apiFetch<{ data: { version: number } }>(
+          `/spreadsheets/${currentOrg.slug}/${sheetId}/scores`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              expectedVersion: sheet.version,
+              scores: sanitizedData.map((row) => ({
+                studentId: row.student.id,
+                subAssessmentId: selectedAssessment.id,
+                score: row.values[selectedAssessment.originalIndex] === ""
+                  ? null
+                  : Number(row.values[selectedAssessment.originalIndex]),
+              })),
+            }),
+          },
+        );
+        setSheet({ ...sheet, version: response.data.version, data: sanitizedData });
+        setLocalData(sanitizedData);
+        toast.success(`${selectedAssessment.name} saved successfully`);
+        return true;
+      }
       const updatedSheet = await apiFetch<SpreadsheetDetail>(
         `/spreadsheets/${currentOrg.slug}/${sheetId}`,
         {
           method: "PATCH",
-          body: JSON.stringify({ data: sanitizedData }),
+          body: JSON.stringify({
+            data: sanitizedData,
+            expectedVersion: sheet.version,
+          }),
         },
       );
       const normalizedData = sanitizeSpreadsheetRows(
@@ -250,6 +322,7 @@ export default function AssessmentEntryPage() {
       return true;
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to save spreadsheet"));
+      fetchSheet();
       return false;
     } finally {
       setIsSaving(false);
@@ -290,12 +363,19 @@ export default function AssessmentEntryPage() {
   };
 
   const handleSyncStudents = async () => {
-    if (!currentOrg) return;
+    if (!currentOrg || !sheet || typeof sheet.version !== "number") {
+      toast.error("Spreadsheet version missing. Refreshing...");
+      fetchSheet();
+      return;
+    }
     setIsSyncing(true);
     try {
       const data = await apiFetch<SpreadsheetDetail>(
         `/spreadsheets/${currentOrg.slug}/${sheetId}/merge`,
-        { method: "POST" },
+        {
+          method: "POST",
+          body: JSON.stringify({ expectedVersion: sheet.version }),
+        },
       );
       const mergedAssessments =
         Array.isArray(data.assessments) && data.assessments.length > 0
@@ -309,6 +389,7 @@ export default function AssessmentEntryPage() {
       toast.success("Synchronized with current class roster");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to synchronize students"));
+      fetchSheet();
     } finally {
       setIsSyncing(false);
     }
@@ -325,8 +406,9 @@ export default function AssessmentEntryPage() {
             <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
             <p className="mt-2 max-w-xs text-sm text-slate-500">{loadError}</p>
             <button
+              type="button"
               onClick={() => void fetchSheet()}
-              className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]"
             >
               Try Again
             </button>
@@ -364,8 +446,9 @@ export default function AssessmentEntryPage() {
               The selected assessment is unavailable.
             </p>
             <button
+              type="button"
               onClick={() => router.push(assessmentsHref)}
-              className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]"
             >
               Back to Assessments
             </button>
@@ -375,7 +458,7 @@ export default function AssessmentEntryPage() {
     );
   }
 
-  const maxScore = selectedAssessment.total;
+  const maxScore = selectedAssessment.maxObtainableScore ?? selectedAssessment.total;
   const total = localData.length;
   const progress = total > 0 ? Math.round((enteredCount / total) * 100) : 0;
 
@@ -396,10 +479,21 @@ export default function AssessmentEntryPage() {
             <p className="truncate text-sm font-semibold text-slate-900 md:font-medium md:text-slate-600">
               {sheet.subject?.name || "Subject"} <span className="text-slate-400">·</span> {sheet.classLevel?.name || "Class"}
             </p>
+            {isRelational && selectedAssessment.categoryName && (
+              <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                <Lock className="h-3 w-3 text-slate-400" aria-hidden="true" />
+                {selectedAssessment.categoryName}
+                {typeof selectedAssessment.categoryMaxMarks === "number" && (
+                  <span className="tabular-nums text-slate-500">
+                    (Category max {selectedAssessment.categoryMaxMarks})
+                  </span>
+                )}
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {typeof maxScore === "number" && (
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold tabular-nums text-blue-700">
                 Out of {maxScore}
               </span>
             )}
@@ -409,6 +503,22 @@ export default function AssessmentEntryPage() {
             </span>
           </div>
         </div>
+
+        {isAllocationBlocked && (
+          <div
+            role="alert"
+            className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+            <span>
+              Score entry is locked until every parent category is 100% allocated:{" "}
+              {incompleteAllocations
+                .map((cat) => `${cat.name} (${cat.allocatedMarks}/${cat.maxMarks})`)
+                .join(", ")}
+              . Return to the main spreadsheet to finish allocation.
+            </span>
+          </div>
+        )}
 
         <div className="mt-3 flex items-center gap-3">
           <div
@@ -466,6 +576,13 @@ export default function AssessmentEntryPage() {
               const atMax = typeof maxScore === "number" && score !== null && score >= maxScore;
               const atMin = score !== null && score <= 0;
               const isLast = itemIndex === filteredData.length - 1;
+              const relationalSummary = isRelational
+                ? computeStudentRelationalTotals(templateCategories, rawAssessments, row.values)
+                : null;
+              const currentCatTotal =
+                relationalSummary && selectedAssessment.categoryId
+                  ? relationalSummary.categoryById.get(selectedAssessment.categoryId)
+                  : null;
 
               return (
                 <li key={row.student.id || rowIndex} className="flex min-h-[64px] items-center gap-3 px-4 py-2">
@@ -484,9 +601,17 @@ export default function AssessmentEntryPage() {
                     {row.student.admissionNumber && (
                       <span className="block truncate text-xs text-slate-500">{row.student.admissionNumber}</span>
                     )}
+                    {relationalSummary && (
+                      <span className="mt-0.5 block truncate text-xs font-medium tabular-nums text-slate-500">
+                        {currentCatTotal
+                          ? `${currentCatTotal.categoryName}: ${formatScore(currentCatTotal.earned)}/${currentCatTotal.maxMarks} · `
+                          : ""}
+                        Overall: {formatScore(relationalSummary.overallEarned)}/{relationalSummary.overallMax}
+                      </span>
+                    )}
                   </label>
 
-                  {canEdit ? (
+                  {effectiveCanEdit ? (
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         type="button"
@@ -624,7 +749,7 @@ export default function AssessmentEntryPage() {
       </div>
 
       {/* ── Save: owns the bottom edge on phones (the tab bar steps aside on this route) ── */}
-      {canEdit && (
+      {effectiveCanEdit && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:static md:mt-4 md:border-0 md:bg-transparent md:p-0">
           <button
             type="button"

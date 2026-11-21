@@ -37,47 +37,48 @@ import { cn } from "@/lib/utils";
 
 function getNotificationIcon(type: string) {
   switch (type?.toLowerCase()) {
-    case "academic":
     case "low-score":
+      return <AlertCircle className="h-4 w-4 text-red-600" aria-hidden="true" />;
+    case "academic":
     case "result":
-      return <GraduationCap className="h-4 w-4 text-emerald-600" />;
+      return <GraduationCap className="h-4 w-4 text-emerald-700" aria-hidden="true" />;
     case "billing":
     case "fee":
-      return <CreditCard className="h-4 w-4 text-amber-600" />;
+      return <CreditCard className="h-4 w-4 text-amber-700" aria-hidden="true" />;
     case "announcement":
-      return <Megaphone className="h-4 w-4 text-blue-600" />;
+      return <Megaphone className="h-4 w-4 text-[#1447E6]" aria-hidden="true" />;
     case "homework":
-      return <FileText className="h-4 w-4 text-purple-600" />;
+      return <FileText className="h-4 w-4 text-[#1447E6]" aria-hidden="true" />;
     case "attendance":
-      return <ClipboardCheck className="h-4 w-4 text-amber-700" />;
+      return <ClipboardCheck className="h-4 w-4 text-amber-800" aria-hidden="true" />;
     case "invites":
-      return <UserPlus className="h-4 w-4 text-amber-700" />;
+      return <UserPlus className="h-4 w-4 text-amber-800" aria-hidden="true" />;
     case "admissions":
-      return <GraduationCap className="h-4 w-4 text-amber-700" />;
+      return <GraduationCap className="h-4 w-4 text-amber-800" aria-hidden="true" />;
     default:
-      return <AlertCircle className="h-4 w-4 text-slate-500" />;
+      return <AlertCircle className="h-4 w-4 text-slate-600" aria-hidden="true" />;
   }
 }
 
 function getIconBg(type: string) {
   switch (type?.toLowerCase()) {
-    case "academic":
     case "low-score":
+      return "bg-red-50 border-red-200";
+    case "academic":
     case "result":
-      return "bg-emerald-50 border-emerald-100";
+      return "bg-emerald-50 border-emerald-200";
     case "billing":
     case "fee":
-      return "bg-amber-50 border-amber-100";
+      return "bg-amber-50 border-amber-200";
     case "announcement":
-      return "bg-blue-50 border-blue-100";
     case "homework":
-      return "bg-purple-50 border-purple-100";
+      return "bg-[#EEF0FF] border-blue-200";
     case "attendance":
     case "invites":
     case "admissions":
       return "bg-white border-amber-200";
     default:
-      return "bg-slate-50 border-slate-100";
+      return "bg-slate-50 border-slate-200";
   }
 }
 
@@ -184,16 +185,20 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
 
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md p-0 flex flex-col h-full bg-slate-50/50"
+        className="flex h-dvh w-full flex-col gap-0 bg-slate-50 p-0 sm:max-w-md max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:h-auto max-md:max-h-[92dvh] max-md:rounded-t-3xl max-md:border-l-0 max-md:border-t max-md:pt-0 max-md:pb-safe"
       >
-        <SheetHeader className="p-5 pr-10 bg-white border-b border-slate-100 flex-shrink-0 space-y-3">
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-2.5 hidden h-1 w-10 shrink-0 rounded-full bg-slate-300 max-md:block"
+        />
+        <SheetHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-white px-5 pb-4 pt-4 pr-14 sm:pt-5">
           {/* Row 1: Title + Badge */}
-          <div className="flex items-center gap-2 pr-6">
-            <SheetTitle className="text-lg font-bold text-slate-900">
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-lg font-bold text-[#0B1220]">
               Notifications
             </SheetTitle>
             {unreadCountTotal > 0 && (
-              <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 font-bold px-2 py-0.5 text-xs rounded-full">
+              <Badge className="rounded-full border-blue-200 bg-[#EEF0FF] px-2.5 py-0.5 text-xs font-bold text-[#1447E6] hover:bg-[#EEF0FF] tabular-nums">
                 {unreadCountTotal} unread
               </Badge>
             )}
@@ -201,15 +206,15 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
 
           {/* Row 2: Sub-action underneath */}
           {effectiveUnreadNotifications > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Recent updates</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">Recent updates</span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={markAllAsRead}
-                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold"
+                className="px-2.5 text-xs font-semibold text-[#1447E6] hover:bg-[#EEF0FF] hover:text-blue-800"
               >
-                <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+                <CheckCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 Mark all as read
               </Button>
             </div>
@@ -219,27 +224,31 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
           </SheetDescription>
 
           {/* Filter Tabs */}
-          <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+          <div role="tablist" aria-label="Filter notifications" className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "all"}
               onClick={() => setActiveTab("all")}
               className={cn(
-                "flex-1 py-1.5 rounded-lg transition-all text-center",
+                "flex-1 rounded-lg py-2 text-center transition-all max-md:min-h-11 pointer-coarse:min-h-11",
                 activeTab === "all"
-                  ? "bg-white text-slate-900 shadow-sm font-bold"
-                  : "text-slate-500 hover:text-slate-900",
+                  ? "bg-white font-bold text-[#0B1220] shadow-xs"
+                  : "text-slate-600 hover:text-[#0B1220]",
               )}
             >
               All ({allCount})
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "unread"}
               onClick={() => setActiveTab("unread")}
               className={cn(
-                "flex-1 py-1.5 rounded-lg transition-all text-center",
+                "flex-1 rounded-lg py-2 text-center transition-all max-md:min-h-11 pointer-coarse:min-h-11",
                 activeTab === "unread"
-                  ? "bg-white text-slate-900 shadow-sm font-bold"
-                  : "text-slate-500 hover:text-slate-900",
+                  ? "bg-white font-bold text-[#0B1220] shadow-xs"
+                  : "text-slate-600 hover:text-[#0B1220]",
               )}
             >
               Unread ({unreadCountTotal})
@@ -248,7 +257,7 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
         </SheetHeader>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
           {loading ? (
             <div className="space-y-3 p-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -260,10 +269,10 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
               {attention.length > 0 && (
                 <section aria-label="Needs your attention" className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
                       Needs your attention
                     </h3>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold tabular-nums text-amber-800">
                       {attention.length}
                     </span>
                   </div>
@@ -279,29 +288,29 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
 
               {filteredNotifications.length === 0 ? (
                 attention.length > 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 py-6 text-center px-4">
-                    <p className="text-xs font-semibold text-slate-600">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center">
+                    <p className="text-xs font-semibold text-slate-700">
                       {activeTab === "unread"
                         ? "No unread notifications"
                         : "No other notifications"}
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="mt-0.5 text-xs text-slate-600">
                       {activeTab === "unread"
                         ? "All regular notifications have been read."
                         : "You're all caught up with alerts."}
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                    <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm mb-3">
-                      <Inbox className="h-7 w-7 text-slate-400" />
+                  <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-xs">
+                      <Inbox className="h-7 w-7 text-slate-500" aria-hidden="true" />
                     </div>
-                    <h3 className="text-base font-bold text-slate-900">
+                    <h3 className="text-base font-bold text-[#0B1220]">
                       {activeTab === "unread"
                         ? "No unread notifications"
                         : "You're all caught up"}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+                    <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-600">
                       {activeTab === "unread"
                         ? "You have read all your notifications."
                         : "New alerts and results will show up here."}
@@ -309,74 +318,68 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
                   </div>
                 )
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {filteredNotifications.map((item: NotificationItem) => (
                     <div
                       key={item.id}
-                      onClick={() => openNotification(item)}
-                      role={item.href ? "link" : undefined}
-                      tabIndex={item.href ? 0 : undefined}
-                      onKeyDown={(event) => {
-                        if (item.href && (event.key === "Enter" || event.key === " ")) {
-                          event.preventDefault();
-                          openNotification(item);
-                        }
-                      }}
                       className={cn(
-                        "group relative flex items-start gap-3.5 rounded-2xl p-4 transition-all border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
+                        "group relative flex items-start gap-2 rounded-2xl border p-3.5 transition-colors",
                         item.read
-                          ? "bg-white/60 border-slate-200/60 hover:border-slate-300 opacity-90"
-                          : "bg-white border-blue-100 shadow-sm hover:shadow-md hover:border-blue-200",
+                          ? "border-slate-200/80 bg-white/80"
+                          : "border-blue-200 bg-white shadow-xs",
                       )}
                     >
+                      <button
+                        type="button"
+                        onClick={() => openNotification(item)}
+                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:ring-offset-2 rounded-xl"
+                      >
+                        <div
+                          className={cn(
+                            "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+                            getIconBg(item.type),
+                          )}
+                        >
+                          {getNotificationIcon(item.type)}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className={cn(
+                                "text-sm font-bold leading-snug",
+                                item.read ? "text-slate-700" : "text-[#0B1220]",
+                              )}
+                            >
+                              {item.title}
+                            </p>
+                            {item.href && (
+                              <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                            )}
+                          </div>
+                          <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
+                            {item.message}
+                          </p>
+                          <p className="pt-0.5 text-xs font-medium text-slate-500">
+                            {formatRelativeTime(item.createdAt)}
+                          </p>
+                        </div>
+                      </button>
+
                       {!item.read && (
-                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             title="Mark as read"
-                            aria-label="Mark as read"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markAsRead(item.id);
-                            }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer"
+                            aria-label={`Mark "${item.title}" as read`}
+                            onClick={() => markAsRead(item.id)}
+                            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-[#EEF0FF] hover:text-[#1447E6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] md:pointer-fine:h-8 md:pointer-fine:w-8 cursor-pointer"
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <Check className="h-4 w-4" aria-hidden="true" />
                           </button>
-                          <span className="h-2 w-2 rounded-full bg-blue-600" />
+                          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#1447E6]" />
                         </div>
                       )}
-
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border mt-0.5",
-                          getIconBg(item.type),
-                        )}
-                      >
-                        {getNotificationIcon(item.type)}
-                      </div>
-
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2 pr-10">
-                          <p
-                            className={cn(
-                              "text-sm font-bold leading-snug",
-                              item.read ? "text-slate-700" : "text-slate-900",
-                            )}
-                          >
-                            {item.title}
-                          </p>
-                          {item.href && (
-                            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" />
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
-                          {item.message}
-                        </p>
-                        <p className="text-xs font-medium text-slate-500 pt-1">
-                          {formatRelativeTime(item.createdAt)}
-                        </p>
-                      </div>
                     </div>
                   ))}
                 </div>

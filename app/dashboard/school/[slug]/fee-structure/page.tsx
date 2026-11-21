@@ -58,12 +58,13 @@ type FeeItem = {
 // ─────────────────────────────────────────────────────────────────────────────
 const PARKED_FOR_MVP = true;
 export default function FeeStructurePage() {
+  const { currentOrg } = useOrganization();
   if (PARKED_FOR_MVP) {
     return (
       <ComingSoonCard
         title="Fee structure setup is coming soon"
         blurb="Building fee items and class-level pricing arrives in the next release."
-        backHref="/welcome"
+        backHref={currentOrg?.slug ? `/dashboard/school/${encodeURIComponent(currentOrg.slug)}` : "/dashboard"}
       />
     );
   }
@@ -145,11 +146,11 @@ function FeeStructureLive() {
   }
 
   const categoryColors: Record<string, string> = {
-    tuition: "border-blue-200 bg-blue-50 text-blue-700",
-    boarding: "border-purple-200 bg-purple-50 text-purple-700",
-    transport: "border-amber-200 bg-amber-50 text-amber-700",
-    library: "border-green-200 bg-green-50 text-green-700",
-    uniform: "border-pink-200 bg-pink-50 text-pink-700",
+    tuition: "border-[#1447E6]/20 bg-[#EEF0FF] text-[#1447E6]",
+    boarding: "border-slate-200 bg-slate-100 text-slate-700",
+    transport: "border-amber-200 bg-amber-50 text-amber-800",
+    library: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    uniform: "border-slate-200 bg-slate-100 text-slate-700",
     other: "border-slate-200 bg-slate-50 text-slate-600",
   };
 
@@ -239,7 +240,7 @@ function FeeStructureLive() {
           <TabsContent value="items" className="mt-4">
             <div className="flex flex-wrap items-center gap-2 mb-3 sm:gap-3 sm:mb-4">
               <Select value={filterCategory} onValueChange={(v: unknown) => setFilterCategory(v as string)}>
-                <SelectTrigger className="w-[140px] h-8 text-xs sm:w-[180px] sm:h-9 sm:text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
+                <SelectTrigger className="w-[150px] text-sm sm:w-[180px]"><SelectValue placeholder="All categories" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All</SelectItem>
                   <SelectItem value="tuition">Tuition</SelectItem>
@@ -285,7 +286,7 @@ function FeeStructureLive() {
               <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <Select value={actionClass} onValueChange={(v: unknown) => setActionClass(v as string)}>
-                    <SelectTrigger className="w-[160px] h-8 text-xs sm:w-[200px] sm:h-9 sm:text-sm"><SelectValue placeholder="Select class" /></SelectTrigger>
+                    <SelectTrigger className="w-[160px] text-sm sm:w-[200px]"><SelectValue placeholder="Select class" /></SelectTrigger>
                     <SelectContent>
                       {classLevels.map((cl) => <SelectItem key={cl.id} value={cl.id}>{cl.name}</SelectItem>)}
                     </SelectContent>
@@ -363,13 +364,13 @@ function FeeStructureLive() {
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <Select value={actionClass} onValueChange={(v: unknown) => setActionClass(v as string)}>
-                    <SelectTrigger className="w-[160px] h-8 text-xs sm:w-[200px] sm:h-9 sm:text-sm"><SelectValue placeholder="Select class" /></SelectTrigger>
+                    <SelectTrigger className="w-[160px] text-sm sm:w-[200px]"><SelectValue placeholder="Select class" /></SelectTrigger>
                     <SelectContent>
                       {classLevels.map((cl) => <SelectItem key={cl.id} value={cl.id}>{cl.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={actionTerm} onValueChange={(v: unknown) => setActionTerm(v as string)}>
-                    <SelectTrigger className="w-[100px] h-8 text-xs sm:w-[130px] sm:h-9 sm:text-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[120px] text-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Term 1">Term 1</SelectItem>
                       <SelectItem value="Term 2">Term 2</SelectItem>
@@ -379,7 +380,7 @@ function FeeStructureLive() {
                   <Input
                     value={actionYear}
                     onChange={(e) => setActionYear(e.target.value)}
-                    className="w-[90px] h-8 text-xs sm:w-[120px] sm:h-9"
+                    className="w-[110px] text-sm sm:w-[120px]"
                     placeholder="Year"
                   />
                 </div>
