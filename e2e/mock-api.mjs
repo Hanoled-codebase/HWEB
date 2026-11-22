@@ -212,6 +212,30 @@ function reset() {
       ],
       scores: {},
     },
+    freshRelationalSheet: {
+      id: "sheet-agri-rel",
+      title: "Agriculture - JSS 1A (End-Term)",
+      status: "pending",
+      version: 1,
+      assessmentStorageMode: "RELATIONAL",
+      templateId: "template-agri",
+      template: {
+        id: "template-agri",
+        name: "5/10/15/70 Template",
+        assessmentCategories: [
+          { id: "cat-agri-cw", name: "Classwork", label: "CW", maxMarks: 5, isSingleInstance: false, position: 0 },
+          { id: "cat-agri-asgn", name: "Assignment", label: "ASGN", maxMarks: 10, isSingleInstance: false, position: 1 },
+          { id: "cat-agri-ap", name: "Academic Progress", label: "AP", maxMarks: 15, isSingleInstance: false, position: 2 },
+          { id: "cat-agri-exam", name: "Examination", label: "Exam", maxMarks: 70, isSingleInstance: true, position: 3 },
+        ],
+      },
+      classLevel: { id: "jss1a", name: "JSS 1A" },
+      subject: { id: "agri", name: "Agriculture" },
+      subAssessments: [
+        { id: "sub-agri-exam", categoryId: "cat-agri-exam", name: "Examination", maxMarks: 70, isSystemGenerated: true, position: 0 },
+      ],
+      scores: {},
+    },
     templates: [{
       ...RESULTS_TEMPLATE,
       assessmentCategories: [
@@ -299,8 +323,7 @@ function gradebook() {
   };
 }
 
-function relationalGradebook() {
-  const sheet = state.relationalSheet;
+function relationalGradebook(sheet = state.relationalSheet) {
   const categories = sheet.template.assessmentCategories;
   const catById = new Map(categories.map((c) => [c.id, c]));
   const roster = [
@@ -627,10 +650,13 @@ const ROUTES = {
       state.gradebookVersion = (state.gradebookVersion ?? 1) + 1;
       return [200, gradebook()];
     }],
-    // Relational assessment spreadsheet fixture (10/10/10/70 admin-locked categories).
-    ["GET", /^\/spreadsheets\/greenfield\/sheet-physics-rel$/, () => [200, relationalGradebook()]],
-    ["POST", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments$/, (_req, _m, body) => {
-      const sheet = state.relationalSheet;
+    // Relational assessment spreadsheet fixtures (sheet-physics-rel with subs, sheet-agri-rel starting unsplit).
+    ["GET", /^\/spreadsheets\/greenfield\/(sheet-physics-rel|sheet-agri-rel)$/, (_req, match) => [
+      200,
+      relationalGradebook(match[1] === "sheet-agri-rel" ? state.freshRelationalSheet : state.relationalSheet),
+    ]],
+    ["POST", /^\/spreadsheets\/greenfield\/(sheet-physics-rel|sheet-agri-rel)\/sub-assessments$/, (_req, match, body) => {
+      const sheet = match[1] === "sheet-agri-rel" ? state.freshRelationalSheet : state.relationalSheet;
       const cat = sheet.template.assessmentCategories.find((c) => c.id === body.categoryId);
       if (!cat) return [404, { error: "Template category not found" }];
       if (cat.isSingleInstance) return [409, { error: `${cat.name} is fixed by the administrator` }];
@@ -646,9 +672,9 @@ const ROUTES = {
       sheet.version += 1;
       return [201, { success: true, data: created, remainingMarks: 0, version: sheet.version }];
     }],
-    ["PATCH", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments\/([^/]+)$/, (_req, match, body) => {
-      const sheet = state.relationalSheet;
-      const item = sheet.subAssessments.find((s) => s.id === match[1]);
+    ["PATCH", /^\/spreadsheets\/greenfield\/(sheet-physics-rel|sheet-agri-rel)\/sub-assessments\/([^/]+)$/, (_req, match, body) => {
+      const sheet = match[1] === "sheet-agri-rel" ? state.freshRelationalSheet : state.relationalSheet;
+      const item = sheet.subAssessments.find((s) => s.id === match[2]);
       if (!item) return [404, { error: "Sub-assessment not found" }];
       if (item.isSystemGenerated) return [409, { error: "Fixed by the administrator" }];
       const nextMarks = body.maxMarks !== undefined ? Number(body.maxMarks) : item.maxMarks;
@@ -657,9 +683,9 @@ const ROUTES = {
       sheet.version += 1;
       return [200, { success: true, data: item, version: sheet.version }];
     }],
-    ["DELETE", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/sub-assessments\/([^/]+)$/, (_req, match) => {
-      const sheet = state.relationalSheet;
-      const idx = sheet.subAssessments.findIndex((s) => s.id === match[1]);
+    ["DELETE", /^\/spreadsheets\/greenfield\/(sheet-physics-rel|sheet-agri-rel)\/sub-assessments\/([^/]+)$/, (_req, match) => {
+      const sheet = match[1] === "sheet-agri-rel" ? state.freshRelationalSheet : state.relationalSheet;
+      const idx = sheet.subAssessments.findIndex((s) => s.id === match[2]);
       if (idx === -1) return [404, { error: "Sub-assessment not found" }];
       const item = sheet.subAssessments[idx];
       if (item.isSystemGenerated) return [409, { error: "Fixed by the administrator" }];
@@ -667,8 +693,8 @@ const ROUTES = {
       sheet.version += 1;
       return [200, { success: true, version: sheet.version }];
     }],
-    ["PUT", /^\/spreadsheets\/greenfield\/sheet-physics-rel\/scores$/, (_req, _m, body) => {
-      const sheet = state.relationalSheet;
+    ["PUT", /^\/spreadsheets\/greenfield\/(sheet-physics-rel|sheet-agri-rel)\/scores$/, (_req, match, body) => {
+      const sheet = match[1] === "sheet-agri-rel" ? state.freshRelationalSheet : state.relationalSheet;
       if (body.expectedVersion !== sheet.version) {
         return [409, { error: "Spreadsheet changed. Refresh before saving." }];
       }

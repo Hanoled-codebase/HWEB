@@ -5,8 +5,6 @@ import Link from "next/link";
 import { format } from "date-fns";
 import {
   AlertTriangle,
-  BookOpen,
-  Calculator,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +14,7 @@ import {
   Printer,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -57,20 +56,17 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/hooks/useOrganization";
 import { DataStateCard } from "@/components/dashboard/shared";
-import { apiFetch, HSMS_BASE, isForbiddenError } from "@/lib/api";
-import { authFetchInit } from "@/lib/auth-tokens";
+import { apiFetch, isForbiddenError } from "@/lib/api";
 import { formatScore, getInitials, toNumericValue } from "@/lib/spreadsheets";
 import {
   formatAssessmentScore,
   getAssessmentPercentage,
-  getCurriculumSubjectsForClass,
   getOrderedStudentAssessments,
   getStudentRecordId,
   getSubjectName,
   getSubjectPerformanceSummary,
   getSubjectRecordLabel,
   hasEnteredScore,
-  matchSubjectAlias,
   StudentPerformanceResponse,
   StudentPerformanceSubject,
 } from "@/lib/student-performance";
@@ -207,67 +203,12 @@ function toPerformanceSubjects(
   return performanceSubjects;
 }
 
-function getMobileBadgeClass(label: string) {
+function getMobileStatusTone(label: string) {
   const normalized = label.toLowerCase();
-
-  if (normalized === "distinction") {
-    return "bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold";
-  }
-
-  if (normalized === "merit") {
-    return "bg-blue-50 text-[#1447E6] border border-blue-200 font-bold";
-  }
-
-  if (normalized === "pass") {
-    return "bg-slate-100 text-slate-700 border border-slate-200 font-semibold";
-  }
-
-  if (normalized === "grading in progress") {
-    return "bg-amber-50 text-amber-800 border border-amber-200 italic";
-  }
-
-  if (normalized === "waiting for score") {
-    return "bg-slate-50 text-slate-500 border border-dotted border-slate-300";
-  }
-
-  return "bg-slate-100 text-slate-700 border border-slate-200";
-}
-
-function MobileScoreRing({ percentage }: { percentage: number | null }) {
-  const radius = 17;
-  const circumference = 2 * Math.PI * radius;
-  const bounded = Math.max(0, Math.min(percentage ?? 0, 100));
-
-  return (
-    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
-      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48">
-        <circle
-          cx="24"
-          cy="24"
-          r={radius}
-          fill="none"
-          className="stroke-slate-100"
-          strokeWidth="4"
-        />
-        {percentage !== null && (
-          <circle
-            cx="24"
-            cy="24"
-            r={radius}
-            fill="none"
-            className="stroke-[#1447E6]"
-            strokeLinecap="round"
-            strokeWidth="4"
-            strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - bounded / 100)}
-          />
-        )}
-      </svg>
-      <span className={`relative z-10 text-xs font-bold tabular-nums ${percentage === null ? "text-slate-400" : "text-slate-900"}`}>
-        {percentage === null ? "--" : `${Math.round(bounded)}%`}
-      </span>
-    </div>
-  );
+  if (normalized === "distinction") return "text-emerald-700";
+  if (normalized === "merit") return "text-[#1447E6]";
+  if (normalized === "grading in progress") return "text-amber-700";
+  return "text-slate-600";
 }
 
 function MobileSubjectBreakdown({
@@ -289,65 +230,55 @@ function MobileSubjectBreakdown({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="pr-8 text-xl font-bold text-[#0B1220]">
-            {getSubjectName(subject)}
-          </DialogTitle>
-          <DialogDescription>
-            Full assessment breakdown and recorded scores.
+          <div className="flex items-baseline justify-between gap-3 pr-8">
+            <DialogTitle className="text-lg font-bold text-[#0B1220]">
+              {getSubjectName(subject)}
+            </DialogTitle>
+            <span className="shrink-0 text-lg font-bold tabular-nums text-[#0B1220]">
+              {summary.percentage === null ? "—" : `${Math.round(summary.percentage)}%`}
+            </span>
+          </div>
+          <DialogDescription className="text-xs text-slate-600">
+            <span className={cn("font-semibold", getMobileStatusTone(label))}>{label}</span>
+            <span className="mx-1.5 text-slate-300">·</span>
+            <span className="tabular-nums">
+              {summary.enteredCount} of {summary.totalCount} assessments
+            </span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-2 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total score</p>
-              <p className="mt-1 text-2xl font-bold text-slate-950">
-                {summary.percentage === null
-                  ? "In progress"
-                  : `${Math.round(summary.percentage)}%`}
-              </p>
-            </div>
-            <span
-              className={`rounded-full px-4 py-2 text-sm font-bold ${getMobileBadgeClass(label)}`}
-            >
-              {label}
-            </span>
-          </div>
-          <p className="mt-4 text-sm font-medium text-slate-500">
-            {summary.enteredCount} of {summary.totalCount} assessments recorded
-          </p>
-        </div>
-
-        <div className="mt-5 space-y-3">
+        <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {assessments.map((assessment) => {
             const pct = getAssessmentPercentage(assessment);
             const entered = hasEnteredScore(assessment.score);
 
             return (
-              <div
+              <li
                 key={`${subject.spreadsheetId}-${assessment.originalIndex}-${assessment.name}`}
-                className="rounded-2xl border border-slate-200 bg-white p-4"
+                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-base font-bold text-slate-950">
-                      {assessment.name}
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-slate-500">
-                      {entered
-                        ? formatAssessmentScore(
-                            assessment.score,
-                            assessment.total,
-                          )
-                        : "Grading in progress"}
-                    </p>
-                  </div>
-                  <MobileScoreRing percentage={pct} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#0B1220]">
+                    {assessment.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {entered ? "Recorded" : "Pending"}
+                  </p>
                 </div>
-              </div>
+                <div className="shrink-0 text-right tabular-nums">
+                  <p className="text-sm font-bold text-[#0B1220]">
+                    {entered
+                      ? formatAssessmentScore(assessment.score, assessment.total)
+                      : "—"}
+                  </p>
+                  {pct !== null && (
+                    <p className="text-xs text-slate-500">{Math.round(pct)}%</p>
+                  )}
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </DialogContent>
     </Dialog>
   );
@@ -387,6 +318,7 @@ export default function ResultsPage() {
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [isDownloadingBatch, setIsDownloadingBatch] = useState(false);
   const [isRosterOpen, setIsRosterOpen] = useState(false);
+  const [isMobileOptionsOpen, setIsMobileOptionsOpen] = useState(false);
 
   const availableClassOptions = useMemo(() => {
     const classMap = new Map<string, string>();
@@ -540,13 +472,17 @@ export default function ResultsPage() {
     }
   }, [resultGroups, selectedStudentId]);
 
-  const selectedGroup = useMemo(
-    () =>
-      resultGroups.find((group) => group.student.id === selectedStudentId) ||
-      resultGroups[0] ||
-      null,
-    [resultGroups, selectedStudentId],
-  );
+  const hasActiveSearchOrClassFilter =
+    Boolean(searchQuery.trim()) || selectedClassId !== "all";
+
+  const selectedGroup = useMemo(() => {
+    const pool = hasActiveSearchOrClassFilter ? filteredResultGroups : resultGroups;
+    return (
+      pool.find((group) => group.student.id === selectedStudentId) ||
+      pool[0] ||
+      null
+    );
+  }, [filteredResultGroups, hasActiveSearchOrClassFilter, resultGroups, selectedStudentId]);
 
   // The selected student's computed result for the currently selected
   // term/year/result type (mid-term vs end-of-term), if one was computed.
@@ -640,20 +576,209 @@ export default function ResultsPage() {
 
   const visibleMobileSubjects = showAllMobileSubjects
     ? performanceSubjects
-    : performanceSubjects.slice(0, 4);
+    : performanceSubjects.slice(0, 6);
+
+  const hasActiveMobileFilter =
+    selectedClassId !== "all" || exportResultType === "MID_TERM";
+  const canExportClassBundle =
+    currentMember?.role !== "parent" &&
+    Boolean(currentOrg?.slug) &&
+    Boolean(resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all");
 
   return (
     <div className="min-h-full bg-slate-50/60 pb-16 md:bg-transparent md:pb-0">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
-        {/* Desktop Header & Mobile Controls Row */}
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-start">
+        {/* Mobile Distilled Top Bar: current period context + single Filters/Export sheet trigger */}
+        <div className="flex items-center justify-between gap-3 md:hidden">
+          <p className="min-w-0 truncate text-xs font-semibold text-slate-600">
+            <span className="text-[#0B1220]">{exportTerm}</span>
+            <span className="mx-1.5 text-slate-300">·</span>
+            <span className="tabular-nums">{exportYear}</span>
+            <span className="mx-1.5 text-slate-300">·</span>
+            <span>{exportResultType === "MID_TERM" ? "Mid-term" : "End-of-term"}</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsMobileOptionsOpen(true)}
+            className="relative inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-[#0B1220] shadow-2xs transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6]"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-slate-600" aria-hidden="true" />
+            <span>Options</span>
+            {hasActiveMobileFilter && (
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-[#1447E6]"
+                aria-label="Filters active"
+              />
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Options & Class Export Bottom Sheet */}
+        <Sheet open={isMobileOptionsOpen} onOpenChange={setIsMobileOptionsOpen}>
+          <SheetContent side="bottom" className="bg-white p-0 md:hidden">
+            <SheetHeader className="border-b border-slate-100 px-5 pb-3 pt-5 text-left">
+              <SheetTitle className="text-base font-bold text-[#0B1220]">
+                Term, filters &amp; export
+              </SheetTitle>
+              <SheetDescription className="text-xs text-slate-500">
+                Change academic period, filter by class, or export class report bundles.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="space-y-4 px-5 py-4">
+              <div>
+                <label
+                  htmlFor="mobile-results-period"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700"
+                >
+                  Academic period
+                </label>
+                <select
+                  id="mobile-results-period"
+                  value={`${exportYear}|${exportTerm}`}
+                  onChange={(e) => {
+                    const [year, term] = e.target.value.split("|");
+                    if (year && term) {
+                      setExportYear(year);
+                      setExportTerm(term);
+                    }
+                  }}
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-[#0B1220] outline-none focus:border-[#1447E6]"
+                >
+                  {periodOptions.length > 0 ? (
+                    periodOptions.map((p) => (
+                      <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
+                        {p.term} — {p.academicYear}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={`${exportYear}|${exportTerm}`}>
+                      {exportTerm} — {exportYear}
+                    </option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <span className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Report type
+                </span>
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    aria-pressed={exportResultType === "END_OF_TERM"}
+                    onClick={() => setExportResultType("END_OF_TERM")}
+                    className={cn(
+                      "min-h-11 rounded-lg text-xs font-semibold transition-colors",
+                      exportResultType === "END_OF_TERM"
+                        ? "bg-white text-[#0B1220] shadow-2xs"
+                        : "text-slate-600",
+                    )}
+                  >
+                    End-of-term
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={exportResultType === "MID_TERM"}
+                    onClick={() => setExportResultType("MID_TERM")}
+                    className={cn(
+                      "min-h-11 rounded-lg text-xs font-semibold transition-colors",
+                      exportResultType === "MID_TERM"
+                        ? "bg-white text-[#0B1220] shadow-2xs"
+                        : "text-slate-600",
+                    )}
+                  >
+                    Mid-term
+                  </button>
+                </div>
+              </div>
+
+              {availableClassOptions.length > 0 && (
+                <div>
+                  <label
+                    htmlFor="mobile-results-class"
+                    className="mb-1.5 block text-xs font-semibold text-slate-700"
+                  >
+                    Class level
+                  </label>
+                  <select
+                    id="mobile-results-class"
+                    value={selectedClassId}
+                    onChange={(e) => setSelectedClassId(e.target.value || "all")}
+                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-[#0B1220] outline-none focus:border-[#1447E6]"
+                  >
+                    <option value="all">All Class Levels</option>
+                    {availableClassOptions.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-2 border-t border-slate-100 pt-3">
+                {canExportClassBundle && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isDownloadingBatch}
+                      onClick={() => {
+                        setIsMobileOptionsOpen(false);
+                        void handleBatchExport("view");
+                      }}
+                      className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-[#0B1220] hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      <Eye className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                      View bundle
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isDownloadingBatch}
+                      onClick={() => {
+                        setIsMobileOptionsOpen(false);
+                        void handleBatchExport("download");
+                      }}
+                      className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1447E6] px-3 text-xs font-semibold text-white hover:bg-[#0F36B8] disabled:opacity-60"
+                    >
+                      {isDownloadingBatch ? (
+                        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      ) : (
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      )}
+                      Download bundle
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  disabled={isLoading || isRefreshing}
+                  onClick={() => {
+                    setIsMobileOptionsOpen(false);
+                    void fetchParentData({ refresh: true, showSuccessToast: true });
+                  }}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={cn("h-4 w-4", isRefreshing && "animate-spin motion-reduce:animate-none")}
+                    aria-hidden="true"
+                  />
+                  Refresh results
+                </button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Desktop Header & Controls Row */}
+        <div className="hidden md:flex md:flex-row md:items-start md:justify-between gap-4">
           <div className="w-full min-w-0">
-            <h1 className="hidden md:block text-2xl font-bold tracking-tight text-[#0B1220] md:text-4xl">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0B1220] md:text-4xl">
               Published Results
             </h1>
 
             {/* Row 1: Period + Term Selects */}
-            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <select
                 value={`${exportYear}|${exportTerm}`}
                 onChange={(e) => {
@@ -663,7 +788,7 @@ export default function ResultsPage() {
                     setExportTerm(term);
                   }
                 }}
-                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-3 sm:text-sm md:pointer-fine:min-h-0 md:pointer-fine:h-10"
+                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 md:pointer-fine:min-h-0 md:pointer-fine:h-10"
                 aria-label="Academic period"
               >
                 {periodOptions.length > 0 ? (
@@ -686,7 +811,7 @@ export default function ResultsPage() {
                     e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM",
                   )
                 }
-                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-3 sm:text-sm md:pointer-fine:min-h-0 md:pointer-fine:h-10"
+                className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 md:pointer-fine:min-h-0 md:pointer-fine:h-10"
                 aria-label="Report type for PDF exports"
               >
                 <option value="END_OF_TERM">End-of-term</option>
@@ -694,13 +819,13 @@ export default function ResultsPage() {
               </select>
 
               {/* Desktop Button Bundle */}
-              {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") && (
-                <div className="hidden sm:flex sm:items-center sm:gap-2">
+              {canExportClassBundle && (
+                <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     onClick={() => void handleBatchExport("view")}
                     disabled={isDownloadingBatch}
-                    className="bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-semibold h-9.5 gap-1.5 px-3 rounded-xl shadow-2xs border border-slate-200 cursor-pointer"
+                    className="bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold h-9.5 gap-1.5 px-3 rounded-xl shadow-2xs border border-slate-200 cursor-pointer"
                     title="Open the class bundle PDF in a new tab"
                   >
                     <Eye className="size-4 text-slate-500" />
@@ -710,7 +835,7 @@ export default function ResultsPage() {
                     type="button"
                     onClick={() => void handleBatchExport("download")}
                     disabled={isDownloadingBatch}
-                    className="bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs sm:text-sm font-bold h-9.5 gap-1.5 px-3 rounded-xl shadow-xs border border-transparent cursor-pointer"
+                    className="bg-[#1447E6] hover:bg-[#0F36B8] text-white text-sm font-bold h-9.5 gap-1.5 px-3 rounded-xl shadow-xs border border-transparent cursor-pointer"
                   >
                     {isDownloadingBatch ? (
                       <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
@@ -722,57 +847,6 @@ export default function ResultsPage() {
                 </div>
               )}
             </div>
-
-            {/* Mobile Action Row: Staff get Bundle Export + Refresh; Parents get Refresh only */}
-            {currentMember?.role !== "parent" && currentOrg?.slug && (resultGroups[0]?.student?.classLevel?.id || selectedClassId !== "all") ? (
-              <div className="grid grid-cols-3 gap-2 mt-2 sm:hidden">
-                <Button
-                  type="button"
-                  onClick={() => void handleBatchExport("view")}
-                  disabled={isDownloadingBatch}
-                  className="bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold gap-1 px-2 rounded-xl shadow-2xs border border-slate-200 cursor-pointer truncate"
-                >
-                  <Eye className="size-3.5 text-slate-500 shrink-0" />
-                  <span className="truncate">View Bundle</span>
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => void handleBatchExport("download")}
-                  disabled={isDownloadingBatch}
-                  className="bg-[#1447E6] hover:bg-[#0F36B8] text-white text-xs font-bold gap-1 px-2 rounded-xl shadow-xs border border-transparent cursor-pointer truncate"
-                >
-                  {isDownloadingBatch ? (
-                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />
-                  ) : (
-                    <Download className="size-3.5 shrink-0" />
-                  )}
-                  <span className="truncate">Download</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fetchParentData({ refresh: true, showSuccessToast: true })}
-                  disabled={isLoading || isRefreshing}
-                  className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1 px-2 rounded-xl shadow-2xs border border-slate-200 cursor-pointer truncate"
-                >
-                  <RefreshCw className={cn("size-3.5 shrink-0", isRefreshing && "animate-spin")} />
-                  <span className="truncate">Refresh</span>
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-2 sm:hidden">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fetchParentData({ refresh: true, showSuccessToast: true })}
-                  disabled={isLoading || isRefreshing}
-                  className="w-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1.5 rounded-xl shadow-2xs border border-slate-200 cursor-pointer"
-                >
-                  <RefreshCw className={cn("size-3.5 shrink-0", isRefreshing && "animate-spin")} />
-                  <span>Refresh Results</span>
-                </Button>
-              </div>
-            )}
           </div>
 
           <Button
@@ -782,7 +856,7 @@ export default function ResultsPage() {
               fetchParentData({ refresh: true, showSuccessToast: true })
             }
             disabled={isLoading || isRefreshing}
-            className="hidden sm:inline-flex h-9.5 shrink-0 rounded-xl border-slate-200 bg-white px-3.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 cursor-pointer"
+            className="inline-flex h-9.5 shrink-0 rounded-xl border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 cursor-pointer"
           >
             {isRefreshing ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -823,48 +897,36 @@ export default function ResultsPage() {
           </div>
         ) : (
           <>
-            {/* Search and Class Level Filter Bar (Mobile only, Desktop uses Top-Docked Bar) */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:hidden">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            {/* Mobile Distilled Search (only when there are multiple learners to search) */}
+            {resultGroups.length > 1 && (
+              <div className="relative md:hidden">
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
                 <Input
                   type="search"
-                  placeholder="Search by name or admission no."
+                  placeholder="Find a learner"
                   aria-label="Search students"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9.5 rounded-xl border-slate-200 bg-white pl-10 text-xs sm:text-sm placeholder:text-slate-500"
+                  className="h-11 rounded-2xl border-slate-200 bg-white pl-10 text-base placeholder:text-slate-400"
                 />
               </div>
+            )}
 
-              {availableClassOptions.length > 0 && (
-                <div className="w-full sm:w-56">
-                  <Select
-                    value={selectedClassId}
-                    onValueChange={(val) => setSelectedClassId(String(val ?? "all"))}
-                  >
-                    <SelectTrigger className="w-full h-9.5 rounded-xl border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-800">
-                      <SelectValue placeholder="All Class Levels" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Class Levels</SelectItem>
-                      {availableClassOptions.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+            {!selectedGroup && hasActiveSearchOrClassFilter && (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+                No learner matches that filter.
+              </div>
+            )}
 
             {selectedGroup && (
-              <section className="md:hidden">
-                {/* Who these results belong to. A few children: full-name chips. A school's worth: a picker. */}
-                {resultGroups.length > 1 && resultGroups.length <= 4 ? (
-                  <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-                    {resultGroups.map((group) => {
+              <section className="space-y-4 md:hidden">
+                {/* Learner switcher: horizontal pills for <= 4, clean stepper for > 4 */}
+                {filteredResultGroups.length > 1 && filteredResultGroups.length <= 4 ? (
+                  <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+                    {filteredResultGroups.map((group) => {
                       const isActive = group.student.id === selectedGroup.student.id;
                       return (
                         <button
@@ -877,8 +939,10 @@ export default function ResultsPage() {
                             setSelectedSubject(null);
                           }}
                           className={cn(
-                            "min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold capitalize transition-colors cursor-pointer",
-                            isActive ? "border-[#1447E6] bg-[#1447E6] text-white font-bold" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                            "min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold capitalize transition-colors motion-reduce:transition-none",
+                            isActive
+                              ? "border-[#1447E6] bg-[#1447E6] text-white"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
                           )}
                         >
                           {group.student.firstName} {group.student.lastName}
@@ -886,145 +950,256 @@ export default function ResultsPage() {
                       );
                     })}
                   </div>
-                ) : resultGroups.length > 4 ? (
-                  <Select
-                    value={selectedGroup.student.id}
-                    onValueChange={(val) => {
-                      setSelectedStudentId(String(val));
-                      setShowAllMobileSubjects(false);
-                      setSelectedSubject(null);
-                    }}
-                  >
-                    <SelectTrigger aria-label="Choose a learner" className="w-full rounded-xl border-slate-200 bg-white text-sm font-semibold capitalize">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(filteredResultGroups.length > 0 ? filteredResultGroups : resultGroups).map((group) => (
-                        <SelectItem key={group.student.id} value={group.student.id} className="capitalize">
-                          {group.student.firstName} {group.student.lastName}
-                          {group.student.classLevel?.name ? ` · ${group.student.classLevel.name}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                ) : filteredResultGroups.length > 4 ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!hasPrev}
+                      onClick={handlePrev}
+                      aria-label="Previous learner"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-35"
+                    >
+                      <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        value={selectedGroup.student.id}
+                        onValueChange={(val) => {
+                          setSelectedStudentId(String(val));
+                          setShowAllMobileSubjects(false);
+                          setSelectedSubject(null);
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label="Choose a learner"
+                          className="h-11 w-full rounded-xl border-slate-200 bg-white text-sm font-semibold capitalize"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredResultGroups.map((group) => (
+                            <SelectItem key={group.student.id} value={group.student.id} className="capitalize">
+                              {group.student.firstName} {group.student.lastName}
+                              {group.student.classLevel?.name ? ` · ${group.student.classLevel.name}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!hasNext}
+                      onClick={handleNext}
+                      aria-label="Next learner"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-35"
+                    >
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 ) : null}
 
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-2xs">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EEF0FF] text-sm font-bold uppercase text-[#1447E6] border border-[#1447E6]/15">
+                {/* Distilled Learner Card with single primary CTA */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EEF0FF] text-sm font-bold uppercase text-[#1447E6]"
+                    >
                       {getInitials(`${selectedGroup.student.firstName} ${selectedGroup.student.lastName}`)}
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h2 className="truncate text-base font-bold capitalize text-[#0B1220]">
                         {selectedGroup.student.firstName} {selectedGroup.student.lastName}
                       </h2>
-                      <p className="truncate text-xs text-slate-600 font-medium">
-                        {selectedGroup.student.classLevel?.name || "Not in a class"}
+                      <p className="truncate text-xs text-slate-500">
+                        {selectedGroup.student.classLevel?.name || "Unassigned"}
                         <span className="mx-1.5 text-slate-300">·</span>
                         {getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}
                       </p>
-                      {computedResult && (
-                        <p className="mt-0.5 text-xs font-bold tabular-nums text-[#0B1220]">
-                          {exportResultType === "MID_TERM" ? "Mid-term" : "End-of-term"}:{" "}
-                          {computedResult.totalScore} · {computedResult.grade}
-                          {computedResult.position ? ` · #${computedResult.position}` : ""}
-                        </p>
-                      )}
                     </div>
                   </div>
-                </div>
 
-                {currentOrg?.slug && (
-                  <Button
-                    type="button"
-                    onClick={() => setPrintModalGroup(selectedGroup)}
-                    className="mt-3 w-full h-11 gap-2 rounded-xl bg-[#1447E6] hover:bg-[#0F36B8] font-bold text-sm text-white shadow-xs cursor-pointer flex items-center justify-center"
-                  >
-                    <Printer className="size-4" />
-                    Print Report
-                  </Button>
-                )}
+                  {computedResult && (
+                    <dl className="mt-3.5 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-3 text-center">
+                      <div>
+                        <dt className="text-xs text-slate-500">Score</dt>
+                        <dd className="mt-0.5 text-base font-bold tabular-nums text-[#0B1220]">
+                          {computedResult.totalScore}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Grade</dt>
+                        <dd className="mt-0.5 text-base font-bold text-[#1447E6]">
+                          {computedResult.grade}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Position</dt>
+                        <dd className="mt-0.5 text-base font-bold tabular-nums text-[#0B1220]">
+                          {computedResult.position ? `#${computedResult.position}` : "—"}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
 
-                <div className="mt-6 flex items-baseline justify-between gap-3">
-                  <h2 className="text-base font-semibold text-[#0B1220]">Subjects</h2>
-                  <p className="text-sm text-slate-600">{performanceSubjects.length} enrolled subjects</p>
-                </div>
-
-                <div className="mt-3 space-y-3">
-                  {visibleMobileSubjects.map((subject) => {
-                    const summary = getSubjectPerformanceSummary(subject);
-                    const label = getSubjectRecordLabel(summary);
-                    const inProgress = summary.enteredCount < summary.totalCount;
-
-                    return (
-                      <button
-                        key={subject.spreadsheetId}
-                        type="button"
-                        onClick={() => setSelectedSubject(subject)}
-                        className={cn(
-                          "flex w-full items-center justify-between gap-3 rounded-2xl border bg-white p-3.5 sm:p-4 text-left transition-all hover:bg-slate-50/70 shadow-2xs cursor-pointer",
-                          inProgress
-                            ? "border-dashed border-slate-300"
-                            : "border-slate-200",
-                        )}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#1447E6]/15 bg-[#EEF0FF] text-[#1447E6]">
-                            <Calculator className="h-5 w-5" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm sm:text-base font-bold text-[#0B1220]">
-                              {getSubjectName(subject)}
-                            </p>
-                            <p className="text-xs text-slate-600 font-medium mt-0.5">
-                              {inProgress
-                                ? `${summary.enteredCount}/${summary.totalCount} scores · in progress`
-                                : `${summary.enteredCount} of ${summary.totalCount} assessments`}
-                            </p>
-                            {!inProgress && (
-                              <span
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold mt-1.5",
-                                  getMobileBadgeClass(label)
-                                )}
-                              >
-                                {label}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {inProgress ? (
-                            <span className="text-xs font-semibold text-slate-500">Grading</span>
-                          ) : (
-                            <MobileScoreRing percentage={summary.percentage} />
-                          )}
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  {performanceSubjects.length > 4 && (
-                    <button
+                  {currentOrg?.slug && (
+                    <Button
                       type="button"
-                      onClick={() => setShowAllMobileSubjects((value) => !value)}
-                      className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                      onClick={() => setPrintModalGroup(selectedGroup)}
+                      className="mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
                     >
-                      {showAllMobileSubjects
-                        ? "Show Less"
-                        : `View ${performanceSubjects.length - 4} More Subjects`}
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 transition-transform",
-                          showAllMobileSubjects && "rotate-180",
-                        )}
-                      />
-                    </button>
+                      <Printer className="h-4 w-4" aria-hidden="true" />
+                      Print Report
+                    </Button>
                   )}
                 </div>
+
+                {/* Quiet single-row pending notice on mobile */}
+                {!selectedGroup.isTemplateApproved && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-2.5 text-xs text-amber-950">
+                    <span className="min-w-0 font-medium">
+                      Template pending approval for {selectedGroup.student.classLevel?.name || "this class"}.
+                    </span>
+                    {currentMember?.role !== "parent" && currentOrg?.slug && (
+                      <Link
+                        href={`/dashboard/school/${currentOrg.slug}/result-templates`}
+                        className="-my-2 -mr-2 inline-flex min-h-11 shrink-0 items-center px-2.5 font-semibold text-amber-950 underline underline-offset-2"
+                      >
+                        Approve
+                      </Link>
+                    )}
+                  </div>
+                )}
+
+                {/* Distilled Subjects List */}
+                <div>
+                  <div className="mb-2.5 flex items-baseline justify-between gap-3 px-0.5">
+                    <h2 className="text-sm font-bold text-[#0B1220]">Subjects</h2>
+                    <span className="text-xs font-medium tabular-nums text-slate-500">
+                      {performanceSubjects.length}
+                    </span>
+                  </div>
+
+                  {performanceSubjects.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500">
+                      No subject scores recorded yet.
+                    </div>
+                  ) : (
+                    <>
+                      <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                        {visibleMobileSubjects.map((subject) => {
+                          const summary = getSubjectPerformanceSummary(subject);
+                          const label = getSubjectRecordLabel(summary);
+                          const inProgress = summary.enteredCount < summary.totalCount;
+
+                          return (
+                            <li key={subject.spreadsheetId}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSubject(subject)}
+                                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#1447E6] motion-reduce:transition-none"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[15px] font-semibold text-[#0B1220]">
+                                    {getSubjectName(subject)}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-xs text-slate-500 tabular-nums">
+                                    {inProgress ? (
+                                      `${summary.enteredCount}/${summary.totalCount} entered · In progress`
+                                    ) : (
+                                      <>
+                                        <span>
+                                          {summary.enteredCount}/{summary.totalCount} assessments
+                                        </span>
+                                        <span className="mx-1.5 text-slate-300">·</span>
+                                        <span className={cn("font-semibold", getMobileStatusTone(label))}>
+                                          {label}
+                                        </span>
+                                      </>
+                                    )}
+                                  </p>
+                                </div>
+
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      "text-[15px] font-bold tabular-nums",
+                                      inProgress || summary.percentage === null
+                                        ? "text-xs font-medium text-slate-500"
+                                        : "text-[#0B1220]",
+                                    )}
+                                  >
+                                    {inProgress || summary.percentage === null
+                                      ? "Grading"
+                                      : `${Math.round(summary.percentage)}%`}
+                                  </span>
+                                  <ChevronRight
+                                    className="h-4 w-4 shrink-0 text-slate-400"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      {performanceSubjects.length > 6 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllMobileSubjects((value) => !value)}
+                          className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                        >
+                          {showAllMobileSubjects
+                            ? "Show fewer"
+                            : `Show all ${performanceSubjects.length} subjects`}
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform motion-reduce:transition-none",
+                              showAllMobileSubjects && "rotate-180",
+                            )}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Distilled Low-Score Notices (native progressive disclosure on mobile) */}
+                {selectedNotifications.length > 0 && (
+                  <details className="group rounded-2xl border border-rose-200 bg-white">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left marker:hidden [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-rose-700">
+                        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {selectedNotifications.length}{" "}
+                        {selectedNotifications.length === 1 ? "low-score notice" : "low-score notices"}
+                      </span>
+                      <ChevronDown
+                        className="h-4 w-4 shrink-0 text-rose-500 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                        aria-hidden="true"
+                      />
+                    </summary>
+                    <ul className="divide-y divide-slate-100 border-t border-rose-100">
+                      {selectedNotifications.map((notification) => (
+                        <li key={notification.id} className="px-4 py-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <p className="truncate text-sm font-semibold text-[#0B1220]">
+                              {notification.subject?.name || "Subject"} · {notification.assessmentName}
+                            </p>
+                            <span className="shrink-0 text-xs font-bold tabular-nums text-rose-700">
+                              {formatScore(notification.score)}/{formatScore(notification.expectedTotal)} (
+                              {formatScore(notification.percentage)}%)
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-slate-600">
+                            {notification.message}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
 
                 <MobileSubjectBreakdown
                   subject={selectedSubject}
@@ -1360,9 +1535,9 @@ export default function ResultsPage() {
               </div>
             )}
 
-            {/* Template Pending Approval Banner */}
+            {/* Desktop Template Pending Approval Banner (mobile uses concise inline notice above) */}
             {selectedGroup && !selectedGroup.isTemplateApproved && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs">
+              <div className="hidden md:flex rounded-2xl border border-amber-200 bg-amber-50/80 p-4 flex-row items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs">
                 <div className="flex items-start sm:items-center gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-200/80 text-amber-900 font-bold text-sm">
                     !
@@ -1405,7 +1580,7 @@ export default function ResultsPage() {
             )}
 
             {selectedNotifications.length > 0 && (
-              <section className="rounded-2xl border border-red-200/80 bg-white p-4 shadow-xs sm:p-6 md:rounded-3xl">
+              <section className="hidden md:block rounded-3xl border border-red-200/80 bg-white p-6 shadow-xs">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600">

@@ -121,6 +121,198 @@ export type DisplayAssessment = SpreadsheetAssessment & {
   originalIndex: number;
 };
 
+export type IndexedAssessment = {
+  assessment: SpreadsheetAssessment;
+  originalIndex: number;
+};
+
+export type AssessmentEntryTarget = {
+  assessment: DisplayAssessment;
+  parentCategory: AssessmentCategorySummary | null;
+  categorySubs: IndexedAssessment[];
+  /** True when entering scores directly for a non-locked category that has no sub-assessment row yet. */
+  isVirtualDefault: boolean;
+  /** True when the parent category has teacher-created sub-assessments (Back returns to category list). */
+  returnsToCategoryList: boolean;
+};
+
+const CATEGORY_PARAM_PREFIX = "category-";
+
+export function buildCategoryEntryParam(categoryId: string): string {
+  return `${CATEGORY_PARAM_PREFIX}${categoryId}`;
+}
+
+/**
+ * Groups assessments by parent categoryId in O(C + A) time and O(C + A) space.
+ */
+export function groupAssessmentsByCategory(
+  categories: readonly AssessmentCategorySummary[],
+  assessments: readonly SpreadsheetAssessment[],
+): Map<string, IndexedAssessment[]> {
+  const grouped = new Map<string, IndexedAssessment[]>();
+  for (const category of categories) {
+    grouped.set(category.id, []);
+  }
+  for (let originalIndex = 0; originalIndex < assessments.length; originalIndex += 1) {
+    const assessment = assessments[originalIndex];
+    const key = assessment.categoryId || "__uncategorized";
+    const list = grouped.get(key);
+    if (list) {
+      list.push({ assessment, originalIndex });
+    } else {
+      grouped.set(key, [{ assessment, originalIndex }]);
+    }
+  }
+  return grouped;
+}
+
+/**
+ * Returns true when a teacher explicitly created sub-assessment(s) under an admin category.
+ * Fixed admin categories, empty categories (0 subs), and a single implicit default matching
+ * the category's exact name and max marks all route directly to single-assessment score entry.
+ */
+export function hasTeacherSubAssessments(
+  category: AssessmentCategorySummary,
+  subs: readonly IndexedAssessment[],
+): boolean {
+  if (category.isSingleInstance) return false;
+  if (subs.length === 0) return false;
+  if (subs.length > 1) return true;
+  const only = subs[0].assessment;
+  if (only.isSystemGenerated) return false;
+  const sameName = only.name.trim().toLowerCase() === category.name.trim().toLowerCase();
+  const subMax = Number(only.maxObtainableScore ?? only.total ?? 0);
+  const sameMax = Number(category.maxMarks) === subMax;
+  return !(sameName && sameMax);
+}
+
+/**
+ * Counts how many students have a numeric score recorded for a single column in O(R) time.
+ */
+export function countEnteredScoresForColumn(
+  rows: readonly SpreadsheetRow[] | undefined,
+  columnIndex: number,
+): number {
+  if (!rows || columnIndex < 0) return 0;
+  let count = 0;
+  for (let i = 0; i < rows.length; i += 1) {
+    if (toNumericValue(rows[i].values?.[columnIndex]) !== null) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
+ * Resolves the target assessment for /spreadsheets/[sheetId]/assessment/[assessmentIndex].
+ * Supports:
+ *  1) `category-<categoryId>` (direct entry for a relational category with 0 or 1 default sub)
+ *  2) exact sub-assessment ID (stable across additions/deletions)
+ *  3) non-negative integer column index (legacy JSON sheets and existing links)
+ */
+export function resolveAssessmentEntryTarget(
+  sheet: SpreadsheetDetail | null,
+  rawParam: string,
+): AssessmentEntryTarget | null {
+  if (!sheet) return null;
+  const rawAssessments: SpreadsheetAssessment[] =
+    Array.isArray(sheet.assessments) && sheet.assessments.length > 0
+      ? sheet.assessments
+      : Array.isArray(sheet.columns)
+        ? sheet.columns.map((name) => ({ name, total: undefined }))
+        : [];
+  const isRelational = sheet.assessmentStorageMode === "RELATIONAL";
+  const categories = isRelational ? resolveSpreadsheetCategories(sheet) : [];
+  const categoryById = new Map(categories.map((cat) => [cat.id, cat]));
+  const grouped = isRelational
+    ? groupAssessmentsByCategory(categories, rawAssessments)
+    : new Map<string, IndexedAssessment[]>();
+
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(rawParam);
+    } catch {
+      return rawParam;
+    }
+  })();
+
+  if (isRelational && decoded.startsWith(CATEGORY_PARAM_PREFIX)) {
+    const categoryId = decoded.slice(CATEGORY_PARAM_PREFIX.length);
+    const category = categoryById.get(categoryId);
+    if (!category) return null;
+    const categorySubs = grouped.get(category.id) ?? [];
+    if (categorySubs.length > 0) {
+      const first = categorySubs[0];
+      return {
+        assessment: { ...first.assessment, originalIndex: first.originalIndex },
+        parentCategory: category,
+        categorySubs,
+        isVirtualDefault: false,
+        returnsToCategoryList: hasTeacherSubAssessments(category, categorySubs),
+      };
+    }
+    return {
+      assessment: {
+        id: undefined,
+        categoryId: category.id,
+        categoryName: category.name,
+        categoryMaxMarks: category.maxMarks,
+        isSingleInstance: Boolean(category.isSingleInstance),
+        isSystemGenerated: false,
+        name: category.name,
+        total: category.maxMarks,
+        maxObtainableScore: category.maxMarks,
+        originalIndex: rawAssessments.length,
+      },
+      parentCategory: category,
+      categorySubs: [],
+      isVirtualDefault: true,
+      returnsToCategoryList: false,
+    };
+  }
+
+  // Match by exact sub-assessment ID first when relational
+  if (isRelational && decoded) {
+    for (let index = 0; index < rawAssessments.length; index += 1) {
+      const item = rawAssessments[index];
+      if (item.id && item.id === decoded) {
+        const parentCategory = item.categoryId ? (categoryById.get(item.categoryId) ?? null) : null;
+        const categorySubs = parentCategory ? (grouped.get(parentCategory.id) ?? []) : [];
+        return {
+          assessment: { ...item, originalIndex: index },
+          parentCategory,
+          categorySubs,
+          isVirtualDefault: false,
+          returnsToCategoryList: parentCategory
+            ? hasTeacherSubAssessments(parentCategory, categorySubs)
+            : false,
+        };
+      }
+    }
+  }
+
+  // Fallback: non-negative integer index
+  if (/^\d+$/.test(decoded)) {
+    const index = Number.parseInt(decoded, 10);
+    const item = rawAssessments[index];
+    if (!item) return null;
+    const parentCategory =
+      isRelational && item.categoryId ? (categoryById.get(item.categoryId) ?? null) : null;
+    const categorySubs = parentCategory ? (grouped.get(parentCategory.id) ?? []) : [];
+    return {
+      assessment: { ...item, originalIndex: index },
+      parentCategory,
+      categorySubs,
+      isVirtualDefault: false,
+      returnsToCategoryList: parentCategory
+        ? hasTeacherSubAssessments(parentCategory, categorySubs)
+        : false,
+    };
+  }
+
+  return null;
+}
+
 export function parseRouteParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value[0] || "";
