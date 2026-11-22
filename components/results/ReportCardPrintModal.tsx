@@ -714,7 +714,7 @@ export default function ReportCardPrintModal({
           <div
             id="report-sheet-print-container"
             ref={printRef}
-            className="mx-auto min-w-[620px] max-w-[820px] bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black font-sans text-xs leading-tight"
+            className="mx-auto min-w-[760px] max-w-[820px] bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black font-sans text-xs leading-tight"
           >
             {/* ── ROW 1 & 2: School Logo & Branding ── */}
             <div className="text-center pt-1 pb-1">
@@ -794,8 +794,8 @@ export default function ReportCardPrintModal({
                     >
                       <div className="flex h-full min-h-[145px]">
                         {/* Solid Black Vertical Bar on Left */}
-                        <div className="w-12 bg-black text-white font-extrabold flex flex-col items-center justify-end p-1.5 border-r border-black">
-                          <span className="grades-vertical-text tracking-widest text-xs pb-1">
+                        <div className="flex w-12 shrink-0 flex-col items-center justify-end overflow-hidden border-r border-black bg-black p-1.5 font-extrabold text-white">
+                          <span className="grades-vertical-text pb-1 text-xs leading-none tracking-widest">
                             GRADES
                           </span>
                         </div>
@@ -1067,15 +1067,15 @@ export default function ReportCardPrintModal({
                       <div>4 - Very Good</div>
                       <div>3 - Average</div>
                       <div>2 - Fair</div>
-                      <div>1 - poor</div>
+                      <div>1 - Poor</div>
                     </div>
 
                     {/* Right side: Attendance Table */}
                     <div className="col-span-7 flex flex-col">
-                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-xs leading-tight border-b border-black">
-                        <div className="px-2 py-1.5">School days</div>
-                        <div className="px-2 py-1.5">Present</div>
-                        <div className="px-2 py-1.5">Absent</div>
+                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-[10px] leading-tight border-b border-black">
+                        <div className="px-1 py-1.5">School days</div>
+                        <div className="px-1 py-1.5">Present</div>
+                        <div className="px-1 py-1.5">Absent</div>
                       </div>
                       <div className="grid grid-cols-3 divide-x divide-black text-center font-bold text-black flex-1 min-h-[50px] items-center">
                         <div className="p-1">{schoolOpen || "—"}</div>

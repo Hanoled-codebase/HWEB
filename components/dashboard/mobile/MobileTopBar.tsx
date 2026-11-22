@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSheet } from "@/components/dashboard/NotificationSheet";
 import { useMobileMenu, useOptionalMobileMenu } from "./MobileMenuProvider";
 
-const bell = "!h-11 !w-11";
+const bell = "-mr-1";
 
 /**
  * Home: which school and which hat you are wearing.

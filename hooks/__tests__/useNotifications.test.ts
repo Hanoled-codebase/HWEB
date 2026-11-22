@@ -13,7 +13,10 @@ const { state, apiFetchMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("react", () => ({
-  useState: <T>(initial: T) => [initial, vi.fn()],
+  useState: <T>(initial: T | (() => T)) => [
+    typeof initial === "function" ? (initial as () => T)() : initial,
+    vi.fn(),
+  ],
   useCallback: <T extends (...args: never[]) => unknown>(fn: T) => fn,
   useEffect: (fn: () => void | (() => void)) => {
     state.effects.push(fn);
@@ -32,12 +35,13 @@ vi.mock("@/lib/attendance", () => ({
   localDay: () => "2026-11-12",
 }));
 
-import { useNotifications } from "../useNotifications";
+import { useNotifications, resetNotificationsStore } from "../useNotifications";
 
 describe("useNotifications", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    resetNotificationsStore();
     state.effects = [];
     state.user = { id: "user-1" };
   });
@@ -75,5 +79,19 @@ describe("useNotifications", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(apiFetchMock).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates concurrent mounts from desktop and mobile notification bells", async () => {
+    useNotifications();
+    useNotifications();
+    expect(state.effects).toHaveLength(2);
+
+    state.effects[0]();
+    state.effects[1]();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
   });
 });

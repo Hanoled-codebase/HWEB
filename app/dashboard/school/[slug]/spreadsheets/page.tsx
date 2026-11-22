@@ -327,6 +327,7 @@ export default function SpreadsheetsPage() {
 
   const [termTab, setTermTab] = useState<"ALL" | "MID_TERM" | "END_TERM">("ALL");
   const [availableTemplates, setAvailableTemplates] = useState<TemplateSummaryItem[]>([]);
+  const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
 
   const form = useForm<CreateSpreadsheetFormValues>({
     resolver: zodResolver(createSpreadsheetSchema),
@@ -412,7 +413,9 @@ export default function SpreadsheetsPage() {
 
   useEffect(() => {
     if (!isDialogOpen || !currentOrg) return;
+    let cancelled = false;
     const termTypeParam = selectedTermType || "END_TERM";
+    setIsTemplatesLoading(true);
     apiFetch<{ success: boolean; data: TemplateSummaryItem[] } | TemplateSummaryItem[]>(
       `/result-templates/templates/${currentOrg.slug}`,
       {
@@ -421,10 +424,19 @@ export default function SpreadsheetsPage() {
       },
     )
       .then((res) => {
+        if (cancelled) return;
         const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
         setAvailableTemplates(list.filter((template) => template.isApproved));
       })
-      .catch(() => setAvailableTemplates([]));
+      .catch(() => {
+        if (!cancelled) setAvailableTemplates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsTemplatesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isDialogOpen, currentOrg, selectedTermType]);
 
   function applyTemplateSelection(templateId: string) {
@@ -1106,7 +1118,9 @@ export default function SpreadsheetsPage() {
               <p className="mt-1.5 text-sm text-slate-600 sm:mt-2">
                 {searchQuery
                   ? "Try another class, subject, or status keyword."
-                  : "Create a spreadsheet to start entering scores for your assigned classes."}
+                  : canCreate
+                    ? "Create a spreadsheet to start entering scores for your assigned classes."
+                    : "No subject spreadsheets have been created for your classes yet."}
               </p>
               {canCreate && !searchQuery && (
                 <Button
@@ -1404,9 +1418,11 @@ export default function SpreadsheetsPage() {
                           <SelectTrigger className="w-full">
                             <SelectValue
                               placeholder={
-                                applicableTemplates.length === 0
-                                  ? "No approved template found"
-                                  : "Select template"
+                                isTemplatesLoading
+                                  ? "Loading approved templates..."
+                                  : applicableTemplates.length === 0
+                                    ? "No approved template found"
+                                    : "Select template"
                               }
                             />
                           </SelectTrigger>
@@ -1602,9 +1618,11 @@ export default function SpreadsheetsPage() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
-                  {availableTemplates.length === 0
-                    ? "No approved result template exists for this term period yet. Ask a school administrator to approve one in Result Templates."
-                    : "Select a class and approved result template to load locked parent category maximums."}
+                  {isTemplatesLoading
+                    ? "Loading approved result templates for this term period..."
+                    : availableTemplates.length === 0
+                      ? "No approved result template exists for this term period yet. Ask a school administrator to approve one in Result Templates."
+                      : "Select a class and approved result template to load locked parent category maximums."}
                 </div>
               )}
 

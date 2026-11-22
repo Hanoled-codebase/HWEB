@@ -221,4 +221,63 @@ describe("useOrganization branding", () => {
       nextIdSequence: 88,
     });
   });
+
+  it("prefers local HSMS UUIDs and deduplicates HCORE mirrors across assignments, classes, and students", async () => {
+    routeRequest({
+      "http://hcore /v1/me/contexts": greenfieldContext,
+      "http://hcore /v1/directory/organizations/greenfield-academy/member-profile": {
+        id: "hcore-m-1",
+        user: { id: "hcore-u-1", name: "Teacher One" },
+        organization: null,
+        role: "member",
+        assignedClasses: [{ id: "hcore-cls-1", name: "JSS 1A", level: "JSS 1" }],
+        assignedStudents: [{ id: "hcore-stu-1", firstName: "David", lastName: "Okonkwo" }],
+        memberAssignments: [
+          {
+            id: "hcore-a-1",
+            type: "SUBJECT_TEACHER",
+            classLevelId: "hcore-cls-1",
+            subjectId: "hcore-sub-1",
+            classLevel: { id: "hcore-cls-1", name: "JSS 1A" },
+            subject: { id: "hcore-sub-1", name: "Mathematics" },
+          },
+        ],
+        teachingAssignments: [
+          {
+            classLevel: { id: "hcore-cls-1", name: "JSS 1A" },
+            subject: { id: "hcore-sub-1", name: "Mathematics" },
+          },
+        ],
+      },
+      "http://hsms /organizations/greenfield-academy/member-profile": {
+        assignedClasses: [{ id: "hsms-cls-1", name: "JSS 1A", level: "JSS 1" }],
+        assignedStudents: [{ id: "hsms-stu-1", hcoreLearnerId: "hcore-stu-1", firstName: "David", lastName: "Okonkwo" }],
+        memberAssignments: [
+          {
+            id: "hsms-a-1",
+            type: "SUBJECT_TEACHER",
+            classLevelId: "hsms-cls-1",
+            subjectId: "hsms-sub-1",
+            classLevel: { id: "hsms-cls-1", name: "JSS 1A" },
+            subject: { id: "hsms-sub-1", name: "Mathematics" },
+          },
+        ],
+      },
+      "http://hsms /organizations/greenfield-academy": greenfieldBranding,
+    });
+
+    await useOrganization.getState().setCurrentOrg("greenfield-academy");
+
+    const currentMember = useOrganization.getState().currentMember;
+    expect(currentMember?.memberAssignments).toHaveLength(1);
+    expect(currentMember?.memberAssignments?.[0].classLevel?.id).toBe("hsms-cls-1");
+    expect(currentMember?.memberAssignments?.[0].subject?.id).toBe("hsms-sub-1");
+    expect(currentMember?.teachingAssignments).toHaveLength(1);
+    expect(currentMember?.teachingAssignments?.[0].classLevel?.id).toBe("hsms-cls-1");
+    expect(currentMember?.teachingAssignments?.[0].subject?.id).toBe("hsms-sub-1");
+    expect(currentMember?.assignedClasses).toHaveLength(1);
+    expect(currentMember?.assignedClasses?.[0].id).toBe("hsms-cls-1");
+    expect(currentMember?.assignedStudents).toHaveLength(1);
+    expect(currentMember?.assignedStudents?.[0].id).toBe("hsms-stu-1");
+  });
 });

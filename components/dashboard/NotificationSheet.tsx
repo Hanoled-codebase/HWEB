@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/hooks/useNotifications";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -32,6 +33,7 @@ import {
   Inbox,
   AlertCircle,
   FileText,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +143,16 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [open, setOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobileViewport(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -173,35 +185,62 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
         aria-label={
           badgeCount > 0 ? `Notifications, ${badgeCount} need attention` : "Notifications"
         }
-        className={`relative flex h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none cursor-pointer ${triggerClassName ?? ""}`}
-      >
-        <Bell className="h-4 w-4 text-slate-700" />
-        {badgeCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white">
-            {badgeCount > 9 ? "9+" : badgeCount}
-          </span>
+        className={cn(
+          "group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:ring-offset-1 md:h-9 md:w-9",
+          triggerClassName,
         )}
+      >
+        {/* 44px touch target wrapping a crisp 36px circle so mobile stays light without losing tap area. */}
+        <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-2xs transition-colors group-hover:bg-slate-50 group-active:bg-slate-100">
+          <Bell className="h-[18px] w-[18px] text-slate-700" aria-hidden="true" />
+          {badgeCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-white">
+              {badgeCount > 9 ? "9+" : badgeCount}
+            </span>
+          )}
+        </span>
       </SheetTrigger>
 
       <SheetContent
-        side="right"
-        className="flex h-dvh w-full flex-col gap-0 bg-slate-50 p-0 sm:max-w-md max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:h-auto max-md:max-h-[92dvh] max-md:rounded-t-3xl max-md:border-l-0 max-md:border-t max-md:pt-0 max-md:pb-safe"
+        side={isMobileViewport ? "bottom" : "right"}
+        showCloseButton={false}
+        className={cn(
+          "flex flex-col gap-0 bg-slate-50 p-0 overscroll-contain",
+          isMobileViewport
+            ? "h-[88dvh] max-h-[88dvh] w-full overflow-hidden rounded-t-[28px] border-t border-slate-200/80 pb-safe"
+            : "h-dvh w-full sm:max-w-md",
+        )}
       >
-        <div
-          aria-hidden="true"
-          className="mx-auto mt-2.5 hidden h-1 w-10 shrink-0 rounded-full bg-slate-300 max-md:block"
-        />
-        <SheetHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-white px-5 pb-4 pt-4 pr-14 sm:pt-5">
-          {/* Row 1: Title + Badge */}
-          <div className="flex items-center gap-2">
-            <SheetTitle className="text-lg font-bold text-[#0B1220]">
-              Notifications
-            </SheetTitle>
-            {unreadCountTotal > 0 && (
-              <Badge className="rounded-full border-blue-200 bg-[#EEF0FF] px-2.5 py-0.5 text-xs font-bold text-[#1447E6] hover:bg-[#EEF0FF] tabular-nums">
-                {unreadCountTotal} unread
-              </Badge>
-            )}
+        {isMobileViewport && (
+          <div
+            aria-hidden="true"
+            className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-slate-300"
+          />
+        )}
+        <SheetHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-white px-5 pb-4 pt-3.5 sm:pt-5">
+          {/* Row 1: Title + Unread count + aligned Close button */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <SheetTitle className="text-lg font-bold text-[#0B1220]">
+                Notifications
+              </SheetTitle>
+              {unreadCountTotal > 0 && (
+                <Badge className="rounded-full border-blue-200 bg-[#EEF0FF] px-2.5 py-0.5 text-xs font-bold text-[#1447E6] hover:bg-[#EEF0FF] tabular-nums">
+                  {unreadCountTotal} unread
+                </Badge>
+              )}
+            </div>
+            <SheetClose
+              render={
+                <button
+                  type="button"
+                  aria-label="Close notifications"
+                  className="-mr-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] md:h-9 md:w-9"
+                />
+              }
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </SheetClose>
           </div>
 
           {/* Row 2: Sub-action underneath */}

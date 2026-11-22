@@ -477,35 +477,129 @@ export const useOrganization = create<OrgState>((set, get) => ({
       // First try member profile (for admin/teacher/parent users)
       if (memberResult.status === "fulfilled") {
         const member = memberResult.value;
+        const normKey = (val?: string | null) => (val ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
-        // Union HCORE's assignments with Hanoled's — same assignment synced
-        // from HCORE can appear in both, so de-dupe by id.
+        // Prefer HSMS local DB rows over HCORE rows: both services return the
+        // same assignment / student / class under different UUID spaces, and
+        // HSMS routes (/classes, /subjects, /spreadsheets, /students) expect
+        // local HSMS UUIDs. Only append HCORE entries whose canonical identity
+        // isn't already present from HSMS.
         const mergedAssignments: MemberAssignment[] = [];
         const seenAssignmentIds = new Set<string>();
-        for (const a of [...(member.memberAssignments || []), ...(hsmsMember?.memberAssignments || [])]) {
-          if (a?.id && seenAssignmentIds.has(a.id)) continue;
-          if (a?.id) seenAssignmentIds.add(a.id);
-          mergedAssignments.push(a);
-        }
+        const seenAssignmentRefKeys = new Set<string>();
+        const seenAssignmentSemanticKeys = new Set<string>();
 
-        // Merge assignedStudents so parent views work with either Hanoled ID or HCORE learner ID
+        const addAssignment = (a: MemberAssignment | null | undefined, fromHcore: boolean) => {
+          if (!a) return;
+          const typeKey = normKey(a.type);
+          const classId = a.classLevel?.id || a.classLevelId || "";
+          const subjectId = a.subject?.id || a.subjectId || "";
+          const deptId = a.department?.id || a.departmentId || "";
+          const refKey = `${typeKey}|cid:${classId}|sid:${subjectId}|did:${deptId}`;
+          const clsName = normKey(a.classLevel?.name);
+          const subName = normKey(a.subject?.name);
+          const deptName = normKey(a.department?.name);
+          const hasSemanticIdentity = Boolean(clsName || subName || deptName);
+          const semanticKey = hasSemanticIdentity
+            ? `${typeKey}|cls:${clsName}|sub:${subName}|dept:${deptName}`
+            : "";
+
+          if (a.id && seenAssignmentIds.has(a.id)) return;
+          if ((classId || subjectId || deptId) && seenAssignmentRefKeys.has(refKey)) return;
+          if (fromHcore && semanticKey && seenAssignmentSemanticKeys.has(semanticKey)) return;
+
+          if (a.id) seenAssignmentIds.add(a.id);
+          if (classId || subjectId || deptId) seenAssignmentRefKeys.add(refKey);
+          if (semanticKey) seenAssignmentSemanticKeys.add(semanticKey);
+          mergedAssignments.push(a);
+        };
+
+        for (const a of hsmsMember?.memberAssignments || []) addAssignment(a, false);
+        for (const a of member.memberAssignments || []) addAssignment(a, true);
+
+        // Merge assignedStudents with HSMS first so local student UUIDs win
+        // and HCORE mirrors of the same learner do not duplicate parent cards.
+        type StudentSummary = {
+          id?: string;
+          hcoreLearnerId?: string | null;
+          admissionNumber?: string | null;
+          firstName?: string;
+          lastName?: string;
+        };
         const mergedStudents: Array<{ id?: string; firstName?: string; lastName?: string }> = [];
         const seenStudentIds = new Set<string>();
-        for (const s of [...(hsmsMember?.assignedStudents || []), ...(member.assignedStudents || [])]) {
-          if (s?.id && seenStudentIds.has(s.id)) continue;
-          if (s?.id) seenStudentIds.add(s.id);
+        const seenStudentAdmissions = new Set<string>();
+        const seenStudentNames = new Set<string>();
+
+        const addStudent = (s: StudentSummary | null | undefined, fromHcore: boolean) => {
+          if (!s) return;
+          const admissionKey = normKey(s.admissionNumber);
+          const fullNameKey = `${normKey(s.firstName)}|${normKey(s.lastName)}`;
+          if (s.id && seenStudentIds.has(s.id)) return;
+          if (s.hcoreLearnerId && seenStudentIds.has(s.hcoreLearnerId)) return;
+          if (fromHcore && admissionKey && seenStudentAdmissions.has(admissionKey)) return;
+          if (fromHcore && fullNameKey !== "|" && seenStudentNames.has(fullNameKey)) return;
+
+          if (s.id) seenStudentIds.add(s.id);
+          if (s.hcoreLearnerId) seenStudentIds.add(s.hcoreLearnerId);
+          if (admissionKey) seenStudentAdmissions.add(admissionKey);
+          if (fullNameKey !== "|") seenStudentNames.add(fullNameKey);
           mergedStudents.push(s);
+        };
+
+        for (const s of (hsmsMember?.assignedStudents || []) as StudentSummary[]) addStudent(s, false);
+        for (const s of (member.assignedStudents || []) as StudentSummary[]) addStudent(s, true);
+
+        // Merge assignedClasses with HSMS first so local class UUIDs win.
+        const mergedClasses: Array<{ id?: string; name?: string; level?: string }> = [];
+        const seenClassIds = new Set<string>();
+        const seenClassNames = new Set<string>();
+        for (const c of hsmsMember?.assignedClasses || []) {
+          if (!c) continue;
+          if (c.id && seenClassIds.has(c.id)) continue;
+          if (c.id) seenClassIds.add(c.id);
+          const cname = normKey(c.name);
+          if (cname) seenClassNames.add(cname);
+          mergedClasses.push(c);
+        }
+        for (const c of member.assignedClasses || []) {
+          if (!c) continue;
+          const cname = normKey(c.name);
+          if (c.id && seenClassIds.has(c.id)) continue;
+          if (cname && seenClassNames.has(cname)) continue;
+          if (c.id) seenClassIds.add(c.id);
+          if (cname) seenClassNames.add(cname);
+          mergedClasses.push(c);
         }
 
-        const rawAssignments = (member.teachingAssignments || mergedAssignments) as Array<Record<string, unknown>>;
-        const normalizedAssignments = rawAssignments.map((a) => {
-          const cl = a.classLevel as { id?: string; name?: string; level?: string } | undefined;
-          const sub = a.subject as { id?: string; name?: string; code?: string } | undefined;
-          return {
-            classLevel: cl || (a.classLevelId ? { id: a.classLevelId as string, name: (a.classLevelName as string) || "" } : null),
-            subject: sub || (a.subjectId ? { id: a.subjectId as string, name: (a.subjectName as string) || "", code: a.subjectCode as string | undefined } : null),
-          };
-        });
+        // Build teachingAssignments from HSMS-prioritized mergedAssignments
+        // first, then backfill any non-duplicate HCORE teachingAssignments.
+        const normalizedAssignments: NonNullable<Member["teachingAssignments"]> = [];
+        const seenTeachingPairs = new Set<string>();
+        const seenTeachingSemantic = new Set<string>();
+
+        const pushTeaching = (raw: Record<string, unknown>, fromHcore: boolean) => {
+          const cl = raw.classLevel as { id?: string; name?: string; level?: string } | undefined;
+          const sub = raw.subject as { id?: string; name?: string; code?: string } | undefined;
+          const classLevel = cl || (raw.classLevelId ? { id: raw.classLevelId as string, name: (raw.classLevelName as string) || "" } : null);
+          const subject = sub || (raw.subjectId ? { id: raw.subjectId as string, name: (raw.subjectName as string) || "", code: raw.subjectCode as string | undefined } : null);
+          const pairKey = `${classLevel?.id || ""}|${subject?.id || ""}`;
+          const semanticKey = `${normKey(classLevel?.name)}|${normKey(subject?.name)}`;
+
+          if (pairKey !== "|" && seenTeachingPairs.has(pairKey)) return;
+          if (fromHcore && semanticKey !== "|" && seenTeachingSemantic.has(semanticKey)) return;
+
+          if (pairKey !== "|") seenTeachingPairs.add(pairKey);
+          if (semanticKey !== "|") seenTeachingSemantic.add(semanticKey);
+          normalizedAssignments.push({ classLevel, subject });
+        };
+
+        for (const a of mergedAssignments as unknown as Array<Record<string, unknown>>) {
+          pushTeaching(a, false);
+        }
+        for (const a of (member.teachingAssignments || []) as Array<Record<string, unknown>>) {
+          pushTeaching(a, true);
+        }
 
         set({
           currentOrg: org,
@@ -514,7 +608,7 @@ export const useOrganization = create<OrgState>((set, get) => ({
             memberAssignments: mergedAssignments,
             teachingAssignments: normalizedAssignments,
             assignedStudents: mergedStudents.length > 0 ? mergedStudents : (member.assignedStudents || []),
-            assignedClasses: hsmsMember?.assignedClasses?.length ? hsmsMember.assignedClasses : (member.assignedClasses || []),
+            assignedClasses: mergedClasses,
             // HCORE says who holds which role; HSMS says what each role may
             // do at this school (usePermissions combines the two).
             access: rememberAccess(slug, hsmsMember?.access),

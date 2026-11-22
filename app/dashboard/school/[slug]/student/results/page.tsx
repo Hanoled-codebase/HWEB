@@ -25,7 +25,7 @@ type SubjectResult = {
   assessments: Array<{
     name: string;
     total: number;
-    score: number;
+    score: number | string | null;
     percentage: number | null;
   }>;
 };
@@ -141,82 +141,88 @@ export default function StudentResultsPage() {
         </div>
 
         {data && data.subjects.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
-              <Link href={`/dashboard/school/${slug}/student/results/transcript`}>
-                <FileText className="mr-1.5 h-3.5 w-3.5" />
-                Transcript
-              </Link>
-            </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="min-h-11 whitespace-nowrap sm:min-h-9"
+              >
+                <Link href={`/dashboard/school/${slug}/student/results/transcript`}>
+                  <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  Transcript
+                </Link>
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPrintModal(true)}
-              className="border-blue-200 bg-blue-50 text-[#1447E6] hover:bg-blue-100 font-semibold gap-1.5"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print / Preview
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPrintModal(true)}
+                className="min-h-11 whitespace-nowrap border-blue-200 bg-blue-50 font-semibold text-[#1447E6] hover:bg-blue-100 gap-1.5 sm:min-h-9"
+              >
+                <Printer className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                Print / Preview
+              </Button>
+            </div>
 
-            <select
-              value={`${year}|${term}`}
-              onChange={(e) => {
-                const [y, t] = e.target.value.split("|");
-                if (y && t) {
-                  setYear(y);
-                  setTerm(t);
-                }
-              }}
-              className="h-9 rounded-md border border-input bg-white px-2 text-sm font-medium"
-              aria-label="Academic period"
-            >
-              {periodOptions.length > 0 ? (
-                periodOptions.map((p) => (
-                  <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
-                    {p.term} — {p.academicYear}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:flex sm:items-center">
+              <select
+                value={`${year}|${term}`}
+                onChange={(e) => {
+                  const [y, t] = e.target.value.split("|");
+                  if (y && t) {
+                    setYear(y);
+                    setTerm(t);
+                  }
+                }}
+                className="min-h-11 min-w-0 w-full rounded-md border border-input bg-white px-2.5 text-sm font-medium sm:min-h-9 sm:w-auto"
+                aria-label="Academic period"
+              >
+                {periodOptions.length > 0 ? (
+                  periodOptions.map((p) => (
+                    <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
+                      {p.term} — {p.academicYear}
+                    </option>
+                  ))
+                ) : (
+                  <option value={`${year}|${term}`}>
+                    {term} — {year}
                   </option>
-                ))
-              ) : (
-                <option value={`${year}|${term}`}>
-                  {term} — {year}
-                </option>
-              )}
-            </select>
+                )}
+              </select>
 
-            <select
-              value={pdfResultType}
-              onChange={(e) =>
-                setPdfResultType(e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")
-              }
-              className="h-9 rounded-md border border-input bg-white px-2 text-sm font-medium"
-              aria-label="Report type for PDF download"
-            >
-              <option value="END_OF_TERM">End-of-term</option>
-              <option value="MID_TERM">Mid-term</option>
-            </select>
+              <select
+                value={pdfResultType}
+                onChange={(e) =>
+                  setPdfResultType(e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")
+                }
+                className="min-h-11 rounded-md border border-input bg-white px-2.5 text-sm font-medium sm:min-h-9"
+                aria-label="Report type for PDF download"
+              >
+                <option value="END_OF_TERM">End-of-term</option>
+                <option value="MID_TERM">Mid-term</option>
+              </select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void downloadReportCardPdf({
-                  orgSlug: slug,
-                  studentId: data.student.id,
-                  studentName: `${data.student.firstName} ${data.student.lastName}`,
-                  term,
-                  academicYear: year,
-                  resultType: pdfResultType,
-                });
-              }}
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              PDF
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-11 whitespace-nowrap px-3 sm:min-h-9"
+                onClick={() => {
+                  void downloadReportCardPdf({
+                    orgSlug: slug,
+                    studentId: data.student.id,
+                    studentName: `${data.student.firstName} ${data.student.lastName}`,
+                    term,
+                    academicYear: year,
+                    resultType: pdfResultType,
+                  });
+                }}
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                PDF
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -277,16 +283,27 @@ export default function StudentResultsPage() {
             </div>
           )}
           {data.subjects.map((subject) => {
+            const totals = subject.assessments.reduce(
+              (acc, a) => {
+                const max = Number(a.total);
+                const numericScore =
+                  a.score !== "" && a.score !== null && a.score !== undefined
+                    ? Number(a.score)
+                    : NaN;
+                if (Number.isFinite(max) && max > 0) {
+                  acc.possible += max;
+                }
+                if (Number.isFinite(numericScore)) {
+                  acc.earned += numericScore;
+                  acc.hasRecorded = true;
+                }
+                return acc;
+              },
+              { earned: 0, possible: 0, hasRecorded: false },
+            );
             const avgPercentage =
-              subject.assessments.length > 0
-                ? Number(
-                    (
-                      subject.assessments.reduce(
-                        (s, a) => s + (a.percentage || 0),
-                        0
-                      ) / subject.assessments.length
-                    ).toFixed(1)
-                  )
+              totals.hasRecorded && totals.possible > 0
+                ? Number(((totals.earned / totals.possible) * 100).toFixed(1))
                 : null;
 
             return (
@@ -333,8 +350,14 @@ export default function StudentResultsPage() {
                           <p className="text-sm font-medium text-slate-900 truncate">
                             {assessment.name}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            Score: {assessment.score} / {assessment.total}
+                          <p className="text-xs text-slate-500 tabular-nums">
+                            Marks:{" "}
+                            {assessment.score !== "" &&
+                            assessment.score !== null &&
+                            assessment.score !== undefined
+                              ? assessment.score
+                              : "—"}{" "}
+                            / {assessment.total}
                           </p>
                         </div>
                         {assessment.percentage !== null && (

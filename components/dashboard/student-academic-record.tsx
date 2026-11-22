@@ -494,21 +494,23 @@ export function StudentAcademicRecord({
           </div>
 
           {/* CTA (phones scroll straight into the subjects anyway) */}
-          <div className="hidden shrink-0 md:block">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={subjects.length === 0}
-              className="h-11 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 border-0"
-              onClick={() =>
-                document
-                  .getElementById(subjectsAnchorId)
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
-            >
-              {actionLabel}
-            </Button>
-          </div>
+          {actionLabel && (
+            <div className="hidden shrink-0 md:block">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={subjects.length === 0}
+                className="h-11 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 border-0"
+                onClick={() =>
+                  document
+                    .getElementById(subjectsAnchorId)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                {actionLabel}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ── Academic summary micro-grid ──────────────────────────── */}
@@ -549,7 +551,7 @@ export function StudentAcademicRecord({
                       {avgPct !== null ? `${avgPct}%` : "—"}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Across {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
+                      {`Across ${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"}`}
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-50/50 p-3 text-center sm:p-4">

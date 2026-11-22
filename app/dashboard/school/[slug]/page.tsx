@@ -73,14 +73,14 @@ export default function DashboardOverviewPage() {
   const [parentResults, setParentResults] = useState<ParentResultGroup[]>([]);
 
   useEffect(() => {
-    if (!currentOrg?.slug) return;
+    if (!currentOrg?.slug || isStudent) return;
     apiFetch<{ students: number; teachers: number; parents: number }>(
       `/organizations/${currentOrg.slug}/live-counts`,
       { showErrorToast: false }
     )
       .then(setLiveCounts)
       .catch(() => {});
-  }, [currentOrg?.slug]);
+  }, [currentOrg?.slug, isStudent]);
 
   const role = currentMember?.role;
   const { isPrivileged: permPrivileged, isHOD, isTeacher, can } = usePermissions();

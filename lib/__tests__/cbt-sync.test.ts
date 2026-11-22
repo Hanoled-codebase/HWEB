@@ -236,4 +236,44 @@ describe("startSyncWorker", () => {
     stopDashboard();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it("backs off exponentially on transient failures and stops after hitting the retry cap", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.offline.getPendingSyncs.mockResolvedValue([queued()]);
+      fetchMock.mockResolvedValue(reply(503, { error: "Service unavailable" }));
+
+      const stopWorker = startSyncWorker();
+      try {
+        // Initial flush (failure 1 -> next delay 60s)
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][1].signal).toBeDefined();
+
+        // At 30s, backoff prevents firing early
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        // At 60s total, failure 2 fires (next delay 120s)
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+
+        // Failure 3 (120s), failure 4 (240s), failure 5 (300s cap)
+        await vi.advanceTimersByTimeAsync(120_000);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        await vi.advanceTimersByTimeAsync(240_000);
+        expect(fetchMock).toHaveBeenCalledTimes(4);
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(fetchMock).toHaveBeenCalledTimes(5);
+
+        // After 5 consecutive failures, worker stops auto-retrying indefinitely
+        await vi.advanceTimersByTimeAsync(30 * 60_000);
+        expect(fetchMock).toHaveBeenCalledTimes(5);
+      } finally {
+        stopWorker();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

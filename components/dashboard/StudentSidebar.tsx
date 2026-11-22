@@ -161,7 +161,10 @@ export function StudentSidebar() {
       <SidebarContent className="px-2 py-4 gap-1">
         <SidebarMenu>
           {navItems.map((item) => {
-            const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+            const isActive =
+              item.url === baseUrl
+                ? pathname === item.url
+                : pathname === item.url || pathname.startsWith(`${item.url}/`);
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton

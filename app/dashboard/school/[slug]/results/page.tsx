@@ -618,10 +618,12 @@ export default function ResultsPage() {
           <SheetContent side="bottom" className="bg-white p-0 md:hidden">
             <SheetHeader className="border-b border-slate-100 px-5 pb-3 pt-5 text-left">
               <SheetTitle className="text-base font-bold text-[#0B1220]">
-                Term, filters &amp; export
+                {canExportClassBundle ? "Term, filters & export" : "Term & filters"}
               </SheetTitle>
               <SheetDescription className="text-xs text-slate-500">
-                Change academic period, filter by class, or export class report bundles.
+                {canExportClassBundle
+                  ? "Change academic period, filter by class, or export class report bundles."
+                  : "Change academic period or switch report type."}
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-4 px-5 py-4">
@@ -1252,7 +1254,9 @@ export default function ResultsPage() {
                         <span>&middot;</span>
                         <span>{getStudentRecordId(selectedGroup.student as StudentPerformanceResponse["student"])}</span>
                         <span>&middot;</span>
-                        <span className="font-semibold text-slate-900">{performanceSubjects.length} subjects</span>
+                        <span className="font-semibold text-slate-900">
+                          {`${performanceSubjects.length} ${performanceSubjects.length === 1 ? "subject" : "subjects"}`}
+                        </span>
                         <span>&middot;</span>
                         {selectedGroup.isTemplateApproved ? (
                           <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
@@ -1572,7 +1576,7 @@ export default function ResultsPage() {
                   }
                   subjects={performanceSubjects}
                   description="A visual summary of the published subject performance for this student, including assessment progress and recorded scores."
-                  actionLabel="View Academic Record"
+                  actionLabel=""
                   emptyTitle="No subject records available"
                   emptyDescription="The school has not published any subject spreadsheets for this student yet."
                 />

@@ -75,7 +75,25 @@ async function fetchAuthenticatedPdf(url: string, failureMessage: string): Promi
   try {
     const res = await fetch(url, { ...authFetchInit("hcore"), signal: AbortSignal.timeout(30_000) });
     if (!res.ok) {
-      toast.error(failureMessage);
+      let serverMessage = "";
+      try {
+        const body = (await res.json()) as { error?: string | { message?: string }; message?: string };
+        if (typeof body?.error === "string") serverMessage = body.error;
+        else if (typeof body?.error?.message === "string") serverMessage = body.error.message;
+        else if (typeof body?.message === "string") serverMessage = body.message;
+      } catch {
+        // Non-JSON error body; fall back to status-based copy below.
+      }
+
+      if (res.status === 404) {
+        toast.error(
+          serverMessage && serverMessage !== "Report card unavailable"
+            ? serverMessage
+            : "Official results for this term haven't been published yet.",
+        );
+      } else {
+        toast.error(serverMessage || failureMessage);
+      }
       return null;
     }
     return await res.blob();
@@ -85,12 +103,20 @@ async function fetchAuthenticatedPdf(url: string, failureMessage: string): Promi
   }
 }
 
-async function openPdfInNewTab(url: string, failureMessage: string): Promise<boolean> {
+async function openPdfInNewTab(
+  url: string,
+  failureMessage: string,
+  fallbackFilename?: string,
+): Promise<boolean> {
   // Reserve the tab during the click, before an authenticated fetch loses user activation.
   const tab = window.open("about:blank", "_blank");
   if (!tab) {
-    toast.error("Allow pop-ups to view the PDF.");
-    return false;
+    // Popup blocked (common on mobile WebViews / strict browsers): download directly instead of stranding the user.
+    const blob = await fetchAuthenticatedPdf(url, failureMessage);
+    if (!blob) return false;
+    saveBlob(blob, fallbackFilename || "Report_Card.pdf");
+    toast.info("Pop-ups are blocked, so we downloaded the PDF instead.");
+    return true;
   }
   tab.opener = null;
 
@@ -134,7 +160,11 @@ export async function downloadReportCardPdf(options: ReportCardDownload): Promis
 
 /** Opens one student's report card PDF in a new tab (the mobile-friendly path). */
 export async function openReportCardPdf(options: ReportCardDownload): Promise<boolean> {
-  return openPdfInNewTab(reportCardUrl(options), "Could not open the report card. Please try again.");
+  return openPdfInNewTab(
+    reportCardUrl(options),
+    "Could not open the report card. Please try again.",
+    reportCardFileName(options.studentName, options.term, options.resultType),
+  );
 }
 
 /** Downloads the whole class's report cards as one bundle PDF. */
