@@ -107,6 +107,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Apply middleware to all routes except api, _next/static, _next/image, and favicon
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Only run edge middleware on routes proxy.ts actually inspects (protected & auth routes).
+  matcher: ['/dashboard/:path*', '/cbt/admin/:path*', '/signin/:path*', '/signup/:path*'],
 };

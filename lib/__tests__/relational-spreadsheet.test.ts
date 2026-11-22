@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCategoryEntryParam,
   computeCategoryAllocationSummary,
   computeStudentRelationalTotals,
+  countEnteredScoresForColumn,
+  groupAssessmentsByCategory,
+  hasTeacherSubAssessments,
+  resolveAssessmentEntryTarget,
   resolveSpreadsheetCategories,
   validateScoreInput,
   type AssessmentCategorySummary,
   type SpreadsheetAssessment,
+  type SpreadsheetDetail,
 } from "@/lib/spreadsheets";
 
 const TEMPLATE_CATEGORIES: AssessmentCategorySummary[] = [
@@ -181,5 +187,110 @@ describe("computeStudentRelationalTotals", () => {
       template: { id: "tpl-1", name: "Term 1", assessmentCategories: TEMPLATE_CATEGORIES },
     });
     expect(fromTemplate.map((c) => c.id)).toEqual(["cat-cw", "cat-asgn", "cat-prj", "cat-exam"]);
+  });
+});
+
+describe("conditional sub-assessment routing helpers", () => {
+  it("routes empty, fixed, and single default categories directly to score entry, and custom/multi sub-assessments to the nested list", () => {
+    const cw = TEMPLATE_CATEGORIES[0];
+    const exam = TEMPLATE_CATEGORIES[3];
+
+    expect(hasTeacherSubAssessments(cw, [])).toBe(false);
+    expect(
+      hasTeacherSubAssessments(cw, [
+        {
+          originalIndex: 0,
+          assessment: {
+            id: "sub-default",
+            categoryId: cw.id,
+            name: "Classwork",
+            maxObtainableScore: 10,
+          },
+        },
+      ]),
+    ).toBe(false);
+    expect(
+      hasTeacherSubAssessments(cw, [
+        {
+          originalIndex: 0,
+          assessment: {
+            id: "sub-custom",
+            categoryId: cw.id,
+            name: "Classwork 1",
+            maxObtainableScore: 10,
+          },
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      hasTeacherSubAssessments(cw, [
+        {
+          originalIndex: 0,
+          assessment: {
+            id: "sub-scaled",
+            categoryId: cw.id,
+            name: "Classwork",
+            maxObtainableScore: 20,
+          },
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      hasTeacherSubAssessments(exam, [
+        {
+          originalIndex: 0,
+          assessment: {
+            id: "sub-ex",
+            categoryId: exam.id,
+            name: "Examination",
+            maxObtainableScore: 70,
+            isSystemGenerated: true,
+          },
+        },
+      ]),
+    ).toBe(false);
+  });
+
+  it("resolves virtual direct-entry categories, exact sub-assessment IDs, and legacy numeric indexes", () => {
+    const sheet: SpreadsheetDetail = {
+      id: "sheet-rel",
+      status: "pending",
+      assessmentStorageMode: "RELATIONAL",
+      assessmentCategories: TEMPLATE_CATEGORIES,
+      assessments: [
+        { id: "sub-cw1", categoryId: "cat-cw", name: "Classwork 1", maxObtainableScore: 10 },
+        { id: "sub-cw2", categoryId: "cat-cw", name: "Classwork 2", maxObtainableScore: 10 },
+        { id: "sub-ex", categoryId: "cat-exam", name: "Examination", maxObtainableScore: 70, isSystemGenerated: true },
+      ],
+      data: [
+        { student: { id: "s1", firstName: "Ada", lastName: "Obi" }, values: [8, "", 60] },
+        { student: { id: "s2", firstName: "Kemi", lastName: "Bello" }, values: ["", "", 55] },
+      ],
+    };
+
+    const grouped = groupAssessmentsByCategory(TEMPLATE_CATEGORIES, sheet.assessments || []);
+    expect(grouped.get("cat-cw")?.length).toBe(2);
+    expect(grouped.get("cat-asgn")?.length).toBe(0);
+    expect(countEnteredScoresForColumn(sheet.data, 0)).toBe(1);
+    expect(countEnteredScoresForColumn(sheet.data, 2)).toBe(2);
+
+    // Unsplit category (0 subs) -> virtual direct entry
+    const virtualAsgn = resolveAssessmentEntryTarget(sheet, buildCategoryEntryParam("cat-asgn"));
+    expect(virtualAsgn?.isVirtualDefault).toBe(true);
+    expect(virtualAsgn?.returnsToCategoryList).toBe(false);
+    expect(virtualAsgn?.assessment.name).toBe("Assignments");
+    expect(virtualAsgn?.assessment.maxObtainableScore).toBe(10);
+
+    // Sub-assessment inside multi-sub category -> returns to category list
+    const cw2 = resolveAssessmentEntryTarget(sheet, "sub-cw2");
+    expect(cw2?.isVirtualDefault).toBe(false);
+    expect(cw2?.returnsToCategoryList).toBe(true);
+    expect(cw2?.assessment.originalIndex).toBe(1);
+
+    // Fixed single-instance Examination -> returns to main assessments list
+    const examTarget = resolveAssessmentEntryTarget(sheet, "sub-ex");
+    expect(examTarget?.isVirtualDefault).toBe(false);
+    expect(examTarget?.returnsToCategoryList).toBe(false);
+    expect(examTarget?.assessment.originalIndex).toBe(2);
   });
 });

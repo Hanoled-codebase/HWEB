@@ -62,20 +62,39 @@ test.describe("a subject teacher's gradebook", () => {
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets\/sheet-maths$/);
   });
 
-  test("adds unlimited sub-assessments, validates scores, and normalizes category/overall totals to admin caps", async ({ page }) => {
+  test("navigates conditional assessment flow: direct entry for fixed exam, nested sub-assessment list for split category, and saves scores", async ({ page }) => {
     await signIn(page, "teacher");
     await expect(page).toHaveURL(/\/welcome$/);
     await page.goto("/dashboard/school/greenfield/spreadsheets/sheet-physics-rel");
 
-    // 1. Admin-locked categories and readiness summary are shown.
-    await expect(page.getByRole("heading", { name: "Assessment Categories" })).toBeVisible();
-    await expect(page.getByText("Standard 10/10/10/70 Template")).toBeVisible();
-    await expect(page.getByText("4/4 categories ready · 100 max")).toBeVisible();
-    // Examination is fixed by admin and offers no Add button.
-    await expect(page.getByRole("button", { name: /Add Examination/i })).toHaveCount(0);
+    // 1. Clean admin-defined assessment category list is shown.
+    await expect(page.getByRole("button", { name: /Classwork.*Max 10/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Assignments.*Max 10/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Projects.*Max 10/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Examination.*Max 70/i })).toBeVisible();
 
-    // 2. Add a 3rd 10-mark Classwork sub-assessment (30 raw marks scaling to the 10-mark admin cap).
-    await page.getByRole("button", { name: "Add Classwork" }).click();
+    // 2. Examination has no sub-assessments -> tapping opens dedicated Score Entry directly.
+    await page.getByRole("button", { name: /Examination.*Max 70/i }).click();
+    await expect(page).toHaveURL(/\/spreadsheets\/sheet-physics-rel\/assessment\/sub-exam$/);
+    await expect(page.getByText("Out of 70")).toBeVisible();
+
+    const examAda = page.getByRole("spinbutton", { name: "Ada Obi" });
+    await examAda.fill("60");
+    await page.getByRole("button", { name: "Save 1 score" }).click();
+    await expect(page.getByText("Examination saved successfully")).toBeVisible();
+
+    // Back from direct entry returns to Assessments list.
+    await page.getByRole("link", { name: "Back to Assessments" }).click();
+    await expect(page).toHaveURL(/\/spreadsheets\/sheet-physics-rel$/);
+
+    // 3. Classwork has teacher-created sub-assessments -> tapping opens the nested Sub-Assessments List.
+    await page.getByRole("button", { name: /Classwork.*2 sub-assessments/i }).click();
+    await expect(page).toHaveURL(/\/spreadsheets\/sheet-physics-rel\/category\/cat-cw$/);
+    await expect(page.getByRole("button", { name: /Classwork 1.*Max 10/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Classwork 2.*Max 10/i })).toBeVisible();
+
+    // 4. Add a 3rd 10-mark Classwork sub-assessment (30 raw marks scaling to 10-mark admin cap).
+    await page.getByRole("button", { name: "Add sub-assessment" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Sub-Assessment Name").fill("Classwork 3");
     await dialog.getByLabel("Maximum Marks (whole number)").fill("10");
@@ -83,39 +102,71 @@ test.describe("a subject teacher's gradebook", () => {
     await expect(dialog).toBeHidden();
     await expect(page.getByText("30 raw → 10")).toBeVisible();
 
-    // 3. Reject invalid score above sub-assessment max and disable Save.
-    const scoreRegion = page.getByRole("region", { name: "Student Scores & Totals" });
-    const cw1Ada = scoreRegion.getByRole("spinbutton", { name: "Ada Obi Classwork 1 score out of 10" });
-    await cw1Ada.fill("12");
-    await expect(scoreRegion.getByText("Score cannot exceed 10")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Save/i })).toBeDisabled();
+    // 5. Open Classwork 3 dedicated score page, verify validation and save.
+    await page.getByRole("button", { name: /Classwork 3.*Max 10/i }).click();
+    await expect(page.getByText("Out of 10")).toBeVisible();
 
-    // 4. Enter valid scores across all categories and verify normalized Category + Overall totals.
-    // Classwork: (10/10 + 10/10 + 10/10) / 3 * 10 = 10
-    await cw1Ada.fill("10");
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Classwork 2 score out of 10" }).fill("10");
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Classwork 3 score out of 10" }).fill("10");
-    // Assignments: (5/5 + 4/5) / 2 * 10 = 9
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Assignment 1 score out of 5" }).fill("5");
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Assignment 2 score out of 5" }).fill("4");
-    // Projects: (8/10 + 6/10) / 2 * 10 = 7
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Project 1 score out of 10" }).fill("8");
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Project 2 score out of 10" }).fill("6");
-    // Examination: 60/70 = 60
-    await scoreRegion.getByRole("spinbutton", { name: "Ada Obi Examination score out of 70" }).fill("60");
+    const cw3Ada = page.getByRole("spinbutton", { name: "Ada Obi" });
+    await cw3Ada.fill("12");
+    await expect(page.getByText("Enter a score from 0 to 10")).toBeVisible();
+    await cw3Ada.fill("9");
+    await page.getByRole("button", { name: "Save 1 score" }).click();
+    await expect(page.getByText("Classwork 3 saved successfully")).toBeVisible();
 
-    // 10 (CW) + 9 (ASGN) + 7 (PRJ) + 60 (Exam) = 86/100.
-    const adaRow = page.locator("tbody tr", { hasText: "Ada Obi" });
-    await expect(adaRow).toContainText("86/100");
+    // Back from a sub-assessment returns to the Classwork sub-assessments list.
+    await page.getByRole("link", { name: "Back to Classwork" }).click();
+    await expect(page).toHaveURL(/\/spreadsheets\/sheet-physics-rel\/category\/cat-cw$/);
 
-    await page.getByRole("button", { name: "Save 8 Scores" }).click();
-    await expect(page.getByText("Saved 8 scores")).toBeVisible();
-
-    const savedReq = (await mockRequests()).find(
+    const savedReqs = (await mockRequests()).filter(
       (r) => r.backend === "hsms" && r.method === "PUT" && r.path === "/spreadsheets/greenfield/sheet-physics-rel/scores",
     );
-    expect(savedReq).toBeTruthy();
-    expect(savedReq?.body.expectedVersion).toBe(2);
-    expect((savedReq?.body.scores as unknown[])?.length).toBe(8);
+    expect(savedReqs.length).toBe(2);
+  });
+
+  test("opens direct score entry when a category has no sub-assessments yet and auto-provisions on save", async ({ page }) => {
+    await signIn(page, "teacher");
+    await expect(page).toHaveURL(/\/welcome$/);
+    await page.goto("/dashboard/school/greenfield/spreadsheets/sheet-agri-rel");
+
+    // Classwork has 0 sub-assessments -> tapping opens dedicated Score Entry directly (Out of 5).
+    await page.getByRole("button", { name: /Classwork.*Max 5/i }).click();
+    await expect(page).toHaveURL(/\/spreadsheets\/sheet-agri-rel\/assessment\/category-cat-agri-cw$/);
+    await expect(page.getByText("Out of 5")).toBeVisible();
+
+    await page.getByRole("spinbutton", { name: "Ada Obi" }).fill("5");
+    await page.getByRole("spinbutton", { name: "Kemi Bello" }).fill("4");
+    await page.getByRole("button", { name: "Save 2 scores" }).click();
+    await expect(page.getByText("Classwork saved successfully")).toBeVisible();
+
+    const reqs = await mockRequests();
+    const createdSub = reqs.find(
+      (r) => r.backend === "hsms" && r.method === "POST" && r.path === "/spreadsheets/greenfield/sheet-agri-rel/sub-assessments",
+    );
+    const savedScores = reqs.find(
+      (r) => r.backend === "hsms" && r.method === "PUT" && r.path === "/spreadsheets/greenfield/sheet-agri-rel/scores",
+    );
+    expect(createdSub?.body).toMatchObject({ categoryId: "cat-agri-cw", name: "Classwork", maxMarks: 5 });
+    expect(savedScores).toBeTruthy();
+  });
+
+  test("renders distilled mobile Results view with Options sheet and clean subject breakdown", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page, "admin");
+    await expect(page).toHaveURL(/\/welcome$/);
+    await page.goto("/dashboard/school/greenfield/results");
+
+    await expect(page.getByRole("button", { name: /Options/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Print Report/i })).toBeVisible();
+
+    // Open Options bottom sheet and verify period/type/bundle controls live inside cleanly.
+    await page.getByRole("button", { name: /Options/i }).click();
+    await expect(page.getByRole("heading", { name: /Term, filters & export/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mid-term" })).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+
+    // Open a subject breakdown row from the distilled unified list.
+    await page.getByRole("button", { name: /Mathematics/i }).first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("heading", { name: "Mathematics" })).toBeVisible();
   });
 });

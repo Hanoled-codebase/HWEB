@@ -1,40 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  Check,
+  ChevronDown,
   ChevronRight,
+  Download,
+  Edit3,
   FileText,
   HelpCircle,
   Loader2,
   Plus,
-  Search,
+  RefreshCw,
   ScrollText,
+  Search,
   Trash2,
-  Edit3,
   Upload,
-  Download,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import { BackButton } from "@/components/dashboard/shared";
-import { RelationalSpreadsheetWorkspace } from "@/components/spreadsheets/RelationalSpreadsheetWorkspace";
-import { useOrganization } from "@/hooks/useOrganization";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
-import { apiFetch } from "@/lib/api";
 import {
-  SpreadsheetDetail,
-  SpreadsheetQuestion,
-  getErrorMessage,
-  getOrderedAssessments,
-  getSpreadsheetLabel,
-  parseRouteParam,
-} from "@/lib/spreadsheets";
+  SubAssessmentDialog,
+  type SubAssessmentModalMode,
+} from "@/components/spreadsheets/SubAssessmentDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,14 +36,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -60,7 +54,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { useOrganization } from "@/hooks/useOrganization";
+import { apiFetch } from "@/lib/api";
+import {
+  buildCategoryEntryParam,
+  countEnteredScoresForColumn,
+  getErrorMessage,
+  getOrderedAssessments,
+  getSpreadsheetLabel,
+  groupAssessmentsByCategory,
+  hasTeacherSubAssessments,
+  parseRouteParam,
+  resolveSpreadsheetCategories,
+  type SpreadsheetAssessment,
+  type SpreadsheetDetail,
+  type SpreadsheetQuestion,
+  type SpreadsheetStatus,
+} from "@/lib/spreadsheets";
 import { cn } from "@/lib/utils";
 
 function AssessmentIcon({ name }: { name: string }) {
@@ -68,9 +80,9 @@ function AssessmentIcon({ name }: { name: string }) {
   return (
     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEF0FF]">
       {isAssignment ? (
-        <ScrollText className="h-5 w-5 text-[#1447E6]" />
+        <ScrollText className="h-5 w-5 text-[#1447E6]" aria-hidden="true" />
       ) : (
-        <FileText className="h-5 w-5 text-[#1447E6]" />
+        <FileText className="h-5 w-5 text-[#1447E6]" aria-hidden="true" />
       )}
     </div>
   );
@@ -84,8 +96,8 @@ function StatusDot({ status }: { status: string }) {
         ? "bg-slate-400"
         : "bg-amber-400";
   return (
-    <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-slate-700">
-      <span className={cn("h-2 w-2 rounded-full", color)} />
+    <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold capitalize text-slate-700">
+      <span className={cn("h-2 w-2 rounded-full", color)} aria-hidden="true" />
       {status === "active" ? "Active" : status === "inactive" ? "Inactive" : "Pending"}
     </span>
   );
@@ -96,55 +108,115 @@ export default function SpreadsheetAssessmentsPage() {
   const router = useRouter();
   const { currentOrg, currentMember } = useOrganization();
   const sheetId = parseRouteParam(params.sheetId);
+  const orgSlug = currentOrg?.slug;
 
   const [sheet, setSheet] = useState<SpreadsheetDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadSeq, setReloadSeq] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"assessments" | "questions">("assessments");
   const [selectedAssessmentIdx, setSelectedAssessmentIdx] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [syncingRoster, setSyncingRoster] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [subModal, setSubModal] = useState<SubAssessmentModalMode | null>(null);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [editingQuestionIdx, setEditingQuestionIdx] = useState<number | null>(null);
   const [deleteQuestionIdx, setDeleteQuestionIdx] = useState<number | null>(null);
-  const [questionForm, setQuestionForm] = useState({ text: "", options: "", correctAnswer: "", score: "" });
+  const [questionForm, setQuestionForm] = useState({
+    text: "",
+    options: "",
+    correctAnswer: "",
+    score: "",
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchSheet = useCallback(async () => {
-    if (!currentOrg || !sheetId) return;
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const data = await apiFetch<SpreadsheetDetail>(
-        `/spreadsheets/${currentOrg.slug}/${sheetId}`,
-      );
-      setSheet(data);
-    } catch (error) {
-      const message = getErrorMessage(error, "Failed to load spreadsheet");
-      setSheet(null);
-      setLoadError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
+  const triggerRefresh = () => {
+    setReloadSeq((n) => n + 1);
+  };
+
+  useEffect(() => {
+    if (!orgSlug || !sheetId) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const data = await apiFetch<SpreadsheetDetail>(
+          `/spreadsheets/${orgSlug}/${sheetId}`,
+        );
+        if (cancelled) return;
+        setSheet(data);
+      } catch (error) {
+        if (cancelled) return;
+        const message = getErrorMessage(error, "Failed to load spreadsheet");
+        setSheet(null);
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgSlug, reloadSeq, sheetId]);
+
+  const rawAssessments = useMemo<SpreadsheetAssessment[]>(
+    () =>
+      Array.isArray(sheet?.assessments) && sheet.assessments.length > 0
+        ? sheet.assessments
+        : Array.isArray(sheet?.columns)
+          ? sheet.columns.map((name) => ({ name, total: undefined }))
+          : [],
+    [sheet],
+  );
+  const isRelational = sheet?.assessmentStorageMode === "RELATIONAL";
+  const categories = useMemo(
+    () => (isRelational ? resolveSpreadsheetCategories(sheet) : []),
+    [isRelational, sheet],
+  );
+  const groupedSubs = useMemo(
+    () => groupAssessmentsByCategory(categories, rawAssessments),
+    [categories, rawAssessments],
+  );
+  const subCountByCategory = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const [catId, list] of groupedSubs.entries()) {
+      counts.set(catId, list.length);
     }
-  }, [currentOrg, sheetId]);
+    return counts;
+  }, [groupedSubs]);
 
-  useEffect(() => { fetchSheet(); }, [fetchSheet]);
+  const displayAssessments = useMemo(
+    () => getOrderedAssessments(rawAssessments),
+    [rawAssessments],
+  );
 
-  type SA = import("@/lib/spreadsheets").SpreadsheetAssessment;
-  const rawAssessments: SA[] =
-    Array.isArray(sheet?.assessments) && sheet.assessments.length > 0
-      ? (sheet.assessments as SA[])
-      : Array.isArray(sheet?.columns)
-        ? sheet.columns.map((name) => ({ name, total: undefined }) as SA)
-        : [];
-  const displayAssessments = getOrderedAssessments(rawAssessments);
   const className = sheet?.classLevel?.name || "Class";
   const subjectName = sheet?.subject?.name || "Subject";
   const spreadsheetLabel = sheet ? getSpreadsheetLabel(sheet) : "Spreadsheet";
+  const totalLearners = Array.isArray(sheet?.data) ? sheet.data.length : 0;
+
   useMobilePageTitle(sheet ? `${subjectName} · ${className}` : null);
 
-  const filteredAssessments = useMemo(() => {
+  const filteredCategories = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((cat) => {
+      const subs = groupedSubs.get(cat.id) ?? [];
+      return (
+        cat.name.toLowerCase().includes(q) ||
+        className.toLowerCase().includes(q) ||
+        subjectName.toLowerCase().includes(q) ||
+        subs.some((item) => item.assessment.name.toLowerCase().includes(q))
+      );
+    });
+  }, [categories, className, groupedSubs, searchQuery, subjectName]);
+
+  const filteredLegacyAssessments = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return displayAssessments;
     return displayAssessments.filter((a) =>
@@ -157,21 +229,31 @@ export default function SpreadsheetAssessmentsPage() {
   const canEdit =
     isPrivileged ||
     (currentMember?.role === "member" && sheet?.status !== "inactive");
-  const isRelational = sheet?.assessmentStorageMode === "RELATIONAL";
+  const isPublishedLocked = Boolean(sheet?.hcoreAssessmentId);
+  const editableCategories = useMemo(
+    () => categories.filter((cat) => !cat.isSingleInstance),
+    [categories],
+  );
+  const canManageSubAssessments =
+    isRelational && canEdit && !isPublishedLocked && editableCategories.length > 0;
 
-  const selectedAssessment = rawAssessments[selectedAssessmentIdx] || null;
+  const assessmentCount = isRelational ? categories.length : displayAssessments.length;
+
+  const safeSelectedQuestionIdx =
+    selectedAssessmentIdx < rawAssessments.length ? selectedAssessmentIdx : 0;
+  const selectedAssessment = rawAssessments[safeSelectedQuestionIdx] || null;
   const questions = selectedAssessment?.questions || [];
 
   async function saveQuestions(newQuestions: SpreadsheetQuestion[]) {
-    if (!currentOrg || !sheet || typeof sheet.version !== "number") {
+    if (!orgSlug || !sheet || typeof sheet.version !== "number") {
       toast.error("Spreadsheet version missing. Refreshing...");
-      fetchSheet();
+      triggerRefresh();
       return;
     }
     setSaving(true);
     try {
       const updatedAssessments = rawAssessments.map((a, i) =>
-        i === selectedAssessmentIdx ? { ...a, questions: newQuestions } : a,
+        i === safeSelectedQuestionIdx ? { ...a, questions: newQuestions } : a,
       );
       if (isRelational) {
         if (!selectedAssessment?.id) {
@@ -179,7 +261,7 @@ export default function SpreadsheetAssessmentsPage() {
           return;
         }
         const response = await apiFetch<{ data?: { version?: number }; version?: number }>(
-          `/spreadsheets/${currentOrg.slug}/${sheet.id}/questions`,
+          `/spreadsheets/${orgSlug}/${sheet.id}/questions`,
           {
             method: "PATCH",
             body: JSON.stringify({
@@ -191,39 +273,70 @@ export default function SpreadsheetAssessmentsPage() {
         );
         const nextVersion = response?.data?.version ?? response?.version ?? sheet.version + 1;
         setSheet((prev) =>
-          prev
-            ? {
-                ...prev,
-                assessments: updatedAssessments,
-                version: nextVersion,
-              }
-            : prev,
+          prev ? { ...prev, assessments: updatedAssessments, version: nextVersion } : prev,
         );
         toast.success("Questions saved");
         return;
       }
-      const updated = await apiFetch<SpreadsheetDetail>(`/spreadsheets/${currentOrg.slug}/${sheet.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          assessments: updatedAssessments,
-          expectedVersion: sheet.version,
-        }),
-      });
+      const updated = await apiFetch<SpreadsheetDetail>(
+        `/spreadsheets/${orgSlug}/${sheet.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            assessments: updatedAssessments,
+            expectedVersion: sheet.version,
+          }),
+        },
+      );
       setSheet((prev) =>
-        prev
-          ? {
-              ...prev,
-              assessments: updatedAssessments,
-              version: updated.version,
-            }
-          : prev,
+        prev ? { ...prev, assessments: updatedAssessments, version: updated.version } : prev,
       );
       toast.success("Questions saved");
     } catch {
-      /* handled by toast */
-      fetchSheet();
+      triggerRefresh();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleStatusChange(nextStatus: SpreadsheetStatus) {
+    if (!orgSlug || !sheet) return;
+    setUpdatingStatus(true);
+    try {
+      await apiFetch(`/spreadsheets/${orgSlug}/${sheet.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setSheet((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+      toast.success(`Status updated to ${nextStatus}`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update status"));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }
+
+  async function handleSyncRoster() {
+    if (!orgSlug || !sheet || typeof sheet.version !== "number") {
+      toast.error("Spreadsheet version missing. Refreshing...");
+      triggerRefresh();
+      return;
+    }
+    setSyncingRoster(true);
+    try {
+      const merged = await apiFetch<SpreadsheetDetail>(
+        `/spreadsheets/${orgSlug}/${sheet.id}/merge`,
+        {
+          method: "POST",
+          body: JSON.stringify({ expectedVersion: sheet.version }),
+        },
+      );
+      setSheet(merged);
+      toast.success("Synchronized with current class roster");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to synchronize students"));
+    } finally {
+      setSyncingRoster(false);
     }
   }
 
@@ -246,14 +359,20 @@ export default function SpreadsheetAssessmentsPage() {
   }
 
   async function saveQuestionForm() {
-    if (!questionForm.text.trim()) { toast.error("Question text is required"); return; }
+    if (!questionForm.text.trim()) {
+      toast.error("Question text is required");
+      return;
+    }
     const newQuestion: SpreadsheetQuestion = {
       text: questionForm.text.trim(),
       options: questionForm.options.trim()
-        ? questionForm.options.split("\n").map(s => s.trim()).filter(Boolean)
+        ? questionForm.options
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
         : undefined,
       correctAnswer: questionForm.correctAnswer.trim() || undefined,
-      score: questionForm.score ? parseInt(questionForm.score) : undefined,
+      score: questionForm.score ? parseInt(questionForm.score, 10) : undefined,
     };
     const updated = [...questions];
     if (editingQuestionIdx !== null) {
@@ -277,12 +396,20 @@ export default function SpreadsheetAssessmentsPage() {
       try {
         const json = JSON.parse(ev.target?.result as string);
         const imported = Array.isArray(json) ? json : json.questions;
-        if (!Array.isArray(imported) || imported.length === 0) { toast.error("No questions found in file"); return; }
+        if (!Array.isArray(imported) || imported.length === 0) {
+          toast.error("No questions found in file");
+          return;
+        }
         const valid = imported.filter((q: SpreadsheetQuestion) => q.text?.trim());
-        if (valid.length === 0) { toast.error("No valid questions found"); return; }
+        if (valid.length === 0) {
+          toast.error("No valid questions found");
+          return;
+        }
         await saveQuestions([...questions, ...valid]);
         toast.success(`${valid.length} questions imported`);
-      } catch { toast.error("Invalid JSON file"); }
+      } catch {
+        toast.error("Invalid JSON file");
+      }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -299,26 +426,25 @@ export default function SpreadsheetAssessmentsPage() {
     URL.revokeObjectURL(url);
   }
 
-  const sheetsHref = currentOrg?.slug
-    ? `/dashboard/school/${currentOrg.slug}/spreadsheets`
+  const sheetsHref = orgSlug
+    ? `/dashboard/school/${orgSlug}/spreadsheets`
     : "/dashboard";
 
   /* ── Loading ── */
   if (isLoading) {
     return (
-      <div className="-mx-4 -mt-4 space-y-4 bg-slate-50 px-4 pt-5 pb-10 md:mx-0 md:mt-0 md:bg-transparent md:px-0 md:pt-0">
+      <div className="-mx-4 -mt-4 space-y-4 bg-slate-50 px-4 pb-10 pt-5 md:mx-0 md:mt-0 md:bg-transparent md:px-0 md:pt-0">
         <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-44" />
             <Skeleton className="h-4 w-56" />
           </div>
-          <Skeleton className="h-12 w-12 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
         </div>
-        <Skeleton className="h-16 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-full rounded-2xl" />
         <Skeleton className="h-11 w-full rounded-2xl" />
-        <Skeleton className="h-11 w-full rounded-2xl" />
-        {[...Array(3)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-20 w-full rounded-2xl" />
         ))}
       </div>
@@ -331,10 +457,16 @@ export default function SpreadsheetAssessmentsPage() {
       <div className="space-y-4">
         <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-          <FileText className="mb-4 h-10 w-10 text-rose-300" />
-          <h2 className="text-lg font-bold text-slate-800">Unable to Load</h2>
+          <FileText className="mb-4 h-10 w-10 text-rose-300" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-[#0B1220]">Unable to Load</h2>
           <p className="mt-2 text-sm text-slate-500">{loadError}</p>
-          <button onClick={() => void fetchSheet()} className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]">Try Again</button>
+          <button
+            type="button"
+            onClick={triggerRefresh}
+            className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -345,126 +477,204 @@ export default function SpreadsheetAssessmentsPage() {
       <div className="space-y-4">
         <BackButton label="Back to Spreadsheets" href={sheetsHref} className="hidden md:inline-flex" />
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-          <FileText className="mb-4 h-10 w-10 text-blue-300" />
-          <h2 className="text-lg font-bold text-slate-800">Spreadsheet Not Found</h2>
+          <FileText className="mb-4 h-10 w-10 text-blue-300" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-[#0B1220]">Spreadsheet Not Found</h2>
           <p className="mt-2 text-sm text-slate-500">The requested gradebook does not exist.</p>
-          <button onClick={() => router.push(sheetsHref)} className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]">Back to Spreadsheets</button>
+          <button
+            type="button"
+            onClick={() => router.push(sheetsHref)}
+            className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
+          >
+            Back to Spreadsheets
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    /* Bleed edge-to-edge on mobile, matching the layout's p-4 offset */
     <div className="-mx-4 -mt-4 flex flex-col bg-slate-50 md:mx-0 md:mt-0 md:bg-transparent">
-      <div className="px-4 pt-5 pb-10 md:px-0 md:pt-0">
+      <div className="px-4 pb-10 pt-5 md:mx-auto md:w-full md:max-w-3xl md:px-0 md:pt-0">
         <BackButton
           label="Back to Spreadsheets"
           href={sheetsHref}
           className="mb-4 hidden md:inline-flex"
         />
 
-        {/* ── Context: which sheet this is (the top bar carries "Subject · Class" on phones) ── */}
+        {/* Context row (mobile top bar carries "Subject · Class") */}
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="hidden truncate text-2xl font-bold text-slate-900 md:block">{spreadsheetLabel}</h1>
+            <h1 className="hidden truncate text-2xl font-bold tracking-tight text-[#0B1220] md:block">
+              {spreadsheetLabel}
+            </h1>
             <p className="hidden truncate text-sm text-slate-600 md:mt-1 md:block">
-              <span className="font-semibold text-slate-900">{subjectName}</span>
+              <span className="font-semibold text-[#0B1220]">{subjectName}</span>
               <span className="mx-1.5 text-slate-300">·</span>
-              <span className="font-semibold text-slate-900">{className}</span>
+              <span className="font-semibold text-[#0B1220]">{className}</span>
+              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="tabular-nums">
+                {assessmentCount} {assessmentCount === 1 ? "assessment" : "assessments"}
+              </span>
             </p>
             <p className="text-sm text-slate-600 md:hidden">
-              {displayAssessments.length} {displayAssessments.length === 1 ? "assessment" : "assessments"} · tap one to enter scores
+              {assessmentCount} {assessmentCount === 1 ? "assessment" : "assessments"} · tap one to enter scores
             </p>
           </div>
           <StatusDot status={sheet.status} />
         </div>
 
-        {/* ── Tab switcher ── */}
+        {/* Tab switcher */}
         <div role="tablist" aria-label="Sheet sections" className="mb-4 flex rounded-2xl bg-slate-200/60 p-1">
           <button
             role="tab"
+            type="button"
             aria-selected={activeTab === "assessments"}
             onClick={() => setActiveTab("assessments")}
             className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors motion-reduce:transition-none",
               activeTab === "assessments"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900",
+                ? "bg-white text-[#0B1220] shadow-xs"
+                : "text-slate-600 hover:text-[#0B1220]",
             )}
           >
-            <FileText className="h-4 w-4" />
+            <FileText className="h-4 w-4" aria-hidden="true" />
             Assessments
           </button>
           <button
             role="tab"
+            type="button"
             aria-selected={activeTab === "questions"}
             onClick={() => setActiveTab("questions")}
             className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors motion-reduce:transition-none",
               activeTab === "questions"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900",
+                ? "bg-white text-[#0B1220] shadow-xs"
+                : "text-slate-600 hover:text-[#0B1220]",
             )}
           >
-            <HelpCircle className="h-4 w-4" />
+            <HelpCircle className="h-4 w-4" aria-hidden="true" />
             Questions
           </button>
         </div>
 
-        {/* ── Assessments / Spreadsheet tab ── */}
+        {/* Assessments tab */}
         {activeTab === "assessments" && (
-          isRelational && currentOrg ? (
-            <RelationalSpreadsheetWorkspace
-              orgSlug={currentOrg.slug}
-              sheet={sheet}
-              canEdit={canEdit}
-              isPrivileged={isPrivileged}
-              onRefresh={fetchSheet}
-              onSheetChange={(next) => setSheet(next)}
-            />
-          ) : (
-            <>
-              {/* Search */}
-              <div className="relative mb-4">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  placeholder="Search assessment"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 shadow-sm outline-none focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 transition"
-                />
-              </div>
+          <>
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Search assessment"
+                aria-label="Search assessment"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-800 shadow-2xs outline-none transition placeholder:text-slate-400 focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 md:text-sm"
+              />
+            </div>
 
-              {/* Assessment list */}
-              {filteredAssessments.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
-                  {displayAssessments.length === 0
+            {isRelational ? (
+              filteredCategories.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+                  {categories.length === 0
                     ? "No assessments defined for this spreadsheet."
                     : "No assessments match your search."}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredAssessments.map((assessment) => (
+                  {filteredCategories.map((category) => {
+                    const subs = groupedSubs.get(category.id) ?? [];
+                    const hasSubs = hasTeacherSubAssessments(category, subs);
+                    const singleSub = !hasSubs && subs.length === 1 ? subs[0] : null;
+                    const singleEntered = singleSub
+                      ? countEnteredScoresForColumn(sheet.data, singleSub.originalIndex)
+                      : 0;
+
+                    const targetHref = (() => {
+                      if (!orgSlug) return "/dashboard";
+                      if (hasSubs) {
+                        return `/dashboard/school/${orgSlug}/spreadsheets/${sheetId}/category/${encodeURIComponent(category.id)}`;
+                      }
+                      if (singleSub?.assessment.id) {
+                        return `/dashboard/school/${orgSlug}/spreadsheets/${sheetId}/assessment/${encodeURIComponent(singleSub.assessment.id)}`;
+                      }
+                      return `/dashboard/school/${orgSlug}/spreadsheets/${sheetId}/assessment/${encodeURIComponent(buildCategoryEntryParam(category.id))}`;
+                    })();
+
+                    const subline = hasSubs
+                      ? `${subs.length} ${subs.length === 1 ? "sub-assessment" : "sub-assessments"} · ${className} · ${subjectName}`
+                      : singleEntered > 0 && totalLearners > 0
+                        ? `${singleEntered}/${totalLearners} entered · ${className} · ${subjectName}`
+                        : `${className} · ${subjectName}`;
+
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => router.push(targetHref)}
+                        className="group flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-2xs transition-colors hover:border-[#1447E6]/35 hover:bg-slate-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] motion-reduce:transition-none"
+                      >
+                        <AssessmentIcon name={category.name} />
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-bold text-[#0B1220] group-hover:text-[#1447E6]">
+                            {category.name}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500 tabular-nums">
+                            {subline}
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 rounded-full bg-[#EEF0FF] px-3 py-1 text-xs font-bold tabular-nums text-[#1447E6] ring-1 ring-[#1447E6]/15">
+                          Max {category.maxMarks}
+                        </span>
+
+                        <ChevronRight
+                          className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#1447E6] motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            ) : filteredLegacyAssessments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+                {displayAssessments.length === 0
+                  ? "No assessments defined for this spreadsheet."
+                  : "No assessments match your search."}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredLegacyAssessments.map((assessment) => {
+                  const entered = countEnteredScoresForColumn(sheet.data, assessment.originalIndex);
+                  const subline =
+                    entered > 0 && totalLearners > 0
+                      ? `${entered}/${totalLearners} entered · ${className} · ${subjectName}`
+                      : `${className} · ${subjectName}`;
+
+                  return (
                     <button
                       key={`${assessment.originalIndex}-${assessment.name}`}
                       type="button"
                       onClick={() =>
                         router.push(
-                          `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheetId}/assessment/${assessment.originalIndex}`,
+                          `/dashboard/school/${orgSlug}/spreadsheets/${sheetId}/assessment/${assessment.originalIndex}`,
                         )
                       }
-                      className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                      className="group flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-2xs transition-colors hover:border-[#1447E6]/35 hover:bg-slate-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] motion-reduce:transition-none"
                     >
                       <AssessmentIcon name={assessment.name} />
 
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-[#0B1220] group-hover:text-[#1447E6]">
+                        <p className="truncate text-[15px] font-bold text-[#0B1220] group-hover:text-[#1447E6]">
                           {assessment.name}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {className} · {subjectName}
+                        <p className="mt-0.5 truncate text-xs text-slate-500 tabular-nums">
+                          {subline}
                         </p>
                       </div>
 
@@ -474,90 +684,175 @@ export default function SpreadsheetAssessmentsPage() {
                         </span>
                       )}
 
-                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#1447E6]" />
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#1447E6] motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+                        aria-hidden="true"
+                      />
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add sub-assessment action for non-locked relational categories */}
+            {canManageSubAssessments && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setSubModal({ mode: "add" })}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#1447E6]/35 bg-white px-4 text-sm font-semibold text-[#1447E6] transition-colors hover:border-[#1447E6] hover:bg-[#EEF0FF]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] motion-reduce:transition-none"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Add sub-assessment
+                </button>
+              </div>
+            )}
+
+            {/* Collapsed sheet & roster controls (progressive disclosure via native details) */}
+            {(canEdit || isPrivileged) && (
+              <details className="group mt-4 rounded-2xl border border-slate-200 bg-white">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left marker:hidden [&::-webkit-details-marker]:hidden">
+                  <span>
+                    <span className="block text-sm font-semibold text-[#0B1220]">
+                      Sheet &amp; roster controls
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      Sync class list{isPrivileged ? " or change sheet status" : ""}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                    aria-hidden="true"
+                  />
+                </summary>
+                <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
+                  {isPrivileged && (
+                    <div>
+                      <Label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Sheet status
+                      </Label>
+                      <Select
+                        value={sheet.status}
+                        disabled={updatingStatus}
+                        onValueChange={(val) => void handleStatusChange(val as SpreadsheetStatus)}
+                      >
+                        <SelectTrigger className="min-h-11 w-full rounded-xl border-slate-200 bg-white text-sm text-[#0B1220]">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSyncRoster()}
+                      disabled={syncingRoster}
+                      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#1447E6]/25 bg-white px-4 text-sm font-semibold text-[#1447E6] transition-colors hover:bg-[#EEF0FF]/60 disabled:opacity-60"
+                    >
+                      {syncingRoster ? (
+                        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                      )}
+                      Sync with class list
+                    </button>
+                  )}
                 </div>
-              )}
-            </>
-          )
+              </details>
+            )}
+          </>
         )}
 
-        {/* ── Questions tab ── */}
+        {/* Questions tab */}
         {activeTab === "questions" && (
           <>
             {rawAssessments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
-                <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-                No assessments defined. Create assessments first.
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+                <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" aria-hidden="true" />
+                {isRelational
+                  ? "Add a sub-assessment or record scores first to attach questions."
+                  : "No assessments defined. Create assessments first."}
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Assessment picker */}
                 <div>
                   <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Assessment
                   </Label>
                   <Select
-                    value={String(selectedAssessmentIdx)}
-                    onValueChange={(v) => setSelectedAssessmentIdx(parseInt(v as string))}
+                    value={String(safeSelectedQuestionIdx)}
+                    onValueChange={(v) => setSelectedAssessmentIdx(parseInt(String(v), 10))}
                   >
                     <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {rawAssessments.map((a, i) => (
-                        <SelectItem key={i} value={String(i)}>
-                          {a.name} ({a.total ?? "?"} marks)
+                        <SelectItem key={a.id || i} value={String(i)}>
+                          {a.name} ({a.maxObtainableScore ?? a.total ?? "?"} marks)
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={openAddQuestion}
-                    className="flex min-h-11 items-center gap-1.5 rounded-xl bg-[#1447E6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0F36B8]"
+                    className="flex min-h-11 items-center gap-1.5 rounded-xl bg-[#1447E6] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
                   >
-                    <Plus className="h-4 w-4" /> Add Question
+                    <Plus className="h-4 w-4" aria-hidden="true" /> Add Question
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
                   >
-                    <Upload className="h-4 w-4" /> Import
+                    <Upload className="h-4 w-4" aria-hidden="true" /> Import
                   </button>
-                  <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
                   {questions.length > 0 && (
                     <button
                       type="button"
                       onClick={exportQuestions}
-                      className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
                     >
-                      <Download className="h-4 w-4" /> Export
+                      <Download className="h-4 w-4" aria-hidden="true" /> Export
                     </button>
                   )}
-                  {saving && <Loader2 className="h-5 w-5 animate-spin self-center text-[#1447E6]" />}
+                  {saving && (
+                    <Loader2
+                      className="h-5 w-5 animate-spin self-center text-[#1447E6] motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  )}
                 </div>
 
-                {/* Questions list */}
                 {questions.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500 shadow-sm">
-                    <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+                    <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-300" aria-hidden="true" />
                     No questions yet. Add questions manually or import from JSON.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {questions.map((q, idx) => (
-                      <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-[#0B1220]">
-                              <span className="text-[#1447E6] mr-2">Q{idx + 1}.</span>
+                              <span className="mr-2 text-[#1447E6]">Q{idx + 1}.</span>
                               {q.text}
                             </p>
                             {Array.isArray(q.options) && q.options.length > 0 && (
@@ -568,11 +863,13 @@ export default function SpreadsheetAssessmentsPage() {
                                     className={cn(
                                       "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs",
                                       opt === q.correctAnswer
-                                        ? "bg-emerald-50 text-emerald-700 font-medium"
+                                        ? "bg-emerald-50 font-medium text-emerald-700"
                                         : "bg-slate-50 text-slate-600",
                                     )}
                                   >
-                                    {opt === q.correctAnswer && <Check className="h-3 w-3 text-emerald-600" />}
+                                    {opt === q.correctAnswer && (
+                                      <Check className="h-3 w-3 text-emerald-600" aria-hidden="true" />
+                                    )}
                                     {opt}
                                   </div>
                                 ))}
@@ -580,7 +877,12 @@ export default function SpreadsheetAssessmentsPage() {
                             )}
                             <div className="mt-2 flex gap-3 text-xs text-slate-500">
                               {q.correctAnswer && (
-                                <span>Answer: <span className="font-semibold text-emerald-700">{q.correctAnswer}</span></span>
+                                <span>
+                                  Answer:{" "}
+                                  <span className="font-semibold text-emerald-700">
+                                    {q.correctAnswer}
+                                  </span>
+                                </span>
                               )}
                               {q.score && <span className="tabular-nums">Marks: {q.score}</span>}
                             </div>
@@ -592,15 +894,15 @@ export default function SpreadsheetAssessmentsPage() {
                               aria-label={`Edit question ${idx + 1}`}
                               className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 md:pointer-fine:h-8 md:pointer-fine:w-8"
                             >
-                              <Edit3 className="h-4 w-4" />
+                              <Edit3 className="h-4 w-4" aria-hidden="true" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeleteQuestionIdx(idx)}
                               aria-label={`Delete question ${idx + 1}`}
-                              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 md:pointer-fine:h-8 md:pointer-fine:w-8"
+                              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 md:pointer-fine:h-8 md:pointer-fine:w-8"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           </div>
                         </div>
@@ -614,13 +916,34 @@ export default function SpreadsheetAssessmentsPage() {
         )}
       </div>
 
-      {/* ── Add / Edit Question dialog ── */}
+      {/* Add sub-assessment dialog */}
+      {orgSlug && isRelational && (
+        <SubAssessmentDialog
+          open={Boolean(subModal)}
+          modal={subModal}
+          orgSlug={orgSlug}
+          sheetId={sheetId}
+          categories={categories}
+          subCountByCategory={subCountByCategory}
+          onOpenChange={(open) => {
+            if (!open) setSubModal(null);
+          }}
+          onSaved={({ categoryId }) => {
+            router.push(
+              `/dashboard/school/${orgSlug}/spreadsheets/${sheetId}/category/${encodeURIComponent(categoryId)}`,
+            );
+          }}
+        />
+      )}
+
+      {/* Add / Edit Question dialog */}
       <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
         <DialogContent className="sm:max-w-[512px]">
           <DialogHeader>
             <DialogTitle>{editingQuestionIdx !== null ? "Edit" : "Add"} Question</DialogTitle>
             <DialogDescription>
-              {selectedAssessment?.name} &mdash; {selectedAssessment?.total ?? "?"} marks max
+              {selectedAssessment?.name} &mdash;{" "}
+              {selectedAssessment?.maxObtainableScore ?? selectedAssessment?.total ?? "?"} marks max
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -629,7 +952,7 @@ export default function SpreadsheetAssessmentsPage() {
               <Textarea
                 placeholder="Enter the question..."
                 value={questionForm.text}
-                onChange={e => setQuestionForm(p => ({ ...p, text: e.target.value }))}
+                onChange={(e) => setQuestionForm((p) => ({ ...p, text: e.target.value }))}
                 className="mt-1"
                 rows={3}
               />
@@ -639,7 +962,7 @@ export default function SpreadsheetAssessmentsPage() {
               <Textarea
                 placeholder={"Option A\nOption B\nOption C\nOption D"}
                 value={questionForm.options}
-                onChange={e => setQuestionForm(p => ({ ...p, options: e.target.value }))}
+                onChange={(e) => setQuestionForm((p) => ({ ...p, options: e.target.value }))}
                 className="mt-1"
                 rows={4}
               />
@@ -650,7 +973,7 @@ export default function SpreadsheetAssessmentsPage() {
                 <Input
                   placeholder="e.g. Option A"
                   value={questionForm.correctAnswer}
-                  onChange={e => setQuestionForm(p => ({ ...p, correctAnswer: e.target.value }))}
+                  onChange={(e) => setQuestionForm((p) => ({ ...p, correctAnswer: e.target.value }))}
                   className="mt-1"
                 />
               </div>
@@ -660,23 +983,29 @@ export default function SpreadsheetAssessmentsPage() {
                   type="number"
                   placeholder="1"
                   value={questionForm.score}
-                  onChange={e => setQuestionForm(p => ({ ...p, score: e.target.value }))}
+                  onChange={(e) => setQuestionForm((p) => ({ ...p, score: e.target.value }))}
                   className="mt-1"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowQuestionDialog(false)}>Cancel</Button>
-            <Button className="bg-[#1447E6] hover:bg-[#0F36B8] text-white" onClick={saveQuestionForm} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            <Button variant="outline" onClick={() => setShowQuestionDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#1447E6] text-white hover:bg-[#0F36B8]"
+              onClick={() => void saveQuestionForm()}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />}
               {editingQuestionIdx !== null ? "Update" : "Add"} Question
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Question confirmation ── */}
+      {/* Delete Question confirmation */}
       <AlertDialog
         open={deleteQuestionIdx !== null}
         onOpenChange={(open) => {
@@ -687,13 +1016,14 @@ export default function SpreadsheetAssessmentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Question</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove question {deleteQuestionIdx !== null ? deleteQuestionIdx + 1 : ""} from {selectedAssessment?.name || "this assessment"}? This action cannot be undone.
+              Remove question {deleteQuestionIdx !== null ? deleteQuestionIdx + 1 : ""} from{" "}
+              {selectedAssessment?.name || "this assessment"}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-rose-600 text-white hover:bg-rose-700"
               onClick={async () => {
                 if (deleteQuestionIdx !== null) {
                   await deleteQuestion(deleteQuestionIdx);

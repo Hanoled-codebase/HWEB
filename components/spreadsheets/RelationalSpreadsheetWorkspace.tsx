@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Download,
   ExternalLink,
   Keyboard,
   Lock,
@@ -56,6 +57,15 @@ import {
   type SpreadsheetRow,
   type SpreadsheetStatus,
 } from "@/lib/spreadsheets";
+import {
+  buildSpreadsheetDraftKey,
+  clearSpreadsheetDraft,
+  downloadSpreadsheetBackupCsv,
+  extractDirtyRelationalDraft,
+  loadSpreadsheetDraft,
+  mergeDraftIntoSpreadsheetRows,
+  saveSpreadsheetDraft,
+} from "@/lib/spreadsheet-drafts";
 import { cn } from "@/lib/utils";
 
 type RelationalSpreadsheetWorkspaceProps = {
@@ -118,6 +128,11 @@ export function RelationalSpreadsheetWorkspace({
     [sheet.data],
   );
 
+  const draftKey = useMemo(
+    () => buildSpreadsheetDraftKey(orgSlug, sheet.id, "relational"),
+    [orgSlug, sheet.id],
+  );
+
   const [draftState, setDraftState] = useState<{
     syncKey: string;
     rows: SpreadsheetRow[];
@@ -130,6 +145,10 @@ export function RelationalSpreadsheetWorkspace({
     touched: {},
   }));
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorIsConflict, setSaveErrorIsConflict] = useState(false);
+  const [restoredDraftCount, setRestoredDraftCount] = useState(0);
+  const hydratedDraftSyncKeyRef = useRef<string | null>(null);
 
   const localRows = draftState.syncKey === sheetSyncKey ? draftState.rows : baselineRows;
   const cellErrors = useMemo(
@@ -319,6 +338,42 @@ export function RelationalSpreadsheetWorkspace({
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasUnsavedScores]);
 
+  // Restore any locally saved unsaved scores once per sheet sync key (SSR-safe).
+  useEffect(() => {
+    if (hydratedDraftSyncKeyRef.current === sheetSyncKey) return;
+    let cancelled = false;
+    const savedDraft = loadSpreadsheetDraft(draftKey);
+    hydratedDraftSyncKeyRef.current = sheetSyncKey;
+    if (!savedDraft) return;
+    const merged = mergeDraftIntoSpreadsheetRows(
+      baselineRows,
+      assessments,
+      savedDraft.valuesByStudent,
+    );
+    if (merged.restoredCount > 0) {
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setDraftState({
+          syncKey: sheetSyncKey,
+          rows: merged.rows,
+          errors: {},
+          touched: {},
+        });
+        setRestoredDraftCount(merged.restoredCount);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [assessments, baselineRows, draftKey, sheetSyncKey]);
+
+  // Auto-persist dirty edits locally so failed saves or reloads never lose typed scores.
+  useEffect(() => {
+    if (hydratedDraftSyncKeyRef.current !== sheetSyncKey) return;
+    const dirty = extractDirtyRelationalDraft(savedRowsByStudentId, localRows, assessments);
+    saveSpreadsheetDraft(draftKey, dirty);
+  }, [assessments, draftKey, localRows, savedRowsByStudentId, sheetSyncKey]);
+
   const handleCellChange = (
     rowIndex: number,
     colIndex: number,
@@ -447,10 +502,21 @@ export function RelationalSpreadsheetWorkspace({
       toast.success(
         `Saved ${changedScoreEntries.length} ${changedScoreEntries.length === 1 ? "score" : "scores"}`,
       );
+      setSaveError(null);
+      setSaveErrorIsConflict(false);
+      setRestoredDraftCount(0);
+      clearSpreadsheetDraft(draftKey);
       await onRefresh();
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to save scores"));
-      await onRefresh();
+      const message = getErrorMessage(error, "Failed to save scores");
+      const status =
+        typeof error === "object" && error !== null && "status" in error
+          ? Number((error as { status?: number }).status)
+          : undefined;
+      setSaveError(message);
+      setSaveErrorIsConflict(status === 409);
+      announceError(`Could not save scores: ${message}. Your entries are kept locally.`);
+      toast.error(`${message} — your scores are kept safely on this device.`);
     } finally {
       setSavingScores(false);
     }
@@ -602,7 +668,7 @@ export function RelationalSpreadsheetWorkspace({
       toast.success("Synchronized with current class roster");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to synchronize roster"));
-      await onRefresh();
+      if (!hasUnsavedScores) await onRefresh();
     } finally {
       setSyncingRoster(false);
     }
@@ -889,6 +955,106 @@ export function RelationalSpreadsheetWorkspace({
           </div>
         )}
       </section>
+
+      {/* ── Unsaved Local Backup / Save Error Recovery Banners ── */}
+      {saveError && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-xs text-rose-950"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-rose-950">
+                Could not save scores to server: {saveError}
+              </p>
+              <p className="mt-0.5 text-rose-900">
+                Your entered scores are preserved locally on this device. Retry saving or download a CSV backup.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={savingScores}
+                  onClick={() => void handleSaveScores()}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#1447E6] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-[#0F36B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] disabled:opacity-60 md:pointer-fine:min-h-8"
+                >
+                  {savingScores ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />}
+                  Retry save
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadSpreadsheetBackupCsv(
+                      `${sheet.subject?.name || "spreadsheet"}-${sheet.classLevel?.name || "scores"}`,
+                      assessments,
+                      localRows,
+                    )
+                  }
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3.5 text-xs font-semibold text-rose-900 transition-colors hover:bg-rose-100/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  Download CSV backup
+                </button>
+                {saveErrorIsConflict && (
+                  <button
+                    type="button"
+                    onClick={() => void onRefresh()}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    Reload latest
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!saveError && restoredDraftCount > 0 && hasUnsavedScores && (
+        <div
+          role="status"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <p className="font-medium tabular-nums">
+              Restored {restoredDraftCount} unsaved {restoredDraftCount === 1 ? "score" : "scores"} from this device. Click Save Scores to sync.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadSpreadsheetBackupCsv(
+                    `${sheet.subject?.name || "spreadsheet"}-${sheet.classLevel?.name || "scores"}`,
+                    assessments,
+                    localRows,
+                  )
+                }
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Download CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearSpreadsheetDraft(draftKey);
+                  setDraftState({
+                    syncKey: sheetSyncKey,
+                    rows: baselineRows,
+                    errors: {},
+                    touched: {},
+                  });
+                  setRestoredDraftCount(0);
+                }}
+                className="inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-amber-900 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
+              >
+                Discard draft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Spreadsheet Score Grid Toolbar ── */}
       <section className="rounded-2xl border border-slate-200 bg-white">
