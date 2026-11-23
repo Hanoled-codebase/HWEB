@@ -187,14 +187,18 @@ test.describe("a subject teacher's gradebook", () => {
     await expect(page).toHaveURL(/\/welcome$/);
     await page.goto("/dashboard/school/greenfield/results");
 
-    // Verify organization brand color (#0F766E) is applied via SchoolThemeProvider CSS variable.
-    const primaryVar = await page.evaluate(() =>
-      getComputedStyle(document.documentElement).getPropertyValue("--primary").trim(),
-    );
-    expect(primaryVar.toUpperCase()).toBe("#0F766E");
-
     // Level 1: Admin sees Result Editions Catalog first and selects "First Term Result".
     await expect(page.getByRole("heading", { name: "Academic Results Catalog" })).toBeVisible();
+
+    // Verify organization brand color (#0F766E) is applied via SchoolThemeProvider CSS variable.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          getComputedStyle(document.documentElement).getPropertyValue("--primary").trim().toUpperCase(),
+        ),
+      )
+      .toBe("#0F766E");
+
     await page.getByRole("button", { name: "Open Overview" }).first().click();
 
     // Level 2: General Results Overview opens on "All Students (2)" tab with KPI cards and multi-student table.
