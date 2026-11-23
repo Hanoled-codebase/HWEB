@@ -124,6 +124,11 @@ describe("theme-colors", () => {
       expect(mediumTheme.foreground).toBe(DEFAULT_INK);
       expect(mediumTheme.secondary).toBeDefined();
       expect(mediumTheme.secondaryForeground).toBe("#059669");
+      expect(getContrastRatio(mediumTheme.primaryText, PURE_WHITE)).toBeGreaterThanOrEqual(4.5);
+
+      // Light yellow primary still gets a WCAG AA legible primaryText on white surfaces
+      const lightYellowTheme = deriveTheme("#EAB308");
+      expect(getContrastRatio(lightYellowTheme.primaryText, PURE_WHITE)).toBeGreaterThanOrEqual(4.5);
     });
   });
 
@@ -133,6 +138,7 @@ describe("theme-colors", () => {
       const vars = generateTenantCssVariables(theme);
       expect(vars["--primary"]).toBe("#1447E6");
       expect(vars["--primary-foreground"]).toBe(PURE_WHITE);
+      expect(vars["--primary-text"]).toBe("#1447E6");
       expect(vars["--secondary"]).toBe("#F59E0B");
       expect(vars["--ring"]).toBe("#1447E6");
       expect(vars["--color-blue-600"]).toBe("#1447E6");

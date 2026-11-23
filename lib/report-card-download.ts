@@ -185,3 +185,40 @@ export async function downloadReportCardBundle(options: BundleDownload): Promise
 export async function openReportCardBundle(options: BundleDownload): Promise<boolean> {
   return openPdfInNewTab(bundleUrl(options), "Failed to generate report cards bundle");
 }
+
+export type BroadsheetDownload = {
+  orgSlug: string;
+  classLevelId?: string;
+  className?: string;
+  term: string;
+  academicYear: string;
+  format: "xlsx" | "pdf";
+};
+
+/** Downloads either a class broadsheet or full school broadsheet in Excel or PDF format. */
+export async function downloadBroadsheetExport({
+  orgSlug,
+  classLevelId,
+  className,
+  term,
+  academicYear,
+  format,
+}: BroadsheetDownload): Promise<boolean> {
+  const isSpecificClass = Boolean(classLevelId && classLevelId !== "all");
+  const url = isSpecificClass
+    ? `${HSMS_BASE}/export/${orgSlug}/broadsheet/${encodeURIComponent(classLevelId as string)}?term=${encodeURIComponent(
+        term,
+      )}&academicYear=${encodeURIComponent(academicYear)}&format=${format}`
+    : `${HSMS_BASE}/export/${orgSlug}/school-broadsheet?term=${encodeURIComponent(
+        term,
+      )}&academicYear=${encodeURIComponent(academicYear)}&format=${format}`;
+
+  const safeClass = (isSpecificClass ? className || "class" : "school").trim().replace(/\s+/g, "_");
+  const safeTerm = term.trim().replace(/\s+/g, "_");
+  const safeYear = academicYear.replace(/[/\\?%*:|"<>]/g, "_");
+  const ext = format === "xlsx" ? "xlsx" : "pdf";
+  const blob = await fetchAuthenticatedPdf(url, "Could not export broadsheet. Please try again.");
+  if (!blob) return false;
+  saveBlob(blob, `Broadsheet_${safeClass}_${safeTerm}_${safeYear}.${ext}`);
+  return true;
+}

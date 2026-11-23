@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, isForbiddenError } from "@/lib/api";
@@ -9,12 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, FileText, BarChart3, Printer } from "lucide-react";
+import { Download, FileText, BarChart3, Printer } from "lucide-react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { downloadReportCardPdf } from "@/lib/report-card-download";
 import ReportCardPrintModal, {
   computeNigerianGrade,
 } from "@/components/results/ReportCardPrintModal";
+import { ResultsBrandHeader } from "@/components/results/ResultsBrandHeader";
+import { ResultEditionsCatalog } from "@/components/results/ResultEditionsCatalog";
+import {
+  formatEditionTitle,
+  type ResultEdition,
+  type ResultStage,
+} from "@/lib/results-overview";
 
 type SubjectResult = {
   spreadsheetId: string;
@@ -43,7 +50,14 @@ type PublishedTermResult = {
 };
 
 type ResultsData = {
-  student: { id: string; firstName: string; lastName: string; admissionNumber?: string; gender?: string; classLevel: { id: string; name: string } | null };
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber?: string;
+    gender?: string;
+    classLevel: { id: string; name: string } | null;
+  };
   subjects: SubjectResult[];
   approvedTemplate?: { id: string; name: string; isApproved: boolean } | null;
   isTemplateApproved?: boolean;
@@ -51,122 +65,207 @@ type ResultsData = {
   termResults?: PublishedTermResult[];
 };
 
+type StudentEditionsResponse = {
+  roleScope: "student";
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber?: string;
+    className?: string | null;
+  };
+  editions: ResultEdition[];
+};
+
 export default function StudentResultsPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { currentOrg } = useOrganization();
   const [data, setData] = useState<ResultsData | null>(null);
+  const [editions, setEditions] = useState<ResultEdition[]>([]);
+  const [editionsLoading, setEditionsLoading] = useState(true);
+  const [hasSelectedEdition, setHasSelectedEdition] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSwitchingStage, setIsSwitchingStage] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
   const [forbidden, setForbidden] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  // Which stored result the PDFs render: mid-term (raw stage %) or end-of-term.
-  const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">("END_OF_TERM");
+  // Active report stage: mid-term (raw stage %) or end-of-term.
+  const [pdfResultType, setPdfResultType] = useState<ResultStage>("END_OF_TERM");
+  const activeStageLabel = pdfResultType === "MID_TERM" ? "mid-term" : "end-of-term";
   // Term/year come from the school's HCORE academic periods — free-text terms
   // silently computed as 0, so typing is no longer offered.
   const [periodOptions, setPeriodOptions] = useState<{ academicYear: string; term: string }[]>([]);
   const [term, setTerm] = useState("First Term");
   const [year, setYear] = useState("2026/2027");
 
-  // Load the school's academic periods and default to the most recent one.
+  // Load the school's academic periods and available student result editions.
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
-    apiFetch<{ success: boolean; data: { academicYear: string; term: string }[] }>(`/result-templates/periods/${slug}`)
-      .then(({ data: periods }) => {
-        if (cancelled || !Array.isArray(periods) || periods.length === 0) return;
-        setPeriodOptions(periods);
-        setYear(periods[0].academicYear);
-        setTerm(periods[0].term);
-      })
-      .catch(() => {
-        // Keep the fallback term/year.
-      });
+    async function loadPeriodsAndEditions() {
+      try {
+        const [periodsResp, editionsResp] = await Promise.all([
+          apiFetch<{ success: boolean; data: { academicYear: string; term: string }[] }>(
+            `/result-templates/periods/${slug}`,
+          ).catch(() => ({ success: false, data: [] })),
+          apiFetch<StudentEditionsResponse>(`/student/${slug}/results/editions`).catch(
+            () => ({ roleScope: "student" as const, editions: [] }),
+          ),
+        ]);
+        if (cancelled) return;
+        const periods = Array.isArray(periodsResp.data) ? periodsResp.data : [];
+        if (periods.length > 0) {
+          setPeriodOptions(periods);
+          setYear(periods[0].academicYear);
+          setTerm(periods[0].term);
+        }
+        const fetchedEditions = Array.isArray(editionsResp?.editions)
+          ? editionsResp.editions
+          : [];
+        setEditions(fetchedEditions);
+        if (fetchedEditions.length > 0) {
+          setYear(fetchedEditions[0].academicYear);
+          setTerm(fetchedEditions[0].academicTerm);
+          setPdfResultType(fetchedEditions[0].resultType);
+        }
+      } finally {
+        if (!cancelled) setEditionsLoading(false);
+      }
+    }
+    void loadPeriodsAndEditions();
+
     return () => {
       cancelled = true;
     };
   }, [slug]);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadResults() {
       try {
         setForbidden(false);
-        // Resolves the caller's own student record server-side from the JWT
-        // (requireStudentAccess) — the org slug in the path is still required
-        // to scope which organization's result data is being requested.
+        if (hasLoadedOnceRef.current) {
+          setIsSwitchingStage(true);
+        } else {
+          setLoading(true);
+        }
         const res = await apiFetch<ResultsData>(
           `/student/${slug}/results?term=${encodeURIComponent(term)}&academicYear=${encodeURIComponent(
             year,
           )}&resultType=${pdfResultType}`,
         );
+        if (cancelled) return;
+        hasLoadedOnceRef.current = true;
         setData(res);
       } catch (error) {
+        if (cancelled) return;
         if (isForbiddenError(error)) setForbidden(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setIsSwitchingStage(false);
+        }
       }
     }
-    loadResults();
+    void loadResults();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, term, year, pdfResultType]);
 
+  // Fallback synthesis when /editions is empty on older mock fixtures but data has subjects
+  const effectiveEditions = useMemo<ResultEdition[]>(() => {
+    if (editions.length > 0) return editions;
+    if (!data || (data.subjects.length === 0 && (data.termResults || []).length === 0)) {
+      return [];
+    }
+    const synthesized: ResultEdition[] = [
+      {
+        key: `${year}|${term}|END_OF_TERM`,
+        academicYear: year,
+        academicTerm: term,
+        resultType: "END_OF_TERM",
+        title: formatEditionTitle(term, "END_OF_TERM"),
+        subjectCount: data.subjects.length,
+        isPublished: true,
+      },
+      {
+        key: `${year}|${term}|MID_TERM`,
+        academicYear: year,
+        academicTerm: term,
+        resultType: "MID_TERM",
+        title: formatEditionTitle(term, "MID_TERM"),
+        subjectCount: data.subjects.length,
+        isPublished: true,
+      },
+    ];
+    return synthesized;
+  }, [editions, data, year, term]);
+
+  const handleSelectEdition = useCallback((edition: ResultEdition) => {
+    setYear(edition.academicYear);
+    setTerm(edition.academicTerm);
+    setPdfResultType(edition.resultType);
+    setHasSelectedEdition(true);
+  }, []);
+
+  if (forbidden) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 md:space-y-6 md:p-6">
+        <DataStateCard
+          variant="forbidden"
+          title="Results unavailable"
+          description="You do not have permission to view academic results for this school."
+        />
+      </div>
+    );
+  }
+
+  // LEVEL 1: Available Result Editions Catalog (Student sees ONLY available result names first)
+  if (!hasSelectedEdition) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-5 md:space-y-6 md:p-6">
+        <ResultsBrandHeader
+          title="Available Academic Results"
+          subtitle="Select an available result below to view your subject breakdown and official report slip."
+        />
+
+        <ResultEditionsCatalog
+          variant="family"
+          editions={effectiveEditions}
+          isLoading={editionsLoading && loading}
+          onSelectEdition={handleSelectEdition}
+          transcriptHref={`/dashboard/school/${slug}/student/results/transcript`}
+          emptyTitle="No academic results available yet"
+          emptyMessage="Your term and mid-term results will appear here once your school publishes them."
+        />
+      </div>
+    );
+  }
+
+  // LEVEL 3: Selected Result Detail & Branded Report Card
+  const currentEditionTitle = formatEditionTitle(term, pdfResultType);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 md:p-6">
-      
-      {/* Header (phones: the top bar names the page and carries the back target) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden md:block">
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-            <Link
-              href={`/dashboard/school/${slug}`}
-              className="hover:text-slate-900 transition-colors flex items-center gap-1"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-slate-900 font-medium">Academic Results</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Report</h1>
-            {data && (
-              data.isTemplateApproved ? (
-                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
-                  ✓ Official & Approved
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold">
-                  Pending Official Approval
-                </Badge>
-              )
-            )}
-          </div>
-        </div>
-
-        {data && data.subjects.length > 0 && (
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="min-h-11 whitespace-nowrap sm:min-h-9"
-              >
-                <Link href={`/dashboard/school/${slug}/student/results/transcript`}>
-                  <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  Transcript
-                </Link>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPrintModal(true)}
-                className="min-h-11 whitespace-nowrap border-blue-200 bg-blue-50 font-semibold text-[#1447E6] hover:bg-blue-100 gap-1.5 sm:min-h-9"
-              >
-                <Printer className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                Print / Preview
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:flex sm:items-center">
+    <div className="mx-auto max-w-5xl space-y-4 md:space-y-6 md:p-6">
+      <ResultsBrandHeader
+        title={currentEditionTitle}
+        subtitle={
+          data?.student
+            ? `${data.student.firstName} ${data.student.lastName}${
+                data.student.classLevel?.name ? ` · ${data.student.classLevel.name}` : ""
+              }`
+            : "Academic Performance Breakdown"
+        }
+        editionLabel={`${term} · ${year}`}
+        backLabel="Available Results"
+        onBack={() => setHasSelectedEdition(false)}
+        stage={pdfResultType}
+        onStageChange={setPdfResultType}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {periodOptions.length > 0 && (
               <select
                 value={`${year}|${term}`}
                 onChange={(e) => {
@@ -176,56 +275,69 @@ export default function StudentResultsPage() {
                     setTerm(t);
                   }
                 }}
-                className="min-h-11 min-w-0 w-full rounded-md border border-input bg-white px-2.5 text-sm font-medium sm:min-h-9 sm:w-auto"
+                className="min-h-11 md:pointer-fine:min-h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 aria-label="Academic period"
               >
-                {periodOptions.length > 0 ? (
-                  periodOptions.map((p) => (
-                    <option key={`${p.academicYear}|${p.term}`} value={`${p.academicYear}|${p.term}`}>
-                      {p.term} — {p.academicYear}
-                    </option>
-                  ))
-                ) : (
-                  <option value={`${year}|${term}`}>
-                    {term} — {year}
+                {periodOptions.map((p) => (
+                  <option
+                    key={`${p.academicYear}|${p.term}`}
+                    value={`${p.academicYear}|${p.term}`}
+                  >
+                    {p.term} — {p.academicYear}
                   </option>
-                )}
+                ))}
               </select>
+            )}
 
-              <select
-                value={pdfResultType}
-                onChange={(e) =>
-                  setPdfResultType(e.target.value === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")
-                }
-                className="min-h-11 rounded-md border border-input bg-white px-2.5 text-sm font-medium sm:min-h-9"
-                aria-label="Report type for PDF download"
-              >
-                <option value="END_OF_TERM">End-of-term</option>
-                <option value="MID_TERM">Mid-term</option>
-              </select>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="min-h-11 whitespace-nowrap rounded-xl md:pointer-fine:min-h-9"
+            >
+              <Link href={`/dashboard/school/${slug}/student/results/transcript`}>
+                <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                Transcript
+              </Link>
+            </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-11 whitespace-nowrap px-3 sm:min-h-9"
-                onClick={() => {
-                  void downloadReportCardPdf({
-                    orgSlug: slug,
-                    studentId: data.student.id,
-                    studentName: `${data.student.firstName} ${data.student.lastName}`,
-                    term,
-                    academicYear: year,
-                    resultType: pdfResultType,
-                  });
-                }}
-              >
-                <Download className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                PDF
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!data || data.subjects.length === 0}
+              onClick={() => setShowPrintModal(true)}
+              className="min-h-11 whitespace-nowrap rounded-xl border-[var(--primary-border)] bg-[var(--primary-light)] font-semibold text-[var(--primary-text)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] gap-1.5 md:pointer-fine:min-h-9"
+            >
+              <Printer className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Print / Preview
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={
+                !data ||
+                (data.subjects.length === 0 && (data.termResults || []).length === 0)
+              }
+              className="min-h-11 whitespace-nowrap rounded-xl px-3 md:pointer-fine:min-h-9"
+              onClick={() => {
+                if (!data) return;
+                void downloadReportCardPdf({
+                  orgSlug: slug,
+                  studentId: data.student.id,
+                  studentName: `${data.student.firstName} ${data.student.lastName}`,
+                  term,
+                  academicYear: year,
+                  resultType: pdfResultType,
+                });
+              }}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              PDF
+            </Button>
           </div>
-        )}
-      </div>
+        }
+      />
 
       {loading ? (
         <div className="space-y-4">
@@ -233,28 +345,72 @@ export default function StudentResultsPage() {
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
-      ) : !data || (data.subjects.length === 0 && (data.termResults || []).length === 0) ? (
+      ) : !data ||
+        (data.subjects.length === 0 && (data.termResults || []).length === 0) ? (
         <Card className="border-dashed border-slate-300">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <FileText className="h-12 w-12 text-slate-300 mb-4" />
-            <p className="font-semibold text-slate-700">No results yet</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-[384px]">
-              Completed assessments and exam scores will appear here once graded.
+            <FileText className="mb-4 h-12 w-12 text-slate-300" aria-hidden="true" />
+            <p className="font-semibold text-slate-700">
+              No {activeStageLabel} results yet
+            </p>
+            <p className="mt-1 max-w-[384px] text-sm text-slate-600">
+              Completed {activeStageLabel} assessments and exam scores will appear
+              here once graded.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {/* Published computed results for the selected term and report type.
-              Only types the school has published ever appear here. */}
+        <div
+          aria-busy={isSwitchingStage}
+          className={
+            isSwitchingStage
+              ? "space-y-4 opacity-60 transition-opacity motion-reduce:transition-none"
+              : "space-y-4 transition-opacity motion-reduce:transition-none"
+          }
+        >
+          {data && (
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs">
+              <span className="font-medium text-slate-600">
+                Report Status:{" "}
+                <strong className="font-semibold text-slate-900">
+                  {currentEditionTitle}
+                </strong>
+              </span>
+              {data.isTemplateApproved ? (
+                <Badge
+                  variant="outline"
+                  className="border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700"
+                >
+                  ✓ Official &amp; Approved
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="border-amber-200 bg-amber-50 text-xs font-bold text-amber-700"
+                >
+                  Pending Official Approval
+                </Badge>
+              )}
+            </div>
+          )}
+
           {(data.termResults || []).length > 0 && (
             <div className="space-y-2">
               {(data.termResults ?? []).map((result) => (
-                <Card key={result.id} className="border-black shadow-sm">
+                <Card
+                  key={result.id}
+                  className="overflow-hidden border-slate-200 shadow-2xs"
+                >
+                  <div
+                    className="h-1 w-full bg-[var(--primary)]"
+                    aria-hidden="true"
+                  />
                   <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div>
                       <p className="text-sm font-bold text-slate-900">
-                        {result.resultType === "MID_TERM" ? "Mid-term result" : "End-of-term result"}
+                        {result.resultType === "MID_TERM"
+                          ? "Mid-term result"
+                          : "End-of-term result"}
                         {result.template?.name ? ` · ${result.template.name}` : ""}
                       </p>
                       <p className="text-xs text-slate-500">
@@ -268,20 +424,26 @@ export default function StudentResultsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       {result.position != null && (
-                        <Badge variant="outline" className="border-slate-200 text-[11px] font-bold">
+                        <Badge
+                          variant="outline"
+                          className="border-slate-200 text-[11px] font-bold"
+                        >
                           #{result.position}
                         </Badge>
                       )}
                       <span className="text-lg font-black tabular-nums text-slate-900">
                         {result.totalScore}
                       </span>
-                      <Badge className="bg-black text-white text-xs font-bold">{result.grade}</Badge>
+                      <Badge className="bg-[var(--primary)] text-xs font-bold text-[var(--primary-foreground)]">
+                        {result.grade}
+                      </Badge>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           )}
+
           {data.subjects.map((subject) => {
             const totals = subject.assessments.reduce(
               (acc, a) => {
@@ -307,12 +469,15 @@ export default function StudentResultsPage() {
                 : null;
 
             return (
-              <Card key={subject.spreadsheetId} className="border-slate-200 shadow-sm">
+              <Card
+                key={subject.spreadsheetId}
+                className="border-slate-200 shadow-2xs"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100">
-                        <BarChart3 className="h-4 w-4 text-blue-600" />
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary-light)] text-[var(--primary-text)]">
+                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
                       </div>
                       <div>
                         <CardTitle className="text-sm capitalize">
@@ -347,7 +512,7 @@ export default function StudentResultsPage() {
                         className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 p-3"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900 truncate">
+                          <p className="truncate text-sm font-medium text-slate-900">
                             {assessment.name}
                           </p>
                           <p className="text-xs text-slate-500 tabular-nums">
@@ -389,10 +554,14 @@ export default function StudentResultsPage() {
           orgLogo={currentOrg?.logo || undefined}
           orgAddress={currentOrg?.address || undefined}
           orgEmail={currentOrg?.email ? `Email: ${currentOrg.email}` : undefined}
+          orgPrimaryColor={currentOrg?.primaryColor}
+          orgSecondaryColor={currentOrg?.secondaryColor}
           student={data.student}
           term={term}
           academicYear={year}
           resultType={pdfResultType}
+          onResultTypeChange={setPdfResultType}
+          isLoadingResults={isSwitchingStage}
           results={data.subjects.map((sub) => {
             const score = Math.round(sub.totalScore || 0);
             const gradeObj = computeNigerianGrade(score);
