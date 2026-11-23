@@ -317,9 +317,6 @@ export function ResultEditionsCatalog({
                           <h3 className="text-base font-bold text-slate-900 group-hover:text-[var(--primary-text)]">
                             {title}
                           </h3>
-                          <p className="mt-0.5 text-xs font-medium text-slate-500">
-                            {edition.academicTerm} · {edition.academicYear}
-                          </p>
                         </div>
 
                         <div className="space-y-1.5 rounded-xl bg-slate-50/90 p-3">
