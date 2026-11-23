@@ -9,6 +9,7 @@ import { MarketingFooter } from "@/components/landing/MarketingFooter";
 import { BrandRibbon } from "@/components/landing/BrandRibbon";
 import { InView } from "@/components/landing/InView";
 import { DrawnCheck, HeroUnderline, RiseWords } from "@/components/landing/motion";
+import { ProductScreenFrame } from "@/components/landing/ProductScreenShowcase";
 import {
   SchoolAdminIllustration,
   AcademicManagementIllustration,
@@ -37,11 +38,13 @@ const platformAreas = [
     desc: "Student profiles, staff records, class setup and role-based access in one place.",
     highlighted: false,
     preview: (
-      <div className="w-full space-y-2">
-        <div className="h-2.5 w-full rounded-full bg-[#1447E6]/15" />
-        <div className="h-2.5 w-3/4 rounded-full bg-[#1447E6]/15" />
-        <div className="h-2.5 w-1/2 rounded-full bg-[#1447E6]/15" />
-      </div>
+      <ProductScreenFrame
+        compact
+        title="School Administration"
+        urlPath="hanoled.com/dashboard/school"
+        imageSrc="/marketing/admin-dashboard.webp"
+        imageAlt="Hanoled School Administration dashboard showing real student and staff metrics"
+      />
     ),
   },
   {
@@ -51,30 +54,29 @@ const platformAreas = [
     desc: "Computer-based testing with instant grading and built-in anti-cheat controls.",
     highlighted: true,
     preview: (
-      <div className="w-full space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold text-white">Q14</span>
-          <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[10px] font-bold text-[#0B1220]">42:15</span>
-        </div>
-        <div className="flex gap-1.5">
-          {["A", "B", "C", "D"].map((k) => (
-            <span key={k} className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${k === "B" ? "bg-white text-[#1447E6]" : "bg-white/20 text-white"}`}>{k}</span>
-          ))}
-        </div>
-      </div>
+      <ProductScreenFrame
+        compact
+        title="HCBT Exam Engine"
+        urlPath="hcbt.hanoled.com/cbt/student"
+        imageSrc="/marketing/hcbt-exam-live.webp"
+        imageAlt="Hanoled HCBT Computer-Based Testing candidate exam interface"
+      />
     ),
   },
   {
     id: "comm",
     href: "/features",
-    title: "Communication Portal",
-    desc: "WhatsApp, email and SMS alerts the moment a result needs a parent's attention.",
+    title: "Results & Parent Portal",
+    desc: "3-level result editions catalog, class overview matrix, and instant parent report cards.",
     highlighted: false,
     preview: (
-      <div className="w-full space-y-2">
-        <div className="ml-auto h-6 w-2/3 rounded-2xl rounded-tr-sm bg-[#1447E6]/15" />
-        <div className="h-6 w-1/2 rounded-2xl rounded-tl-sm bg-[#1447E6]/10" />
-      </div>
+      <ProductScreenFrame
+        compact
+        title="Results Overview"
+        urlPath="hanoled.com/dashboard/results"
+        imageSrc="/marketing/results-overview.webp"
+        imageAlt="Hanoled 3-Level General Results Overview table and KPI summary"
+      />
     ),
   },
 ];
@@ -119,6 +121,9 @@ export default function LandingPage() {
       headline: "Every record, one place",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
       desc: "Student profiles, staff records with TRCN tracking, class & subject setup, role-based access, multi-site support for schools with more than one branch.",
+      screenSrc: "/marketing/admin-dashboard.webp",
+      screenAlt: "Real Hanoled School Administration dashboard",
+      screenUrl: "hanoled.com/dashboard/school",
     },
     {
       id: "academics",
@@ -127,6 +132,10 @@ export default function LandingPage() {
       headline: "Grading that computes itself",
       color: "bg-[#F5A623]/10 text-[#0B1220]",
       desc: "Digital gradebook with configurable CA/exam weightings, scheme of work & lesson notes, homework assignment and digital submission, one-click result publishing to parents.",
+      screenSrc: "/marketing/teacher-score-entry-poster.webp",
+      videoSrc: "/marketing/teacher-score-entry.mp4",
+      screenAlt: "Real Hanoled Teacher Score-Entry and Relational Gradebook recording",
+      screenUrl: "hanoled.com/dashboard/spreadsheets",
     },
     {
       id: "finance",
@@ -135,30 +144,42 @@ export default function LandingPage() {
       headline: "Fees, invoicing & collections in one flow",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
       desc: "Configurable fee structures by category, auto-generated invoicing, Paystack/Monnify online payment collection, a live debt dashboard with top-debtor tracking, and scratch-card result checking (arriving post-launch).",
+      screenSrc: "/marketing/finance-bursary.webp",
+      screenAlt: "Real Hanoled Financial Management and Bursary screen",
+      screenUrl: "hanoled.com/dashboard/bursary",
     },
     {
       id: "comm",
       icon: CommunicationPortalIllustration,
-      title: "Communication Portal",
+      title: "Communication & Parent Results Portal",
       headline: "Parents never find out late",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
-      desc: "WhatsApp, Email, and SMS messaging with templates (arriving post-launch); automatic low-score alerts the moment a student scores below 60% on any assessment.",
+      desc: "Dedicated parent result editions catalog showing available Mid-Term and End-of-Term reports, branded report card slips, and automatic low-score alerts the moment a student scores below 60%.",
+      screenSrc: "/marketing/parent-portal-results.webp",
+      screenAlt: "Real Hanoled Parent Available Results Catalog",
+      screenUrl: "hanoled.com/dashboard/results",
     },
     {
       id: "welfare",
       icon: OperationsWelfareIllustration,
-      title: "Student Welfare & Operations",
-      headline: "Beyond academics",
+      title: "Student Welfare & Results Overview",
+      headline: "Full class visibility at a glance",
       color: "bg-[#0B1220]/5 text-[#0B1220]",
-      desc: "Daily attendance tracking, timetabling, library loan management, hostel room allocation, and school bus route tracking with GPS stop coordinates.",
+      desc: "3-level progressive results overview with class KPIs, subject completion bars, subject performance matrix, daily attendance tracking, timetabling, library loans, and hostel room allocation.",
+      screenSrc: "/marketing/results-overview.webp",
+      screenAlt: "Real Hanoled General Results Overview with All Students table and KPIs",
+      screenUrl: "hanoled.com/dashboard/results",
     },
     {
       id: "admissions",
       icon: AdmissionsPortalIllustration,
-      title: "Admissions Portal",
-      headline: "From application to enrollment",
+      title: "Official Branded Report Cards & Admissions",
+      headline: "From application to official report sheet",
       color: "bg-[#1447E6]/10 text-[#1447E6]",
-      desc: "Public application forms with online fee payment, entrance exam scheduling tied directly into HCBT, and a full pending to enrolled status workflow with automatic admission numbers.",
+      desc: "Print-ready WAEC-grade official report sheets branded with your school crest and colors, plus public application forms with online fee payment and entrance exam scheduling tied directly into HCBT.",
+      screenSrc: "/marketing/report-card-preview.webp",
+      screenAlt: "Real Hanoled Official Report Sheet Preview modal",
+      screenUrl: "hanoled.com/dashboard/results/report-card",
     },
   ];
 
@@ -310,7 +331,7 @@ export default function LandingPage() {
                   </p>
                 </div>
 
-                <div className={`my-4 rounded-2xl p-4 ${area.highlighted ? "bg-black/15" : "bg-white border border-slate-100"}`}>
+                <div className={`my-4 overflow-hidden rounded-2xl ${area.highlighted ? "bg-black/15 p-1.5" : "bg-white border border-slate-100 p-1.5"}`}>
                   {area.preview}
                 </div>
 
@@ -325,6 +346,46 @@ export default function LandingPage() {
                 </div>
               </Link>
             ))}
+          </div>
+
+          {/* Real Live Screen Recording & 3-Level Results Overview Spotlight */}
+          <div className="relative z-10 mt-10 grid gap-6 lg:grid-cols-2">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1447E6]">
+                  Live Workflow Recording · Teacher Score Entry
+                </span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                  Real Product Video
+                </span>
+              </div>
+              <ProductScreenFrame
+                title="Teacher Score Entry"
+                urlPath="hanoled.com/dashboard/school/spreadsheets"
+                badge="Live Recording"
+                imageSrc="/marketing/teacher-score-entry-poster.webp"
+                videoSrc="/marketing/teacher-score-entry.mp4"
+                imageAlt="Live screen recording of a teacher entering and saving CA and Examination scores in Hanoled"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1447E6]">
+                  3-Level Results Overview · All Students &amp; Matrix
+                </span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                  Real Product Screen
+                </span>
+              </div>
+              <ProductScreenFrame
+                title="General Results Overview"
+                urlPath="hanoled.com/dashboard/school/results"
+                badge="Results Overview"
+                imageSrc="/marketing/results-overview.webp"
+                imageAlt="Real Hanoled Results Overview showing KPI metrics, All Students table, subject completion bars, and class ranks"
+              />
+            </div>
           </div>
         </section>
 
@@ -355,55 +416,15 @@ export default function LandingPage() {
               </InView>
             </div>
 
-            {/* Diagram: computer-based exam screen */}
-            <InView className="w-full mx-auto rounded-[2rem] bg-[#f8f9fc] border border-slate-100 p-6 sm:p-10">
-              <svg viewBox="0 0 480 340" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                {/* Monitor stand */}
-                <rect x="210" y="292" width="60" height="14" rx="6" fill="#CBD5E1" />
-                <rect x="170" y="306" width="140" height="10" rx="5" fill="#CBD5E1" />
-
-                {/* Monitor / screen */}
-                <rect x="40" y="20" width="400" height="270" rx="22" fill="white" stroke="#E2E8F0" strokeWidth="2" />
-
-                {/* Header bar */}
-                <rect x="64" y="44" width="352" height="26" rx="8" fill="#0B1220" />
-
-                {/* Question lines */}
-                <rect x="64" y="90" width="352" height="10" rx="5" fill="#E2E8F0" />
-                <rect x="64" y="106" width="200" height="10" rx="5" fill="#E2E8F0" />
-
-                {/* Answer options */}
-                <rect x="64" y="132" width="352" height="30" rx="10" fill="white" stroke="#E2E8F0" strokeWidth="2" />
-                <circle cx="82" cy="147" r="7" fill="#E2E8F0" />
-
-                <rect x="64" y="170" width="352" height="30" rx="10" fill="#1447E6" fillOpacity="0.08" stroke="#1447E6" strokeWidth="2" />
-                <circle className="mk-seq-pop" style={{ ["--d" as string]: "150ms" }} cx="82" cy="185" r="7" fill="#1447E6" />
-                <path className="mk-seq-draw" style={{ ["--d" as string]: "420ms" }} pathLength={1} d="M78.5 185l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-
-                <rect x="64" y="208" width="352" height="30" rx="10" fill="white" stroke="#E2E8F0" strokeWidth="2" />
-                <circle cx="82" cy="223" r="7" fill="#E2E8F0" />
-
-                <rect x="64" y="246" width="352" height="30" rx="10" fill="white" stroke="#E2E8F0" strokeWidth="2" />
-                <circle cx="82" cy="261" r="7" fill="#E2E8F0" />
-
-                {/* Timer badge */}
-                <rect x="366" y="4" width="80" height="32" rx="16" fill="#F5A623" />
-                <circle cx="384" cy="20" r="8" fill="none" stroke="#0B1220" strokeWidth="2" />
-                <path d="M384 15v5l4 3" stroke="#0B1220" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <rect x="398" y="15" width="34" height="10" rx="5" fill="#0B1220" fillOpacity="0.7" />
-
-                {/* Anti-cheat / verified badge: stamps on once the answer is ticked */}
-                <g className="mk-seq-pop" style={{ ["--d" as string]: "760ms" }}>
-                  <circle cx="420" cy="270" r="30" fill="#1447E6" stroke="white" strokeWidth="4" />
-                  <path d="M420 254l14 4.5v10c0 9-6 15.5-14 18.5-8-3-14-9.5-14-18.5v-10z" fill="white" />
-                  <path className="mk-seq-draw" style={{ ["--d" as string]: "1080ms" }} pathLength={1} d="M414.5 270l3.8 3.8L427 264" stroke="#1447E6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </g>
-
-                {/* Ascending-line motif accent: the growth curve draws last */}
-                <path className="mk-seq-draw" style={{ ["--d" as string]: "1300ms" }} pathLength={1} d="M8 320 Q 30 300, 52 312 T 96 296" stroke="#F5A623" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <circle className="mk-seq-pop" style={{ ["--d" as string]: "1300ms" }} cx="8" cy="320" r="4" fill="#F5A623" />
-                <circle className="mk-seq-pop" style={{ ["--d" as string]: "1800ms" }} cx="96" cy="296" r="4" fill="#F5A623" />
-              </svg>
+            {/* Real HCBT Computer-Based Exam Screen */}
+            <InView className="w-full mx-auto">
+              <ProductScreenFrame
+                title="HCBT Exam Runner"
+                urlPath="hcbt.hanoled.com/cbt/student"
+                badge="HCBT Live Portal"
+                imageSrc="/marketing/hcbt-exam-live.webp"
+                imageAlt="Real Hanoled HCBT Computer-Based Testing student portal and exam interface"
+              />
             </InView>
           </div>
         </section>
@@ -464,14 +485,24 @@ export default function LandingPage() {
                   </button>
                   <div className="m-collapsible" data-open={isOpen} aria-hidden={!isOpen}>
                     <div>
-                      <div className="flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-start sm:px-6 sm:pl-[3.75rem]">
-                        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${m.color}`}>
-                          <Illustration className="h-9 w-9" />
+                      <div className="grid gap-6 px-5 pb-6 sm:px-6 sm:pl-[3.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${m.color}`}>
+                            <Illustration className="h-9 w-9" />
+                          </div>
+                          <div className="space-y-2">
+                            <h4 className="font-bold text-slate-800">{m.headline}</h4>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium">{m.desc}</p>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <h4 className="font-bold text-slate-800">{m.headline}</h4>
-                          <p className="text-sm text-slate-500 leading-relaxed font-medium">{m.desc}</p>
-                        </div>
+                        <ProductScreenFrame
+                          compact
+                          title={m.title}
+                          urlPath={m.screenUrl}
+                          imageSrc={m.screenSrc}
+                          videoSrc={m.videoSrc}
+                          imageAlt={m.screenAlt}
+                        />
                       </div>
                     </div>
                   </div>

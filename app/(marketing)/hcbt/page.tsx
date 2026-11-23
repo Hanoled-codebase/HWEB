@@ -13,6 +13,7 @@ import {
 } from "@/components/landing/ModuleIllustrations";
 import { HeroUnderline, RiseWords } from "@/components/landing/motion";
 import { InView } from "@/components/landing/InView";
+import { ProductScreenFrame } from "@/components/landing/ProductScreenShowcase";
 
 export const metadata: Metadata = {
   title: "HCBT / Exam Engine – Hanoled",
@@ -101,6 +102,16 @@ export default function HcbtPage() {
                 Request a Demo <ArrowRight className="mk-arrow-x h-5 w-5" />
               </Link>
             </div>
+          </div>
+
+          <div className="relative z-10 mx-auto mt-12 max-w-4xl text-left">
+            <ProductScreenFrame
+              title="HCBT Candidate Exam Portal"
+              urlPath="hcbt.hanoled.com/cbt/student"
+              badge="Live HCBT Interface"
+              imageSrc="/marketing/hcbt-exam-live.webp"
+              imageAlt="Real HCBT Computer-Based Testing candidate interface"
+            />
           </div>
         </section>
 

@@ -15,6 +15,7 @@ import {
   SecurityRolesIllustration,
 } from "@/components/landing/ModuleIllustrations";
 import { HeroUnderline, RiseWords } from "@/components/landing/motion";
+import { ProductScreenFrame } from "@/components/landing/ProductScreenShowcase";
 
 export const metadata: Metadata = {
   title: "Features – Hanoled",
@@ -126,6 +127,41 @@ export default function FeaturesPage() {
             </p>
 
 
+          </div>
+        </section>
+
+        {/* Real Product Showcase */}
+        <section className="mt-16 rounded-[3rem] border border-slate-100 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-12">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1447E6]">
+                Real Product Walkthrough
+              </span>
+              <h2 className="mt-1 text-2xl font-extrabold text-slate-900 sm:text-3xl">
+                Built for daily school operations
+              </h2>
+            </div>
+            <p className="max-w-md text-xs font-medium text-slate-500 sm:text-right sm:text-sm">
+              Watch live teacher score entry and explore the 3-level Results Overview and Official Report Sheet preview.
+            </p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ProductScreenFrame
+              title="Teacher Score Entry"
+              urlPath="hanoled.com/dashboard/school/spreadsheets"
+              badge="Live Screen Recording"
+              imageSrc="/marketing/teacher-score-entry-poster.webp"
+              videoSrc="/marketing/teacher-score-entry.mp4"
+              imageAlt="Live screen recording of Hanoled relational gradebook score entry"
+            />
+            <ProductScreenFrame
+              title="3-Level Results Overview"
+              urlPath="hanoled.com/dashboard/school/results"
+              badge="Results Overview"
+              imageSrc="/marketing/results-overview.webp"
+              imageAlt="Hanoled General Results Overview with KPIs, All Students table, and class ranks"
+            />
           </div>
         </section>
 
