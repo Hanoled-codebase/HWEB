@@ -160,24 +160,20 @@ export function AllStudentsResultsTable({
     sortedRows.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const endIndex = Math.min(sortedRows.length, safePage * pageSize);
 
+  // A row with nothing recorded has no average or rank to show.
+  const hasRowMetrics = (row: StudentOverviewRow) =>
+    typeof row.averageScore === "number" ||
+    (typeof row.classRank === "number" && row.classRank > 0);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
       <div role="status" aria-live="polite" className="sr-only">
         Sorted by {sortColumn} ({sortDirection})
       </div>
 
-      {/* Mobile card-row list matching mobile mockup */}
+      {/* Mobile card-row list. The tab above already says "All Students (n)",
+          so the list starts straight at the first learner. */}
       <div className="md:hidden">
-        <div className="border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-bold text-slate-900">All Students</h2>
-          <div className="mt-2 grid grid-cols-12 text-[11px] font-semibold text-slate-500">
-            <span className="col-span-5">Student</span>
-            <span className="col-span-3">Status</span>
-            <span className="col-span-2 text-right">Average</span>
-            <span className="col-span-2 text-right">Rank</span>
-          </div>
-        </div>
-
         {paginatedRows.length === 0 ? (
           <div className="px-4 py-10 text-center text-xs text-slate-500">
             No students match the selected filters.
@@ -218,25 +214,34 @@ export function AllStudentsResultsTable({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                <div
+                  className={cn(
+                    "flex items-center justify-between gap-2",
+                    hasRowMetrics(row) ? "border-t border-slate-100 pt-2" : "pt-0",
+                  )}
+                >
                   <div className="flex items-center gap-4 text-xs tabular-nums">
-                    <span>
-                      Avg:{" "}
-                      <strong className="font-bold text-slate-900">
-                        {typeof row.averageScore === "number"
-                          ? `${row.averageScore.toFixed(1)}%`
-                          : "--"}
-                      </strong>
-                    </span>
-                    <span>
-                      Rank:{" "}
-                      <strong className="font-bold text-slate-900">
-                        {formatOrdinalRank(row.classRank)}
-                      </strong>
-                    </span>
+                    {/* A pending learner has no score yet: "--" and "—" were
+                        noise, the status badge already says pending. */}
+                    {typeof row.averageScore === "number" && (
+                      <span>
+                        Avg:{" "}
+                        <strong className="font-bold text-slate-900">
+                          {row.averageScore.toFixed(1)}%
+                        </strong>
+                      </span>
+                    )}
+                    {typeof row.classRank === "number" && row.classRank > 0 && (
+                      <span>
+                        Rank:{" "}
+                        <strong className="font-bold text-slate-900">
+                          {formatOrdinalRank(row.classRank)}
+                        </strong>
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="ml-auto flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => onViewResult(row.studentId)}
@@ -438,7 +443,7 @@ export function AllStudentsResultsTable({
                         <button
                           type="button"
                           onClick={() => onViewResult(row.studentId)}
-                          className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                          className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                         >
                           <FileText
                             className="h-3.5 w-3.5"
@@ -450,7 +455,7 @@ export function AllStudentsResultsTable({
                           type="button"
                           disabled={row.group.results.length === 0}
                           onClick={() => onPrintReport(row.studentId)}
-                          className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                          className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                         >
                           <Printer
                             className="h-3.5 w-3.5"
@@ -464,7 +469,7 @@ export function AllStudentsResultsTable({
                               ? `/dashboard/school/${orgSlug}/spreadsheets?classLevelId=${encodeURIComponent(row.classId)}`
                               : `/dashboard/school/${orgSlug}/spreadsheets`
                           }
-                          className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                          className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                         >
                           <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
                           <span>Edit Scores</span>

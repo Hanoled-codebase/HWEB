@@ -6,13 +6,9 @@ import type { OverviewKpis } from "@/lib/results-overview";
 
 export interface ResultsOverviewKpisProps {
   kpis: OverviewKpis;
-  scopeLabel?: string;
 }
 
-export function ResultsOverviewKpis({
-  kpis,
-  scopeLabel = "All Classes",
-}: ResultsOverviewKpisProps) {
+export function ResultsOverviewKpis({ kpis }: ResultsOverviewKpisProps) {
   const deltaText =
     typeof kpis.midTermDelta === "number"
       ? `${kpis.midTermDelta >= 0 ? "+" : ""}${kpis.midTermDelta.toFixed(1)}% from Mid-term`
@@ -20,38 +16,38 @@ export function ResultsOverviewKpis({
 
   return (
     <section aria-label="Results overview metrics">
-      {/* Mobile 2x2 KPI Strip (matches mobile mockup) */}
-      <div className="grid grid-cols-2 gap-2.5 md:hidden">
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <p className="text-[11px] font-medium text-slate-500">Total Students</p>
-          <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-            {kpis.totalLearners}
-          </p>
+      {/* Mobile: one quiet coverage line. Four tiles repeated the same math. */}
+      {kpis.totalLearners > 0 && (
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-600 md:hidden">
+          <span className="tabular-nums">
+            <strong className="font-bold text-slate-900">
+              {kpis.recordedCount}
+            </strong>
+            <span className="text-slate-400">/</span>
+            {kpis.totalLearners} recorded
+          </span>
+          <span aria-hidden="true" className="text-slate-300">
+            ·
+          </span>
+          <span className="tabular-nums">
+            <strong className="font-bold text-slate-900">
+              {kpis.pendingCount}
+            </strong>{" "}
+            pending
+          </span>
+          <span aria-hidden="true" className="text-slate-300">
+            ·
+          </span>
+          <span className="tabular-nums">
+            Avg{" "}
+            <strong className="font-bold text-[var(--primary-text)]">
+              {typeof kpis.classAverage === "number"
+                ? `${kpis.classAverage.toFixed(1)}%`
+                : "—"}
+            </strong>
+          </span>
         </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <p className="text-[11px] font-medium text-slate-500">Recorded</p>
-          <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-            {kpis.recordedCount}/{kpis.totalLearners}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <p className="text-[11px] font-medium text-slate-500">Pending</p>
-          <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-            {kpis.pendingCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <p className="text-[11px] font-medium text-slate-500">Class Average</p>
-          <p className="mt-1 text-xl font-bold text-[var(--primary-text)] tabular-nums">
-            {typeof kpis.classAverage === "number"
-              ? `${kpis.classAverage.toFixed(1)}%`
-              : "—"}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Desktop 4-card KPI Row (matches desktop mockup) */}
       <div className="hidden md:grid md:grid-cols-4 md:gap-4">
@@ -67,9 +63,6 @@ export function ResultsOverviewKpis({
             <span className="text-lg font-semibold text-slate-700">
               {kpis.totalLearners === 1 ? "Student" : "Students"}
             </span>
-          </p>
-          <p className="mt-1 truncate text-xs font-medium text-slate-500">
-            {scopeLabel}
           </p>
         </div>
 

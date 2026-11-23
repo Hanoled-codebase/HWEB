@@ -375,34 +375,10 @@ export default function ResultsPage() {
     });
   }, [resultGroups, selectedClassId, searchQuery]);
 
-  // Load Result Editions Catalog for Level 1
-  const fetchEditionsCatalog = useCallback(async () => {
-    if (!currentOrg || !currentMember) {
-      return;
-    }
-
-    try {
-      const response = await apiFetch<EditionsApiResponse>(
-        `/spreadsheets/${currentOrg.slug}/results/editions`,
-      );
-      const fetchedEditions = Array.isArray(response?.editions)
-        ? response.editions
-        : [];
-      setEditions(fetchedEditions);
-
-      const children = Array.isArray(response?.children)
-        ? response.children
-        : [];
-      setParentChildren(children);
-      if (children.length > 0 && !selectedParentChildId) {
-        setSelectedParentChildId(children[0].id);
-      }
-    } catch {
-      // Fallback to synthesized editions from resultGroups / periodOptions
-    } finally {
-      setIsLoadingEditions(false);
-    }
-  }, [currentOrg, currentMember, selectedParentChildId]);
+  // Load Result Editions Catalog for Level 1. The catalog is an enhancement:
+  // when the endpoint is missing the page synthesizes editions instead, so the
+  // request never toasts. `catalogRefreshKey` re-runs it from the Refresh action.
+  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -411,6 +387,7 @@ export default function ResultsPage() {
       try {
         const response = await apiFetch<EditionsApiResponse>(
           `/spreadsheets/${currentOrg.slug}/results/editions`,
+          { showErrorToast: false },
         );
         if (!active) return;
         const fetchedEditions = Array.isArray(response?.editions)
@@ -422,11 +399,11 @@ export default function ResultsPage() {
           ? response.children
           : [];
         setParentChildren(children);
-        if (children.length > 0 && !selectedParentChildId) {
-          setSelectedParentChildId(children[0].id);
+        if (children.length > 0) {
+          setSelectedParentChildId((prev) => prev || children[0].id);
         }
       } catch {
-        // Fallback to synthesized editions
+        // Fallback to synthesized editions from resultGroups / periodOptions
       } finally {
         if (active) setIsLoadingEditions(false);
       }
@@ -435,7 +412,7 @@ export default function ResultsPage() {
     return () => {
       active = false;
     };
-  }, [currentOrg, currentMember, selectedParentChildId]);
+  }, [currentOrg, currentMember, catalogRefreshKey]);
 
   const fetchParentData = useCallback(
     async ({ refresh = false, showSuccessToast = false } = {}) => {
@@ -1177,15 +1154,15 @@ export default function ResultsPage() {
               }
               subtitle={
                 isParent
-                  ? "Select an available result below to view your child's academic report and print or download the report card."
-                  : "Select the result edition you want to inspect first to open the general class overview and individual student reports."
+                  ? "Pick a result to view, print or download your child's report card."
+                  : "Open a result edition to see its class overview and individual reports."
               }
               actions={
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    void fetchEditionsCatalog();
+                    setCatalogRefreshKey((key) => key + 1);
                     void fetchParentData({
                       refresh: true,
                       showSuccessToast: true,
@@ -1236,6 +1213,8 @@ export default function ResultsPage() {
              LEVEL 2 (Staff General Results Overview) & LEVEL 3 (Individual View)
              ══════════════════════════════════════════════════════════════════ */
           <>
+            {/* The edition chip already names the term, year and stage; only
+                the parent view adds a subtitle the title does not carry. */}
             <ResultsBrandHeader
               title={
                 isParent
@@ -1249,11 +1228,9 @@ export default function ResultsPage() {
                         ? ` · ${selectedGroup.student.classLevel.name}`
                         : ""
                     }`
-                  : `${currentEditionTitle} · ${exportYear} Academic Session`
+                  : undefined
               }
-              editionLabel={`${exportTerm} · ${exportYear} · ${
-                exportResultType === "MID_TERM" ? "Mid-term" : "End-of-term"
-              }`}
+              editionLabel={`${exportTerm} · ${exportYear}`}
               backLabel={isParent ? "Available Results" : "All Results"}
               onBack={() => setHasSelectedEdition(false)}
               stage={exportResultType}
@@ -1365,9 +1342,6 @@ export default function ResultsPage() {
                                 </option>
                               ))}
                             </select>
-                            <span className="text-xs font-semibold text-slate-600 tabular-nums">
-                              {exportTerm} · {exportYear}
-                            </span>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
@@ -1416,11 +1390,8 @@ export default function ResultsPage() {
                           </div>
                         </div>
 
-                        {/* 4-Card KPI Strip (Desktop 4-col, Mobile 2x2) */}
-                        <ResultsOverviewKpis
-                          kpis={overviewKpis}
-                          scopeLabel={selectedClassLabel}
-                        />
+                        {/* Coverage line + search + desktop filter bar */}
+                        <ResultsOverviewKpis kpis={overviewKpis} />
 
                         {/* Mobile Search Input */}
                         <div className="relative md:hidden">

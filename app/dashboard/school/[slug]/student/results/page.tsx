@@ -108,10 +108,11 @@ export default function StudentResultsPage() {
         const [periodsResp, editionsResp] = await Promise.all([
           apiFetch<{ success: boolean; data: { academicYear: string; term: string }[] }>(
             `/result-templates/periods/${slug}`,
+            { showErrorToast: false },
           ).catch(() => ({ success: false, data: [] })),
-          apiFetch<StudentEditionsResponse>(`/student/${slug}/results/editions`).catch(
-            () => ({ roleScope: "student" as const, editions: [] }),
-          ),
+          apiFetch<StudentEditionsResponse>(`/student/${slug}/results/editions`, {
+            showErrorToast: false,
+          }).catch(() => ({ roleScope: "student" as const, editions: [] })),
         ]);
         if (cancelled) return;
         const periods = Array.isArray(periodsResp.data) ? periodsResp.data : [];
