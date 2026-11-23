@@ -13,6 +13,7 @@ import { ExamDeviceNotice, ExamDeviceBanner } from "@/components/cbt/ExamDeviceN
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { ExamCard, type AssignedExam } from "@/components/cbt/ExamCard";
+import { RoleOnboardingCard } from "@/components/dashboard/shared";
 import { Clock, FileText, PlayCircle, Loader2, CheckCircle2, Info, School, AlertCircle, BookOpen, ChevronLeft, ChevronRight, History, Key } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
@@ -481,6 +482,51 @@ export default function StudentDashboard() {
             <CbtGreeting name={studentName} roleLabel="Student" school={schoolName} />
             {examDevice === "blocked" && <ExamDeviceBanner />}
             <UnsentSubmissions />
+
+            <RoleOnboardingCard
+              storageKey={`cbt_student_${schoolSlug || "default"}`}
+              badgeLabel="Candidate Exam Guide"
+              title="Welcome to your HCBT Examination Portal"
+              subtitle="Review your assigned assessments, practice with SSCE past question simulators, and check your test history."
+              steps={[
+                {
+                  id: "assigned",
+                  title: "Assigned School Exams",
+                  description: "Required continuous assessments and term examinations scheduled by your teachers.",
+                  href: "#assigned",
+                  actionText: schoolExams.length > 0 ? "Take exam" : "Check schedule",
+                  isComplete: schoolExams.length > 0,
+                  icon: BookOpen,
+                },
+                {
+                  id: "practice",
+                  title: "SSCE Practice Simulator",
+                  description: "Mock drills with past papers from WAEC, NECO, and JAMB archives.",
+                  href: "#practice",
+                  actionText: "Practice now",
+                  isComplete: ssceExams.length > 0,
+                  icon: PlayCircle,
+                },
+                {
+                  id: "integrity",
+                  title: "Anti-Cheat Guidelines",
+                  description: "Strict 3-strike tab switch policy and server-authoritative countdown timer.",
+                  href: "#rules",
+                  actionText: "Review rules",
+                  isComplete: true,
+                  icon: AlertCircle,
+                },
+                {
+                  id: "history",
+                  title: "History & Result Sheets",
+                  description: "Inspect completed exam submissions, percentage scores, and question reviews.",
+                  href: "#history",
+                  actionText: "View history",
+                  isComplete: history.length > 0,
+                  icon: History,
+                },
+              ]}
+            />
 
             {/* Tab Navigation Switches */}
             <div className="hidden md:flex space-x-1 bg-slate-200/60 p-1.5 rounded-xl border border-slate-300/40 overflow-x-auto snap-x snap-mandatory scrollbar-hide flex-nowrap [-webkit-overflow-scrolling:touch]">

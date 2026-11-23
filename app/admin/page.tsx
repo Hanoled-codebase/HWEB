@@ -20,6 +20,7 @@ import { CardList, Chip, EmptyPanel, SchoolRow as SchoolListRow, SectionHead, na
 import { cn } from "@/lib/utils"
 
 import { ADMIN_API, adminFetch } from "@/lib/admin-api"
+import { RoleOnboardingCard } from "@/components/dashboard/shared"
 
 interface DashboardStats {
   totalActiveSchools: number
@@ -141,6 +142,51 @@ export default function AdminDashboard() {
           <Button size="sm">Add to Pipeline</Button>
         </Link>
       </div>
+
+      <RoleOnboardingCard
+        storageKey="platform_admin"
+        badgeLabel="Platform Ops Guide"
+        title="Welcome to the Hanoled Operations Deck"
+        subtitle="Track active schools, pipeline stages, revenue collections, and hosted infrastructure instances."
+        steps={[
+          {
+            id: "schools",
+            title: "School Directory",
+            description: "Monitor active institutions, student rosters, and branches.",
+            href: "/admin/schools",
+            actionText: (stats?.totalActiveSchools ?? 0) > 0 ? "Manage schools" : "View schools",
+            isComplete: (stats?.totalActiveSchools ?? 0) > 0,
+            icon: School,
+          },
+          {
+            id: "pipeline",
+            title: "Prospect Pipeline",
+            description: "Move schools through prospecting, pitching, onboarding, and live launch.",
+            href: "/admin/pipeline",
+            actionText: "View pipeline",
+            isComplete: (stats?.pipelineCount ?? 0) > 0,
+            icon: Activity,
+          },
+          {
+            id: "billing",
+            title: "Revenue & Billings",
+            description: "Audit subscription payments, collections, and outstanding invoices.",
+            href: "/admin/payments",
+            actionText: "Audit payments",
+            isComplete: (stats?.totalExpectedRevenue ?? 0) > 0,
+            icon: TrendingUp,
+          },
+          {
+            id: "hosted",
+            title: "Hosted Instances",
+            description: "Check uptime, edge appliance connections, and infrastructure health.",
+            href: "/admin/hosted",
+            actionText: "Check instances",
+            isComplete: true,
+            icon: MapPin,
+          },
+        ]}
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">

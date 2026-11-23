@@ -1322,76 +1322,78 @@ export default function ResultsPage() {
                       </button>
                     </div>
 
-                    {/* Mobile Class Pill & Quick Export Action Row (shown on Overview tab) */}
+                    {/* Mobile Class Filter & Unified Quick Actions Toolbar */}
                     {activeOverviewTab !== "individual" && (
                       <>
                         <div className="space-y-2.5 md:hidden">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <select
-                              aria-label="Filter by class level"
-                              value={selectedClassId}
-                              onChange={(e) =>
-                                setSelectedClassId(e.target.value || "all")
-                              }
-                              className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-800 shadow-2xs"
-                            >
-                              <option value="all">All Class Levels</option>
-                              {availableClassOptions.map((cls) => (
-                                <option key={cls.id} value={cls.id}>
-                                  {cls.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            aria-label="Filter by class level"
+                            value={selectedClassId}
+                            onChange={(e) =>
+                              setSelectedClassId(e.target.value || "all")
+                            }
+                            className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-800 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] truncate"
+                          >
+                            <option value="all">All Class Levels</option>
+                            {availableClassOptions.map((cls) => (
+                              <option key={cls.id} value={cls.id}>
+                                {cls.name}
+                              </option>
+                            ))}
+                          </select>
 
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsMobileOptionsOpen(true)}
-                              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-2xs"
-                            >
-                              <SlidersHorizontal
-                                className="h-3.5 w-3.5 text-slate-500"
-                                aria-hidden="true"
+                          <button
+                            type="button"
+                            onClick={() => setIsMobileOptionsOpen(true)}
+                            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-slate-50"
+                          >
+                            <SlidersHorizontal
+                              className="h-3.5 w-3.5 text-slate-500"
+                              aria-hidden="true"
+                            />
+                            <span>Filters</span>
+                            {hasActiveMobileFilter && (
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]"
+                                aria-label="Filters active"
                               />
-                              <span>Filter &amp; Sort</span>
-                              {hasActiveMobileFilter && (
-                                <span
-                                  className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]"
-                                  aria-label="Filters active"
-                                />
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={isExportingBroadsheet}
-                              onClick={() => void handleExportCsvOrExcel()}
-                              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-2xs disabled:opacity-50"
-                            >
-                              <Download
-                                className="h-3.5 w-3.5 text-slate-500"
-                                aria-hidden="true"
-                              />
-                              <span>Export All (CSV/Excel)</span>
-                            </button>
-
-                            {canExportClassBundle && (
-                              <button
-                                type="button"
-                                disabled={isDownloadingBatch}
-                                onClick={() => void handleBatchExport("download")}
-                                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[var(--primary-border)] bg-[var(--primary-light)] px-3 text-xs font-semibold text-[var(--primary-text)] shadow-2xs disabled:opacity-50"
-                              >
-                                <Printer className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span>Bulk Print Reports</span>
-                              </button>
                             )}
-                          </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isExportingBroadsheet}
+                            onClick={() => void handleExportCsvOrExcel()}
+                            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50"
+                            title="Export CSV/Excel"
+                            aria-label="Export CSV or Excel"
+                          >
+                            <Download
+                              className="h-3.5 w-3.5 text-slate-500"
+                              aria-hidden="true"
+                            />
+                            <span>Export</span>
+                          </button>
+
+                          {canExportClassBundle && (
+                            <button
+                              type="button"
+                              disabled={isDownloadingBatch}
+                              onClick={() => void handleBatchExport("download")}
+                              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border border-[var(--primary-border)] bg-[var(--primary-light)] px-2.5 text-xs font-semibold text-[var(--primary-text)] shadow-2xs disabled:opacity-50"
+                              title="Bulk Print Report Cards"
+                              aria-label="Bulk Print Report Cards"
+                            >
+                              <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>Print</span>
+                            </button>
+                          )}
                         </div>
 
-                        {/* Coverage line + search + desktop filter bar */}
+                        {/* Quiet Coverage Line */}
                         <ResultsOverviewKpis kpis={overviewKpis} />
+                      </div>
 
                         {/* Mobile Search Input */}
                         <div className="relative md:hidden">
