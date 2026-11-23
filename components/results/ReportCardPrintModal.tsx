@@ -2,21 +2,13 @@
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Printer, Download, Eye, X, ZoomIn, Smartphone } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Printer, Download, Eye, Loader2, X, ZoomIn, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import {
   LEADERSHIP_SKILLS,
   scoreToAffectiveLetter,
 } from "@/lib/leadership-skills";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { downloadReportCardPdf, openReportCardPdf } from "@/lib/report-card-download";
 
 export interface ReportCardStudent {
@@ -53,6 +45,8 @@ export interface ReportCardPrintModalProps {
   orgLogo?: string;
   orgAddress?: string;
   orgEmail?: string;
+  orgPrimaryColor?: string | null;
+  orgSecondaryColor?: string | null;
   student: ReportCardStudent;
   term?: string;
   academicYear?: string;
@@ -65,8 +59,12 @@ export interface ReportCardPrintModalProps {
     absent?: number | string;
   };
   resumptionDate?: string;
-  /** Whether a mid-term result exists to switch to for the backend PDF. */
+  /** Active report stage ("MID_TERM" or "END_OF_TERM"). */
   resultType?: "MID_TERM" | "END_OF_TERM";
+  /** Syncs stage switches in the modal with the parent page so on-screen rows update live. */
+  onResultTypeChange?: (nextType: "MID_TERM" | "END_OF_TERM") => void;
+  /** True while the parent page is fetching rows for a newly selected stage. */
+  isLoadingResults?: boolean;
   onClose: () => void;
 }
 
@@ -123,14 +121,25 @@ export default function ReportCardPrintModal({
   attendance: initialAttendance = { schoolOpen: "", present: "", absent: "" },
   resumptionDate: initialResumptionDate = "",
   resultType = "END_OF_TERM",
+  onResultTypeChange,
+  isLoadingResults = false,
   onClose,
 }: ReportCardPrintModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const previewTrigger = useRef<HTMLElement | null>(null);
   const [pdfAction, setPdfAction] = useState<"view" | "download" | null>(null);
-  // Report type for the backend PDF download; the on-screen preview renders the
-  // sheet rows it is given, so this only steers which stored result is used.
-  const [pdfResultType, setPdfResultType] = useState<"MID_TERM" | "END_OF_TERM">(resultType);
+  const [localResultType, setLocalResultType] = useState<"MID_TERM" | "END_OF_TERM">(resultType);
+  const pdfResultType = onResultTypeChange ? resultType : localResultType;
+  const stageLabel = pdfResultType === "MID_TERM" ? "Mid-Term" : "End-of-Term";
+
+  const handleStageChange = (nextType: "MID_TERM" | "END_OF_TERM") => {
+    if (nextType === pdfResultType) return;
+    if (onResultTypeChange) {
+      onResultTypeChange(nextType);
+    } else {
+      setLocalResultType(nextType);
+    }
+  };
   const [gradeScale, setGradeScale] = useState<GradeBand[]>([]);
   const [affectiveCategories, setAffectiveCategories] =
     useState<AffectiveCategory[]>(DEFAULT_AFFECTIVE_CATEGORIES);
@@ -252,10 +261,10 @@ export default function ReportCardPrintModal({
       },
     )
       .then(({ data }) => {
-        if (!cancelled && data?.comment) setCustomCeoComment(data.comment);
+        if (!cancelled) setCustomCeoComment(data?.comment || null);
       })
       .catch(() => {
-        // Non-admin viewers cannot read draft overrides; published PDF snapshot remains authoritative.
+        if (!cancelled) setCustomCeoComment(null);
       });
     return () => {
       cancelled = true;
@@ -263,7 +272,7 @@ export default function ReportCardPrintModal({
   }, [academicYear, orgSlug, pdfResultType, student.id, term]);
 
   // Prefill the leadership/affective GRADES cells from the stored scores for
-  // this student and term (letters A–E). Typed values win over the prefill.
+  // this student, term, and active stage (letters A–E).
   useEffect(() => {
     if (!orgSlug || !student?.id || !term) return;
     let cancelled = false;
@@ -276,19 +285,22 @@ export default function ReportCardPrintModal({
           academicYear,
           resultType: pdfResultType,
         },
+        showErrorToast: false,
       },
     )
       .then((scores) => {
-        if (cancelled || !Array.isArray(scores)) return;
+        if (cancelled) return;
         const map: Record<string, string> = {};
-        for (const entry of scores) {
-          const letter = scoreToAffectiveLetter(entry.score);
-          if (letter) map[entry.metric] = letter;
+        if (Array.isArray(scores)) {
+          for (const entry of scores) {
+            const letter = scoreToAffectiveLetter(entry.score);
+            if (letter) map[entry.metric] = letter;
+          }
         }
-        setSkillRatings((prev) => ({ ...map, ...prev }));
+        setSkillRatings(map);
       })
       .catch(() => {
-        // Cells stay empty if the scores can't be loaded.
+        if (!cancelled) setSkillRatings({});
       });
     return () => {
       cancelled = true;
@@ -571,8 +583,8 @@ export default function ReportCardPrintModal({
             <div className="min-w-0 flex-1">
               <Dialog.Title className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-tight text-[#0B1220] sm:text-base">
                 <span>Official Report Sheet Preview</span>
-                <span className="rounded-md border border-blue-200/80 bg-[#EEF0FF] px-2 py-0.5 text-xs font-semibold text-[#1447E6]">
-                  {term}
+                <span className="rounded-md border border-[var(--primary-border)] bg-[var(--primary-light)] px-2 py-0.5 text-xs font-semibold text-[var(--primary-text)]">
+                  {stageLabel} · {term}
                 </span>
               </Dialog.Title>
               <p className="mt-0.5 truncate text-xs text-slate-600">
@@ -592,81 +604,86 @@ export default function ReportCardPrintModal({
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Select
-              value={pdfResultType}
-              onValueChange={(v) => setPdfResultType(v === "MID_TERM" ? "MID_TERM" : "END_OF_TERM")}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div
+              role="group"
+              aria-label="Report type"
+              className="grid grid-cols-2 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:inline-grid sm:w-auto"
             >
-              <SelectTrigger
-                aria-label="PDF report type"
-                size="sm"
-                className="rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" disablePortal>
-                <SelectItem value="END_OF_TERM">End-of-term</SelectItem>
-                <SelectItem value="MID_TERM">Mid-term</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              type="button"
-              onClick={() => void handlePdf("download")}
-              disabled={pdfAction !== null}
-              size="sm"
-              className="gap-1.5 rounded-xl bg-[#1447E6] px-3 text-xs font-semibold text-white hover:bg-[#0F36B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-4"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              {pdfAction === "download" ? "Downloading..." : "Download PDF"}
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => void handlePdf("view")}
-              disabled={pdfAction !== null}
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-3"
-            >
-              <Eye className="size-4" aria-hidden="true" />
-              {pdfAction === "view" ? "Opening..." : "View PDF"}
-            </Button>
-
-            <Button
-              type="button"
-              onClick={handlePrint}
-              variant="outline"
-              size="sm"
-              className="hidden gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100 sm:order-2 sm:inline-flex"
-            >
-              <Printer className="size-4" aria-hidden="true" />
-              Print Template
-            </Button>
-
-            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-100 p-0.5 sm:hidden">
               <button
                 type="button"
+                aria-pressed={pdfResultType === "END_OF_TERM"}
+                onClick={() => handleStageChange("END_OF_TERM")}
+                className="min-h-11 rounded-lg px-3 text-xs font-semibold text-slate-700 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-[var(--primary)] aria-pressed:text-[var(--primary-foreground)] aria-pressed:shadow-xs motion-reduce:transition-none md:pointer-fine:min-h-8 pointer-coarse:min-h-11"
+              >
+                End-of-term
+              </button>
+              <button
+                type="button"
+                aria-pressed={pdfResultType === "MID_TERM"}
+                onClick={() => handleStageChange("MID_TERM")}
+                className="min-h-11 rounded-lg px-3 text-xs font-semibold text-slate-700 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-[var(--primary)] aria-pressed:text-[var(--primary-foreground)] aria-pressed:shadow-xs motion-reduce:transition-none md:pointer-fine:min-h-8 pointer-coarse:min-h-11"
+              >
+                Mid-term
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <Button
+                type="button"
+                onClick={handlePrint}
+                disabled={isLoadingResults}
+                variant="outline"
+                size="sm"
+                className="hidden gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100 sm:inline-flex"
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print Template
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => void handlePdf("view")}
+                disabled={pdfAction !== null || isLoadingResults}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 motion-reduce:transition-none motion-reduce:active:scale-100"
+              >
+                <Eye className="size-4" aria-hidden="true" />
+                {pdfAction === "view" ? "Opening..." : "View PDF"}
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => void handlePdf("download")}
+                disabled={pdfAction !== null || isLoadingResults}
+                size="sm"
+                className="gap-1.5 rounded-xl bg-[var(--primary)] px-3 text-xs font-semibold text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)] motion-reduce:transition-none motion-reduce:active:scale-100"
+              >
+                <Download className="size-4" aria-hidden="true" />
+                {pdfAction === "download" ? "Downloading..." : "Download PDF"}
+              </Button>
+            </div>
+
+            <div
+              role="group"
+              aria-label="Preview zoom"
+              className="flex items-center rounded-xl border border-slate-200 bg-slate-100 p-0.5 sm:hidden"
+            >
+              <button
+                type="button"
+                aria-pressed={scaleFit}
                 onClick={() => setScaleFit(true)}
-                className={cn(
-                  "flex min-h-10 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors",
-                  scaleFit
-                    ? "bg-white font-bold text-[#1447E6] shadow-xs"
-                    : "text-slate-600 hover:text-slate-900",
-                )}
+                className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-xs motion-reduce:transition-none"
               >
                 <Smartphone className="size-3.5" aria-hidden="true" />
                 Fit
               </button>
               <button
                 type="button"
+                aria-pressed={!scaleFit}
                 onClick={() => setScaleFit(false)}
-                className={cn(
-                  "flex min-h-10 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors",
-                  !scaleFit
-                    ? "bg-white font-bold text-[#1447E6] shadow-xs"
-                    : "text-slate-600 hover:text-slate-900",
-                )}
+                className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-xs motion-reduce:transition-none"
               >
                 <ZoomIn className="size-3.5" aria-hidden="true" />
                 100%
@@ -680,6 +697,7 @@ export default function ReportCardPrintModal({
           ref={scrollAreaRef}
           role="region"
           aria-label="Scrollable report sheet"
+          aria-busy={isLoadingResults}
           tabIndex={0}
           className="report-card-scroll-area p-2 sm:p-6 overflow-auto bg-slate-100/95 flex-1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
@@ -714,7 +732,7 @@ export default function ReportCardPrintModal({
           <div
             id="report-sheet-print-container"
             ref={printRef}
-            className="mx-auto min-w-[620px] max-w-[820px] bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black font-sans text-xs leading-tight"
+            className="mx-auto min-w-[760px] max-w-[820px] bg-white p-4 sm:p-6 rounded-none shadow-xl border-2 border-black text-black font-sans text-xs leading-tight"
           >
             {/* ── ROW 1 & 2: School Logo & Branding ── */}
             <div className="text-center pt-1 pb-1">
@@ -745,7 +763,7 @@ export default function ReportCardPrintModal({
 
             {/* ── ROW 4: Title Banner (Solid Black fill with White text) ── */}
             <div className="text-center text-sm sm:text-base font-black text-white bg-black border border-black px-3 py-2 tracking-wider uppercase">
-              Report Sheet{term ? ` for ${term},` : " •"} {academicYear} Session
+              {stageLabel} Report Sheet{term ? ` for ${term},` : " •"} {academicYear} Session
             </div>
 
             {/* ── ROW 5-7: Student Metadata Grid (Bordered table) ── */}
@@ -794,8 +812,8 @@ export default function ReportCardPrintModal({
                     >
                       <div className="flex h-full min-h-[145px]">
                         {/* Solid Black Vertical Bar on Left */}
-                        <div className="w-12 bg-black text-white font-extrabold flex flex-col items-center justify-end p-1.5 border-r border-black">
-                          <span className="grades-vertical-text tracking-widest text-xs pb-1">
+                        <div className="flex w-12 shrink-0 flex-col items-center justify-end overflow-hidden border-r border-black bg-black p-1.5 font-extrabold text-white">
+                          <span className="grades-vertical-text pb-1 text-xs leading-none tracking-widest">
                             GRADES
                           </span>
                         </div>
@@ -837,7 +855,7 @@ export default function ReportCardPrintModal({
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
                       <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
-                        Mid-Term Exam Scores
+                        {pdfResultType === "MID_TERM" ? "Mid-Term Exam" : "Exam Scores"}
                       </div>
                     </th>
 
@@ -915,10 +933,19 @@ export default function ReportCardPrintModal({
 
                 {/* ── ROWS 15+: Subject Rows (Strictly Offered Subjects) ── */}
                 <tbody className="divide-y divide-black font-medium">
-                  {displayResults.length === 0 ? (
+                  {isLoadingResults ? (
                     <tr>
-                      <td colSpan={9} className="py-6 text-center text-xs text-slate-500 italic">
-                        No recorded subject spreadsheets found for this student.
+                      <td colSpan={9} className="py-8 text-center text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-2 font-medium">
+                          <Loader2 className="h-4 w-4 animate-spin text-[var(--primary-text)] motion-reduce:animate-none" aria-hidden="true" />
+                          Loading {stageLabel.toLowerCase()} results…
+                        </span>
+                      </td>
+                    </tr>
+                  ) : displayResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-6 text-center text-xs text-slate-600 italic">
+                        No recorded {stageLabel.toLowerCase()} subject scores found for this student.
                       </td>
                     </tr>
                   ) : (
@@ -1067,15 +1094,15 @@ export default function ReportCardPrintModal({
                       <div>4 - Very Good</div>
                       <div>3 - Average</div>
                       <div>2 - Fair</div>
-                      <div>1 - poor</div>
+                      <div>1 - Poor</div>
                     </div>
 
                     {/* Right side: Attendance Table */}
                     <div className="col-span-7 flex flex-col">
-                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-xs leading-tight border-b border-black">
-                        <div className="px-2 py-1.5">School days</div>
-                        <div className="px-2 py-1.5">Present</div>
-                        <div className="px-2 py-1.5">Absent</div>
+                      <div className="grid grid-cols-3 divide-x divide-neutral-700 bg-black text-white font-black text-center text-[10px] leading-tight border-b border-black">
+                        <div className="px-1 py-1.5">School days</div>
+                        <div className="px-1 py-1.5">Present</div>
+                        <div className="px-1 py-1.5">Absent</div>
                       </div>
                       <div className="grid grid-cols-3 divide-x divide-black text-center font-bold text-black flex-1 min-h-[50px] items-center">
                         <div className="p-1">{schoolOpen || "—"}</div>

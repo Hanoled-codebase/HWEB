@@ -75,7 +75,25 @@ async function fetchAuthenticatedPdf(url: string, failureMessage: string): Promi
   try {
     const res = await fetch(url, { ...authFetchInit("hcore"), signal: AbortSignal.timeout(30_000) });
     if (!res.ok) {
-      toast.error(failureMessage);
+      let serverMessage = "";
+      try {
+        const body = (await res.json()) as { error?: string | { message?: string }; message?: string };
+        if (typeof body?.error === "string") serverMessage = body.error;
+        else if (typeof body?.error?.message === "string") serverMessage = body.error.message;
+        else if (typeof body?.message === "string") serverMessage = body.message;
+      } catch {
+        // Non-JSON error body; fall back to status-based copy below.
+      }
+
+      if (res.status === 404) {
+        toast.error(
+          serverMessage && serverMessage !== "Report card unavailable"
+            ? serverMessage
+            : "Official results for this term haven't been published yet.",
+        );
+      } else {
+        toast.error(serverMessage || failureMessage);
+      }
       return null;
     }
     return await res.blob();
@@ -85,12 +103,20 @@ async function fetchAuthenticatedPdf(url: string, failureMessage: string): Promi
   }
 }
 
-async function openPdfInNewTab(url: string, failureMessage: string): Promise<boolean> {
+async function openPdfInNewTab(
+  url: string,
+  failureMessage: string,
+  fallbackFilename?: string,
+): Promise<boolean> {
   // Reserve the tab during the click, before an authenticated fetch loses user activation.
   const tab = window.open("about:blank", "_blank");
   if (!tab) {
-    toast.error("Allow pop-ups to view the PDF.");
-    return false;
+    // Popup blocked (common on mobile WebViews / strict browsers): download directly instead of stranding the user.
+    const blob = await fetchAuthenticatedPdf(url, failureMessage);
+    if (!blob) return false;
+    saveBlob(blob, fallbackFilename || "Report_Card.pdf");
+    toast.info("Pop-ups are blocked, so we downloaded the PDF instead.");
+    return true;
   }
   tab.opener = null;
 
@@ -134,7 +160,11 @@ export async function downloadReportCardPdf(options: ReportCardDownload): Promis
 
 /** Opens one student's report card PDF in a new tab (the mobile-friendly path). */
 export async function openReportCardPdf(options: ReportCardDownload): Promise<boolean> {
-  return openPdfInNewTab(reportCardUrl(options), "Could not open the report card. Please try again.");
+  return openPdfInNewTab(
+    reportCardUrl(options),
+    "Could not open the report card. Please try again.",
+    reportCardFileName(options.studentName, options.term, options.resultType),
+  );
 }
 
 /** Downloads the whole class's report cards as one bundle PDF. */
@@ -154,4 +184,41 @@ export async function downloadReportCardBundle(options: BundleDownload): Promise
 /** Opens the whole class's report-card bundle PDF in a new tab. */
 export async function openReportCardBundle(options: BundleDownload): Promise<boolean> {
   return openPdfInNewTab(bundleUrl(options), "Failed to generate report cards bundle");
+}
+
+export type BroadsheetDownload = {
+  orgSlug: string;
+  classLevelId?: string;
+  className?: string;
+  term: string;
+  academicYear: string;
+  format: "xlsx" | "pdf";
+};
+
+/** Downloads either a class broadsheet or full school broadsheet in Excel or PDF format. */
+export async function downloadBroadsheetExport({
+  orgSlug,
+  classLevelId,
+  className,
+  term,
+  academicYear,
+  format,
+}: BroadsheetDownload): Promise<boolean> {
+  const isSpecificClass = Boolean(classLevelId && classLevelId !== "all");
+  const url = isSpecificClass
+    ? `${HSMS_BASE}/export/${orgSlug}/broadsheet/${encodeURIComponent(classLevelId as string)}?term=${encodeURIComponent(
+        term,
+      )}&academicYear=${encodeURIComponent(academicYear)}&format=${format}`
+    : `${HSMS_BASE}/export/${orgSlug}/school-broadsheet?term=${encodeURIComponent(
+        term,
+      )}&academicYear=${encodeURIComponent(academicYear)}&format=${format}`;
+
+  const safeClass = (isSpecificClass ? className || "class" : "school").trim().replace(/\s+/g, "_");
+  const safeTerm = term.trim().replace(/\s+/g, "_");
+  const safeYear = academicYear.replace(/[/\\?%*:|"<>]/g, "_");
+  const ext = format === "xlsx" ? "xlsx" : "pdf";
+  const blob = await fetchAuthenticatedPdf(url, "Could not export broadsheet. Please try again.");
+  if (!blob) return false;
+  saveBlob(blob, `Broadsheet_${safeClass}_${safeTerm}_${safeYear}.${ext}`);
+  return true;
 }

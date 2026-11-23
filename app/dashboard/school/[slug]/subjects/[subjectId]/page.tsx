@@ -423,13 +423,8 @@ export default function SubjectDetailPage() {
                           {c.name}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {c.studentCount} student{c.studentCount !== 1 ? "s" : ""}
-                          {assignment && (
-                            <>
-                              {" · "}
-                              {assignment.teacherName}
-                            </>
-                          )}
+                          {`${c.studentCount} ${c.studentCount === 1 ? "student" : "students"}`}
+                          {assignment && ` · ${assignment.teacherName}`}
                         </p>
                       </div>
                     </button>

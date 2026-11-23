@@ -43,78 +43,172 @@ type NotificationResponse = {
   attentionCount?: number;
 };
 
-export function useNotifications() {
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [attention, setAttention] = useState<AttentionItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
+type NotificationStore = {
+  userId: string | null;
+  fetchedDay: string | null;
+  notifications: NotificationItem[];
+  attention: AttentionItem[];
+  unreadCount: number;
+  loading: boolean;
+};
 
-  /** Fetches quietly; resolves true on success, false on any failure (never throws). */
-  const fetchNotifications = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
+const initialStore = (): NotificationStore => ({
+  userId: null,
+  fetchedDay: null,
+  notifications: [],
+  attention: [],
+  unreadCount: 0,
+  loading: true,
+});
+
+let sharedStore: NotificationStore = initialStore();
+let inFlightFetch: Promise<boolean> | null = null;
+let inFlightKey: string | null = null;
+const storeListeners = new Set<(next: NotificationStore) => void>();
+
+function updateSharedStore(next: NotificationStore) {
+  sharedStore = next;
+  storeListeners.forEach((listener) => listener(sharedStore));
+}
+
+/** Test helper to clear shared notification state between cases. */
+export function resetNotificationsStore() {
+  sharedStore = initialStore();
+  inFlightFetch = null;
+  inFlightKey = null;
+  storeListeners.clear();
+}
+
+async function loadSharedNotifications(userId: string, force: boolean): Promise<boolean> {
+  const day = localDay();
+  const key = `${userId}:${day}`;
+
+  if (sharedStore.userId !== userId) {
+    updateSharedStore({ ...initialStore(), userId });
+  }
+
+  if (!force && sharedStore.userId === userId && sharedStore.fetchedDay === day && !sharedStore.loading) {
+    return true;
+  }
+
+  if (inFlightFetch && inFlightKey === key) {
+    return inFlightFetch;
+  }
+
+  const run = (async (): Promise<boolean> => {
     try {
       // "Today" is the reader's day, not the server's — a school in UTC+1
       // should not be told yesterday's register is still open at 00:30.
       const data = await apiFetch<NotificationResponse>(
-        `/notifications?date=${localDay()}`,
+        `/notifications?date=${day}`,
         { showErrorToast: false },
       );
       if (data && Array.isArray(data.notifications)) {
-        setNotifications(data.notifications);
         const derivedUnread = data.notifications.filter((n) => !n.read).length;
-        setUnreadCount(
-          typeof data.unreadCount === "number" ? data.unreadCount : derivedUnread,
-        );
-        setAttention(Array.isArray(data.attention) ? data.attention : []);
+        updateSharedStore({
+          userId,
+          fetchedDay: day,
+          notifications: data.notifications,
+          unreadCount:
+            typeof data.unreadCount === "number" ? data.unreadCount : derivedUnread,
+          attention: Array.isArray(data.attention) ? data.attention : [],
+          loading: false,
+        });
+      } else {
+        updateSharedStore({ ...sharedStore, userId, fetchedDay: day, loading: false });
       }
       return true;
     } catch {
       // ignore unauthenticated or network errors gracefully
+      updateSharedStore({ ...sharedStore, userId, loading: false });
       return false;
     } finally {
-      setLoading(false);
+      if (inFlightKey === key) {
+        inFlightFetch = null;
+        inFlightKey = null;
+      }
     }
-  }, [user]);
+  })();
 
-  // Load once when a session is active; refresh only on explicit user action
-  // (e.g. clicking the notification bell) instead of background polling.
+  inFlightFetch = run;
+  inFlightKey = key;
+  return run;
+}
+
+export function useNotifications() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
+  const [snapshot, setSnapshot] = useState<NotificationStore>(() =>
+    userId && sharedStore.userId === userId ? sharedStore : initialStore(),
+  );
+
+  /** Fetches quietly; resolves true on success, false on any failure (never throws). */
+  const fetchNotifications = useCallback(async (): Promise<boolean> => {
+    if (!userId) return false;
+    return loadSharedNotifications(userId, true);
+  }, [userId]);
+
+  // Subscribe to shared store and load once per active session across mounted
+  // desktop + mobile notification bells so every page load issues one request.
   useEffect(() => {
-    if (!user) return;
+    storeListeners.add(setSnapshot);
+    if (!userId) {
+      if (sharedStore.userId !== null) {
+        updateSharedStore(initialStore());
+      }
+      return () => {
+        storeListeners.delete(setSnapshot);
+      };
+    }
+
     let cancelled = false;
     void Promise.resolve().then(() => {
-      if (!cancelled) void fetchNotifications();
+      if (cancelled) return;
+      if (sharedStore.userId === userId) {
+        setSnapshot(sharedStore);
+      }
+      void loadSharedNotifications(userId, false);
     });
     return () => {
       cancelled = true;
+      storeListeners.delete(setSnapshot);
     };
-  }, [fetchNotifications, user]);
+  }, [userId]);
 
   const markAsRead = async (id: string) => {
-    // Optimistic local state update
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    // Optimistic shared state update across desktop and mobile bells
+    const nextNotifications = sharedStore.notifications.map((n) =>
+      n.id === id ? { ...n, read: true } : n,
     );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    updateSharedStore({
+      ...sharedStore,
+      notifications: nextNotifications,
+      unreadCount: Math.max(0, sharedStore.unreadCount - 1),
+    });
 
     try {
       await apiFetch(`/notifications/${id}/read`, { method: "PATCH" });
     } catch {
-      fetchNotifications();
+      void fetchNotifications();
     }
   };
 
   const markAllAsRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setUnreadCount(0);
+    updateSharedStore({
+      ...sharedStore,
+      notifications: sharedStore.notifications.map((n) => ({ ...n, read: true })),
+      unreadCount: 0,
+    });
 
     try {
       await apiFetch("/notifications/read-all", { method: "POST" });
     } catch {
-      fetchNotifications();
+      void fetchNotifications();
     }
   };
 
+  const { notifications, attention, unreadCount, loading } = snapshot;
   const localUnreadInList = notifications.filter((n) => !n.read).length;
   const effectiveUnreadNotifications = Math.max(unreadCount, localUnreadInList);
 

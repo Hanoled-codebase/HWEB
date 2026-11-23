@@ -245,6 +245,8 @@ function reset() {
     }],
     org: {
       ...ORG,
+      primaryColor: "#0F766E",
+      secondaryColor: "#115E59",
       country: "Nigeria",
       category: null,
       schoolType: null,
@@ -290,20 +292,216 @@ function feeSummary() {
   };
 }
 
-function results() {
-  return [{
+function results(resultType = "END_OF_TERM", user = null) {
+  const isMidTerm = resultType === "MID_TERM";
+  const isParentUser = Boolean(user?.roles?.includes("PARENT"));
+  const adaGroup = {
     student: { ...CHILD, classLevelId: "jss1a", classLevel: { id: "jss1a", name: "JSS 1A", level: 1 } },
-    results: [{
-      id: "sheet-maths",
-      title: "Mathematics - JSS 1A",
-      assessments: [{ name: "CA 1", total: 20 }, { name: "CA 2", total: 20 }, { name: "Exam", total: 60 }],
-      columns: ["CA 1", "CA 2", "Exam"],
-      values: [17, 18, 52],
-      subject: { id: "maths", name: "Mathematics" },
+    expectedSubjectsCount: 1,
+    completedSubjectsCount: 1,
+    completionStatus: "recorded",
+    averageScore: isMidTerm ? 85 : 87,
+    classRank: 1,
+    isTemplateApproved: true,
+    results: isMidTerm
+      ? [{
+          id: "sheet-physics-mid",
+          title: "Physics - JSS 1A",
+          resultType: "MID_TERM",
+          termType: "MID_TERM",
+          academicTerm: "First Term",
+          academicYear: "2026/2027",
+          percentage: 85,
+          assessments: [{ name: "Class Exercises", total: 10 }, { name: "Mid-Term Exam", total: 30 }],
+          columns: ["Class Exercises", "Mid-Term Exam"],
+          values: [9, 25],
+          subject: { id: "physics", name: "Physics" },
+          classLevel: { id: "jss1a", name: "JSS 1A", level: 1 },
+          updatedAt: "2026-09-20T12:00:00.000Z",
+        }]
+      : [{
+          id: "sheet-maths",
+          title: "Mathematics - JSS 1A",
+          resultType: "END_OF_TERM",
+          termType: "END_TERM",
+          academicTerm: "First Term",
+          academicYear: "2026/2027",
+          percentage: 87,
+          assessments: [{ name: "CA 1", total: 20 }, { name: "CA 2", total: 20 }, { name: "Exam", total: 60 }],
+          columns: ["CA 1", "CA 2", "Exam"],
+          values: [17, 18, 52],
+          subject: { id: "maths", name: "Mathematics" },
+          classLevel: { id: "jss1a", name: "JSS 1A", level: 1 },
+          updatedAt: "2026-09-25T12:00:00.000Z",
+        }],
+  };
+
+  if (isParentUser) {
+    return [adaGroup];
+  }
+
+  const kemiGroup = {
+    student: {
+      id: "stu-kemi",
+      firstName: "Kemi",
+      lastName: "Bello",
+      admissionNumber: "GF/2026/002",
+      classLevelId: "jss1a",
       classLevel: { id: "jss1a", name: "JSS 1A", level: 1 },
-      updatedAt: "2026-09-25T12:00:00.000Z",
-    }],
-  }];
+    },
+    expectedSubjectsCount: 1,
+    completedSubjectsCount: 0,
+    completionStatus: "pending",
+    averageScore: null,
+    classRank: null,
+    isTemplateApproved: true,
+    results: [],
+  };
+
+  return [adaGroup, kemiGroup];
+}
+
+function resultsEditions(user = null) {
+  const isParentUser = Boolean(user?.roles?.includes("PARENT"));
+  if (isParentUser) {
+    return {
+      roleScope: "parent",
+      children: [{
+        id: CHILD.id,
+        firstName: CHILD.firstName,
+        lastName: CHILD.lastName,
+        admissionNumber: CHILD.admissionNumber,
+        classLevel: { id: "jss1a", name: "JSS 1A", level: "1" },
+      }],
+      editions: [
+        {
+          key: `2026/2027|First Term|END_OF_TERM|${CHILD.id}`,
+          academicYear: "2026/2027",
+          academicTerm: "First Term",
+          resultType: "END_OF_TERM",
+          title: "First Term Result",
+          studentIds: [CHILD.id],
+          subjectCount: 1,
+          subjectCountsByStudent: { [CHILD.id]: 1 },
+          isPublished: true,
+        },
+        {
+          key: `2026/2027|First Term|MID_TERM|${CHILD.id}`,
+          academicYear: "2026/2027",
+          academicTerm: "First Term",
+          resultType: "MID_TERM",
+          title: "First Term Mid-Term Result",
+          studentIds: [CHILD.id],
+          subjectCount: 1,
+          subjectCountsByStudent: { [CHILD.id]: 1 },
+          isPublished: true,
+        },
+      ],
+    };
+  }
+
+  return {
+    roleScope: "staff",
+    editions: [
+      {
+        key: "2026/2027|First Term|END_OF_TERM",
+        academicYear: "2026/2027",
+        academicTerm: "First Term",
+        resultType: "END_OF_TERM",
+        title: "First Term Result",
+        totalStudents: 2,
+        recordedCount: 1,
+        incompleteCount: 0,
+        pendingCount: 1,
+        averageScore: 87,
+        classCount: 1,
+        subjectCount: 1,
+        isPublished: true,
+      },
+      {
+        key: "2026/2027|First Term|MID_TERM",
+        academicYear: "2026/2027",
+        academicTerm: "First Term",
+        resultType: "MID_TERM",
+        title: "First Term Mid-Term Result",
+        totalStudents: 2,
+        recordedCount: 1,
+        incompleteCount: 0,
+        pendingCount: 1,
+        averageScore: 85,
+        classCount: 1,
+        subjectCount: 1,
+        isPublished: true,
+      },
+    ],
+  };
+}
+
+function studentResultsEditions() {
+  return {
+    roleScope: "student",
+    student: {
+      id: CHILD.id,
+      firstName: CHILD.firstName,
+      lastName: CHILD.lastName,
+      admissionNumber: CHILD.admissionNumber,
+      classLevel: { id: "jss1a", name: "JSS 1A", level: "1" },
+    },
+    editions: [
+      {
+        key: "2026/2027|First Term|END_OF_TERM",
+        academicYear: "2026/2027",
+        academicTerm: "First Term",
+        resultType: "END_OF_TERM",
+        title: "First Term Result",
+        subjectCount: 1,
+        isPublished: true,
+      },
+      {
+        key: "2026/2027|First Term|MID_TERM",
+        academicYear: "2026/2027",
+        academicTerm: "First Term",
+        resultType: "MID_TERM",
+        title: "First Term Mid-Term Result",
+        subjectCount: 1,
+        isPublished: true,
+      },
+    ],
+  };
+}
+
+function studentResults(resultType = "END_OF_TERM") {
+  const isMidTerm = resultType === "MID_TERM";
+  return {
+    student: { ...CHILD, classLevelId: "jss1a", classLevel: { id: "jss1a", name: "JSS 1A", level: 1 } },
+    isTemplateApproved: true,
+    approvedTemplate: { id: "tpl-1", name: "Standard Term Template", isApproved: true },
+    termResults: [],
+    subjects: isMidTerm
+      ? [{
+          spreadsheetId: "sheet-physics-mid",
+          status: "active",
+          totalScore: 34,
+          subject: { id: "physics", name: "Physics" },
+          classLevel: { id: "jss1a", name: "JSS 1A" },
+          assessments: [
+            { name: "Class Exercises", total: 10, score: 9, percentage: 90 },
+            { name: "Mid-Term Exam", total: 30, score: 25, percentage: 83.3 },
+          ],
+        }]
+      : [{
+          spreadsheetId: "sheet-maths",
+          status: "active",
+          totalScore: 87,
+          subject: { id: "maths", name: "Mathematics" },
+          classLevel: { id: "jss1a", name: "JSS 1A" },
+          assessments: [
+            { name: "CA 1", total: 20, score: 17, percentage: 85 },
+            { name: "CA 2", total: 20, score: 18, percentage: 90 },
+            { name: "Exam", total: 60, score: 52, percentage: 86.7 },
+          ],
+        }],
+  };
 }
 
 function gradebook() {
@@ -642,7 +840,16 @@ const ROUTES = {
     ["GET", /^\/classes\/greenfield$/, () => [200, [{ id: "jss1a", name: "JSS 1A", level: 1 }]]],
     ["GET", /^\/subjects\/greenfield$/, () => [200, [{ id: "maths", name: "Mathematics", code: "MTH" }]]],
     ["GET", /^\/spreadsheets\/greenfield$/, () => [200, [{ ...gradebook(), createdAt: "2026-09-01T00:00:00.000Z" }]]],
-    ["GET", /^\/spreadsheets\/greenfield\/results$/, () => [200, results()]],
+    ["GET", /^\/student\/greenfield\/results\/editions$/, () => [200, studentResultsEditions()]],
+    ["GET", /^\/student\/greenfield\/results$/, (req) => {
+      const rt = new URL(req.url, "http://localhost").searchParams.get("resultType") || "END_OF_TERM";
+      return [200, studentResults(rt)];
+    }],
+    ["GET", /^\/spreadsheets\/greenfield\/results\/editions$/, (_req, _m, _b, user) => [200, resultsEditions(user)]],
+    ["GET", /^\/spreadsheets\/greenfield\/results$/, (req, _m, _b, user) => {
+      const rt = new URL(req.url, "http://localhost").searchParams.get("resultType") || "END_OF_TERM";
+      return [200, results(rt, user)];
+    }],
     // The Mathematics JSS 1A gradebook the maths teacher keeps.
     ["GET", /^\/spreadsheets\/greenfield\/sheet-maths$/, () => [200, gradebook()]],
     ["PATCH", /^\/spreadsheets\/greenfield\/sheet-maths$/, (_req, _m, body) => {

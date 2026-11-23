@@ -69,7 +69,8 @@ test("admin computes and publishes each result type independently and opens repo
 
   await findPage.fill("");
   await nav.getByRole("link", { name: "Results", exact: true }).click();
-  await page.getByRole("combobox", { name: "Report type for PDF exports" }).selectOption("MID_TERM");
+  await page.getByRole("button", { name: "Open Overview" }).first().click();
+  await page.getByRole("button", { name: "Mid-term", exact: true }).filter({ visible: true }).first().click();
   const openPdf = async (button: string, path: string) => {
     const [popup, response] = await Promise.all([
       page.waitForEvent("popup"),
@@ -83,7 +84,7 @@ test("admin computes and publishes each result type independently and opens repo
     await popup.close();
   };
   await openPdf("View Bundle", "/export/greenfield/report-card-bundle/jss1a");
-  const printReport = page.getByRole("button", { name: "Print Report", exact: true });
+  const printReport = page.getByRole("button", { name: "Print Report", exact: true }).filter({ visible: true }).first();
   await printReport.click();
   await page.setViewportSize({ width: 390, height: 844 });
   const preview = page.getByRole("dialog", { name: /Official Report Sheet Preview/ });
@@ -93,12 +94,12 @@ test("admin computes and publishes each result type independently and opens repo
   await preview.getByRole("button", { name: "100%", exact: true }).click();
   await expect.poll(() => preview.getByRole("region", { name: "Scrollable report sheet" })
     .evaluate((region) => region.scrollWidth > region.clientWidth)).toBe(true);
-  const pdfType = preview.getByRole("combobox", { name: "PDF report type" });
-  await pdfType.click();
-  await page.getByRole("option", { name: "End-of-term", exact: true }).click();
-  await expect(pdfType).toContainText("End-of-term");
-  await pdfType.click();
-  await page.getByRole("option", { name: "Mid-term", exact: true }).click();
+  const endOfTermBtn = preview.getByRole("button", { name: "End-of-term", exact: true });
+  const midTermBtn = preview.getByRole("button", { name: "Mid-term", exact: true });
+  await endOfTermBtn.click();
+  await expect(endOfTermBtn).toHaveAttribute("aria-pressed", "true");
+  await midTermBtn.click();
+  await expect(midTermBtn).toHaveAttribute("aria-pressed", "true");
   await openPdf("View PDF", "/export/greenfield/report-card/stu-ada");
   const [download] = await Promise.all([
     page.waitForEvent("download"),

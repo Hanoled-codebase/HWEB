@@ -21,6 +21,7 @@ export interface DerivedTheme {
   isCustom: boolean;
   primary: string;
   foreground: string;
+  primaryText: string;
   hover: string;
   active: string;
   light: string;
@@ -156,6 +157,14 @@ export function deriveTheme(
   const primary = isCustomPrimary ? normalizeHex(primaryColor) : DEFAULT_HANOLED_PRIMARY;
   const rgb = hexToRgb(primary);
   const contrast = evaluateContrast(primary);
+  const inkRgb = hexToRgb(DEFAULT_INK);
+  let primaryText = primary;
+  for (let keep = 0.9; keep >= 0.15 && getContrastRatio(primaryText, PURE_WHITE) < 4.5; keep -= 0.1) {
+    primaryText = rgbToHex(blendRgb(rgb, inkRgb, keep));
+  }
+  if (getContrastRatio(primaryText, PURE_WHITE) < 4.5) {
+    primaryText = DEFAULT_INK;
+  }
 
   // Hover: 14% darker for bright/medium colors, slightly lighter if extremely dark
   const isVeryDark = getRelativeLuminance(rgb) < 0.04;
@@ -205,6 +214,7 @@ export function deriveTheme(
     isCustom: isCustomPrimary || isCustomSecondary,
     primary,
     foreground: contrast.recommendedForeground,
+    primaryText,
     hover: rgbToHex(hoverRgb),
     active: rgbToHex(activeRgb),
     light: rgbToHex(lightRgb),
@@ -227,6 +237,7 @@ export function generateTenantCssVariables(theme: DerivedTheme): Record<string, 
   return {
     "--primary": theme.primary,
     "--primary-foreground": theme.foreground,
+    "--primary-text": theme.primaryText,
     "--primary-hover": theme.hover,
     "--primary-active": theme.active,
     "--primary-light": theme.light,

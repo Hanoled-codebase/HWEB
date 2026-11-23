@@ -301,7 +301,14 @@ export default function HomeworkPage() {
           }),
         },
       );
-      setHomeworkList([created, ...homeworkList]);
+      const selectedClass = classes.find((c) => c.id === createHwClass);
+      const selectedSubject = subjects.find((s) => s.id === createHwSubject);
+      const enriched: Homework = {
+        ...created,
+        classLevel: created.classLevel ?? (selectedClass ? { id: selectedClass.id, name: selectedClass.name } : undefined),
+        subject: created.subject ?? (selectedSubject ? { id: selectedSubject.id, name: selectedSubject.name } : undefined),
+      };
+      setHomeworkList([enriched, ...homeworkList]);
       toast.success("Assignment created");
       setIsCreateHwOpen(false);
       resetCreateHwForm();
@@ -526,9 +533,19 @@ export default function HomeworkPage() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-700">Subject *</label>
-                        <Select value={createHwSubject} onValueChange={(v) => setCreateHwSubject(v as string)}>
+                        <Select
+                          value={createHwSubject}
+                          onValueChange={(v) => setCreateHwSubject(v as string)}
+                          disabled={subjects.length === 0}
+                        >
                           <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="Select subject" />
+                            <SelectValue
+                              placeholder={
+                                subjects.length === 0
+                                  ? "No assigned subjects"
+                                  : "Select subject"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {subjects.map((s) => (
@@ -538,6 +555,11 @@ export default function HomeworkPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {subjects.length === 0 && (
+                          <p className="text-xs text-amber-700">
+                            No subjects are assigned to your account yet. Ask an administrator to assign a subject before posting homework.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -584,7 +606,7 @@ export default function HomeworkPage() {
                     </Button>
                     <Button
                       onClick={handleCreateHomework}
-                      disabled={isCreatingHw}
+                      disabled={isCreatingHw || subjects.length === 0 || classes.length === 0}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       {isCreatingHw && (

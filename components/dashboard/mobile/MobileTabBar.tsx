@@ -53,15 +53,33 @@ function MobileTabBarInner() {
     measure();
   }, [measure, hidden, config.tabs.length]);
 
-  // Glide only after the first placement, and stay glued to the pill on resize or rotation.
+  // Glide only after the first placement, and stay glued to the pill on resize, font load, or rotation.
   useEffect(() => {
-    const id = requestAnimationFrame(() => setAnimate(true));
+    const id = requestAnimationFrame(() => {
+      measure();
+      setAnimate(true);
+    });
     const list = listRef.current;
-    if (!list || typeof ResizeObserver === "undefined") return () => cancelAnimationFrame(id);
+    window.addEventListener("resize", measure);
+    let cancelled = false;
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      void document.fonts.ready.then(() => {
+        if (!cancelled) measure();
+      });
+    }
+    if (!list || typeof ResizeObserver === "undefined") {
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(id);
+        window.removeEventListener("resize", measure);
+      };
+    }
     const ro = new ResizeObserver(measure);
     ro.observe(list);
     return () => {
+      cancelled = true;
       cancelAnimationFrame(id);
+      window.removeEventListener("resize", measure);
       ro.disconnect();
     };
   }, [measure]);

@@ -460,7 +460,7 @@ export default function TimetablePage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-900">{day.day}</span>
                       <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                        {day.slots.length} period{day.slots.length !== 1 ? "s" : ""}
+                        {`${day.slots.length} ${day.slots.length === 1 ? "period" : "periods"}`}
                       </span>
                     </div>
                     {isPrivileged && (

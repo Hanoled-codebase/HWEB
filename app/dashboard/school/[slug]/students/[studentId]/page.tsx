@@ -383,10 +383,13 @@ export default function StudentDetailPage() {
             actionLabel="Jump to Subjects"
             emptyTitle="No subject records available"
             emptyDescription="This student has no published subject spreadsheets yet."
-            onOpenSubject={(subject: StudentPerformanceSubject) =>
-              router.push(
-                `/dashboard/school/${currentOrg?.slug}/subjects/${subject.subject?.id || subject.spreadsheetId}`,
-              )
+            onOpenSubject={
+              currentMember?.role === "parent"
+                ? undefined
+                : (subject: StudentPerformanceSubject) =>
+                    router.push(
+                      `/dashboard/school/${currentOrg?.slug}/subjects/${subject.subject?.id || subject.spreadsheetId}`,
+                    )
             }
           />
         ) : performanceForbidden ? (

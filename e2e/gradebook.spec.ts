@@ -149,24 +149,144 @@ test.describe("a subject teacher's gradebook", () => {
     expect(savedScores).toBeTruthy();
   });
 
-  test("renders distilled mobile Results view with Options sheet and clean subject breakdown", async ({ page }) => {
+  test("renders mobile Results flow: Level 1 catalog -> Level 2 general overview -> Level 3 subject breakdown & options sheet", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page, "admin");
     await expect(page).toHaveURL(/\/welcome$/);
     await page.goto("/dashboard/school/greenfield/results");
 
-    await expect(page.getByRole("button", { name: /Options/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Print Report/i })).toBeVisible();
+    // Level 1: Admin first sees Result Editions Catalog and selects "First Term Result".
+    await expect(page.getByRole("heading", { name: "Academic Results Catalog" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Result", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Mid-Term Result", exact: true })).toBeVisible();
 
-    // Open Options bottom sheet and verify period/type/bundle controls live inside cleanly.
-    await page.getByRole("button", { name: /Options/i }).click();
+    await page.getByRole("button", { name: "Open Overview" }).first().click();
+
+    // Level 2: Mobile General Overview shows All Students (2), KPI strip, Filter & Sort, and both learners.
+    await expect(page.getByRole("tab", { name: /All Students \(2\)/i })).toBeVisible();
+    await expect(page.getByText("Ada Obi").filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText("Kemi Bello").filter({ visible: true }).first()).toBeVisible();
+
+    // Open Filter & Sort bottom sheet and verify period/type/bundle controls live inside cleanly.
+    await page.getByRole("button", { name: /Filter & Sort/i }).click();
     await expect(page.getByRole("heading", { name: /Term, filters & export/i })).toBeVisible();
     await expect(page.getByRole("button", { name: "Mid-term" })).toBeVisible();
     await page.getByRole("button", { name: "Close" }).click();
 
-    // Open a subject breakdown row from the distilled unified list.
+    // Tap View Result on Ada Obi to enter Level 3 Individual View and open subject breakdown dialog.
+    await page.getByRole("button", { name: "View Result" }).first().click();
+    await expect(page.getByRole("button", { name: /Print Report/i })).toBeVisible();
+
     await page.getByRole("button", { name: /Mathematics/i }).first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog").getByRole("heading", { name: "Mathematics" })).toBeVisible();
+  });
+
+  test("admin selects result edition first, inspects Level 2 general overview & matrix, then drills into Level 3 individual result and switches stages", async ({ page }) => {
+    await signIn(page, "admin");
+    await expect(page).toHaveURL(/\/welcome$/);
+    await page.goto("/dashboard/school/greenfield/results");
+
+    // Level 1: Admin sees Result Editions Catalog first and selects "First Term Result".
+    await expect(page.getByRole("heading", { name: "Academic Results Catalog" })).toBeVisible();
+
+    // Verify organization brand color (#0F766E) is applied via SchoolThemeProvider CSS variable.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          getComputedStyle(document.documentElement).getPropertyValue("--primary").trim().toUpperCase(),
+        ),
+      )
+      .toBe("#0F766E");
+
+    await page.getByRole("button", { name: "Open Overview" }).first().click();
+
+    // Level 2: General Results Overview opens on "All Students (2)" tab with KPI cards and multi-student table.
+    await expect(page.getByRole("heading", { name: /Results Overview - JSS 1A/i })).toBeVisible();
+    const allStudentsTab = page.getByRole("tab", { name: /All Students \(2\)/i }).filter({ visible: true }).first();
+    await expect(allStudentsTab).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("rowheader", { name: /Ada Obi/i })).toBeVisible();
+    await expect(page.getByRole("rowheader", { name: /Kemi Bello/i })).toBeVisible();
+
+    // Switch to Subject Performance Matrix tab and verify matrix renders.
+    const matrixTab = page.getByRole("tab", { name: "Subject Performance Matrix" });
+    await matrixTab.click();
+    await expect(matrixTab).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("columnheader", { name: "Mathematics" })).toBeVisible();
+    await expect(page.getByText("Subject Average")).toBeVisible();
+
+    // Return to All Students tab and click "View Result" for Ada Obi -> transitions to Level 3 Individual Student View.
+    await allStudentsTab.click();
+    await page.getByRole("button", { name: "View Result" }).filter({ visible: true }).first().click();
+    await expect(page.getByRole("tab", { name: "Individual Student View" })).toHaveAttribute("aria-selected", "true");
+
+    // End-of-term loads Mathematics by default.
+    await expect(page.getByText("Mathematics").filter({ visible: true }).first()).toBeVisible();
+
+    // Switch to Mid-term on the results page -> fetches ?resultType=MID_TERM and updates subject list to Physics.
+    await page.getByRole("button", { name: "Mid-term" }).filter({ visible: true }).first().click();
+    await expect(page.getByText("Physics").filter({ visible: true }).first()).toBeVisible();
+
+    // Open Print Report modal -> banner shows Mid-Term and Physics row.
+    await page.getByRole("button", { name: "Print Report", exact: true }).filter({ visible: true }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/Mid-Term Report Sheet/i)).toBeVisible();
+    await expect(dialog.getByText("Physics")).toBeVisible();
+
+    // Switch back to End-of-term INSIDE the report card modal -> updates live preview to Mathematics.
+    await dialog.getByRole("button", { name: "End-of-term" }).click();
+    await expect(dialog.getByText(/End-of-Term Report Sheet/i)).toBeVisible();
+    await expect(dialog.getByText("Mathematics")).toBeVisible();
+
+    // Close modal and confirm the page stayed synced to End-of-term.
+    await dialog.getByRole("button", { name: "Close report preview" }).click();
+    await expect(page.getByRole("button", { name: "End-of-term" }).filter({ visible: true }).first()).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("parent sees only available result names in Level 1 catalog and opens child result directly", async ({ page }) => {
+    await signIn(page, "parent");
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
+    await page.goto("/dashboard/school/greenfield/results");
+
+    // Level 1: Parent sees only the names of the results available to view (no class-wide KPIs or other students).
+    await expect(page.getByRole("heading", { name: "Available Academic Results" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Result", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Mid-Term Result", exact: true })).toBeVisible();
+    await expect(page.getByText("Kemi Bello")).toHaveCount(0);
+
+    // Selecting "View First Term Result" opens Level 3 Child Academic Report directly.
+    await page.getByRole("button", { name: "View First Term Result" }).click();
+    await expect(page.getByText("Mathematics").filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Available Results" })).toBeVisible();
+  });
+
+  test("student sees only available result names in Level 1 catalog, selects result, and switches between End-of-term and Mid-term", async ({ page }) => {
+    await signIn(page, "pupil");
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield/);
+    await page.goto("/dashboard/school/greenfield/student/results");
+
+    // Level 1: Student sees only available result names first.
+    await expect(page.getByRole("heading", { name: "Available Academic Results" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Result", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Term Mid-Term Result", exact: true })).toBeVisible();
+
+    // Student selects "View First Term Result" to open Level 3 report detail.
+    await page.getByRole("button", { name: "View First Term Result" }).click();
+    await expect(page.getByText(/mathematics/i).filter({ visible: true }).first()).toBeVisible();
+
+    // Switch to Mid-term on student results page.
+    await page.getByRole("button", { name: "Mid-term" }).click();
+    await expect(page.getByText(/physics/i).filter({ visible: true }).first()).toBeVisible();
+
+    // Open Print / Preview modal and switch back to End-of-term live inside the modal.
+    await page.getByRole("button", { name: /Print \/ Preview/i }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText(/Mid-Term Report Sheet/i)).toBeVisible();
+    await expect(dialog.getByText("Physics")).toBeVisible();
+
+    await dialog.getByRole("button", { name: "End-of-term" }).click();
+    await expect(dialog.getByText(/End-of-Term Report Sheet/i)).toBeVisible();
+    await expect(dialog.getByText("Mathematics")).toBeVisible();
   });
 });

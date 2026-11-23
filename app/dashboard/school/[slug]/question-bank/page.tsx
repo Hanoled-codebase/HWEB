@@ -236,7 +236,7 @@ export default function QuestionBankPage() {
                   {form.watch("questionType") === "multiple_choice" && (
                     <FormField control={form.control} name="options" render={({ field }) => (
                       <FormItem><FormLabel>Options <span className="text-slate-400">(one per line)</span></FormLabel>
-                        <FormControl><Textarea placeholder="A. First option\nB. Second option\nC. Third option\nD. Fourth option" className="min-h-[100px] font-mono text-sm" {...field} /></FormControl><FormMessage />
+                        <FormControl><Textarea placeholder={"A. First option\nB. Second option\nC. Third option\nD. Fourth option"} className="min-h-[100px] font-mono text-sm" {...field} /></FormControl><FormMessage />
                       </FormItem>
                     )} />
                   )}

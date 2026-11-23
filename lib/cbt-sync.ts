@@ -34,7 +34,10 @@ import {
   type SyncQueueItem,
 } from './cbt-offline';
 
-const SYNC_INTERVAL_MS = 30_000; // 30 seconds
+const SYNC_INTERVAL_MS = 30_000; // 30 seconds base cadence
+const MAX_BACKOFF_MS = 5 * 60_000; // 5 minutes hard cap on consecutive failures
+const MAX_CONSECUTIVE_FAILURES = 5; // stop automatic retries after 5 failed ticks until online/manual trigger
+const SYNC_FETCH_TIMEOUT_MS = 15_000; // bounded outbound fetch timeout
 const MAX_OPERATIONS_PER_REQUEST = 250; // HCBT's offlineSyncSchema limit
 
 /** The server rejected the submission; resending it unchanged won't help. */
@@ -59,6 +62,9 @@ async function postSync(path: string, body: unknown): Promise<SyncResponse> {
     credentials: 'omit',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
+      ? AbortSignal.timeout(SYNC_FETCH_TIMEOUT_MS)
+      : undefined,
   });
   const data: SyncResponse = await response.json().catch(() => ({}));
   if (response.ok) return data;
@@ -124,38 +130,44 @@ async function sendForReview(item: SyncQueueItem, reason: string): Promise<void>
   }
 }
 
-/** Attempt to sync a single queued item */
-async function syncOne(item: SyncQueueItem): Promise<void> {
-  if (item.failed && !item.failed.sentForReview) return;
+/** Attempt to sync a single queued item; returns true when a transient failure occurred. */
+async function syncOne(item: SyncQueueItem): Promise<boolean> {
+  if (item.failed && !item.failed.sentForReview) return false;
 
   try {
     if (item.failed?.sentForReview) {
       await sendForReview(item, item.failed.reason);
-      return;
+      return false;
     }
     if (!item.leaseToken) throw new PermanentSyncError('Queued without an offline lease');
     await (EDGE_MODE ? syncToEdge(item) : syncToCloud(item));
     await done(item, 'Your saved exam has been submitted.');
     console.log(`[CBT Sync] Successfully synced attempt ${item.attemptId}`);
+    return false;
   } catch (err) {
     const tooLate = err instanceof PermanentSyncError && err.code === 'OFFLINE_LEASE_INVALID';
     if (tooLate && !EDGE_MODE && item.operations?.length && !item.failed) {
       try {
         await sendForReview(item, err.message);
+        return false;
       } catch (reviewErr) {
-        if (reviewErr instanceof PermanentSyncError) await markSyncFailed(item.id, reviewErr.message, { code: reviewErr.code });
-        else await incrementRetry(item.id);
+        if (reviewErr instanceof PermanentSyncError) {
+          await markSyncFailed(item.id, reviewErr.message, { code: reviewErr.code });
+          return false;
+        }
+        await incrementRetry(item.id);
+        return true;
       }
-      return;
     }
     if (err instanceof PermanentSyncError) {
       console.error(`[CBT Sync] Server rejected attempt ${item.attemptId}; keeping it for recovery:`, err.message);
       await markSyncFailed(item.id, err.message, { code: err.code, sentForReview: item.failed?.sentForReview });
-      return;
+      return false;
     }
-    // Network or server hiccup: keep the item and try again on the next tick.
+    // Network or server hiccup: keep the item and back off before the next tick.
     console.warn(`[CBT Sync] Failed to sync attempt ${item.attemptId}:`, err);
     await incrementRetry(item.id);
+    return true;
   }
 }
 
@@ -164,49 +176,113 @@ let processing = false;
 /**
  * Process all pending items in the sync queue. Items waiting on the school's
  * review are asked about only when `checkReviews` is set (once per worker
- * start, or on request), not every tick.
+ * start, or on request), not every tick. Returns true if any item hit a
+ * transient failure so the scheduler can apply exponential backoff.
  */
-async function processQueue(checkReviews = false): Promise<void> {
-  if (!isOnline() || processing) return;
+async function processQueue(checkReviews = false): Promise<boolean> {
+  if (!isOnline() || processing) return false;
   processing = true;
+  let hadTransientFailure = false;
 
   try {
     const pending = (await getPendingSyncs()).filter(
       (item) => !item.failed || (checkReviews && item.failed.sentForReview),
     );
-    if (pending.length === 0) return;
+    if (pending.length === 0) return false;
 
     console.log(`[CBT Sync] Processing ${pending.length} pending submission(s)...`);
 
     for (const item of pending) {
-      await syncOne(item);
+      const transientFailed = await syncOne(item);
+      if (transientFailed) hadTransientFailure = true;
     }
+    return hadTransientFailure;
   } finally {
     processing = false;
   }
 }
 
+let resetBackoffHook: (() => void) | null = null;
+
 /** Try the queue now, including asking about submissions the school is reviewing. */
-export function syncNow(): Promise<void> {
-  return processQueue(true);
+export async function syncNow(): Promise<void> {
+  resetBackoffHook?.();
+  await processQueue(true);
+}
+
+function isDocumentHidden(): boolean {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
 }
 
 function runWorker(): () => void {
+  let stopped = false;
+  let consecutiveFailures = 0;
+  let timerId: ReturnType<typeof setTimeout> | null = null;
+
+  const clearScheduled = () => {
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
+  };
+
+  const scheduleNext = () => {
+    clearScheduled();
+    if (stopped || isDocumentHidden() || !isOnline()) return;
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) return;
+    const delayMs = Math.min(
+      SYNC_INTERVAL_MS * Math.pow(2, consecutiveFailures),
+      MAX_BACKOFF_MS,
+    );
+    timerId = setTimeout(() => {
+      void tick(false);
+    }, delayMs);
+  };
+
+  const tick = async (checkReviews: boolean) => {
+    clearScheduled();
+    if (stopped || isDocumentHidden() || !isOnline()) return;
+    const failed = await processQueue(checkReviews);
+    if (stopped) return;
+    consecutiveFailures = failed ? consecutiveFailures + 1 : 0;
+    scheduleNext();
+  };
+
+  resetBackoffHook = () => {
+    consecutiveFailures = 0;
+    scheduleNext();
+  };
+
   // Immediately attempt to flush the queue
-  processQueue(true);
+  void tick(true);
 
-  // Set up periodic polling
-  const intervalId = setInterval(() => processQueue(), SYNC_INTERVAL_MS);
-
-  // Also flush when the browser comes back online
+  // Also flush when the browser comes back online (resets backoff cap)
   const unsubOnline = onBackOnline(() => {
     console.log('[CBT Sync] Browser came back online — flushing queue...');
-    processQueue(true);
+    consecutiveFailures = 0;
+    void tick(true);
   });
 
+  // Pause background ticks while tab is hidden; resume cleanly when visible again.
+  const handleVisibilityChange = () => {
+    if (isDocumentHidden()) {
+      clearScheduled();
+    } else if (!stopped) {
+      scheduleNext();
+    }
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
   return () => {
-    clearInterval(intervalId);
+    stopped = true;
+    clearScheduled();
+    resetBackoffHook = null;
     unsubOnline();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
   };
 }
 
