@@ -1826,8 +1826,13 @@ export default function SpreadsheetsPage() {
             <Button
               variant="outline"
               className="justify-start gap-3 border-amber-200 bg-amber-50/50 py-6 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+              disabled={typeof conflictSheet?.version !== "number" || conflictSheet.version <= 0}
               onClick={async () => {
                 if (!conflictSheet || !currentOrg || !pendingPayload) return;
+                if (typeof conflictSheet.version !== "number" || conflictSheet.version <= 0) {
+                  toast.error("Spreadsheet version is unavailable. Open Edit Assessments instead.");
+                  return;
+                }
                 setIsDialogOpen(false);
                 setConflictSheet(null);
                 setPendingPayload(null);

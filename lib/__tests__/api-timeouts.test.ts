@@ -144,4 +144,36 @@ describe("API timeouts and cold-load token hydration", () => {
       else process.env.NEXT_PUBLIC_HCBT_URL = prevHcbt;
     }
   });
+
+  it("surfaces the specific Zod issue detail when backend returns Validation error", async () => {
+    vi.resetModules();
+    (globalThis as { window?: unknown }).window = { location: { pathname: "/dashboard/school/greenfield", href: "" } };
+    vi.doMock("../auth-tokens", () => ({
+      COOKIE_AUTH: true,
+      getHcoreToken: () => null,
+      getHcbtToken: () => null,
+      setAuthTokens: vi.fn(),
+    }));
+
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      statusText: "Bad Request",
+      json: async () => ({
+        error: "Validation error",
+        details: [
+          {
+            code: "invalid_type",
+            path: ["assessments", 0, "maxObtainableScore"],
+            message: "Max obtainable score must be a whole number",
+          },
+        ],
+      }),
+    })) as unknown as typeof fetch;
+
+    const api = await import("../api");
+    await expect(
+      api.request("http://hsms.test", "/spreadsheets/greenfield", { method: "POST", showErrorToast: false }),
+    ).rejects.toThrow("Validation error: assessments.0.maxObtainableScore — Max obtainable score must be a whole number");
+  });
 });
