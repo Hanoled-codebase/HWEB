@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOptionalMobileMenu } from "@/components/dashboard/mobile/MobileMenuProvider";
 import { EmptyNote, HomeGreeting, PrimaryAction, SectionTitle, ToolGrid, type HomeTool } from "@/components/dashboard/mobile/HomeKit";
-import { RoleOnboardingCard } from "@/components/dashboard/shared";
 
 /**
  * A teacher's home, with their two possible jobs kept visibly apart:
@@ -265,51 +264,6 @@ export function TeachingHome({
             </Button>
           )}
         </header>
-
-        <RoleOnboardingCard
-          storageKey={`teacher_${slug}`}
-          badgeLabel="Staffroom Guide"
-          title="Welcome to your teaching dashboard"
-          subtitle="Quickly access your class attendance, grading sheets, subject rosters, and lesson plans."
-          steps={[
-            {
-              id: "classes",
-              title: "Review Assigned Classes",
-              description: "View class arms, student rosters, and profile details.",
-              href: `${base}/classes`,
-              actionText: myClasses.length > 0 ? "View classes" : "Check classes",
-              isComplete: myClasses.length > 0,
-              icon: Users,
-            },
-            {
-              id: "attendance",
-              title: "Daily Register",
-              description: "Mark attendance with present, absent, or late statuses.",
-              href: `${base}/attendance`,
-              actionText: (firstRegister?.taken.total ?? 0) > 0 ? "Register taken" : "Take register",
-              isComplete: (firstRegister?.taken.total ?? 0) > 0,
-              icon: ClipboardCheck,
-            },
-            {
-              id: "scores",
-              title: "Enter Assessment Scores",
-              description: "Open your subjects' gradebooks to input CA and exam marks.",
-              href: `${base}/spreadsheets`,
-              actionText: sheetsByAssignment.size > 0 ? "Open gradebook" : "View spreadsheets",
-              isComplete: sheetsByAssignment.size > 0,
-              icon: Layers,
-            },
-            {
-              id: "curriculum",
-              title: "Scheme of Work",
-              description: "Review termly syllabi and submit weekly lesson notes.",
-              href: `${base}/scheme-of-work`,
-              actionText: "Open curriculum",
-              isComplete: false,
-              icon: BookOpen,
-            },
-          ]}
-        />
 
         <div className={cn("grid items-start gap-6", isClassTeacher && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]")}>
           {yourClass}

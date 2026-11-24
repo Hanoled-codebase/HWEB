@@ -20,6 +20,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  downloadSpreadsheetTemplateCsv,
+  parseSpreadsheetScoreImport,
+} from "@/lib/spreadsheet-import";
 import { BackButton } from "@/components/dashboard/shared";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
 import {
@@ -119,6 +123,8 @@ export default function SpreadsheetAssessmentsPage() {
   const [selectedAssessmentIdx, setSelectedAssessmentIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [syncingRoster, setSyncingRoster] = useState(false);
+  const [importingScores, setImportingScores] = useState(false);
+  const scoreImportInputRef = useRef<HTMLInputElement | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [subModal, setSubModal] = useState<SubAssessmentModalMode | null>(null);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
@@ -313,6 +319,52 @@ export default function SpreadsheetAssessmentsPage() {
       toast.error(getErrorMessage(error, "Failed to update status"));
     } finally {
       setUpdatingStatus(false);
+    }
+  }
+
+  async function handleImportScoresFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !orgSlug || !sheet) return;
+    setImportingScores(true);
+    try {
+      const text = await file.text();
+      const parsed = parseSpreadsheetScoreImport(text, rawAssessments, sheet.data ?? []);
+      if (parsed.updatedCells === 0) {
+        toast.warning(
+          parsed.invalidCells.length > 0
+            ? parsed.invalidCells[0]
+            : "No new valid scores were found in the uploaded file.",
+        );
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        data: parsed.updatedRows.map((row) => ({
+          student: { id: row.student.id },
+          values: row.values,
+        })),
+        ...(!isRelational && typeof sheet.version === "number"
+          ? { expectedVersion: sheet.version }
+          : {}),
+      };
+      const updated = await apiFetch<SpreadsheetDetail>(
+        `/spreadsheets/${orgSlug}/${sheet.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+      setSheet(updated);
+      const extras: string[] = [];
+      if (parsed.unmatchedRows > 0) extras.push(`${parsed.unmatchedRows} unmatched row(s)`);
+      if (parsed.invalidCells.length > 0) extras.push(`${parsed.invalidCells.length} invalid cell(s) skipped`);
+      toast.success(
+        `Imported ${parsed.updatedCells} score(s) across ${parsed.matchedStudents} student(s)${extras.length > 0 ? ` (${extras.join(", ")})` : ""}.`,
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to import scores"));
+    } finally {
+      setImportingScores(false);
     }
   }
 
@@ -560,20 +612,68 @@ export default function SpreadsheetAssessmentsPage() {
         {/* Assessments tab */}
         {activeTab === "assessments" && (
           <>
-            {/* Search */}
-            <div className="relative mb-4">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                placeholder="Search assessment"
-                aria-label="Search assessment"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-800 shadow-2xs outline-none transition placeholder:text-slate-400 focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 md:text-sm"
-              />
+            {/* Search & Template Import/Export Row */}
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  placeholder="Search assessment"
+                  aria-label="Search assessment"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-800 shadow-2xs outline-none transition placeholder:text-slate-400 focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              {rawAssessments.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      downloadSpreadsheetTemplateCsv(
+                        sheet.title || `${subjectName}-${className}`,
+                        rawAssessments,
+                        sheet.data ?? [],
+                      )
+                    }
+                    className="h-10 flex-1 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:flex-none"
+                  >
+                    <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                    Download Format
+                  </Button>
+                  {canEdit && !isPublishedLocked && (
+                    <>
+                      <input
+                        ref={scoreImportInputRef}
+                        type="file"
+                        accept=".csv,.tsv,.txt,text/csv"
+                        onChange={(e) => void handleImportScoresFile(e)}
+                        className="sr-only"
+                        aria-label="Import scores from CSV spreadsheet"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={importingScores}
+                        onClick={() => scoreImportInputRef.current?.click()}
+                        className="h-10 flex-1 rounded-xl border-blue-200 bg-blue-50/70 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-100/70 sm:flex-none"
+                      >
+                        {importingScores ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        {importingScores ? "Importing..." : "Import Scores"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {isRelational ? (

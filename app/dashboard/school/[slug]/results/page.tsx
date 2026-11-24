@@ -2691,6 +2691,11 @@ export default function ResultsPage() {
                           assignments,
                           periodicTests,
                           examScore,
+                          assessments: assessmentsList.map((a, idx) => ({
+                            name: a.name || `Assessment ${idx + 1}`,
+                            score: toNumericValue(r.values[idx]) ?? r.values[idx] ?? null,
+                            maxMarks: typeof a.total === "number" ? a.total : null,
+                          })),
                           highestScore,
                           lowestScore,
                         };
