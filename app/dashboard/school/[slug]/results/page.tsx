@@ -1240,6 +1240,7 @@ export default function ResultsPage() {
                   <Button
                     type="button"
                     variant="outline"
+                    aria-label="Refresh results"
                     onClick={() =>
                       void fetchParentData({
                         refresh: true,
@@ -1247,14 +1248,14 @@ export default function ResultsPage() {
                       })
                     }
                     disabled={isLoading || isRefreshing}
-                    className="h-8 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+                    className="h-8 rounded-lg border-slate-200 bg-white px-2 sm:px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
                   >
                     {isRefreshing ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" />
                     ) : (
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                      <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
                     )}
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </Button>
                 </div>
               }
@@ -1683,12 +1684,6 @@ export default function ResultsPage() {
                       onPrintReport={(studentId) =>
                         setPrintModalStudentId(studentId)
                       }
-                      onBulkPrint={
-                        canExportClassBundle
-                          ? () => void handleBatchExport("download")
-                          : undefined
-                      }
-                      isBulkPrinting={isDownloadingBatch}
                     />
                   </section>
                 )}

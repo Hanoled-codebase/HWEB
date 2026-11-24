@@ -55,20 +55,21 @@ export function ResultsBrandHeader({
         className="h-1 w-full bg-[var(--primary)]"
         aria-hidden="true"
       />
-      <div className="flex flex-col gap-3.5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 p-3.5 sm:gap-3.5 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {onBack && (
               <button
                 type="button"
                 onClick={onBack}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                aria-label={backLabel}
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 px-2 sm:px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{backLabel}</span>
+                <span className="hidden sm:inline">{backLabel}</span>
               </button>
             )}
-            <div className="inline-flex h-8 items-center gap-2 rounded-full border border-[var(--primary-border)] bg-[var(--primary-light)] px-2.5">
+            <div className="inline-flex h-8 items-center gap-1.5 sm:gap-2 rounded-full border border-[var(--primary-border)] bg-[var(--primary-light)] px-2 sm:px-2.5">
               {orgLogo ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
@@ -85,23 +86,23 @@ export function ResultsBrandHeader({
                   {initials}
                 </span>
               )}
-              <span className="max-w-[240px] truncate text-xs font-semibold text-[var(--primary-text)]">
+              <span className="max-w-[130px] sm:max-w-[240px] truncate text-xs font-semibold text-[var(--primary-text)]">
                 {orgName}
               </span>
             </div>
             {editionLabel && (
-              <span className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-slate-100/90 px-2.5 text-xs font-semibold text-slate-700">
+              <span className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-slate-100/90 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-slate-700 truncate">
                 {editionLabel}
               </span>
             )}
           </div>
 
           <div className="min-w-0">
-            <h1 className="text-base font-bold tracking-tight text-slate-900 sm:text-xl">
+            <h1 className="text-sm font-bold tracking-tight text-slate-900 sm:text-xl">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">
+              <p className="hidden sm:block mt-0.5 text-xs text-slate-600 sm:text-sm">
                 {subtitle}
               </p>
             )}
@@ -120,7 +121,7 @@ export function ResultsBrandHeader({
                   type="button"
                   aria-pressed={stage === "END_OF_TERM"}
                   onClick={() => onStageChange("END_OF_TERM")}
-                  className="h-7 rounded-md px-2.5 text-xs font-semibold text-slate-600 transition-all hover:text-slate-900 aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  className="h-7 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-slate-600 transition-all hover:text-slate-900 aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 >
                   End-of-term
                 </button>
@@ -128,7 +129,7 @@ export function ResultsBrandHeader({
                   type="button"
                   aria-pressed={stage === "MID_TERM"}
                   onClick={() => onStageChange("MID_TERM")}
-                  className="h-7 rounded-md px-2.5 text-xs font-semibold text-slate-600 transition-all hover:text-slate-900 aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  className="h-7 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-slate-600 transition-all hover:text-slate-900 aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 >
                   Mid-term
                 </button>
