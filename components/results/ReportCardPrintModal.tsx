@@ -145,6 +145,7 @@ export default function ReportCardPrintModal({
     useState<AffectiveCategory[]>(DEFAULT_AFFECTIVE_CATEGORIES);
   const [ceoSignatureUrl, setCeoSignatureUrl] = useState<string | null>(null);
   const [commentRules, setCommentRules] = useState<CommentRule[]>([]);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const [customCeoComment, setCustomCeoComment] = useState<string | null>(null);
   const schoolOpen = initialAttendance.schoolOpen ?? "";
@@ -736,22 +737,23 @@ export default function ReportCardPrintModal({
           >
             {/* ── ROW 1 & 2: School Logo & Branding ── */}
             <div className="text-center pt-1 pb-1">
-              {orgLogo ? (
+              {orgLogo && !logoFailed && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={orgLogo}
-                  alt={orgName}
-                  className="h-16 w-auto max-w-[240px] object-contain mx-auto"
+                  alt={`${orgName} crest`}
+                  crossOrigin="anonymous"
+                  onError={() => setLogoFailed(true)}
+                  className="h-14 sm:h-16 w-auto max-w-[160px] object-contain mx-auto mb-1"
                 />
-              ) : (
-                <div className="inline-flex flex-col items-center">
-                  <span className="text-xl sm:text-2xl font-black tracking-widest text-black font-serif uppercase px-4 text-center">
-                    {orgName || "School"}
-                  </span>
-                  <div className="w-48 h-0.5 bg-black mt-1" />
-                  <div className="w-32 h-px bg-black mt-0.5" />
-                </div>
               )}
+              <div className="inline-flex flex-col items-center">
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-black font-serif uppercase px-4 text-center">
+                  {orgName || "School"}
+                </span>
+                <div className="w-48 h-0.5 bg-black mt-1" />
+                <div className="w-32 h-px bg-black mt-0.5" />
+              </div>
             </div>
 
             {/* ── ROW 3: School Address and Email ── */}
