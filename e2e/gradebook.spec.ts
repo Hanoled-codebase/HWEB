@@ -35,7 +35,7 @@ test.describe("a subject teacher's gradebook", () => {
 
     await page.getByRole("link", { name: "Back to Spreadsheets" }).click();
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets$/);
-    await expect(page.getByText(/Showing 1 of 1 spreadsheets/)).toBeVisible();
+    await expect(page.getByText(/Showing 1 of 1 spreadsheets?/)).toBeVisible();
 
     await page.getByRole("link", { name: "Back to Overview" }).click();
     await expect(page).toHaveURL(/\/dashboard\/school\/greenfield$/);
