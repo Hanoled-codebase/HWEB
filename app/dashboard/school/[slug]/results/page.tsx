@@ -949,7 +949,7 @@ export default function ResultsPage() {
                       setExportTerm(term);
                     }
                   }}
-                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-[#0B1220] outline-none focus:border-[var(--primary)]"
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220] outline-none focus:border-[var(--primary)]"
                 >
                   {periodOptions.length > 0 ? (
                     periodOptions.map((p) => (
@@ -975,13 +975,13 @@ export default function ResultsPage() {
                 <div
                   role="group"
                   aria-label="Report type"
-                  className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1"
+                  className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-0.5"
                 >
                   <button
                     type="button"
                     aria-pressed={exportResultType === "END_OF_TERM"}
                     onClick={() => setExportResultType("END_OF_TERM")}
-                    className="min-h-11 rounded-lg text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-[var(--primary)] aria-pressed:text-[var(--primary-foreground)] aria-pressed:shadow-2xs motion-reduce:transition-none"
+                    className="h-8 rounded-md text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs motion-reduce:transition-none"
                   >
                     End-of-term
                   </button>
@@ -989,7 +989,7 @@ export default function ResultsPage() {
                     type="button"
                     aria-pressed={exportResultType === "MID_TERM"}
                     onClick={() => setExportResultType("MID_TERM")}
-                    className="min-h-11 rounded-lg text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-[var(--primary)] aria-pressed:text-[var(--primary-foreground)] aria-pressed:shadow-2xs motion-reduce:transition-none"
+                    className="h-8 rounded-md text-xs font-semibold text-slate-600 transition-colors hover:text-[#0B1220] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] aria-pressed:bg-white aria-pressed:font-bold aria-pressed:text-[var(--primary-text)] aria-pressed:shadow-2xs motion-reduce:transition-none"
                   >
                     Mid-term
                   </button>
@@ -1010,7 +1010,7 @@ export default function ResultsPage() {
                     onChange={(e) =>
                       setSelectedClassId(e.target.value || "all")
                     }
-                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-[#0B1220] outline-none focus:border-[var(--primary)]"
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220] outline-none focus:border-[var(--primary)]"
                   >
                     <option value="all">All Class Levels</option>
                     {availableClassOptions.map((cls) => (
@@ -1037,7 +1037,7 @@ export default function ResultsPage() {
                       onChange={(e) =>
                         setStatusFilter(e.target.value as CompletionFilter)
                       }
-                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220]"
+                      className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220]"
                     >
                       <option value="all">All Statuses</option>
                       <option value="recorded">Recorded</option>
@@ -1058,7 +1058,7 @@ export default function ResultsPage() {
                       onChange={(e) =>
                         setPerformanceFilter(e.target.value as PerformanceBand)
                       }
-                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220]"
+                      className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-[#0B1220]"
                     >
                       <option value="all">All Bands</option>
                       <option value="distinction">Distinction (75%+)</option>
@@ -1079,13 +1079,13 @@ export default function ResultsPage() {
                         setIsMobileOptionsOpen(false);
                         void handleBatchExport("view");
                       }}
-                      className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-[#0B1220] hover:bg-slate-50 disabled:opacity-60"
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-[#0B1220] hover:bg-slate-50 disabled:opacity-60"
                     >
                       <Eye
-                        className="h-4 w-4 text-slate-500"
+                        className="h-3.5 w-3.5 text-slate-500"
                         aria-hidden="true"
                       />
-                      View bundle
+                      <span>View bundle</span>
                     </button>
                     <button
                       type="button"
@@ -1094,17 +1094,17 @@ export default function ResultsPage() {
                         setIsMobileOptionsOpen(false);
                         void handleBatchExport("download");
                       }}
-                      className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 text-xs font-semibold text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)] disabled:opacity-60"
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-2.5 text-xs font-semibold text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)] disabled:opacity-60"
                     >
                       {isDownloadingBatch ? (
                         <Loader2
-                          className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                          className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
                           aria-hidden="true"
                         />
                       ) : (
-                        <Download className="h-4 w-4" aria-hidden="true" />
+                        <Download className="h-3.5 w-3.5" aria-hidden="true" />
                       )}
-                      Download bundle
+                      <span>Download bundle</span>
                     </button>
                   </div>
                 )}
@@ -1119,16 +1119,16 @@ export default function ResultsPage() {
                       showSuccessToast: true,
                     });
                   }}
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 >
                   <RefreshCw
                     className={cn(
-                      "h-4 w-4",
+                      "h-3.5 w-3.5",
                       isRefreshing && "animate-spin motion-reduce:animate-none",
                     )}
                     aria-hidden="true"
                   />
-                  Refresh results
+                  <span>Refresh results</span>
                 </button>
               </div>
             </div>
@@ -1247,7 +1247,7 @@ export default function ResultsPage() {
                       })
                     }
                     disabled={isLoading || isRefreshing}
-                    className="min-h-11 md:pointer-fine:min-h-8 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+                    className="h-8 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
                   >
                     {isRefreshing ? (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -1295,19 +1295,19 @@ export default function ResultsPage() {
               <>
                 {/* STAFF LEVEL 2: Mobile 2-Tab Segmented Switch + Controls + KPIs + Desktop Filter Bar + Desktop 3-Tab Bar */}
                 {!isParent && (
-                  <div className="space-y-4">
-                    {/* Mobile 2-Tab Segmented Switch (matches mobile mockup #1) */}
+                  <div className="space-y-3">
+                    {/* Mobile 2-Tab Segmented Switch: sleek, native iOS style */}
                     <div
                       role="tablist"
                       aria-label="Results view mode"
-                      className="grid grid-cols-2 rounded-xl border border-slate-200 bg-slate-100 p-1 md:hidden"
+                      className="grid grid-cols-2 rounded-xl border border-slate-200/80 bg-slate-100/90 p-0.5 md:hidden"
                     >
                       <button
                         type="button"
                         role="tab"
                         aria-selected={activeOverviewTab !== "individual"}
                         onClick={() => setActiveOverviewTab("all")}
-                        className="min-h-11 rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors aria-selected:bg-[var(--primary)] aria-selected:text-[var(--primary-foreground)] aria-selected:shadow-2xs"
+                        className="flex h-8 items-center justify-center rounded-lg px-3 text-xs font-semibold text-slate-600 transition-all aria-selected:bg-white aria-selected:font-bold aria-selected:text-slate-900 aria-selected:shadow-2xs"
                       >
                         All Students ({filteredOverviewRows.length})
                       </button>
@@ -1316,7 +1316,7 @@ export default function ResultsPage() {
                         role="tab"
                         aria-selected={activeOverviewTab === "individual"}
                         onClick={() => setActiveOverviewTab("individual")}
-                        className="min-h-11 rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors aria-selected:bg-[var(--primary)] aria-selected:text-[var(--primary-foreground)] aria-selected:shadow-2xs"
+                        className="flex h-8 items-center justify-center rounded-lg px-3 text-xs font-semibold text-slate-600 transition-all aria-selected:bg-white aria-selected:font-bold aria-selected:text-slate-900 aria-selected:shadow-2xs"
                       >
                         Individual View
                       </button>
@@ -1325,15 +1325,15 @@ export default function ResultsPage() {
                     {/* Mobile Class Filter & Unified Quick Actions Toolbar */}
                     {activeOverviewTab !== "individual" && (
                       <>
-                        <div className="space-y-2.5 md:hidden">
-                        <div className="flex items-center gap-2">
+                        <div className="space-y-2 md:hidden">
+                        <div className="flex items-center gap-1.5">
                           <select
                             aria-label="Filter by class level"
                             value={selectedClassId}
                             onChange={(e) =>
                               setSelectedClassId(e.target.value || "all")
                             }
-                            className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-800 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] truncate"
+                            className="h-8.5 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-800 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] truncate"
                           >
                             <option value="all">All Class Levels</option>
                             {availableClassOptions.map((cls) => (
@@ -1347,7 +1347,7 @@ export default function ResultsPage() {
                             type="button"
                             aria-label="Filter & Sort"
                             onClick={() => setIsMobileOptionsOpen(true)}
-                            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-slate-50"
+                            className="inline-flex h-8.5 shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
                           >
                             <SlidersHorizontal
                               className="h-3.5 w-3.5 text-slate-500"
@@ -1366,7 +1366,7 @@ export default function ResultsPage() {
                             type="button"
                             disabled={isExportingBroadsheet}
                             onClick={() => void handleExportCsvOrExcel()}
-                            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex h-8.5 shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50"
                             title="Export CSV/Excel"
                             aria-label="Export CSV or Excel"
                           >
@@ -1382,7 +1382,7 @@ export default function ResultsPage() {
                               type="button"
                               disabled={isDownloadingBatch}
                               onClick={() => void handleBatchExport("download")}
-                              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border border-[var(--primary-border)] bg-[var(--primary-light)] px-2.5 text-xs font-semibold text-[var(--primary-text)] shadow-2xs disabled:opacity-50"
+                              className="inline-flex h-8.5 shrink-0 items-center gap-1 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-light)] px-2 text-xs font-semibold text-[var(--primary-text)] shadow-2xs disabled:opacity-50"
                               title="Bulk Print Report Cards"
                               aria-label="Bulk Print Report Cards"
                             >
@@ -1399,7 +1399,7 @@ export default function ResultsPage() {
                         {/* Mobile Search Input */}
                         <div className="relative md:hidden">
                           <Search
-                            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
                             aria-hidden="true"
                           />
                           <Input
@@ -1408,7 +1408,7 @@ export default function ResultsPage() {
                             aria-label="Search students"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm placeholder:text-slate-400"
+                            className="h-8.5 rounded-lg border-slate-200 bg-white pl-8 text-xs placeholder:text-slate-400"
                           />
                         </div>
 
