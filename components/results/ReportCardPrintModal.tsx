@@ -25,6 +25,12 @@ export interface ReportCardStudent {
   } | null;
 }
 
+export interface ReportCardAssessmentScore {
+  name: string;
+  score: number | string | null;
+  maxMarks?: number | null;
+}
+
 export interface ReportCardResultItem {
   subject: string;
   score: number;
@@ -35,6 +41,7 @@ export interface ReportCardResultItem {
   assignments?: number | string | null;
   periodicTests?: number | string | null;
   examScore?: number | string | null;
+  assessments?: ReportCardAssessmentScore[];
   highestScore?: number | string | null;
   lowestScore?: number | string | null;
 }
@@ -76,12 +83,36 @@ type ResultSettings = {
   ceoCommentRules?: CommentRule[];
   affectiveCategories?: AffectiveCategory[];
 };
+type TemplateMetric = {
+  id?: string;
+  name: string;
+  label?: string | null;
+  weight: number;
+  stage?: "MID_TERM" | "END_OF_TERM";
+};
+type TemplateAssessmentCategory = {
+  id: string;
+  name: string;
+  label?: string | null;
+  maxMarks: number;
+  position?: number;
+};
 type ResultTemplate = {
   id: string;
   classLevelId?: string | null;
   isApproved?: boolean;
   isDefault?: boolean;
+  resultType?: "BOTH" | "MID_TERM" | "END_OF_TERM";
+  termType?: "MID_TERM" | "END_TERM" | "CUSTOM";
   gradeScale?: GradeBand[];
+  metrics?: TemplateMetric[];
+  assessmentCategories?: TemplateAssessmentCategory[];
+};
+type ScoreColumnDef = {
+  key: string;
+  label: string;
+  maxMarks: number;
+  isExam: boolean;
 };
 
 // 9-point WAEC Nigerian Grading scale
@@ -141,6 +172,7 @@ export default function ReportCardPrintModal({
     }
   };
   const [gradeScale, setGradeScale] = useState<GradeBand[]>([]);
+  const [activeTemplate, setActiveTemplate] = useState<ResultTemplate | null>(null);
   const [affectiveCategories, setAffectiveCategories] =
     useState<AffectiveCategory[]>(DEFAULT_AFFECTIVE_CATEGORIES);
   const [ceoSignatureUrl, setCeoSignatureUrl] = useState<string | null>(null);
@@ -227,15 +259,28 @@ export default function ReportCardPrintModal({
         const templates = Array.isArray(templateResponse)
           ? templateResponse
           : templateResponse.data || [];
+        const stageMatches = (template: ResultTemplate) => {
+          const rt = template.resultType;
+          const tt = template.termType;
+          if (pdfResultType === "MID_TERM") {
+            return rt === "MID_TERM" || tt === "MID_TERM" || rt === "BOTH";
+          }
+          return rt === "END_OF_TERM" || tt === "END_TERM" || rt === "BOTH" || (!rt && !tt);
+        };
+        const exactStage = (template: ResultTemplate) =>
+          pdfResultType === "MID_TERM"
+            ? template.resultType === "MID_TERM" || template.termType === "MID_TERM"
+            : template.resultType === "END_OF_TERM" || template.termType === "END_TERM";
+        const eligible = templates.filter((t) => t.isApproved && stageMatches(t));
         const selected =
-          templates.find(
-            (template) =>
-              template.classLevelId === classLevelId && template.isApproved,
-          ) ||
-          templates.find(
-            (template) => template.isDefault && template.isApproved,
-          ) ||
-          templates.find((template) => template.isApproved);
+          eligible.find((t) => t.classLevelId === classLevelId && exactStage(t)) ||
+          eligible.find((t) => t.classLevelId === classLevelId) ||
+          eligible.find((t) => t.isDefault && exactStage(t)) ||
+          eligible.find((t) => t.isDefault) ||
+          eligible[0] ||
+          templates.find((t) => t.isApproved) ||
+          null;
+        setActiveTemplate(selected);
         setGradeScale(selected?.gradeScale || []);
       })
       .catch(() => {
@@ -334,6 +379,72 @@ export default function ReportCardPrintModal({
   };
 
   // Determine subject rows: Show ONLY the subjects the student is offering (where spreadsheets exist for them)
+  const scoreColumns = useMemo<ScoreColumnDef[]>(() => {
+    const isExamName = (name: string) => /\bexam\b|examination/i.test(name);
+    const categories = activeTemplate?.assessmentCategories;
+    if (Array.isArray(categories) && categories.length > 0) {
+      return [...categories]
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((cat) => {
+          const label = (cat.label || cat.name || "Assessment").trim();
+          return {
+            key: (cat.name || label).toLowerCase().trim(),
+            label,
+            maxMarks: Number(cat.maxMarks) || 0,
+            isExam: isExamName(label) || isExamName(cat.name || ""),
+          };
+        });
+    }
+
+    const metrics = activeTemplate?.metrics;
+    if (Array.isArray(metrics) && metrics.length > 0) {
+      const stageFiltered = metrics.filter((m) => !m.stage || m.stage === pdfResultType);
+      const source = stageFiltered.length > 0 ? stageFiltered : metrics;
+      return source.map((m) => {
+        const label = (m.label || m.name || "Assessment").trim();
+        return {
+          key: (m.name || label).toLowerCase().trim(),
+          label,
+          maxMarks: Number(m.weight) || 0,
+          isExam: isExamName(label) || isExamName(m.name || ""),
+        };
+      });
+    }
+
+    const sampleAssessments = results.find((r) => Array.isArray(r.assessments) && r.assessments.length > 0)?.assessments;
+    if (sampleAssessments && sampleAssessments.length > 0) {
+      return sampleAssessments.map((a) => {
+        const label = (a.name || "Assessment").trim();
+        return {
+          key: label.toLowerCase(),
+          label,
+          maxMarks: Number(a.maxMarks) || 0,
+          isExam: isExamName(label),
+        };
+      });
+    }
+
+    return [
+      { key: "class exercises", label: "Class Exercises", maxMarks: 10, isExam: false },
+      { key: "assignments", label: "Assignments", maxMarks: 10, isExam: false },
+      { key: "periodic tests", label: "Periodic Tests", maxMarks: 20, isExam: false },
+      {
+        key: "exam",
+        label: pdfResultType === "MID_TERM" ? "Mid-Term Exam" : "Exam Scores",
+        maxMarks: 60,
+        isExam: true,
+      },
+    ];
+  }, [activeTemplate, pdfResultType, results]);
+
+  const caColumns = useMemo(() => scoreColumns.filter((c) => !c.isExam), [scoreColumns]);
+  const examColumns = useMemo(() => scoreColumns.filter((c) => c.isExam), [scoreColumns]);
+  const orderedColumns = useMemo(() => [...caColumns, ...examColumns], [caColumns, examColumns]);
+  const totalObtainable = useMemo(() => {
+    const sum = orderedColumns.reduce((acc, c) => acc + (Number.isFinite(c.maxMarks) ? c.maxMarks : 0), 0);
+    return sum > 0 ? sum : 100;
+  }, [orderedColumns]);
+
   const displayResults = useMemo(() => {
     if (Array.isArray(results) && results.length > 0) {
       return results.map((match) => {
@@ -375,6 +486,7 @@ export default function ReportCardPrintModal({
             match.examScore !== ""
               ? match.examScore
               : "—",
+          assessments: match.assessments || [],
           score: hasScore && Number.isFinite(numericScore) ? numericScore : "—",
           grade:
             hasScore && Number.isFinite(numericScore)
@@ -383,7 +495,7 @@ export default function ReportCardPrintModal({
           remark:
             match.remark ||
             (hasScore && Number.isFinite(numericScore) ? gradeObj.grade : "—"),
-          maxScore: match.maxScore || 100,
+          maxScore: match.maxScore || totalObtainable,
           highestScore: match.highestScore ?? "—",
           lowestScore: match.lowestScore ?? "—",
         };
@@ -391,7 +503,40 @@ export default function ReportCardPrintModal({
     }
 
     return [];
-  }, [gradeScale, results]);
+  }, [gradeScale, results, totalObtainable]);
+
+  const resolveColumnCell = (
+    item: (typeof displayResults)[number],
+    col: ScoreColumnDef,
+    colIndex: number,
+  ): string | number => {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const targetKey = normalize(col.key);
+    const targetLabel = normalize(col.label);
+    const assessments = item.assessments || [];
+
+    const matched = assessments.find((a) => {
+      const n = normalize(a.name || "");
+      return n === targetKey || n === targetLabel || n.includes(targetLabel) || targetLabel.includes(n);
+    });
+    if (matched && matched.score !== undefined && matched.score !== null && matched.score !== "") {
+      return matched.score;
+    }
+
+    if (col.isExam) {
+      return item.examScore;
+    }
+    if (/exercise|ca 1|first ca|cw/i.test(targetLabel)) return item.classExercises;
+    if (/assign|homework|ca 2|hw/i.test(targetLabel)) return item.assignments;
+    if (/test|periodic|ca 3/i.test(targetLabel)) return item.periodicTests;
+
+    const positional = assessments[colIndex];
+    if (positional && positional.score !== undefined && positional.score !== null && positional.score !== "") {
+      return positional.score;
+    }
+    const legacy = [item.classExercises, item.assignments, item.periodicTests, item.examScore];
+    return legacy[colIndex] ?? "—";
+  };
 
   const ceoComment = useMemo(() => {
     if (customCeoComment) return customCeoComment;
@@ -841,28 +986,33 @@ export default function ReportCardPrintModal({
                       </div>
                     </th>
 
-                    {/* Grouped Header: Continuous Assessment (spanning 3 CA columns) */}
-                    <th
-                      colSpan={3}
-                      className="text-center font-black text-black bg-[#F1F3F5] border-r border-b border-black py-1 text-xs"
-                    >
-                      Continuous
-                      <br />
-                      Assessment
-                    </th>
+                    {/* Grouped Header: Continuous Assessment (dynamic CA columns from active template) */}
+                    {caColumns.length > 0 && (
+                      <th
+                        colSpan={caColumns.length}
+                        className="text-center font-black text-black bg-[#F1F3F5] border-r border-b border-black py-1 text-xs"
+                      >
+                        Continuous
+                        <br />
+                        Assessment
+                      </th>
+                    )}
 
-                    {/* Remaining Vertical Column Headers */}
-                    <th
-                      rowSpan={2}
-                      className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
-                    >
-                      <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
-                        {pdfResultType === "MID_TERM" ? "Mid-Term Exam" : "Exam Scores"}
-                      </div>
-                    </th>
+                    {/* Exam Columns (dynamic from active template) */}
+                    {examColumns.map((col) => (
+                      <th
+                        key={col.key}
+                        rowSpan={caColumns.length > 0 ? 2 : 1}
+                        className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
+                      >
+                        <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
+                          {col.label}
+                        </div>
+                      </th>
+                    ))}
 
                     <th
-                      rowSpan={2}
+                      rowSpan={caColumns.length > 0 ? 2 : 1}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
                       <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
@@ -871,7 +1021,7 @@ export default function ReportCardPrintModal({
                     </th>
 
                     <th
-                      rowSpan={2}
+                      rowSpan={caColumns.length > 0 ? 2 : 1}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[8%] align-bottom text-center"
                     >
                       <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
@@ -880,7 +1030,7 @@ export default function ReportCardPrintModal({
                     </th>
 
                     <th
-                      rowSpan={2}
+                      rowSpan={caColumns.length > 0 ? 2 : 1}
                       className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
                       <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
@@ -889,7 +1039,7 @@ export default function ReportCardPrintModal({
                     </th>
 
                     <th
-                      rowSpan={2}
+                      rowSpan={caColumns.length > 0 ? 2 : 1}
                       className="bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
                     >
                       <div className="header-vertical-text mx-auto pb-1.5 font-bold text-black">
@@ -898,38 +1048,38 @@ export default function ReportCardPrintModal({
                     </th>
                   </tr>
 
-                  {/* CA Subheaders (vertical text) */}
-                  <tr className="border-b border-black">
-                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
-                        Class Exercises
-                      </div>
-                    </th>
-                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
-                        Assignments
-                      </div>
-                    </th>
-                    <th className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center">
-                      <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
-                        Periodic Tests
-                      </div>
-                    </th>
-                  </tr>
+                  {/* CA Subheaders (dynamic vertical text from active template) */}
+                  {caColumns.length > 0 && (
+                    <tr className="border-b border-black">
+                      {caColumns.map((col) => (
+                        <th
+                          key={col.key}
+                          className="border-r border-black bg-[#F1F3F5] p-1 w-[7.5%] align-bottom text-center"
+                        >
+                          <div className="header-vertical-text mx-auto pb-1 font-bold text-black">
+                            {col.label}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  )}
 
-                  {/* ── ROW 14: Mark Obtainable Row (Solid Black) ── */}
+                  {/* ── ROW 14: Mark Obtainable Row (Solid Black, dynamic from active template) ── */}
                   <tr className="bg-black font-black text-white border-b border-black text-center text-xs">
                     <td className="text-left px-3 py-1 font-extrabold border-r border-neutral-700">
                       Mark obtainable
                     </td>
-                    <td className="border-r border-neutral-700 py-1">10</td>
-                    <td className="border-r border-neutral-700 py-1">10</td>
-                    <td className="border-r border-neutral-700 py-1">20</td>
-                    <td className="border-r border-neutral-700 py-1">60</td>
-                    <td className="border-r border-neutral-700 py-1 font-black">100</td>
+                    {orderedColumns.map((col) => (
+                      <td key={col.key} className="border-r border-neutral-700 py-1 tabular-nums">
+                        {col.maxMarks > 0 ? col.maxMarks : "—"}
+                      </td>
+                    ))}
+                    <td className="border-r border-neutral-700 py-1 font-black tabular-nums">
+                      {totalObtainable}
+                    </td>
                     <td className="border-r border-neutral-700 py-1"></td>
-                    <td className="border-r border-neutral-700 py-1">100</td>
-                    <td className="py-1">100</td>
+                    <td className="border-r border-neutral-700 py-1 tabular-nums">{totalObtainable}</td>
+                    <td className="py-1 tabular-nums">{totalObtainable}</td>
                   </tr>
                 </thead>
 
@@ -937,7 +1087,7 @@ export default function ReportCardPrintModal({
                 <tbody className="divide-y divide-black font-medium">
                   {isLoadingResults ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-xs text-slate-600">
+                      <td colSpan={orderedColumns.length + 5} className="py-8 text-center text-xs text-slate-600">
                         <span className="inline-flex items-center gap-2 font-medium">
                           <Loader2 className="h-4 w-4 animate-spin text-[var(--primary-text)] motion-reduce:animate-none" aria-hidden="true" />
                           Loading {stageLabel.toLowerCase()} results…
@@ -946,7 +1096,7 @@ export default function ReportCardPrintModal({
                     </tr>
                   ) : displayResults.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-6 text-center text-xs text-slate-600 italic">
+                      <td colSpan={orderedColumns.length + 5} className="py-6 text-center text-xs text-slate-600 italic">
                         No recorded {stageLabel.toLowerCase()} subject scores found for this student.
                       </td>
                     </tr>
@@ -961,27 +1111,17 @@ export default function ReportCardPrintModal({
                           {item.subject}
                         </td>
 
-                        {/* Class Exercises (10) */}
-                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                          {item.classExercises}
-                        </td>
+                        {/* Dynamic Assessment Columns */}
+                        {orderedColumns.map((col, colIdx) => (
+                          <td
+                            key={col.key}
+                            className="text-center border-r border-black py-1 text-black tabular-nums"
+                          >
+                            {resolveColumnCell(item, col, colIdx)}
+                          </td>
+                        ))}
 
-                        {/* Assignments (10) */}
-                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                          {item.assignments}
-                        </td>
-
-                        {/* Periodic Tests (20) */}
-                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                          {item.periodicTests}
-                        </td>
-
-                        {/* Mid-Term Exam (60) */}
-                        <td className="text-center border-r border-black py-1 text-black tabular-nums">
-                          {item.examScore}
-                        </td>
-
-                        {/* Total Scores (100) */}
+                        {/* Total Scores */}
                         <td className="text-center border-r border-black py-1 font-black text-black tabular-nums">
                           {item.score}
                         </td>

@@ -228,6 +228,8 @@ export default function SpreadsheetsPage() {
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isBulkActivating, setIsBulkActivating] = useState(false);
+  const [additionalClassIds, setAdditionalClassIds] = useState<string[]>([]);
   const [conflictSheet, setConflictSheet] = useState<{
     id: string;
     title?: string | null;
@@ -665,8 +667,12 @@ export default function SpreadsheetsPage() {
         categoryId: assessment.categoryId,
       }));
 
+      const combinedClassIds = Array.from(
+        new Set([values.classId, ...additionalClassIds].filter(Boolean)),
+      );
       const payload: Record<string, unknown> = {
         classLevel: values.classId,
+        ...(combinedClassIds.length > 1 ? { classLevels: combinedClassIds } : {}),
         subject: values.subjectId,
         termType: values.termType,
         templateId: values.templateId,
@@ -691,6 +697,7 @@ export default function SpreadsheetsPage() {
 
       toast.success("Spreadsheet created successfully");
       setIsDialogOpen(false);
+      setAdditionalClassIds([]);
       form.reset({
         classId: prefilledClassId,
         subjectId: prefilledSubjectId,
@@ -707,6 +714,60 @@ export default function SpreadsheetsPage() {
       toast.error(getErrorMessage(error, "Failed to create spreadsheet"));
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  const nonActiveSheetsInTab = useMemo(() => {
+    return spreadsheets.filter((sheet) => {
+      if (sheet.status === "active") return false;
+      if (termTab === "ALL") return true;
+      const sheetTerm =
+        sheet.termType || (sheet.resultType === "MID_TERM" ? "MID_TERM" : "END_TERM");
+      return sheetTerm === termTab;
+    });
+  }, [spreadsheets, termTab]);
+
+  async function handleBulkActivateAll() {
+    if (!currentOrg || !isPrivileged || isBulkActivating) return;
+    setIsBulkActivating(true);
+    try {
+      const res = await apiFetch<{
+        ok: boolean;
+        updatedCount: number;
+        skippedCount: number;
+        updatedIds?: string[];
+      }>(`/spreadsheets/${currentOrg.slug}/bulk-status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "active",
+          ...(termTab !== "ALL" ? { termType: termTab } : {}),
+        }),
+      });
+      const updatedSet = new Set(res.updatedIds || []);
+      if (updatedSet.size > 0) {
+        setSpreadsheets((prev) =>
+          prev.map((s) => (updatedSet.has(s.id) ? { ...s, status: "active" } : s)),
+        );
+      }
+      if (res.updatedCount > 0 && res.skippedCount > 0) {
+        toast.success(
+          `Activated ${res.updatedCount} spreadsheet${res.updatedCount === 1 ? "" : "s"} (${res.skippedCount} skipped due to mark allocation issues).`,
+        );
+      } else if (res.updatedCount > 0) {
+        toast.success(
+          `Set ${res.updatedCount} spreadsheet${res.updatedCount === 1 ? "" : "s"} to active.`,
+        );
+      } else if (res.skippedCount > 0) {
+        toast.error(
+          `${res.skippedCount} spreadsheet${res.skippedCount === 1 ? "" : "s"} could not be activated due to mark allocation issues.`,
+        );
+      } else {
+        toast.info("All spreadsheets are already active.");
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to activate spreadsheets"));
+    } finally {
+      setIsBulkActivating(false);
     }
   }
 
@@ -742,14 +803,32 @@ export default function SpreadsheetsPage() {
         {/* Phones: Hairline Directory List */}
         <div className="flex flex-col gap-3 md:hidden">
           {canCreate && (
-            <Button
-              type="button"
-              onClick={() => setIsDialogOpen(true)}
-              className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs active:scale-[0.98] transition"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Spreadsheet</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => setIsDialogOpen(true)}
+                className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs active:scale-[0.98] transition"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create Spreadsheet</span>
+              </Button>
+              {isPrivileged && nonActiveSheetsInTab.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isBulkActivating}
+                  onClick={() => void handleBulkActivateAll()}
+                  className="shrink-0 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold"
+                >
+                  {isBulkActivating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  <span className="ml-1.5">Set All Active ({nonActiveSheetsInTab.length})</span>
+                </Button>
+              )}
+            </div>
           )}
 
           {/* Mobile Search Input */}
@@ -940,14 +1019,32 @@ export default function SpreadsheetsPage() {
               </div>
 
               {canCreate && (
-                <Button
-                  type="button"
-                  onClick={() => setIsDialogOpen(true)}
-                  className="h-12 w-full shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 hover:shadow-blue-600/30 active:scale-[0.98] sm:w-auto sm:px-5"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Sheet
-                </Button>
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  {isPrivileged && nonActiveSheetsInTab.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isBulkActivating}
+                      onClick={() => void handleBulkActivateAll()}
+                      className="h-12 w-full shrink-0 rounded-xl border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 sm:w-auto"
+                    >
+                      {isBulkActivating ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      Set All Active ({nonActiveSheetsInTab.length})
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={() => setIsDialogOpen(true)}
+                    className="h-12 w-full shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 hover:shadow-blue-600/30 active:scale-[0.98] sm:w-auto sm:px-5"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Sheet
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -1366,6 +1463,58 @@ export default function SpreadsheetsPage() {
                   )}
                 />
               </div>
+
+              {selectedClassId && availableClasses.length > 1 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-700">
+                      Combine additional class arms (optional)
+                    </span>
+                    {additionalClassIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAdditionalClassIds([])}
+                        className="text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        Clear ({additionalClassIds.length})
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Select other arms taking this subject to enter scores for all their students in one sheet.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableClasses
+                      .filter((c) => String(c.id) !== String(selectedClassId))
+                      .map((clsOpt) => {
+                        const cid = String(clsOpt.id);
+                        const checked = additionalClassIds.includes(cid);
+                        return (
+                          <button
+                            key={cid}
+                            type="button"
+                            aria-pressed={checked}
+                            onClick={() =>
+                              setAdditionalClassIds((prev) =>
+                                prev.includes(cid)
+                                  ? prev.filter((id) => id !== cid)
+                                  : [...prev, cid],
+                              )
+                            }
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                              checked
+                                ? "border-blue-600 bg-blue-600 text-white shadow-2xs"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/60",
+                            )}
+                          >
+                            <span>{clsOpt.name}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField

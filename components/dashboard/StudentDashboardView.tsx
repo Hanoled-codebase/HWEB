@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HomeGreeting, StatStrip } from "@/components/dashboard/mobile/HomeKit";
-import { RoleOnboardingCard } from "@/components/dashboard/shared";
 import {
   FileText,
   Clock,
@@ -186,51 +185,6 @@ export function StudentDashboardView({ orgSlug }: { orgSlug: string }) {
           </span>
         )}
       </div>
-
-      <RoleOnboardingCard
-        storageKey={`student_${orgSlug}`}
-        badgeLabel="Student Guide"
-        title="Welcome to your academic portal"
-        subtitle="Stay ahead of your coursework, practice for exams, check daily timetables, and monitor your scores."
-        steps={[
-          {
-            id: "timetable",
-            title: "Check Timetable",
-            description: "View your subject periods and daily classroom schedule.",
-            href: `/dashboard/school/${orgSlug}/student/timetable`,
-            actionText: "Open timetable",
-            isComplete: todayTimetable.length > 0,
-            icon: CalendarDays,
-          },
-          {
-            id: "exams",
-            title: "HCBT Practice Exams",
-            description: "Practice WAEC, NECO, and school CBT assessments online.",
-            href: `/dashboard/school/${orgSlug}/student/pending`,
-            actionText: pendingExams.length > 0 ? "Take exam" : "Explore exams",
-            isComplete: (stats.totalAssessments ?? 0) > 0,
-            icon: BookOpen,
-          },
-          {
-            id: "homework",
-            title: "Homework Tasks",
-            description: "Review assigned homework questions and digital submissions.",
-            href: `/dashboard/school/${orgSlug}/student/homework`,
-            actionText: "View homework",
-            isComplete: false,
-            icon: FileText,
-          },
-          {
-            id: "results",
-            title: "Term Results",
-            description: "Check published terminal grades and cumulative transcripts.",
-            href: `/dashboard/school/${orgSlug}/student/results`,
-            actionText: "View results",
-            isComplete: (stats.totalAssessments ?? 0) > 0,
-            icon: GraduationCap,
-          },
-        ]}
-      />
 
       {/* Stats Cards - desktop */}
       <div className="m-stagger hidden gap-3 md:grid md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">

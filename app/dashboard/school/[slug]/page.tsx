@@ -30,7 +30,6 @@ import { LibraryHome } from "@/components/dashboard/library/LibraryHome";
 import { WorkspaceSwitch } from "@/components/dashboard/WorkspaceSwitch";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { greetingName } from "@/lib/greeting-name";
-import { RoleOnboardingCard } from "@/components/dashboard/shared";
 
 // Only built from assignments whose subject/class id is present (see the
 // `!subject?.id || !classLevel?.id` guards below), so id is always set.
@@ -225,52 +224,6 @@ export default function DashboardOverviewPage() {
               : "Manage your children and their academic records"}
           </p>
         </div>
-
-        <RoleOnboardingCard
-          storageKey={`parent_${currentOrg.slug}`}
-          badgeLabel="Parent Guide"
-          title="Welcome to your parent portal"
-          subtitle="Track your children's daily attendance, academic scores, report cards, and fee invoices in one place."
-          className="hidden md:block"
-          steps={[
-            {
-              id: "children",
-              title: "Linked Children",
-              description: "Confirm profile details and assigned classrooms for your wards.",
-              href: `/dashboard/school/${currentOrg.slug}/parents`,
-              actionText: assignedStudents.length > 0 ? "View children" : "Link child",
-              isComplete: assignedStudents.length > 0,
-              icon: Users,
-            },
-            {
-              id: "attendance",
-              title: "Attendance Record",
-              description: "Monitor daily presence, late arrivals, and absence notes.",
-              href: `/dashboard/school/${currentOrg.slug}/attendance`,
-              actionText: "Check attendance",
-              isComplete: false,
-              icon: School,
-            },
-            {
-              id: "invoices",
-              title: "School Fees & Invoices",
-              description: "View termly tuition breakdown and make secure online fee payments.",
-              href: `/dashboard/school/${currentOrg.slug}/invoices`,
-              actionText: "View invoices",
-              isComplete: false,
-              icon: BarChart3,
-            },
-            {
-              id: "results",
-              title: "Term Results & Reports",
-              description: "Review published assessment grades and terminal report cards.",
-              href: `/dashboard/school/${currentOrg.slug}/results`,
-              actionText: parentResults.length > 0 ? "View results" : "Check results",
-              isComplete: parentResults.length > 0,
-              icon: GraduationCap,
-            },
-          ]}
-        />
 
         <div className="hidden gap-6 md:grid md:grid-cols-2">
           {/* Linked Children — enriched card */}
