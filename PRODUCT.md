@@ -12,6 +12,23 @@ Primary: the **School Proprietor/Admin** — the buyer and day-to-day operator w
 
 Secondary, role-scoped users on the same platform: Owners, Teachers (gradebooks, lesson notes, homework, subject-scoped CBT exam creation), Parents (fee payment, monitoring wards' academic performance and attendance in real time), and Students (CBT exams, results, timetable, library).
 
+Role home surfaces (one home per role, each showing only that role's real work):
+
+| Role | Home surface | Job the home exists for |
+| --- | --- | --- |
+| School Proprietor/Admin | `app/dashboard/school/[slug]` → `AdminDesktopOverview` / `AdminMobileDashboard` | Know the school's state and start the next admin task |
+| Class/Subject Teacher | same route → `TeachingHome` | Get into today's register, gradebook or result entry |
+| Finance / Bursar | same route → `FinanceHome` | Collect fees, see who owes, reconcile payments |
+| Head of Department | same route → `DepartmentHome` | Oversee department teachers, subjects and sheets |
+| Librarian | same route → `LibraryHome` | Issue, return and track loans |
+| Parent | same route → `ParentHome` | Pay fees, watch wards' results and attendance |
+| Student | same route → `StudentDashboardView` | Reach CBT exams, results, timetable, library |
+| CBT student | `app/cbt/student` | Sit an exam, practise, review history |
+| CBT teacher/admin | `app/cbt/admin` | Author exams, watch a session, release grades |
+| Platform admin (Hanoled staff) | `app/admin` | Onboard schools, track payments and pipeline |
+
+`app/welcome` is the post-login destination that routes each of these roles to its home. Home composition is config-driven (`components/dashboard/mobile/mobile-config.ts` derives tabs, menu and identity from the same permission-filtered nav as the desktop sidebar), so a role cannot see a destination on mobile that desktop hides.
+
 ## Product Purpose
 
 Hanoled is a unified school management system built specifically for Nigerian (West African) primary & secondary schools. It consolidates school administration, academics/grading, financial management, communication, student welfare/operations, admissions, and computer-based testing (HCBT) into one product, replacing the scattered spreadsheets, disconnected legacy tools, and manual processes schools currently rely on.
