@@ -16,6 +16,47 @@ export interface ApiErrorResponse {
   message?: string;
   code?: string;
   issues?: unknown[];
+  details?: unknown[];
+}
+
+interface ValidationIssueLike {
+  message?: unknown;
+  path?: unknown;
+}
+
+function formatApiErrorMessage(data: Record<string, unknown>, fallback: string): string {
+  const rawError = data.error;
+  const baseMsg =
+    typeof rawError === "string"
+      ? rawError
+      : rawError && typeof rawError === "object" && "message" in rawError && typeof rawError.message === "string"
+        ? rawError.message
+        : typeof data.message === "string"
+          ? data.message
+          : fallback;
+
+  if (baseMsg !== "Validation error") {
+    return baseMsg;
+  }
+
+  const issueList = Array.isArray(data.issues)
+    ? data.issues
+    : Array.isArray(data.details)
+      ? data.details
+      : [];
+  const first = issueList[0] as ValidationIssueLike | undefined;
+  const detailMsg =
+    first && typeof first.message === "string" && first.message.trim()
+      ? first.message.trim()
+      : "";
+  if (!detailMsg) {
+    return baseMsg;
+  }
+  const path =
+    first && Array.isArray(first.path) && first.path.length > 0
+      ? first.path.map(String).join(".")
+      : "";
+  return path ? `${baseMsg}: ${path} — ${detailMsg}` : `${baseMsg}: ${detailMsg}`;
 }
 
 export type ApiFetchError = Error & {
@@ -258,11 +299,11 @@ export async function request<T>(baseUrl: string, endpoint: string, options: Req
       }
 
       // Handle standard error schema
-      const data = await response.json().catch(() => ({}));
-      const errMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || response.statusText;
+      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      const errMsg = formatApiErrorMessage(data, response.statusText);
       const error = new Error(errMsg) as ApiFetchError;
       error.status = response.status;
-      error.code = data.code;
+      error.code = typeof data.code === "string" ? data.code : undefined;
       error.details = data.issues || data.details || data;
 
       if (showErrorToast && response.status !== 401) {
