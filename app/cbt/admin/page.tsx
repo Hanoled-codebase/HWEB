@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { MobileSegmentBar } from "@/components/dashboard/mobile/MobileSegmentBar";
 import { CbtMobileTopBar, CbtGreeting, CbtAccountSheet } from "@/components/cbt/CbtMobileChrome";
+import { RoleOnboardingCard } from "@/components/dashboard/shared";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/Logo";
 import {
@@ -1709,6 +1710,51 @@ export default function AdminDashboard() {
                 <div className="space-y-6">
                   {/* Late offline submissions need an admin's decision (cloud only). */}
                   {isAdmin && !EDGE_MODE && <LateSubmissionsPanel orgSlug={resolvedOrgSlug} />}
+
+                  <RoleOnboardingCard
+                    storageKey={`cbt_admin_${resolvedOrgSlug || "default"}`}
+                    badgeLabel="CBT Exam Officer Guide"
+                    title="Setting up your HCBT Examination Hall"
+                    subtitle="Create computer-based testing templates, load questions from SSCE archives or file uploads, schedule classes, and audit results."
+                    steps={[
+                      {
+                        id: "template",
+                        title: "Create Exam Template",
+                        description: "Set test duration, pass mark, subject name, and instruction notes.",
+                        href: "#create",
+                        actionText: exams.length > 0 ? "View templates" : "Create template",
+                        isComplete: exams.length > 0,
+                        icon: Plus,
+                      },
+                      {
+                        id: "questions",
+                        title: "Populate Questions",
+                        description: "Import past WAEC/NECO questions or upload Word/PDF test sheets.",
+                        href: "#questions",
+                        actionText: (stats?.totalQuestions ?? 0) > 0 ? "Review questions" : "Add questions",
+                        isComplete: (stats?.totalQuestions ?? 0) > 0,
+                        icon: BookOpen,
+                      },
+                      {
+                        id: "schedule",
+                        title: "Assign Candidate Classes",
+                        description: "Target candidate classes and configure active examination windows.",
+                        href: "#assign",
+                        actionText: "Assign classes",
+                        isComplete: false,
+                        icon: Calendar,
+                      },
+                      {
+                        id: "auditor",
+                        title: "Grade & Submission Auditor",
+                        description: "Track live student progress, proctoring violations, and score distributions.",
+                        href: "#audit",
+                        actionText: "Open auditor",
+                        isComplete: (stats?.totalAttempts ?? 0) > 0,
+                        icon: ShieldCheck,
+                      },
+                    ]}
+                  />
                   
                   {/* Greeting */}
                   <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">

@@ -1,6 +1,11 @@
 import React, { useState } from "react";
-import { CheckCircle2, XCircle, AlertCircle, ShieldAlert } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, ShieldAlert, BookOpen, Clock, Award, HelpCircle } from "lucide-react";
 import { MathRenderer } from "@/components/MathRenderer";
+import { HCBT_BASE } from "@/lib/api";
+import { optionLabel } from "@/lib/cbt-options";
+import { cn } from "@/lib/utils";
+
+const CBT_BACKEND_URL = HCBT_BASE;
 
 function formatOption(text: string): string {
   let t = text.trim();
@@ -8,11 +13,6 @@ function formatOption(text: string): string {
   if (t.length > 0) t = t.charAt(0).toUpperCase() + t.slice(1);
   return t;
 }
-
-import { HCBT_BASE } from "@/lib/api";
-import { optionLabel } from "@/lib/cbt-options";
-
-const CBT_BACKEND_URL = HCBT_BASE;
 
 interface AnswerCorrection {
   question: {
@@ -27,8 +27,8 @@ interface AnswerCorrection {
     passage?: string | null;
   };
   selectedOption: number | null;
-  textAnswer?: string | null; // theory
-  markerComment?: string | null; // theory: the teacher's comment
+  textAnswer?: string | null;
+  markerComment?: string | null;
   isCorrect: boolean;
   marksObtained: number;
 }
@@ -50,6 +50,13 @@ interface ResultViewProps {
   };
 }
 
+/**
+ * Distilled CBT exam result view:
+ * - Direct visual hierarchy: outcome first, key performance numbers, then question corrections.
+ * - Free of decorative blur halos and redundant nested borders.
+ * - High-contrast, accessible answer breakdown with clear option states.
+ * - Full support for KaTeX math notation and theory marker commentary.
+ */
 export function ResultView({ result }: ResultViewProps) {
   const { score, totalMarks, percentage, timeTaken, exam, answers, cheatingStatus, tabSwitchCount } = result;
   const isCheating = cheatingStatus === "cheating";
@@ -57,10 +64,10 @@ export function ResultView({ result }: ResultViewProps) {
 
   const [activeFilter, setActiveFilter] = useState<"all" | "passed" | "failed">("all");
 
-  // Right and wrong only apply to multiple-choice; theory answers earn marks.
   const isObjective = (ans: AnswerCorrection) => ans.question.type !== "theory";
-  const passedCount = answers.filter((a) => isObjective(a) && a.isCorrect).length;
-  const failedCount = answers.filter(isObjective).length - passedCount;
+  const objectiveAnswers = answers.filter(isObjective);
+  const passedCount = objectiveAnswers.filter((a) => a.isCorrect).length;
+  const failedCount = objectiveAnswers.length - passedCount;
 
   const filteredAnswers = answers.filter((ans) => {
     if (activeFilter === "passed") return isObjective(ans) && ans.isCorrect;
@@ -68,263 +75,338 @@ export function ResultView({ result }: ResultViewProps) {
     return true;
   });
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {isCheating && (
-        <div className="p-8 rounded-sm border border-rose-300 bg-rose-50/90 relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none bg-rose-400/20" />
-          <div className="relative z-10 text-center">
-            <div className="w-16 h-16 bg-rose-100 border border-rose-200 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 bg-rose-100 text-rose-800">
-              Cheating Detected
-            </span>
-            <h2 className="text-3xl font-extrabold mb-2 tracking-tight text-rose-900">Exam Disqualified</h2>
-            <p className="text-sm font-medium mb-4 max-w-md mx-auto text-rose-700/80">
-              This exam was auto-failed due to {tabSwitchCount || 3} proctoring violation{(tabSwitchCount || 3) > 1 ? "s" : ""}. 
-              Multiple tab switches were detected during the examination.
-            </p>
-            <p className="text-xs font-bold text-rose-600 bg-rose-100/60 inline-block px-4 py-2 rounded-sm">
-              Score: 0 / {totalMarks} (0%) — Result flagged as CHEATING
-            </p>
-          </div>
-        </div>
-      )}
+  const minutes = Math.floor(timeTaken / 60);
+  const seconds = timeTaken % 60;
 
-      {!isCheating && (
-        <div className={`p-8 rounded-sm border ${passed ? "bg-emerald-50/70 border-emerald-200" : "bg-rose-50/70 border-rose-200"} relative overflow-hidden shadow-sm`}>
-          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${passed ? "bg-emerald-400/20" : "bg-rose-400/20"}`} />
-          <div className="relative z-10 text-center">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 ${
-              passed ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-            }`}>
-              {passed ? "Pass" : "Failed"}
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* ── 1. Outcome Hero Card ── */}
+      {isCheating ? (
+        <section
+          aria-label="Exam Result"
+          className="rounded-2xl border border-rose-200 bg-rose-50/90 p-6 sm:p-8 text-center shadow-xs"
+        >
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+            <ShieldAlert className="h-7 w-7" />
+          </div>
+          <span className="inline-flex items-center rounded-full bg-rose-200/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-rose-900">
+            Cheating Detected
+          </span>
+          <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight text-rose-950">
+            Exam Disqualified
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-rose-800 leading-relaxed">
+            Auto-failed due to {tabSwitchCount || 3} proctoring violation{(tabSwitchCount || 3) > 1 ? "s" : ""}.
+            Multiple tab switches were recorded during this session.
+          </p>
+          <div className="mt-4 inline-block rounded-xl bg-white/80 border border-rose-200 px-4 py-2 text-xs font-bold text-rose-700">
+            Final Score: 0 / {totalMarks} (0%)
+          </div>
+        </section>
+      ) : (
+        <section
+          aria-label="Exam Result"
+          className={cn(
+            "rounded-2xl border p-6 sm:p-8 shadow-xs transition-all",
+            passed ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white",
+          )}
+        >
+          <div className="text-center">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider",
+                passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800",
+              )}
+            >
+              {passed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" /> : <AlertCircle className="h-3.5 w-3.5 text-amber-700" />}
+              {passed ? "Passed" : "Keep Practicing"}
             </span>
-            <h2 className={`text-3xl font-extrabold mb-2 tracking-tight ${passed ? "text-emerald-900" : "text-rose-900"}`}>
-              {passed ? "Congratulations! You Passed" : "Keep Practicing!"}
-            </h2>
-            <p className={`text-sm font-medium mb-8 max-w-md mx-auto ${passed ? "text-emerald-700/80" : "text-rose-700/80"}`}>
-              You completed {exam.title} with a final score of <strong className="text-base">{percentage}%</strong>.
+
+            <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              {passed ? "Congratulations, you passed!" : "Review your answers and try again"}
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {exam.title} · Pass mark: <span className="font-semibold text-slate-800">{exam.passMark}%</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-              <div className="bg-white p-4 rounded-sm shadow-sm border border-slate-100 flex flex-col justify-center">
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Total Score</p>
-                <p className="text-xl font-black text-slate-800">{score} / {totalMarks}</p>
+
+            {/* Score Strip */}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-center">
+                <span className="block text-xs font-semibold text-slate-500">Score</span>
+                <span className="mt-0.5 block text-xl sm:text-2xl font-bold tabular-nums text-slate-900">
+                  {score} <span className="text-xs font-medium text-slate-400">/ {totalMarks}</span>
+                </span>
               </div>
-              <div className="bg-white p-4 rounded-sm shadow-sm border border-slate-100 flex flex-col justify-center">
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Time Taken</p>
-                <p className="text-xl font-black text-slate-800">{Math.floor(timeTaken / 60)}m {timeTaken % 60}s</p>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-center">
+                <span className="block text-xs font-semibold text-slate-500">Percentage</span>
+                <span
+                  className={cn(
+                    "mt-0.5 block text-xl sm:text-2xl font-bold tabular-nums",
+                    passed ? "text-emerald-700" : "text-amber-700",
+                  )}
+                >
+                  {percentage}%
+                </span>
               </div>
-              <div className="bg-white p-4 rounded-sm shadow-sm border border-slate-100 flex flex-col justify-center">
-                <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Correct
-                </p>
-                <p className="text-xl font-black text-emerald-700">{passedCount}</p>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-center">
+                <span className="block text-xs font-semibold text-slate-500">Time Taken</span>
+                <span className="mt-0.5 block text-xl sm:text-2xl font-bold tabular-nums text-slate-900">
+                  {minutes}m {seconds}s
+                </span>
               </div>
-              <div className="bg-white p-4 rounded-sm shadow-sm border border-slate-100 flex flex-col justify-center">
-                <p className="text-xs text-rose-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                  <XCircle className="w-3 h-3" /> Incorrect
-                </p>
-                <p className="text-xl font-black text-rose-700">{failedCount}</p>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-center">
+                <span className="block text-xs font-semibold text-slate-500">Accuracy</span>
+                <span className="mt-0.5 block text-xl sm:text-2xl font-bold tabular-nums text-slate-900">
+                  {passedCount} <span className="text-xs font-medium text-slate-400">/ {objectiveAnswers.length}</span>
+                </span>
               </div>
             </div>
+
             {cheatingStatus && cheatingStatus !== "none" && !isCheating && (
-              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-sm p-3 inline-flex items-center space-x-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600" />
-                <span className="text-xs font-medium text-amber-800">
-                  {tabSwitchCount} proctoring warning{(tabSwitchCount || 0) > 1 ? "s" : ""} recorded
-                </span>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-1.5 text-xs text-amber-800">
+                <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>{tabSwitchCount} tab switch warning{(tabSwitchCount || 0) > 1 ? "s" : ""} recorded during the test</span>
               </div>
             )}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Dynamic Tabs & Filters Bar */}
-      <div className="bg-white p-4 rounded-sm border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* ── 2. Distilled Corrections Navigation Bar ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-extrabold text-slate-850 tracking-tight">Review Corrections Sheet</h3>
-          <p className="text-xs text-slate-500 font-medium">Analyze your answers and read detailed explanations below.</p>
+          <h2 className="text-base font-bold text-slate-900">Questions Breakdown</h2>
+          <p className="text-xs text-slate-500">
+            Showing {filteredAnswers.length} of {answers.length} question{answers.length === 1 ? "" : "s"}
+          </p>
         </div>
 
-        {/* Filters Button Group */}
-        <div className="flex bg-slate-100 p-1 rounded-sm w-full sm:w-auto">
+        {/* Filter Segmented Pills */}
+        <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-medium" role="tablist" aria-label="Question filters">
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "all"}
             onClick={() => setActiveFilter("all")}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-sm text-xs font-bold transition-all ${
-              activeFilter === "all"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
+            className={cn(
+              "rounded-lg px-3.5 py-1.5 transition-colors pointer-coarse:min-h-11",
+              activeFilter === "all" ? "bg-white font-semibold text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900",
+            )}
           >
             All ({answers.length})
           </button>
-          
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "passed"}
             onClick={() => setActiveFilter("passed")}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeFilter === "passed"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "text-emerald-600/80 hover:text-emerald-700 hover:bg-emerald-50/50"
-            }`}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 transition-colors pointer-coarse:min-h-11",
+              activeFilter === "passed" ? "bg-white font-semibold text-emerald-800 shadow-xs" : "text-slate-600 hover:text-slate-900",
+            )}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-            <span>Passed ({passedCount})</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Correct ({passedCount})</span>
           </button>
-          
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "failed"}
             onClick={() => setActiveFilter("failed")}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeFilter === "failed"
-                ? "bg-rose-600 text-white shadow-sm"
-                : "text-rose-600/80 hover:text-rose-700 hover:bg-rose-50/50"
-            }`}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 transition-colors pointer-coarse:min-h-11",
+              activeFilter === "failed" ? "bg-white font-semibold text-rose-800 shadow-xs" : "text-slate-600 hover:text-slate-900",
+            )}
           >
-            <XCircle className="w-3.5 h-3.5 text-white" />
-            <span>Failed ({failedCount})</span>
+            <XCircle className="h-3.5 w-3.5 text-rose-600" />
+            <span>Incorrect ({failedCount})</span>
           </button>
         </div>
       </div>
 
-      {/* Corrections List */}
-      <div className="space-y-6">
+      {/* ── 3. Question Cards List ── */}
+      <div className="space-y-4">
         {filteredAnswers.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-sm p-12 text-center shadow-sm">
-            <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-semibold text-sm">No questions match this filter.</p>
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+            <AlertCircle className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+            <p className="text-sm font-semibold text-slate-700">No questions match this filter</p>
             <button
+              type="button"
               onClick={() => setActiveFilter("all")}
-              className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700"
+              className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
               Reset to view all questions
             </button>
           </div>
         ) : (
-          filteredAnswers.map((ans, idx) => (
-            <div
-              key={ans.question.id}
-              className={`bg-white p-6 rounded-sm border transition-all shadow-sm ${
-                ans.isCorrect || ans.question.type === "theory" ? "border-slate-200 hover:border-emerald-200" : "border-rose-100 hover:border-rose-200"
-              }`}
-            >
-              <div className="flex justify-between items-start gap-3 mb-5">
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <span className="text-slate-500 font-mono text-sm font-bold shrink-0 mt-0.5">Q-{idx + 1}.</span>
-                  <h4 className="text-sm sm:text-base font-bold text-slate-800 leading-snug">
-                    <MathRenderer text={ans.question.text} />
-                  </h4>
-                </div>
-                
-                {ans.question.type === "theory" ? (
-                  <span className="px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 whitespace-nowrap bg-[#1447E6]/10 text-[#0B1220] border border-[#1447E6]/20">
-                    Theory • {ans.marksObtained}/{ans.question.marks}
-                  </span>
-                ) : (
-                  <span className={`px-2.5 py-1 rounded-sm text-xs font-bold shrink-0 whitespace-nowrap ${
-                    ans.isCorrect ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
-                  }`}>
-                    {ans.isCorrect ? "Correct" : "Incorrect"} • {ans.marksObtained}/{ans.question.marks}
-                  </span>
-                )}
-              </div>
+          filteredAnswers.map((ans, idx) => {
+            const isTheory = ans.question.type === "theory";
 
-              {/* Theory: what the student wrote and the teacher's comment */}
-              {ans.question.type === "theory" && (
-                <div className="space-y-3 mb-5">
-                  <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
-                    <span className="block mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Your answer</span>
-                    {ans.textAnswer ? (
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#0B1220]">{ans.textAnswer}</p>
+            return (
+              <article
+                key={ans.question.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs transition-shadow hover:shadow-xs"
+              >
+                {/* Header: Number, Marks, and Status */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-600">
+                      {idx + 1}
+                    </span>
+                    <h3 className="text-sm sm:text-base font-semibold text-slate-900 leading-snug">
+                      <MathRenderer text={ans.question.text} />
+                    </h3>
+                  </div>
+
+                  <div className="shrink-0">
+                    {isTheory ? (
+                      <span className="inline-flex items-center rounded-lg bg-blue-50 border border-blue-200/80 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                        Theory · {ans.marksObtained}/{ans.question.marks}
+                      </span>
                     ) : (
-                      <p className="text-sm text-slate-500">You left this blank, so it scored zero.</p>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold",
+                          ans.isCorrect
+                            ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                            : "bg-rose-50 border border-rose-200 text-rose-800",
+                        )}
+                      >
+                        {ans.isCorrect ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <XCircle className="h-3.5 w-3.5 text-rose-600" />}
+                        {ans.isCorrect ? "Correct" : "Incorrect"} ({ans.marksObtained}/{ans.question.marks})
+                      </span>
                     )}
                   </div>
-                  {ans.markerComment && (
-                    <div className="rounded-sm border border-[#1447E6]/20 bg-[#1447E6]/5 p-4">
-                      <span className="block mb-1 text-xs font-bold uppercase tracking-wider text-[#1447E6]">Teacher&apos;s comment</span>
-                      <p className="text-sm text-[#0B1220]">{ans.markerComment}</p>
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* Reading Passage */}
-              {ans.question.passage && (
-                <div className="bg-amber-50/60 border border-amber-200/50 p-4 rounded-sm max-h-36 overflow-y-auto mb-5">
-                  <span className="text-xs font-extrabold text-amber-600 uppercase tracking-widest block mb-1.5">📖 Reading Passage</span>
-                  <div className="text-xs text-slate-700 leading-relaxed">
-                    <MathRenderer text={ans.question.passage} />
+                {/* Reading Passage (if applicable) */}
+                {ans.question.passage && (
+                  <div className="mb-4 rounded-xl border border-amber-200/70 bg-amber-50/50 p-4">
+                    <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1.5">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      Reading Passage
+                    </span>
+                    <div className="max-h-40 overflow-y-auto text-xs text-slate-700 leading-relaxed">
+                      <MathRenderer text={ans.question.passage} />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Diagram / Image */}
-              {ans.question.imageUrl && (
-                <div className="flex justify-center mb-5">
-                  <img
-                    src={`${CBT_BACKEND_URL}${ans.question.imageUrl}`}
-                    alt="Question diagram"
-                    className="max-h-44 object-contain rounded-sm border border-slate-200 bg-white p-2 shadow-sm"
-                  />
-                </div>
-              )}
+                {/* Question Image (if applicable) */}
+                {ans.question.imageUrl && (
+                  <div className="mb-4 flex justify-center">
+                    <img
+                      src={`${CBT_BACKEND_URL}${ans.question.imageUrl}`}
+                      alt="Question illustration"
+                      className="max-h-48 rounded-xl border border-slate-200 bg-slate-50 p-2 object-contain"
+                    />
+                  </div>
+                )}
 
-              {/* Choices Breakdown */}
-              <div className="space-y-2.5 mb-5">
-                {ans.question.options.map((opt, optIdx) => {
-                  let containerClass = "bg-white border-slate-200 hover:bg-slate-50 text-slate-700";
-                  let badge = null;
-
-                  if (optIdx === ans.question.correctAnswer) {
-                    containerClass = "bg-emerald-50/80 border-emerald-300 text-emerald-900 font-medium";
-                  } else if (optIdx === ans.selectedOption && !ans.isCorrect) {
-                    containerClass = "bg-rose-50/80 border-rose-300 text-rose-900 font-medium";
-                    badge = (
-                      <span className="flex items-center gap-1 text-xs font-extrabold uppercase text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-sm whitespace-nowrap">
-                        <XCircle className="w-3 h-3 text-rose-600" /> Your Answer
+                {/* Theory: Student response + Teacher grading */}
+                {isTheory && (
+                  <div className="space-y-3 mb-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                      <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                        Your Written Answer
                       </span>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={optIdx}
-                      className={`p-3.5 rounded-sm border flex items-center justify-between gap-2 transition-all text-xs sm:text-sm ${containerClass}`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="w-6 h-6 rounded-sm bg-white shadow-sm border border-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0">
-                          {optionLabel(optIdx)}
-                        </span>
-                        <span className="leading-snug"><MathRenderer text={formatOption(opt)} /></span>
-                      </div>
-                      {badge}
+                      {ans.textAnswer ? (
+                        <p className="whitespace-pre-wrap text-sm text-slate-800 leading-relaxed">{ans.textAnswer}</p>
+                      ) : (
+                        <p className="text-sm italic text-slate-400">No answer submitted.</p>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* Unanswered Banner */}
-              {ans.question.type !== "theory" && !ans.isCorrect && ans.selectedOption === null && (
-                <div className="bg-rose-50/30 border border-rose-100 rounded-sm p-3 text-left mb-5 flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <p className="text-xs font-bold text-rose-600">
-                    You did not select an answer for this question. It was automatically marked as zero points.
-                  </p>
-                </div>
-              )}
+                    {ans.markerComment && (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+                        <span className="block text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1">
+                          Teacher Feedback
+                        </span>
+                        <p className="text-sm text-slate-800 leading-relaxed">{ans.markerComment}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Premium Explanation Drawer */}
-              {ans.question.explanation && (
-                <div className="bg-blue-50/65 p-4 rounded-sm border border-blue-100/80 text-blue-900 text-xs sm:text-sm leading-relaxed shadow-inner">
-                  <strong className="block mb-1 text-xs text-blue-800 font-black uppercase tracking-wider">
-                    Explanation & Solution Guide:
-                  </strong>
-                  <MathRenderer text={ans.question.explanation} />
-                </div>
-              )}
-            </div>
-          ))
+                {/* Objective choices breakdown */}
+                {!isTheory && (
+                  <div className="space-y-2 mb-4">
+                    {ans.question.options.map((opt, optIdx) => {
+                      const isCorrectChoice = optIdx === ans.question.correctAnswer;
+                      const isStudentWrongChoice = optIdx === ans.selectedOption && !ans.isCorrect;
+
+                      return (
+                        <div
+                          key={optIdx}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-xl border p-3 text-xs sm:text-sm transition-colors",
+                            isCorrectChoice
+                              ? "border-emerald-300 bg-emerald-50/70 text-emerald-950 font-medium"
+                              : isStudentWrongChoice
+                              ? "border-rose-300 bg-rose-50/70 text-rose-950 font-medium"
+                              : "border-slate-200 bg-white text-slate-700",
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                                isCorrectChoice
+                                  ? "bg-emerald-200 text-emerald-900"
+                                  : isStudentWrongChoice
+                                  ? "bg-rose-200 text-rose-900"
+                                  : "bg-slate-100 text-slate-600",
+                              )}
+                            >
+                              {optionLabel(optIdx)}
+                            </span>
+                            <span className="leading-snug break-words">
+                              <MathRenderer text={formatOption(opt)} />
+                            </span>
+                          </div>
+
+                          {isCorrectChoice && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 shrink-0">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-700" />
+                              Correct Answer
+                            </span>
+                          )}
+
+                          {isStudentWrongChoice && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800 shrink-0">
+                              <XCircle className="h-3 w-3 text-rose-700" />
+                              Your Choice
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Unanswered alert */}
+                {!isTheory && !ans.isCorrect && ans.selectedOption === null && (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>This question was left unanswered and scored zero marks.</span>
+                  </div>
+                )}
+
+                {/* Solution & Explanation */}
+                {ans.question.explanation && (
+                  <div className="rounded-xl border border-blue-150 bg-blue-50/70 p-4 text-xs sm:text-sm text-blue-950 leading-relaxed">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-blue-800 mb-1">
+                      Explanation & Solution
+                    </span>
+                    <MathRenderer text={ans.question.explanation} />
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
     </div>

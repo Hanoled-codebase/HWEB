@@ -57,6 +57,7 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+/recordings/
 
 # Local Netlify folder
 .netlify

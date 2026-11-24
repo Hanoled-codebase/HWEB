@@ -38,6 +38,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { useSchoolNavItems } from "@/hooks/useSchoolNavItems";
 import { cn } from "@/lib/utils";
+import { RoleOnboardingCard, type OnboardingStep } from "@/components/dashboard/shared";
 
 /**
  * Desktop overview for owners and admins (md and up): welcome banner, pending-invites alert,
@@ -355,6 +356,54 @@ export function AdminDesktopOverview({
             </div>
           </div>
         </div>
+      )}
+
+      {/* School Admin Onboarding Guide */}
+      {isPrivileged && (
+        <RoleOnboardingCard
+          storageKey={`admin_${slug}`}
+          badgeLabel="School Setup Guide"
+          title="Welcome to your school administration workspace"
+          subtitle="Complete these foundational steps to set up academic records, faculty access, student rosters, and term billing."
+          steps={[
+            {
+              id: "classes",
+              title: "Academic Classes",
+              description: "Configure classes, arms, and grade divisions for your school.",
+              href: `${base}/classes`,
+              actionText: (classCount ?? counts.classes ?? 0) > 0 ? "Review classes" : "Add classes",
+              isComplete: (classCount ?? counts.classes ?? 0) > 0,
+              icon: Building2,
+            },
+            {
+              id: "teachers",
+              title: "Staff & Teachers",
+              description: "Add teaching faculty and assign their respective subjects.",
+              href: `${base}/teachers`,
+              actionText: counts.teachers > 0 ? "View teachers" : "Invite teachers",
+              isComplete: counts.teachers > 0,
+              icon: Users,
+            },
+            {
+              id: "students",
+              title: "Enroll Students",
+              description: "Register student profiles or import class rosters.",
+              href: `${base}/students/new`,
+              actionText: counts.students > 0 ? "View students" : "Enroll students",
+              isComplete: counts.students > 0,
+              icon: GraduationCap,
+            },
+            {
+              id: "fees",
+              title: "Term Fee Structure",
+              description: "Set up termly fee schedules, invoices, and payment tracking.",
+              href: `${base}/fee-structure`,
+              actionText: "Configure fees",
+              isComplete: false,
+              icon: DollarSign,
+            },
+          ]}
+        />
       )}
 
       {/* Stat row */}

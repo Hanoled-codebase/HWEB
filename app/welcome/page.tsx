@@ -166,14 +166,8 @@ export default async function WelcomePortal() {
       <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center py-8">
         
         {/* Brand Logo */}
-        <div className="mb-4">
+        <div className="mb-6">
           <HanoledLogo size="md" variant="blue" />
-        </div>
-
-        {/* Pill Badge */}
-        <div className="inline-flex items-center gap-2 bg-[#edf3ff] border border-[#d8e5ff] text-[#1447e6] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase mb-5 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623]"></span>
-          <span>WELCOME HUB</span>
         </div>
 
         {/* Main Title */}
