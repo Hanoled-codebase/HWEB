@@ -183,13 +183,13 @@ export function AllStudentsResultsTable({
             {paginatedRows.map((row) => (
               <li
                 key={row.studentId}
-                className="flex flex-col gap-2.5 px-4 py-3.5"
+                className="flex flex-col gap-2 px-3.5 py-2.5"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span
                       aria-hidden="true"
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--primary-light)] text-xs font-bold text-[var(--primary-text)]"
+                      className="inline-flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full bg-[var(--primary-light)] text-[10px] font-bold text-[var(--primary-text)]"
                     >
                       {getInitials(row.fullName)}
                     </span>
@@ -206,7 +206,7 @@ export function AllStudentsResultsTable({
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-col items-end gap-0.5">
                     {renderStatusBadge(row.completionStatus, true)}
                     <span className="text-[11px] text-slate-500 tabular-nums">
                       ({row.completedSubjects}/{row.expectedSubjects} subjects)
@@ -217,10 +217,10 @@ export function AllStudentsResultsTable({
                 <div
                   className={cn(
                     "flex items-center justify-between gap-2",
-                    hasRowMetrics(row) ? "border-t border-slate-100 pt-2" : "pt-0",
+                    hasRowMetrics(row) ? "border-t border-slate-100 pt-1.5" : "pt-0",
                   )}
                 >
-                  <div className="flex items-center gap-4 text-xs tabular-nums">
+                  <div className="flex items-center gap-3 text-xs tabular-nums">
                     {/* A pending learner has no score yet: "--" and "—" were
                         noise, the status badge already says pending. */}
                     {typeof row.averageScore === "number" && (
@@ -245,7 +245,7 @@ export function AllStudentsResultsTable({
                     <button
                       type="button"
                       onClick={() => onViewResult(row.studentId)}
-                      className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)]"
+                      className="inline-flex h-7.5 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)]"
                     >
                       View Result
                     </button>
@@ -253,9 +253,9 @@ export function AllStudentsResultsTable({
                       <button
                         type="button"
                         onClick={() => onPrintReport(row.studentId)}
-                        className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-light)] px-2.5 py-1.5 text-xs font-semibold text-[var(--primary-text)]"
+                        className="inline-flex h-7.5 items-center gap-1 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-light)] px-2 text-xs font-semibold text-[var(--primary-text)] shadow-2xs"
                       >
-                        <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Printer className="h-3 w-3" aria-hidden="true" />
                         <span>Print</span>
                       </button>
                     )}

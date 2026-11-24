@@ -1,8 +1,8 @@
 ---
 version: 1
-slug: "app-marketing"
-primary_target: "app/(marketing)"
-related_targets: []
+slug: "app-marketing-page-tsx"
+primary_target: "app/(marketing)/page.tsx"
+related_targets: ["app/(marketing)","components/landing"]
 ---
 
 # Surface: Hanoled marketing site (app/(marketing))
@@ -36,3 +36,9 @@ Built as an extension across: homepage, features, about, hcbt, admissions-portal
 Not yet extended: the `article/[slug]` blog template — already brand-color-compliant from an earlier pass but not restructured into this system. It's a long-form "Read" surface (comprehension over spectacle), lower priority than the Persuade pages, and a reasonable stopping point for this round.
 
 No image generation available in this environment: build is **code-led** throughout. No comp, no comp-diff gates. Ambition is carried by this contract's FIRST VIEWPORT block and audited in behavior at the finish review (see the session's self-review notes — no literal screenshot files could be saved to `.impeccable/review/` in this environment, so verification relied on live-browser inspection at each route instead).
+
+## Read surfaces inside this area
+
+`help`, `support`, `security`, `privacy`, `terms`, `data-protection` and the `article/[slug]` template are **Read** surfaces, not Persuade. Success is "the reader found the answer and trusts it", so: structure for comprehension first (question-shaped headings, short sections, scannable lists, anchors), one quiet CTA at the end rather than a CTA band in the middle of a legal clause, and no campus-tour thresholds or crest medallions competing with the text. Brand stays: Poppins, Hanoled Blue for links, Deep Ink for body headings, Growth Gold at most once per page.
+
+`article/[slug]` is the one template in this area that is brand-colour compliant but not yet restructured into the Gate & Crest world — it is a Read surface and lower priority than the Persuade pages, which stays true until a batch assigns it.

@@ -176,3 +176,59 @@ Phones only (`md:hidden` / `hidden md:block` pairs); the desktop tables and 7-co
 - **Pipeline:** stage chips with counts plus the selected stage's list and a 44px "Move to next stage" button, instead of horizontal kanban columns.
 - **Support:** ticket list scrolls with the page; an open conversation fills the space between the top bar and the tab bar, actions get their own row, and the composer uses a 16px input (no iOS zoom).
 - **Dialogs** (Record Payment, Add School, Add Hosted School) are bottom sheets on phones.
+
+## Product surfaces: modes and the Operate floor
+
+The world above is the marketing world. Everything below is the signed-in product, and it is where most of Hanoled's screen time happens. These sections record what the shipped code already does, plus the floor every Operate surface is held to. They do not introduce a second visual world.
+
+| Area | Route root | Mode |
+| --- | --- | --- |
+| Public site (home, features, hcbt, admissions, contact, faqs) | `app/(marketing)` | **Persuade** |
+| Help, support, security, privacy, terms, data-protection, article | `app/(marketing)/{help,support,…}` | **Read** |
+| Sign-in, invite, verify, forgot/reset | `app/(auth)` | **Persuade**, under Operate constraints (one job, no decoration) |
+| School onboarding, payment, account | `app/onboarding`, `app/payment`, `app/account` | **Operate** |
+| School workspace, 62 routes | `app/dashboard/school/[slug]` | **Operate** |
+| Role homes (10 roles) | same route, composed per role | **Operate** (each home earns one aimed moment) |
+| CBT console | `app/cbt` | **Operate**; the exam room is Operate at maximum focus |
+| Platform admin | `app/admin` | **Operate** |
+| Post-login router | `app/welcome` | **Operate** |
+
+Persuade work belongs on the public site and the auth screens. It does not belong on a ledger, a register, a gradebook, or an exam room.
+
+### Tokens that already exist (recorded, not chosen here)
+
+- **Tenant theming is the primary colour system.** `SchoolThemeProvider` reads `currentOrg.primaryColor` / `secondaryColor`, runs `deriveTheme` (`lib/theme-colors.ts`, WCAG math included) and injects `--primary`, `--primary-foreground`, `--primary-text`, `--primary-hover`, `--primary-active`, `--primary-light`, `--primary-border`, `--ring`, plus the `secondary` family, into `:root` and portals. Elyon College resolves red, Greenfield Academy resolves teal. Anything interactive must read those variables, never a fixed hex.
+- **Base palette:** Hanoled Blue `#1447E6` is the default `--primary`, Deep Ink `#0B1220` the ink, Growth Gold `#F5A623` the secondary accent, Success `#12B76A` / Warning `#F5A623` / Alert `#F04438` reserved for status. Wing tint `#EEF0FF`.
+- **Two token generations coexist:** the shadcn `:root` set in `oklch`, and the legacy HSL `.cbt-theme` block (light + `.dark`). Both must resolve to the same hues when either changes.
+- **Type:** Poppins only. Page title `text-lg font-bold` (phone) / `text-xl` (desktop); section head `text-sm font-bold`; labels `text-xs font-semibold`; body `text-xs`–`text-sm`; every figure in `tabular-nums`.
+
+### Density, as shipped
+
+- Desktop: 256px sidebar from `lg`, table-first lists, ~56px rows, 44px "…" action menus, filters in a single toolbar row above the table.
+- Phone: one title per screen (the top bar's), lists instead of cards, hairline dividers, whole row is the tap target, destructive and secondary row actions live in a 44px menu, dialogs rise as bottom sheets, primary actions stick above the tab bar.
+- Tablet: desktop pages at full width, nav in a drawer, touch floors follow the pointer not the width.
+
+### Data-state contract
+
+Every data surface handles all six states, not just the happy one: **loading** (skeleton matching final layout), **empty** (what this space means + the next action), **error** (problem named + retry), **forbidden** (role-scoped explanation, no dead end), **partial** (some records missing, stated as such), **success** (changed state visible without a toast being the only evidence).
+
+Shared primitives already carry this: `components/dashboard/shared/` — `TableContainer`, `TableEmpty`, `TableSkeleton`, `DataStateCard`, `EntityHeader`, `SearchInput`, `BackButton`, `RoleOnboardingCard`.
+
+### The Operate floor
+
+1. **One primary action per screen.** Secondary actions are quiet buttons; anything else is a row action or in a menu.
+2. **Status colour is information.** Success / Warning / Alert only for real state. A school's `--primary` never means "good", "paid" or "passed".
+3. **Numbers are exact and labelled.** `tabular-nums` everywhere; units named (₦, %, subjects); a settled balance is a dash, not "₦0" in Alert red; absent data is "—" or an explicit "Pending", never a bare zero.
+4. **No card inside a card; no card where a table or list does the job.** Desktop lists are tables, phone lists are one container with dividers.
+5. **Titles carry context.** No eyebrow labels, no greeting on a list page; greetings live on role homes only.
+6. **Density over decoration.** Borders and shadows exist to separate or to elevate one thing, never as texture.
+7. **Errors name the problem and the recovery.** Every destructive action confirms first.
+8. **Motion explains a state change** (a stage switch, a row appearing, a save landing) and is otherwise still. `prefers-reduced-motion` shows the finished state.
+9. **Touch floor 44px** on phones and coarse pointers; a visible focus ring from `--ring` on every interactive element.
+10. **Optional surfaces stay optional.** A missing enhancement endpoint (catalog, periods, live counts) falls back silently and never raises a toast; only a failed primary fetch interrupts.
+
+### Known fidelity gaps (recorded 2026-11-24, not yet fixed)
+
+1. **Hardcoded brand colour inside tenant-themed screens.** 417 fixed hexes across `app/dashboard`, `app/admin`, `app/cbt` and their components — 261 × `#1447E6`, 173 × `#0B1220`, 42 × `#EEF0FF`, 34 × `#0F36B8`, 24 × `#F04438`, 21 × `#F5A623`. A school whose `--primary` is red still sees Hanoled blue wherever these land. Target: `var(--primary*)` for interaction, ink tokens for text, status tokens for state.
+2. **Parallel token generations** (`oklch :root` and HSL `.cbt-theme`) can drift apart because nothing enforces equality.
+3. **Marketing coverage is uneven**: `article/[slug]` is brand-compliant but not on the Gate & Crest system (a Read surface, lower priority than the Persuade pages).
