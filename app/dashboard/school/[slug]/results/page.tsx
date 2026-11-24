@@ -1345,6 +1345,7 @@ export default function ResultsPage() {
 
                           <button
                             type="button"
+                            aria-label="Filter & Sort"
                             onClick={() => setIsMobileOptionsOpen(true)}
                             className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-slate-50"
                           >
