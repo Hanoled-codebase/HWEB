@@ -27,8 +27,6 @@ export interface AllStudentsResultsTableProps {
   onToggleSelectAll: (studentIds: string[]) => void;
   onViewResult: (studentId: string) => void;
   onPrintReport: (studentId: string) => void;
-  onBulkPrint?: () => void;
-  isBulkPrinting?: boolean;
 }
 
 type SortColumn = "student" | "average" | "rank";
@@ -74,8 +72,6 @@ export function AllStudentsResultsTable({
   onToggleSelectAll,
   onViewResult,
   onPrintReport,
-  onBulkPrint,
-  isBulkPrinting = false,
 }: AllStudentsResultsTableProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>("rank");
   const [sortDirection, setSortDirection] =
@@ -183,83 +179,91 @@ export function AllStudentsResultsTable({
             {paginatedRows.map((row) => (
               <li
                 key={row.studentId}
-                className="flex flex-col gap-2 px-3.5 py-2.5"
+                className="group relative flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-slate-50/70 active:bg-slate-100/60"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className="inline-flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full bg-[var(--primary-light)] text-[10px] font-bold text-[var(--primary-text)]"
-                    >
-                      {getInitials(row.fullName)}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-bold uppercase tracking-tight text-slate-900">
-                        {row.fullName}
-                      </p>
-                      <p className="truncate text-[11px] text-slate-500 tabular-nums">
-                        {row.admissionNumber}
-                      </p>
-                      <p className="truncate text-[11px] font-medium text-slate-500">
-                        {row.className}
-                      </p>
+                {/* Main student touch target - taps straight into report */}
+                <button
+                  type="button"
+                  onClick={() => onViewResult(row.studentId)}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  aria-label={`View result for ${row.fullName}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-light)] text-[11px] font-bold text-[var(--primary-text)]"
+                  >
+                    {getInitials(row.fullName)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold uppercase tracking-tight text-slate-900 group-hover:text-[var(--primary-text)]">
+                      {row.fullName}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 tabular-nums">
+                      <span className="truncate">{row.admissionNumber}</span>
+                      <span aria-hidden="true" className="text-slate-300">
+                        ·
+                      </span>
+                      <span className="truncate font-medium">{row.className}</span>
                     </div>
                   </div>
+                </button>
 
-                  <div className="flex flex-col items-end gap-0.5">
-                    {renderStatusBadge(row.completionStatus, true)}
-                    <span className="text-[11px] text-slate-500 tabular-nums">
-                      ({row.completedSubjects}/{row.expectedSubjects} subjects)
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={cn(
-                    "flex items-center justify-between gap-2",
-                    hasRowMetrics(row) ? "border-t border-slate-100 pt-1.5" : "pt-0",
-                  )}
-                >
-                  <div className="flex items-center gap-3 text-xs tabular-nums">
-                    {/* A pending learner has no score yet: "--" and "—" were
-                        noise, the status badge already says pending. */}
-                    {typeof row.averageScore === "number" && (
-                      <span>
-                        Avg:{" "}
-                        <strong className="font-bold text-slate-900">
-                          {row.averageScore.toFixed(1)}%
-                        </strong>
-                      </span>
-                    )}
-                    {typeof row.classRank === "number" && row.classRank > 0 && (
-                      <span>
-                        Rank:{" "}
-                        <strong className="font-bold text-slate-900">
-                          {formatOrdinalRank(row.classRank)}
-                        </strong>
-                      </span>
+                {/* Score / Status + Quick Actions */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-col items-end gap-0.5 text-right">
+                    {hasRowMetrics(row) ? (
+                      <>
+                        <div className="flex items-center gap-1.5 tabular-nums">
+                          {typeof row.averageScore === "number" && (
+                            <span className="text-xs font-bold text-slate-900">
+                              {row.averageScore.toFixed(1)}%
+                            </span>
+                          )}
+                          {typeof row.classRank === "number" &&
+                            row.classRank > 0 && (
+                              <span className="inline-flex items-center rounded-md bg-[var(--primary-light)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--primary-text)]">
+                                {formatOrdinalRank(row.classRank)}
+                              </span>
+                            )}
+                        </div>
+                        <span className="text-[10px] font-medium text-emerald-700 tabular-nums">
+                          {row.completedSubjects}/{row.expectedSubjects} subjects
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {renderStatusBadge(row.completionStatus, true)}
+                        <span className="text-[10px] text-slate-400 tabular-nums">
+                          ({row.completedSubjects}/{row.expectedSubjects} subjects)
+                        </span>
+                      </>
                     )}
                   </div>
 
-                  <div className="ml-auto flex items-center gap-1.5">
+                  {row.group.results.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => onViewResult(row.studentId)}
-                      className="inline-flex h-7.5 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPrintReport(row.studentId);
+                      }}
+                      className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs transition-colors hover:border-[var(--primary-border)] hover:bg-[var(--primary-light)] hover:text-[var(--primary-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                      title={`Print report card for ${row.fullName}`}
+                      aria-label={`Print report card for ${row.fullName}`}
                     >
-                      View Result
+                      <Printer className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
-                    {row.group.results.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => onPrintReport(row.studentId)}
-                        className="inline-flex h-7.5 items-center gap-1 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-light)] px-2 text-xs font-semibold text-[var(--primary-text)] shadow-2xs"
-                      >
-                        <Printer className="h-3 w-3" aria-hidden="true" />
-                        <span>Print</span>
-                      </button>
-                    )}
-                  </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onViewResult(row.studentId)}
+                    className="flex h-7.5 w-5 items-center justify-center text-slate-300 transition-colors group-hover:text-slate-600 focus-visible:outline-none"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </li>
             ))}
@@ -533,18 +537,6 @@ export function AllStudentsResultsTable({
               <option value={50}>50</option>
             </select>
           </div>
-
-          {onBulkPrint && (
-            <button
-              type="button"
-              onClick={onBulkPrint}
-              disabled={isBulkPrinting || sortedRows.length === 0}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-[var(--primary-foreground)] shadow-2xs disabled:opacity-50 md:hidden"
-            >
-              <Printer className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{isBulkPrinting ? "Preparing..." : "Print all"}</span>
-            </button>
-          )}
         </div>
       </div>
     </div>
