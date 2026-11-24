@@ -126,6 +126,8 @@ export default function SpreadsheetAssessmentsPage() {
   const [importingScores, setImportingScores] = useState(false);
   const scoreImportInputRef = useRef<HTMLInputElement | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showDeleteSheetDialog, setShowDeleteSheetDialog] = useState(false);
+  const [deletingSheet, setDeletingSheet] = useState(false);
   const [subModal, setSubModal] = useState<SubAssessmentModalMode | null>(null);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [editingQuestionIdx, setEditingQuestionIdx] = useState<number | null>(null);
@@ -319,6 +321,25 @@ export default function SpreadsheetAssessmentsPage() {
       toast.error(getErrorMessage(error, "Failed to update status"));
     } finally {
       setUpdatingStatus(false);
+    }
+  }
+
+  async function handleDeleteSheet() {
+    if (!orgSlug || !sheet || deletingSheet) return;
+    setDeletingSheet(true);
+    try {
+      await apiFetch(`/spreadsheets/${orgSlug}/${sheet.id}`, {
+        method: "DELETE",
+      });
+      toast.success(`Deleted "${spreadsheetLabel}".`);
+      setShowDeleteSheetDialog(false);
+      router.replace(sheetsHref);
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error, "Could not delete spreadsheet. Please try again."),
+      );
+    } finally {
+      setDeletingSheet(false);
     }
   }
 
@@ -817,7 +838,7 @@ export default function SpreadsheetAssessmentsPage() {
                       Sheet &amp; roster controls
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-500">
-                      Sync class list{isPrivileged ? " or change sheet status" : ""}
+                      Sync class list{isPrivileged ? ", change status, or delete spreadsheet" : ""}
                     </span>
                   </span>
                   <ChevronDown
@@ -861,6 +882,24 @@ export default function SpreadsheetAssessmentsPage() {
                       )}
                       Sync with class list
                     </button>
+                  )}
+                  {isPrivileged && (
+                    <div className="border-t border-slate-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteSheetDialog(true)}
+                        disabled={isPublishedLocked || deletingSheet}
+                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-4 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        Delete spreadsheet
+                      </button>
+                      {isPublishedLocked && (
+                        <p className="mt-1.5 text-xs text-slate-600">
+                          Published spreadsheets linked to HCORE cannot be deleted.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </details>
@@ -1132,6 +1171,40 @@ export default function SpreadsheetAssessmentsPage() {
               }}
             >
               Delete Question
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Spreadsheet confirmation (Admin only) */}
+      <AlertDialog
+        open={showDeleteSheetDialog}
+        onOpenChange={(open) => {
+          if (!deletingSheet) setShowDeleteSheetDialog(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{spreadsheetLabel}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes this spreadsheet, all of its sub-assessments, and every
+              recorded student score on it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingSheet}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingSheet}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteSheet();
+              }}
+            >
+              {deletingSheet && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {deletingSheet ? "Deleting..." : "Delete Spreadsheet"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
