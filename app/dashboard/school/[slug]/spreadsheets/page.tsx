@@ -9,13 +9,13 @@ import {
   BookOpen,
   Delete,
   FileSpreadsheet,
-  Filter,
   GraduationCap,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   X,
   LayoutGrid,
   List,
@@ -27,8 +27,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -70,8 +81,7 @@ import {
   getSpreadsheetLabel,
   type AssessmentCategorySummary,
 } from "@/lib/spreadsheets";
-import { toTitleCase, cn } from "@/lib/utils";
-import { greetingName } from "@/lib/greeting-name";
+import { cn } from "@/lib/utils";
 import { detectClassSection, type ResultStage } from "@/lib/result-presets";
 import { buildSpreadsheetTitle, type TermType } from "@/lib/universal-grading";
 
@@ -155,17 +165,23 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function getDisplayName(name: string | undefined) {
-  if (!name) {
-    return "Teacher";
+function getStatusLabel(status: SpreadsheetSummary["status"]) {
+  switch (status) {
+    case "active":
+      return "Active";
+    case "pending":
+      return "Pending";
+    case "inactive":
+      return "Inactive";
+    default:
+      return "Pending";
   }
-  return toTitleCase(greetingName(name) || name);
 }
 
 function getStatusClassName(status: SpreadsheetSummary["status"]) {
   switch (status) {
     case "active":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
     case "pending":
       return "border-amber-200 bg-amber-50 text-amber-800";
     case "inactive":
@@ -229,6 +245,9 @@ export default function SpreadsheetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isBulkActivating, setIsBulkActivating] = useState(false);
+  const [isBulkActivateConfirmOpen, setIsBulkActivateConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SpreadsheetSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [additionalClassIds, setAdditionalClassIds] = useState<string[]>([]);
   const [conflictSheet, setConflictSheet] = useState<{
     id: string;
@@ -316,7 +335,7 @@ export default function SpreadsheetsPage() {
         });
       })
       .catch(() => {
-        toast.error("Failed to load spreadsheet structure");
+        toast.error("Could not load assessment structure. Close and try again.");
         setEditAssessmentForm({ assessments: [] });
       });
   }, [editTargetId, currentOrg]);
@@ -531,7 +550,7 @@ export default function SpreadsheetsPage() {
         setClasses(classData);
         setSubjects(subjectData);
       } catch {
-        toast.error("Failed to load spreadsheet data");
+        toast.error("Could not load spreadsheets. Refresh the page to try again.");
       } finally {
         setIsLoading(false);
       }
@@ -751,27 +770,53 @@ export default function SpreadsheetsPage() {
       }
       if (res.updatedCount > 0 && res.skippedCount > 0) {
         toast.success(
-          `Activated ${res.updatedCount} spreadsheet${res.updatedCount === 1 ? "" : "s"} (${res.skippedCount} skipped due to mark allocation issues).`,
+          `Activated ${res.updatedCount} ${res.updatedCount === 1 ? "spreadsheet" : "spreadsheets"}. ${res.skippedCount} skipped because a category has no sub-assessment yet.`,
         );
       } else if (res.updatedCount > 0) {
         toast.success(
-          `Set ${res.updatedCount} spreadsheet${res.updatedCount === 1 ? "" : "s"} to active.`,
+          `Activated ${res.updatedCount} ${res.updatedCount === 1 ? "spreadsheet" : "spreadsheets"}. They are now visible in Results.`,
         );
       } else if (res.skippedCount > 0) {
         toast.error(
-          `${res.skippedCount} spreadsheet${res.skippedCount === 1 ? "" : "s"} could not be activated due to mark allocation issues.`,
+          `Could not activate ${res.skippedCount} ${res.skippedCount === 1 ? "spreadsheet" : "spreadsheets"}. Add at least one sub-assessment to every category first.`,
         );
       } else {
-        toast.info("All spreadsheets are already active.");
+        toast.info("All spreadsheets in this view are already active.");
       }
+      setIsBulkActivateConfirmOpen(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to activate spreadsheets"));
+      toast.error(
+        getErrorMessage(error, "Could not activate spreadsheets. Please try again."),
+      );
     } finally {
       setIsBulkActivating(false);
     }
   }
 
-  const displayName = getDisplayName(currentMember?.user?.name);
+  async function handleDeleteSpreadsheet() {
+    if (!currentOrg || !deleteTarget || isDeleting) return;
+    setIsDeleting(true);
+    const target = deleteTarget;
+    const label = getSpreadsheetLabel(target);
+    try {
+      await apiFetch(`/spreadsheets/${currentOrg.slug}/${target.id}`, {
+        method: "DELETE",
+      });
+      setSpreadsheets((prev) => prev.filter((item) => item.id !== target.id));
+      setDeleteTarget(null);
+      toast.success(`Deleted "${label}".`);
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error, `Could not delete "${label}". Please try again.`),
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const hasActiveFilters = Boolean(searchQuery.trim()) || termTab !== "ALL";
+  const termFilterLabel =
+    termTab === "MID_TERM" ? "Mid-Term" : termTab === "END_TERM" ? "End-of-Term" : "";
   const orgSlug = currentOrg?.slug;
   const backHref = prefilledSubjectId
     ? `/dashboard/school/${orgSlug}/subjects/${prefilledSubjectId}`
@@ -803,29 +848,29 @@ export default function SpreadsheetsPage() {
         {/* Phones: Hairline Directory List */}
         <div className="flex flex-col gap-3 md:hidden">
           {canCreate && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 onClick={() => setIsDialogOpen(true)}
-                className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs active:scale-[0.98] transition"
+                className="min-h-11 flex-1 whitespace-nowrap rounded-xl bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-xs transition hover:bg-blue-700 active:scale-[0.98]"
               >
-                <Plus className="h-4 w-4" />
-                <span>Create Spreadsheet</span>
+                <Plus className="mr-1.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>New Spreadsheet</span>
               </Button>
               {isPrivileged && nonActiveSheetsInTab.length > 0 && (
                 <Button
                   type="button"
                   variant="outline"
                   disabled={isBulkActivating}
-                  onClick={() => void handleBulkActivateAll()}
-                  className="shrink-0 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold"
+                  onClick={() => setIsBulkActivateConfirmOpen(true)}
+                  className="min-h-11 shrink-0 whitespace-nowrap rounded-xl border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                 >
                   {isBulkActivating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                   ) : (
-                    <CheckCircle2 className="h-4 w-4" />
+                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                  <span className="ml-1.5">Set All Active ({nonActiveSheetsInTab.length})</span>
+                  <span className="tabular-nums">Set All Active ({nonActiveSheetsInTab.length})</span>
                 </Button>
               )}
             </div>
@@ -833,22 +878,35 @@ export default function SpreadsheetsPage() {
 
           {/* Mobile Search Input */}
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
             <Input
               type="search"
-              placeholder="Search spreadsheets..."
+              placeholder="Search by class, subject, or status"
               aria-label="Search spreadsheets"
-              className="rounded-xl bg-white pl-9 border-slate-200"
+              className="h-11 rounded-xl border-slate-200 bg-white pl-9 pr-11 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                className="absolute right-0.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           {/* Segmented Control / Tabs */}
           <div
             role="tablist"
-            aria-label="Filter spreadsheets by term stage"
-            className="grid grid-cols-3 rounded-xl bg-slate-100 p-1 border border-slate-200/80"
+            aria-label="Filter spreadsheets by term period"
+            className="grid grid-cols-3 rounded-xl border border-slate-200/80 bg-slate-100 p-1"
           >
             <button
               type="button"
@@ -856,13 +914,13 @@ export default function SpreadsheetsPage() {
               aria-selected={termTab === "ALL"}
               onClick={() => setTermTab("ALL")}
               className={cn(
-                "min-h-11 px-2 text-xs font-semibold rounded-lg transition-all text-center",
+                "min-h-11 rounded-lg px-2 text-center text-xs font-semibold transition-all",
                 termTab === "ALL"
                   ? "bg-blue-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900",
               )}
             >
-              All Sheets
+              All
             </button>
             <button
               type="button"
@@ -870,10 +928,10 @@ export default function SpreadsheetsPage() {
               aria-selected={termTab === "MID_TERM"}
               onClick={() => setTermTab("MID_TERM")}
               className={cn(
-                "min-h-11 px-2 text-xs font-semibold rounded-lg transition-all text-center",
+                "min-h-11 rounded-lg px-2 text-center text-xs font-semibold transition-all",
                 termTab === "MID_TERM"
                   ? "bg-blue-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900",
               )}
             >
               Mid-Term
@@ -884,10 +942,10 @@ export default function SpreadsheetsPage() {
               aria-selected={termTab === "END_TERM"}
               onClick={() => setTermTab("END_TERM")}
               className={cn(
-                "min-h-11 px-2 text-xs font-semibold rounded-lg transition-all text-center",
+                "min-h-11 rounded-lg px-2 text-center text-xs font-semibold transition-all",
                 termTab === "END_TERM"
                   ? "bg-blue-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900",
               )}
             >
               End-of-Term
@@ -895,16 +953,30 @@ export default function SpreadsheetsPage() {
           </div>
 
           {/* Quiet Meta Count */}
-          <p className="px-1 text-xs font-medium text-slate-600 tabular-nums">
-            {filteredSheets.length} {filteredSheets.length === 1 ? "spreadsheet" : "spreadsheets"}
-          </p>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs font-medium text-slate-600 tabular-nums">
+              {filteredSheets.length} {filteredSheets.length === 1 ? "spreadsheet" : "spreadsheets"}
+            </p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setTermTab("ALL");
+                }}
+                className="text-xs font-semibold text-blue-600 hover:underline"
+              >
+                Reset filters
+              </button>
+            )}
+          </div>
 
           {/* Mobile Single-Container Hairline List */}
-          <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white divide-y divide-slate-100">
+          <section className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/90 bg-white">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3.5">
-                  <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-40" />
                     <Skeleton className="h-3 w-32" />
@@ -913,15 +985,41 @@ export default function SpreadsheetsPage() {
               ))
             ) : filteredSheets.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-slate-800">
-                  {searchQuery ? "No spreadsheets match your search." : "No spreadsheets yet."}
+                <p className="text-sm font-semibold text-slate-900">
+                  {hasActiveFilters
+                    ? termFilterLabel && !searchQuery.trim()
+                      ? `No ${termFilterLabel} spreadsheets found`
+                      : "No matching spreadsheets"
+                    : "No spreadsheets yet"}
                 </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {hasActiveFilters
+                    ? "Try a different keyword or reset the term filter."
+                    : canCreate
+                      ? "Create a spreadsheet to begin recording student scores."
+                      : "No subject spreadsheets have been created for your classes yet."}
+                </p>
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setTermTab("ALL");
+                    }}
+                    className="mt-3 rounded-xl"
+                  >
+                    Reset filters
+                  </Button>
+                )}
               </div>
             ) : (
               filteredSheets.map((sheet) => {
                 const sheetLabel = getSpreadsheetLabel(sheet);
+                const mobileTitle = sheet.subject?.name?.trim() || sheetLabel;
                 const visual = getSpreadsheetVisual(sheet);
-                const isPublished = sheet.status === "active";
+                const statusLabel = getStatusLabel(sheet.status);
                 const href = `/dashboard/school/${orgSlug}/spreadsheets/${sheet.id}`;
 
                 return (
@@ -938,24 +1036,31 @@ export default function SpreadsheetsPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h2 className="truncate text-[15px] font-semibold text-[#0B1220] group-hover:text-blue-600">
-                          {sheetLabel}
+                          {mobileTitle}
                         </h2>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium border", visual.typeBadge)}>
+                          <span className={cn("rounded-md border px-1.5 py-0.5 text-xs font-medium", visual.typeBadge)}>
                             {visual.typeLabel}
                           </span>
-                          {isPublished ? (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200/70 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
-                              <CheckCircle2 className="size-3 text-emerald-600" aria-hidden="true" />
-                              Published
-                            </span>
-                          ) : (
-                            <span className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
-                              Draft
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium",
+                              getStatusClassName(sheet.status),
+                            )}
+                          >
+                            {sheet.status === "active" && (
+                              <CheckCircle2 className="size-3" aria-hidden="true" />
+                            )}
+                            {statusLabel}
+                          </span>
+                          {sheet.hcoreAssessmentId && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">
+                              <Lock className="size-3" aria-hidden="true" />
+                              Locked
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 truncate text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-600">
                           {sheet.classLevel?.name ? `${sheet.classLevel.name} · ` : ""}
                           {format(new Date(sheet.createdAt), "MMM d, yyyy")}
                         </p>
@@ -969,7 +1074,7 @@ export default function SpreadsheetsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-11 w-11 shrink-0 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                            aria-label={`Options for ${sheetLabel}`}
+                            aria-label={`Actions for ${sheetLabel}`}
                           >
                             <MoreHorizontal className="size-5" />
                           </Button>
@@ -986,8 +1091,21 @@ export default function SpreadsheetsPage() {
                           }}
                           disabled={Boolean(sheet.hcoreAssessmentId)}
                         >
-                          Edit Structure
+                          {sheet.hcoreAssessmentId ? "Structure Locked" : "Edit Structure"}
                         </DropdownMenuItem>
+                        {isPrivileged && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTarget(sheet)}
+                              disabled={Boolean(sheet.hcoreAssessmentId)}
+                              className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                              {sheet.hcoreAssessmentId ? "Delete (Published)" : "Delete Spreadsheet"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -1000,382 +1118,450 @@ export default function SpreadsheetsPage() {
         {/* Desktop Sections */}
         <div className="hidden md:block">
           {orgSlug && <BackButton href={backHref} label={backLabel} />}
-          {/* Header Section (phones: the top bar names the page; the list starts right away) */}
-          <section className="px-3 sm:px-4 md:px-0">
-          <div className="flex flex-col gap-3 md:gap-5">
-            {/* Welcome & Action Row */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between md:gap-4">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-4xl">
-                  Welcome,{" "}
-                  <span className="text-blue-600">
-                    {displayName}
-                  </span>
-                </h1>
-                <p className="mt-2 hidden text-base leading-relaxed text-slate-600 md:block">
-                  Open a class sheet, jump into the right assessment, and enter
-                  scores with fewer taps.
-                </p>
-              </div>
+          {/* Header Section */}
+          <section className="mt-3 px-3 sm:px-4 md:px-0">
+            <div className="flex flex-col gap-4 md:gap-5">
+              {/* Heading & Action Row */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                    Spreadsheets
+                  </h1>
+                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 md:text-base">
+                    Select a subject spreadsheet to enter student scores or manage assessment columns.
+                  </p>
+                </div>
 
-              {canCreate && (
-                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                  {isPrivileged && nonActiveSheetsInTab.length > 0 && (
+                {canCreate && (
+                  <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    {isPrivileged && nonActiveSheetsInTab.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isBulkActivating}
+                        onClick={() => setIsBulkActivateConfirmOpen(true)}
+                        className="h-11 w-full shrink-0 rounded-xl border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition-all hover:bg-emerald-100 sm:w-auto"
+                      >
+                        {isBulkActivating ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                        )}
+                        <span className="tabular-nums">
+                          Set All Active ({nonActiveSheetsInTab.length})
+                        </span>
+                      </Button>
+                    )}
                     <Button
                       type="button"
-                      variant="outline"
-                      disabled={isBulkActivating}
-                      onClick={() => void handleBulkActivateAll()}
-                      className="h-12 w-full shrink-0 rounded-xl border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 sm:w-auto"
+                      onClick={() => setIsDialogOpen(true)}
+                      className="h-11 w-full shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98] sm:w-auto sm:px-5"
                     >
-                      {isBulkActivating ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                      )}
-                      Set All Active ({nonActiveSheetsInTab.length})
+                      <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                      New Spreadsheet
                     </Button>
-                  )}
-                  <Button
-                    type="button"
-                    onClick={() => setIsDialogOpen(true)}
-                    className="h-12 w-full shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 hover:shadow-blue-600/30 active:scale-[0.98] sm:w-auto sm:px-5"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Sheet
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Search & Filter Row */}
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-400 sm:left-5 sm:h-5 sm:w-5" />
-                <Input
-                  type="search"
-                  placeholder="Search class, subject or status"
-                  aria-label="Search spreadsheets"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="h-12 rounded-xl border border-slate-200 bg-white pl-10 pr-12 shadow-none placeholder:text-slate-600 focus-visible:border-blue-500 focus-visible:ring-blue-200 sm:h-14 sm:border-2 sm:border-blue-200 sm:pl-12 sm:text-base lg:h-16"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-600 sm:right-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  </div>
                 )}
               </div>
 
-              <div className="flex flex-row items-center justify-between gap-3 sm:mt-2">
-                <div className="hidden items-center gap-2 text-blue-950 sm:flex">
-                  <span className="text-2xl font-bold tracking-tight lg:text-3xl">
-                    Filter
-                  </span>
-                  <Filter className="h-5 w-5" />
+              {/* Search & Filter / Sort Toolbar */}
+              <div className="flex flex-col gap-3">
+                <div className="relative">
+                  <Search
+                    className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    type="search"
+                    placeholder="Search by class, subject, or status"
+                    aria-label="Search spreadsheets"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="h-12 rounded-xl border border-slate-200 bg-white pl-10 pr-11 text-sm shadow-2xs placeholder:text-slate-500 focus-visible:border-blue-500 focus-visible:ring-blue-200"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                      className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
 
-                <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:w-auto">
-                  {/* Term Type Tabs: All | Mid-Term | End-Term */}
-                  <div
-                    role="group"
-                    aria-label="Filter spreadsheets by term period"
-                    className="grid grid-cols-3 rounded-xl bg-slate-100 p-1 sm:inline-flex sm:flex-none sm:bg-blue-100/80 sm:shadow-inner"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setTermTab("ALL")}
-                      aria-pressed={termTab === "ALL"}
-                      className={`min-h-11 rounded-lg px-3 text-xs sm:text-sm font-semibold transition sm:min-w-24 ${
-                        termTab === "ALL"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-blue-700 hover:bg-blue-200/50"
-                      }`}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* Term Period Filter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600">Period</span>
+                    <div
+                      role="group"
+                      aria-label="Filter spreadsheets by term period"
+                      className="inline-flex rounded-xl border border-slate-200/80 bg-slate-100/90 p-1"
                     >
-                      All Sheets
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTermTab("MID_TERM")}
-                      aria-pressed={termTab === "MID_TERM"}
-                      className={`min-h-11 rounded-lg px-3 text-xs sm:text-sm font-semibold transition sm:min-w-28 ${
-                        termTab === "MID_TERM"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-blue-700 hover:bg-blue-200/50"
-                      }`}
-                    >
-                      Mid-Term
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTermTab("END_TERM")}
-                      aria-pressed={termTab === "END_TERM"}
-                      className={`min-h-11 rounded-lg px-3 text-xs sm:text-sm font-semibold transition sm:min-w-28 ${
-                        termTab === "END_TERM"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-blue-700 hover:bg-blue-200/50"
-                      }`}
-                    >
-                      End-Term
-                    </button>
-                  </div>
-
-                  <div role="group" aria-label="Group sheets by" className="grid flex-1 grid-cols-2 rounded-xl bg-slate-100 p-1 sm:inline-flex sm:flex-none sm:bg-blue-100/80 sm:shadow-inner">
-                    <button
-                      type="button"
-                      onClick={() => setActiveFilter("class")}
-                      aria-pressed={activeFilter === "class"}
-                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:pointer-fine:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "class"
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-blue-600 hover:bg-blue-200/50"
+                      <button
+                        type="button"
+                        onClick={() => setTermTab("ALL")}
+                        aria-pressed={termTab === "ALL"}
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                          termTab === "ALL"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
                         }`}
-                    >
-                      <span className="sm:hidden">By class</span>
-                      <span className="hidden sm:inline">Class</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveFilter("subject")}
-                      aria-pressed={activeFilter === "subject"}
-                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition sm:pointer-fine:min-h-0 sm:min-w-28 sm:px-4 sm:py-2 ${activeFilter === "subject"
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-blue-600 hover:bg-blue-200/50"
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTermTab("MID_TERM")}
+                        aria-pressed={termTab === "MID_TERM"}
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                          termTab === "MID_TERM"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
                         }`}
-                    >
-                      <span className="sm:hidden">By subject</span>
-                      <span className="hidden sm:inline">Subject</span>
-                    </button>
-                  </div>
-
-                  {/* View Toggle - Mobile Friendly */}
-                  <div className="hidden sm:flex items-center rounded-xl border border-blue-200 bg-white p-0.5 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("list")}
-                      className={`rounded-lg p-1.5 transition ${viewMode === "list"
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-600 hover:text-slate-600 hover:bg-slate-50"
+                      >
+                        Mid-Term
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTermTab("END_TERM")}
+                        aria-pressed={termTab === "END_TERM"}
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                          termTab === "END_TERM"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
                         }`}
-                      title="List view"
-                    >
-                      <List className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={`rounded-lg p-1.5 transition ${viewMode === "grid"
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-600 hover:text-slate-600 hover:bg-slate-50"
-                        }`}
-                      title="Grid view"
-                    >
-                      <LayoutGrid className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Sheets Grid/List */}
-        <section>
-          {isLoading ? (
-            <div className="grid gap-3 sm:gap-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <Skeleton className="h-12 w-12 rounded-lg sm:h-14 sm:w-14" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-32 sm:w-40" />
-                      <Skeleton className="h-4 w-24 sm:w-28" />
+                      >
+                        End-of-Term
+                      </button>
                     </div>
-                    <Skeleton className="h-8 w-8 rounded-full sm:h-10 sm:w-10" />
+                  </div>
+
+                  {/* Sort & Layout Controls */}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs font-semibold text-slate-600">Sort by</span>
+                    <div
+                      role="group"
+                      aria-label="Sort spreadsheets by"
+                      className="inline-flex rounded-xl border border-slate-200/80 bg-slate-100/90 p-1"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveFilter("class")}
+                        aria-pressed={activeFilter === "class"}
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                          activeFilter === "class"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Class
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFilter("subject")}
+                        aria-pressed={activeFilter === "subject"}
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                          activeFilter === "subject"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Subject
+                      </button>
+                    </div>
+
+                    <div
+                      role="group"
+                      aria-label="Layout view"
+                      className="hidden items-center rounded-xl border border-slate-200 bg-white p-0.5 shadow-2xs sm:flex"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("list")}
+                        aria-label="List view"
+                        aria-pressed={viewMode === "list"}
+                        className={`rounded-lg p-2 transition ${
+                          viewMode === "list"
+                            ? "bg-blue-600 text-white"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                        title="List view"
+                      >
+                        <List className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("grid")}
+                        aria-label="Grid view"
+                        aria-pressed={viewMode === "grid"}
+                        className={`rounded-lg p-2 transition ${
+                          viewMode === "grid"
+                            ? "bg-blue-600 text-white"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                        title="Grid view"
+                      >
+                        <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : filteredSheets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center sm:p-8 md:border-blue-200 md:p-12 md:shadow-[0_12px_35px_rgba(37,99,235,0.05)]">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 sm:h-16 sm:w-16">
-                <FileSpreadsheet className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" />
               </div>
-              <h2 className="mt-3 text-lg font-semibold text-slate-900 sm:mt-4 sm:text-xl">
-                {searchQuery
-                  ? "No sheets match your search"
-                  : "No spreadsheets yet"}
-              </h2>
-              <p className="mt-1.5 text-sm text-slate-600 sm:mt-2">
-                {searchQuery
-                  ? "Try another class, subject, or status keyword."
-                  : canCreate
-                    ? "Create a spreadsheet to start entering scores for your assigned classes."
-                    : "No subject spreadsheets have been created for your classes yet."}
-              </p>
-              {canCreate && !searchQuery && (
-                <Button
-                  onClick={() => setIsDialogOpen(true)}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 sm:mt-6"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first sheet
-                </Button>
-              )}
             </div>
-          ) : (
-            <div
-              className={
-                viewMode === "grid"
-                  ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4"
-                  : "overflow-hidden rounded-2xl border border-slate-200 bg-white max-sm:divide-y max-sm:divide-slate-100 sm:space-y-4 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent"
-              }
-            >
-              {filteredSheets.map((sheet) => {
-                const sheetLabel = getSpreadsheetLabel(sheet);
-                const isGridView = viewMode === "grid";
+          </section>
 
-                return (
+          {/* Sheets Grid/List */}
+          <section className="mt-5">
+            {isLoading ? (
+              <div className="grid gap-3 sm:gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
                   <div
-                    key={sheet.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
-                      )
-                    }
-                    onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-                        e.preventDefault();
+                    key={index}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <Skeleton className="h-12 w-12 rounded-lg sm:h-14 sm:w-14" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-32 sm:w-40" />
+                        <Skeleton className="h-4 w-24 sm:w-28" />
+                      </div>
+                      <Skeleton className="h-8 w-8 rounded-full sm:h-10 sm:w-10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredSheets.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center sm:p-8 md:p-12">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 sm:h-16 sm:w-16">
+                  <FileSpreadsheet className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" aria-hidden="true" />
+                </div>
+                <h2 className="mt-3 text-lg font-semibold text-slate-900 sm:mt-4 sm:text-xl">
+                  {hasActiveFilters
+                    ? termFilterLabel && !searchQuery.trim()
+                      ? `No ${termFilterLabel} spreadsheets found`
+                      : "No spreadsheets match your filters"
+                    : "No spreadsheets yet"}
+                </h2>
+                <p className="mt-1.5 text-sm text-slate-600 sm:mt-2">
+                  {hasActiveFilters
+                    ? "Try a different class, subject, or status keyword, or reset your filters."
+                    : canCreate
+                      ? "Create a spreadsheet to start recording student scores for your assigned classes."
+                      : "No subject spreadsheets have been created for your classes yet."}
+                </p>
+                {hasActiveFilters ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setTermTab("ALL");
+                    }}
+                    className="mt-4 sm:mt-6"
+                  >
+                    Reset filters
+                  </Button>
+                ) : (
+                  canCreate && (
+                    <Button
+                      onClick={() => setIsDialogOpen(true)}
+                      className="mt-4 bg-blue-600 hover:bg-blue-700 sm:mt-6"
+                    >
+                      <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Create your first spreadsheet
+                    </Button>
+                  )
+                )}
+              </div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4"
+                    : "space-y-3"
+                }
+              >
+                {filteredSheets.map((sheet) => {
+                  const sheetLabel = getSpreadsheetLabel(sheet);
+                  const visual = getSpreadsheetVisual(sheet);
+                  const statusLabel = getStatusLabel(sheet.status);
+                  const isGridView = viewMode === "grid";
+
+                  return (
+                    <div
+                      key={sheet.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
                         router.push(
                           `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
-                        );
+                        )
                       }
-                    }}
-                    className={`group w-full bg-white text-left transition-all active:bg-slate-50 ${isGridView
-                      ? "flex flex-col rounded-xl border border-slate-200 p-4 shadow-sm sm:p-5"
-                      : "px-4 py-3 sm:rounded-xl sm:border sm:border-slate-200 sm:p-5 sm:shadow-sm"
-                      } motion-safe:sm:hover:-translate-y-0.5 motion-reduce:transition-none sm:hover:border-blue-200 sm:hover:shadow-md`}
-                  >
-                    <div
-                      className={
-                        isGridView
-                          ? "flex flex-col gap-3"
-                          : "flex items-center gap-3 sm:gap-4"
-                      }
+                      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+                        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          router.push(
+                            `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
+                          );
+                        }
+                      }}
+                      className={`group w-full rounded-xl border border-slate-200 bg-white text-left shadow-2xs transition-all hover:border-blue-200 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:bg-slate-50 motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none ${
+                        isGridView ? "flex flex-col p-4 sm:p-5" : "p-4 sm:px-5 sm:py-4"
+                      }`}
                     >
                       <div
-                        className={`flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100/60 ${isGridView
-                          ? "h-12 w-12 sm:h-14 sm:w-14"
-                          : "h-10 w-10 shrink-0 sm:h-14 sm:w-14"
-                          }`}
-                        aria-hidden
+                        className={
+                          isGridView
+                            ? "flex flex-col gap-3"
+                            : "flex items-center gap-3 sm:gap-4"
+                        }
                       >
-                        {activeFilter === "class" ? (
-                          <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
-                        ) : (
-                          <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h2
-                          className={`line-clamp-2 break-words font-bold tracking-tight text-slate-950 group-hover:text-blue-700 sm:line-clamp-none sm:truncate ${isGridView
-                            ? "text-sm sm:text-base"
-                            : "text-[15px] font-semibold sm:text-lg sm:font-bold lg:text-xl"
-                            }`}
+                        <div
+                          className={`flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100/60 ${
+                            isGridView
+                              ? "h-12 w-12"
+                              : "h-11 w-11 shrink-0 sm:h-12 sm:w-12"
+                          }`}
+                          aria-hidden="true"
                         >
-                          {sheetLabel}
-                        </h2>
+                          {activeFilter === "class" ? (
+                            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
+                          ) : (
+                            <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
+                          )}
+                        </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <Badge
-                            variant="outline"
-                            className={`shrink-0 px-2 py-0 text-xs capitalize sm:px-2.5 sm:py-0.5 ${getStatusClassName(
-                              sheet.status,
-                            )}`}
+                        <div className="min-w-0 flex-1">
+                          <h2
+                            className={`line-clamp-2 break-words font-semibold tracking-tight text-slate-950 group-hover:text-blue-700 sm:line-clamp-none sm:truncate ${
+                              isGridView
+                                ? "text-sm sm:text-base"
+                                : "text-base sm:text-lg"
+                            }`}
                           >
-                            {sheet.status}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 border-blue-200 bg-blue-50 px-2 py-0 text-xs text-blue-700 sm:px-2.5 sm:py-0.5"
-                          >
-                            {sheet.resultType === "MID_TERM" ? "Mid-term" : "End-of-term"}
-                          </Badge>
-                          {sheet.hcoreAssessmentId ? (
+                            {sheetLabel}
+                          </h2>
+
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                             <Badge
                               variant="outline"
-                              className="shrink-0 gap-1 border-slate-200 bg-slate-50 px-2 py-0 text-xs text-slate-600 sm:px-2.5 sm:py-0.5"
+                              className={`shrink-0 gap-1 px-2 py-0.5 text-xs ${getStatusClassName(
+                                sheet.status,
+                              )}`}
                             >
-                              <Lock className="h-3 w-3" aria-hidden="true" />
-                              Structure locked
+                              {sheet.status === "active" && (
+                                <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                              )}
+                              {statusLabel}
                             </Badge>
-                          ) : null}
-                          <span className="text-slate-300">&bull;</span>
-                          <p
-                            className="truncate text-xs text-slate-600"
+                            <Badge
+                              variant="outline"
+                              className={cn("shrink-0 px-2 py-0.5 text-xs", visual.typeBadge)}
+                            >
+                              {visual.typeLabel}
+                            </Badge>
+                            {sheet.hcoreAssessmentId ? (
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 gap-1 border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600"
+                              >
+                                <Lock className="h-3 w-3" aria-hidden="true" />
+                                Structure locked
+                              </Badge>
+                            ) : null}
+                            <span className="text-slate-300" aria-hidden="true">
+                              &bull;
+                            </span>
+                            <p className="truncate text-xs text-slate-600">
+                              {format(new Date(sheet.createdAt), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditTargetId(sheet.id);
+                              setIsEditAssessmentsOpen(true);
+                            }}
+                            disabled={Boolean(sheet.hcoreAssessmentId)}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                            title={
+                              sheet.hcoreAssessmentId
+                                ? "Assessment structure is locked after publication"
+                                : "Edit assessment structure"
+                            }
+                            aria-label={
+                              sheet.hcoreAssessmentId
+                                ? `Assessment structure locked for ${sheetLabel}`
+                                : `Edit assessment structure for ${sheetLabel}`
+                            }
                           >
-                            {format(new Date(sheet.createdAt), "MMM d, yyyy")}
-                          </p>
+                            {sheet.hcoreAssessmentId ? (
+                              <Lock className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Pencil className="h-4 w-4" aria-hidden="true" />
+                            )}
+                          </button>
+
+                          {isPrivileged && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(sheet);
+                              }}
+                              disabled={Boolean(sheet.hcoreAssessmentId)}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-300"
+                              title={
+                                sheet.hcoreAssessmentId
+                                  ? "Published spreadsheets linked to HCORE cannot be deleted"
+                                  : "Delete spreadsheet"
+                              }
+                              aria-label={
+                                sheet.hcoreAssessmentId
+                                  ? `Cannot delete published spreadsheet ${sheetLabel}`
+                                  : `Delete ${sheetLabel}`
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
+                              );
+                            }}
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-100 bg-white text-blue-700 shadow-2xs transition hover:bg-blue-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                            aria-label={`Open ${sheetLabel}`}
+                          >
+                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditTargetId(sheet.id);
-                            setIsEditAssessmentsOpen(true);
-                          }}
-                          disabled={Boolean(sheet.hcoreAssessmentId)}
-                          className="flex h-11 w-11 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:h-9 sm:w-9 sm:border sm:border-blue-100 sm:hover:border-slate-300 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 disabled:[@media(hover:hover)]:opacity-100"
-                          title={sheet.hcoreAssessmentId ? "Assessment structure is locked after publication" : "Edit assessments"}
-                          aria-label={sheet.hcoreAssessmentId ? "Assessment structure locked after publication" : "Edit assessments"}
-                        >
-                          {sheet.hcoreAssessmentId ? (
-                            <Lock className="h-4 w-4" aria-hidden="true" />
-                          ) : (
-                            <Pencil className="h-4 w-4" aria-hidden="true" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(
-                              `/dashboard/school/${currentOrg?.slug}/spreadsheets/${sheet.id}`,
-                            );
-                          }}
-                          className={`hidden items-center justify-center rounded-full border border-blue-100 bg-white text-blue-700 shadow-sm transition hover:bg-blue-600 hover:text-white sm:flex ${isGridView ? "sm:h-9 sm:w-9" : "sm:h-10 sm:w-10"}`}
-                          aria-label="Open sheet"
-                        >
-                          <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
 
-          {/* Sheet Count */}
-          {!isLoading && filteredSheets.length > 0 && (
-            <p className="mt-4 text-center text-xs text-slate-600 sm:mt-6 sm:text-sm">
-              Showing {filteredSheets.length} of {spreadsheets.length}{" "}
-              spreadsheets
-            </p>
-          )}
-        </section>
+            {/* Sheet Count */}
+            {!isLoading && filteredSheets.length > 0 && (
+              <p className="mt-5 text-center text-xs text-slate-600 tabular-nums sm:text-sm">
+                Showing {filteredSheets.length} of {spreadsheets.length}{" "}
+                {spreadsheets.length === 1 ? "spreadsheet" : "spreadsheets"}
+              </p>
+            )}
+          </section>
         </div>
       </div>
 
@@ -1468,7 +1654,7 @@ export default function SpreadsheetsPage() {
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-700">
-                      Combine additional class arms (optional)
+                      Include other class arms (optional)
                     </span>
                     {additionalClassIds.length > 0 && (
                       <button
@@ -1480,8 +1666,8 @@ export default function SpreadsheetsPage() {
                       </button>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Select other arms taking this subject to enter scores for all their students in one sheet.
+                  <p className="text-[11px] text-slate-600">
+                    Select other arms taking this subject to record all their students on one spreadsheet.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {availableClasses
@@ -1543,7 +1729,7 @@ export default function SpreadsheetsPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="MID_TERM">Mid-Term</SelectItem>
-                          <SelectItem value="END_TERM">End-Term</SelectItem>
+                          <SelectItem value="END_TERM">End-of-Term</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1645,13 +1831,13 @@ export default function SpreadsheetsPage() {
                         <div className="mt-1.5 flex items-center justify-between gap-2">
                           {cat.isSingleInstance ? (
                             <span className="text-[11px] font-medium text-slate-600">
-                              Fixed by admin · auto-created
+                              Locked by school admin
                             </span>
                           ) : (
                             <span className="text-[11px] text-slate-600 tabular-nums">
                               {cat.subAssessmentCount === 0
-                                ? `Auto-scales to ${cat.maxMarks} marks`
-                                : `${cat.subAssessmentCount} ${cat.subAssessmentCount === 1 ? "sub" : "subs"} · ${cat.allocatedMarks} raw → ${cat.maxMarks}`}
+                                ? `Scores scale to ${cat.maxMarks} marks`
+                                : `${cat.subAssessmentCount} ${cat.subAssessmentCount === 1 ? "sub-assessment" : "sub-assessments"} · scaled to ${cat.maxMarks} marks`}
                             </span>
                           )}
                           {!cat.isSingleInstance && (
@@ -2023,10 +2209,10 @@ export default function SpreadsheetsPage() {
                         )}
                       >
                         {cat.isSingleInstance
-                          ? "Fixed by administrator"
+                          ? "Locked by school admin"
                           : cat.isComplete
-                            ? `${cat.subAssessmentCount} ${cat.subAssessmentCount === 1 ? "sub" : "subs"} · ${cat.allocatedMarks} raw → ${cat.maxMarks} max`
-                            : `No subs yet · scales to ${cat.maxMarks}`}
+                            ? `${cat.subAssessmentCount} ${cat.subAssessmentCount === 1 ? "sub-assessment" : "sub-assessments"} · scaled to ${cat.maxMarks} marks`
+                            : `No sub-assessments yet · scales to ${cat.maxMarks} marks`}
                       </p>
                     </div>
                   ))}
@@ -2232,6 +2418,79 @@ export default function SpreadsheetsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Activate Confirmation */}
+      <AlertDialog
+        open={isBulkActivateConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isBulkActivating) setIsBulkActivateConfirmOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Activate {nonActiveSheetsInTab.length}{" "}
+              {nonActiveSheetsInTab.length === 1 ? "Spreadsheet" : "Spreadsheets"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Active spreadsheets are included in student results and report cards. Any spreadsheet
+              missing required sub-assessments will be skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkActivating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBulkActivating}
+              className="bg-emerald-700 text-white hover:bg-emerald-800"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleBulkActivateAll();
+              }}
+            >
+              {isBulkActivating && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {isBulkActivating ? "Activating..." : "Activate All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Spreadsheet Confirmation (Admin only) */}
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteTarget ? `"${getSpreadsheetLabel(deleteTarget)}"` : "Spreadsheet"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes this spreadsheet, all of its sub-assessments, and every
+              recorded student score on it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteSpreadsheet();
+              }}
+            >
+              {isDeleting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {isDeleting ? "Deleting..." : "Delete Spreadsheet"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
