@@ -5,11 +5,13 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpen,
   Delete,
   FileSpreadsheet,
   GraduationCap,
+  Layers,
   Loader2,
   Pencil,
   Plus,
@@ -78,12 +80,18 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { apiFetch } from "@/lib/api";
 import {
   computeCategoryAllocationSummary,
+  getSpreadsheetArmNames,
   getSpreadsheetLabel,
+  isSpreadsheetDeleteLocked,
+  needsCanonicalCancelOnDelete,
   type AssessmentCategorySummary,
 } from "@/lib/spreadsheets";
 import { cn } from "@/lib/utils";
 import { detectClassSection, type ResultStage } from "@/lib/result-presets";
 import { buildSpreadsheetTitle, type TermType } from "@/lib/universal-grading";
+
+const SPREADSHEETS_PAGE_SIZE = 500;
+const SPREADSHEETS_MAX_PAGES = 10;
 
 type SpreadsheetSummary = {
   id: string;
@@ -93,6 +101,12 @@ type SpreadsheetSummary = {
   resultType: ResultStage;
   termType?: TermType;
   hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  recordedScoreCount?: number;
+  canonicalScoreCount?: number;
+  classLevelId?: string;
+  classLevelIds?: string[];
+  classLevels?: Array<{ id: string; name: string }>;
   classLevel?: { id?: string; name?: string | null } | null;
   subject?: { id?: string; name?: string | null } | null;
 };
@@ -125,6 +139,28 @@ type CreatedSpreadsheet = {
   created?: boolean;
   title?: string | null;
   version?: number;
+  classLevelId?: string | null;
+  classLevelIds?: string[];
+  hasScores?: boolean;
+  recordedScoreCount?: number;
+  hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  canonicalScoreCount?: number;
+  assessmentStorageMode?: "LEGACY_JSON" | "RELATIONAL";
+};
+
+type ConflictSheetState = {
+  id: string;
+  title?: string | null;
+  version?: number;
+  classLevelId?: string | null;
+  classLevelIds?: string[];
+  hasScores?: boolean;
+  recordedScoreCount?: number;
+  hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  canonicalScoreCount?: number;
+  assessmentStorageMode?: "LEGACY_JSON" | "RELATIONAL";
 };
 
 type EditableAssessmentRow = {
@@ -248,12 +284,9 @@ export default function SpreadsheetsPage() {
   const [isBulkActivateConfirmOpen, setIsBulkActivateConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SpreadsheetSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCombiningArms, setIsCombiningArms] = useState(false);
   const [additionalClassIds, setAdditionalClassIds] = useState<string[]>([]);
-  const [conflictSheet, setConflictSheet] = useState<{
-    id: string;
-    title?: string | null;
-    version?: number;
-  } | null>(null);
+  const [conflictSheet, setConflictSheet] = useState<ConflictSheetState | null>(null);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [isEditAssessmentsOpen, setIsEditAssessmentsOpen] = useState(false);
   const [isSavingAssessments, setIsSavingAssessments] = useState(false);
@@ -530,33 +563,61 @@ export default function SpreadsheetsPage() {
   }, [isPrivileged, isAccountant, selectedClassId, subjects, teacherAssignments]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchAllSpreadsheets(slug: string): Promise<SpreadsheetSummary[]> {
+      const collected: SpreadsheetSummary[] = [];
+      const seenIds = new Set<string>();
+      for (let page = 0; page < SPREADSHEETS_MAX_PAGES; page += 1) {
+        const batch = await apiFetch<SpreadsheetSummary[]>(`/spreadsheets/${slug}`, {
+          params: {
+            limit: SPREADSHEETS_PAGE_SIZE,
+            offset: page * SPREADSHEETS_PAGE_SIZE,
+            ...(prefilledSubjectId ? { subjectId: prefilledSubjectId } : {}),
+            ...(prefilledClassId ? { classLevelId: prefilledClassId } : {}),
+          },
+        });
+        if (cancelled) return collected;
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        for (const item of batch) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            collected.push(item);
+          }
+        }
+        if (batch.length < SPREADSHEETS_PAGE_SIZE) break;
+      }
+      return collected;
+    }
+
     async function fetchData() {
       if (!currentOrg) return;
 
       try {
         setIsLoading(true);
         const [sheetData, classData, subjectData] = await Promise.all([
-          apiFetch<SpreadsheetSummary[]>(`/spreadsheets/${currentOrg.slug}`, {
-            params: {
-              ...(prefilledSubjectId ? { subjectId: prefilledSubjectId } : {}),
-              ...(prefilledClassId ? { classLevelId: prefilledClassId } : {}),
-            },
-          }),
+          fetchAllSpreadsheets(currentOrg.slug),
           apiFetch<ClassOption[]>(`/classes/${currentOrg.slug}`),
           apiFetch<SubjectOption[]>(`/subjects/${currentOrg.slug}`),
         ]);
+        if (cancelled) return;
 
         setSpreadsheets(sheetData);
         setClasses(classData);
         setSubjects(subjectData);
       } catch {
-        toast.error("Could not load spreadsheets. Refresh the page to try again.");
+        if (!cancelled) {
+          toast.error("Could not load spreadsheets. Refresh the page to try again.");
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
-    fetchData();
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [currentOrg, prefilledClassId, prefilledSubjectId]);
 
   useEffect(() => {
@@ -625,6 +686,7 @@ export default function SpreadsheetsPage() {
         return [
           spreadsheetLabel,
           sheet.classLevel?.name,
+          ...getSpreadsheetArmNames(sheet),
           sheet.subject?.name,
           sheet.status,
           sheet.termType === "MID_TERM" || sheet.resultType === "MID_TERM" ? "mid-term" : "end-of-term",
@@ -710,7 +772,19 @@ export default function SpreadsheetsPage() {
       if (created.created === false) {
         setIsCreating(false);
         setPendingPayload(payload);
-        setConflictSheet({ id: created.id, title: created.title ?? null, version: created.version });
+        setConflictSheet({
+          id: created.id,
+          title: created.title ?? null,
+          version: created.version,
+          classLevelId: created.classLevelId ?? null,
+          classLevelIds: created.classLevelIds,
+          hasScores: created.hasScores,
+          recordedScoreCount: created.recordedScoreCount,
+          hcoreAssessmentId: created.hcoreAssessmentId ?? null,
+          canonicalStatus: created.canonicalStatus ?? null,
+          canonicalScoreCount: created.canonicalScoreCount,
+          assessmentStorageMode: created.assessmentStorageMode,
+        });
         return;
       }
 
@@ -798,19 +872,99 @@ export default function SpreadsheetsPage() {
     setIsDeleting(true);
     const target = deleteTarget;
     const label = getSpreadsheetLabel(target);
+    const cancelCanonical = needsCanonicalCancelOnDelete(target);
     try {
-      await apiFetch(`/spreadsheets/${currentOrg.slug}/${target.id}`, {
-        method: "DELETE",
-      });
+      await apiFetch(
+        `/spreadsheets/${currentOrg.slug}/${target.id}${cancelCanonical ? "?cancelCanonical=true" : ""}`,
+        {
+          method: "DELETE",
+        },
+      );
       setSpreadsheets((prev) => prev.filter((item) => item.id !== target.id));
       setDeleteTarget(null);
-      toast.success(`Deleted "${label}".`);
+      if (conflictSheet?.id === target.id) {
+        setConflictSheet(null);
+      }
+      toast.success(
+        cancelCanonical
+          ? `Cancelled HCORE draft and deleted "${label}".`
+          : `Deleted "${label}".`,
+      );
     } catch (error) {
       toast.error(
         getErrorMessage(error, `Could not delete "${label}". Please try again.`),
       );
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  const conflictCombineMeta = useMemo(() => {
+    if (!conflictSheet) {
+      return {
+        mergedClassIds: [] as string[],
+        hasExtraArms: false,
+        canCombine: false,
+        canReset: false,
+        canDelete: false,
+      };
+    }
+    const rawRequested = Array.isArray(pendingPayload?.classLevels)
+      ? (pendingPayload.classLevels as unknown[]).filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        )
+      : typeof pendingPayload?.classLevel === "string" && pendingPayload.classLevel
+        ? [pendingPayload.classLevel]
+        : [];
+    const existingIds = Array.isArray(conflictSheet.classLevelIds) && conflictSheet.classLevelIds.length > 0
+      ? conflictSheet.classLevelIds
+      : conflictSheet.classLevelId
+        ? [conflictSheet.classLevelId]
+        : [];
+    const existingSet = new Set(existingIds);
+    const hasExtraArms = rawRequested.some((id) => !existingSet.has(id));
+    const mergedClassIds = Array.from(new Set([...existingIds, ...rawRequested]));
+    const deleteLocked = isSpreadsheetDeleteLocked(conflictSheet);
+    const hasVersion = typeof conflictSheet.version === "number" && conflictSheet.version > 0;
+    const hasScores = Boolean(conflictSheet.hasScores) || (conflictSheet.recordedScoreCount ?? 0) > 0;
+    return {
+      mergedClassIds,
+      hasExtraArms,
+      canCombine: isPrivileged && hasExtraArms && hasVersion && !deleteLocked,
+      canReset: hasVersion && !hasScores && !conflictSheet.hcoreAssessmentId,
+      canDelete: isPrivileged && !deleteLocked,
+    };
+  }, [conflictSheet, isPrivileged, pendingPayload]);
+
+  async function handleCombineConflictArms() {
+    if (!conflictSheet || !currentOrg || isCombiningArms || !conflictCombineMeta.canCombine) return;
+    setIsCombiningArms(true);
+    try {
+      const updated = await apiFetch<SpreadsheetSummary>(
+        `/spreadsheets/${currentOrg.slug}/${conflictSheet.id}/classes`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            classLevels: conflictCombineMeta.mergedClassIds,
+            expectedVersion: conflictSheet.version,
+          }),
+        },
+      );
+      setSpreadsheets((prev) =>
+        prev.some((item) => item.id === updated.id)
+          ? prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+          : [updated, ...prev],
+      );
+      toast.success("Class arms combined without losing any recorded scores.");
+      setIsDialogOpen(false);
+      setConflictSheet(null);
+      setPendingPayload(null);
+      setAdditionalClassIds([]);
+      router.push(`/dashboard/school/${currentOrg.slug}/spreadsheets/${conflictSheet.id}`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to combine class arms"));
+    } finally {
+      setIsCombiningArms(false);
     }
   }
 
@@ -1061,7 +1215,9 @@ export default function SpreadsheetsPage() {
                           )}
                         </div>
                         <p className="mt-1 truncate text-xs text-slate-600">
-                          {sheet.classLevel?.name ? `${sheet.classLevel.name} · ` : ""}
+                          {getSpreadsheetArmNames(sheet).length > 0
+                            ? `${getSpreadsheetArmNames(sheet).join(", ")} · `
+                            : ""}
                           {format(new Date(sheet.createdAt), "MMM d, yyyy")}
                         </p>
                       </div>
@@ -1098,11 +1254,13 @@ export default function SpreadsheetsPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setDeleteTarget(sheet)}
-                              disabled={Boolean(sheet.hcoreAssessmentId)}
+                              disabled={isSpreadsheetDeleteLocked(sheet)}
                               className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
                             >
                               <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                              {sheet.hcoreAssessmentId ? "Delete (Published)" : "Delete Spreadsheet"}
+                              {isSpreadsheetDeleteLocked(sheet)
+                                ? "Delete (Grades Locked)"
+                                : "Delete Spreadsheet"}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -1516,16 +1674,16 @@ export default function SpreadsheetsPage() {
                                 e.stopPropagation();
                                 setDeleteTarget(sheet);
                               }}
-                              disabled={Boolean(sheet.hcoreAssessmentId)}
+                              disabled={isSpreadsheetDeleteLocked(sheet)}
                               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-300"
                               title={
-                                sheet.hcoreAssessmentId
-                                  ? "Published spreadsheets linked to HCORE cannot be deleted"
+                                isSpreadsheetDeleteLocked(sheet)
+                                  ? "Canonical grades have been submitted to HCORE and cannot be deleted"
                                   : "Delete spreadsheet"
                               }
                               aria-label={
-                                sheet.hcoreAssessmentId
-                                  ? `Cannot delete published spreadsheet ${sheetLabel}`
+                                isSpreadsheetDeleteLocked(sheet)
+                                  ? `Cannot delete locked spreadsheet ${sheetLabel}`
                                   : `Delete ${sheetLabel}`
                               }
                             >
@@ -1995,99 +2153,217 @@ export default function SpreadsheetsPage() {
       <Dialog
         open={!!conflictSheet}
         onOpenChange={(open) => {
-          if (!open) setConflictSheet(null);
+          if (!open && !isCombiningArms) setConflictSheet(null);
         }}
       >
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-800">
-              <BookOpen className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <BookOpen className="h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
               Spreadsheet Already Exists
             </DialogTitle>
-            <DialogDescription className="pt-2 leading-relaxed">
-              A spreadsheet already exists for this class, subject, and term period. If the existing sheet has no recorded scores, you can reset its assessment structure, or you can edit its assessments directly.
+            <DialogDescription className="pt-1.5 leading-relaxed text-slate-600">
+              {conflictSheet?.title
+                ? `"${conflictSheet.title}" already covers one or more of the classes you selected for this subject and term.`
+                : "A spreadsheet already exists for one or more of the classes you selected for this subject and term."}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3 pt-2">
+
+          {conflictSheet && (
+            <div
+              className={cn(
+                "rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed",
+                (conflictSheet.recordedScoreCount ?? 0) > 0 || conflictSheet.hasScores
+                  ? "border-amber-200 bg-amber-50/80 text-amber-950"
+                  : "border-slate-200 bg-slate-50 text-slate-700",
+              )}
+            >
+              {(conflictSheet.recordedScoreCount ?? 0) > 0 || conflictSheet.hasScores ? (
+                <p className="font-medium">
+                  {(conflictSheet.recordedScoreCount ?? 0) > 0
+                    ? `This existing spreadsheet has ${conflictSheet.recordedScoreCount} recorded student ${conflictSheet.recordedScoreCount === 1 ? "score" : "scores"}.`
+                    : "This existing spreadsheet already has recorded student scores."}{" "}
+                  {conflictCombineMeta.canCombine
+                    ? "Combining arms below keeps every existing score intact."
+                    : "Open it to review scores before making changes."}
+                </p>
+              ) : (
+                <p>No student scores are recorded on this existing spreadsheet yet.</p>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2.5 pt-1">
+            {conflictCombineMeta.canCombine && (
+              <Button
+                type="button"
+                disabled={isCombiningArms}
+                className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal bg-[#1447E6] px-4 py-3.5 text-left text-white hover:bg-[#123ecc]"
+                onClick={() => void handleCombineConflictArms()}
+              >
+                {isCombiningArms ? (
+                  <Loader2 className="h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <Layers className="h-5 w-5 shrink-0" aria-hidden="true" />
+                )}
+                <div className="min-w-0 text-left">
+                  <p className="text-sm font-semibold">
+                    {isCombiningArms
+                      ? "Combining class arms..."
+                      : "Combine Selected Class Arms into Existing Sheet"}
+                  </p>
+                  <p className="text-xs text-blue-100">
+                    Adds the extra class arms and keeps all recorded scores safe
+                  </p>
+                </div>
+              </Button>
+            )}
+
             <Button
+              type="button"
               variant="outline"
-              className="justify-start gap-3 border-amber-200 bg-amber-50/50 py-6 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
-              disabled={typeof conflictSheet?.version !== "number" || conflictSheet.version <= 0}
-              onClick={async () => {
-                if (!conflictSheet || !currentOrg || !pendingPayload) return;
-                if (typeof conflictSheet.version !== "number" || conflictSheet.version <= 0) {
-                  toast.error("Spreadsheet version is unavailable. Open Edit Assessments instead.");
-                  return;
-                }
-                setIsDialogOpen(false);
+              className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal border-slate-200 bg-white px-4 py-3 text-left text-slate-900 hover:bg-slate-50"
+              onClick={() => {
+                if (!conflictSheet || !currentOrg) return;
+                const targetId = conflictSheet.id;
                 setConflictSheet(null);
-                setPendingPayload(null);
-                setIsCreating(true);
-                try {
-                  const replaced = await apiFetch<CreatedSpreadsheet>(
-                    `/spreadsheets/${currentOrg.slug}`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({
-                        ...pendingPayload,
-                        forceReplace: true,
-                        expectedVersion: conflictSheet.version,
-                      }),
+                setIsDialogOpen(false);
+                router.push(`/dashboard/school/${currentOrg.slug}/spreadsheets/${targetId}`);
+              }}
+            >
+              <ArrowRight className="h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+              <div className="min-w-0 text-left">
+                <p className="text-sm font-semibold">Open Existing Spreadsheet</p>
+                <p className="text-xs text-slate-600">
+                  View its assessments, roster, and recorded scores
+                </p>
+              </div>
+            </Button>
+
+            {conflictCombineMeta.canReset && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal border-amber-200 bg-amber-50/50 px-4 py-3 text-left text-amber-900 hover:bg-amber-100"
+                onClick={async () => {
+                  if (!conflictSheet || !currentOrg || !pendingPayload) return;
+                  if (typeof conflictSheet.version !== "number" || conflictSheet.version <= 0) {
+                    toast.error("Spreadsheet version is unavailable. Open Edit Assessments instead.");
+                    return;
+                  }
+                  setIsDialogOpen(false);
+                  setConflictSheet(null);
+                  setPendingPayload(null);
+                  setIsCreating(true);
+                  try {
+                    const replaced = await apiFetch<CreatedSpreadsheet>(
+                      `/spreadsheets/${currentOrg.slug}`,
+                      {
+                        method: "POST",
+                        body: JSON.stringify({
+                          ...pendingPayload,
+                          forceReplace: true,
+                          expectedVersion: conflictSheet.version,
+                        }),
+                      },
+                    );
+                    toast.success("Empty spreadsheet reset successfully");
+                    setIsCreating(false);
+                    setAdditionalClassIds([]);
+                    form.reset({
+                      classId: prefilledClassId,
+                      subjectId: prefilledSubjectId,
+                      resultType: selectedResultType,
+                      termType: selectedTermType,
+                      templateId: "",
+                      assessments: [],
+                    });
+                    const targetId = replaced.id;
+                    router.push(
+                      `/dashboard/school/${currentOrg.slug}/spreadsheets/${targetId}`,
+                    );
+                  } catch (err: unknown) {
+                    setIsCreating(false);
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to reset spreadsheet",
+                    );
+                  }
+                }}
+              >
+                <RefreshCw className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <div className="min-w-0 text-left">
+                  <p className="text-sm font-semibold">Reset Empty Spreadsheet</p>
+                  <p className="text-xs text-amber-800">
+                    Replace template and selected classes on this empty sheet
+                  </p>
+                </div>
+              </Button>
+            )}
+
+            {!conflictSheet?.hcoreAssessmentId && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal border-blue-200 bg-blue-50/50 px-4 py-3 text-left text-blue-900 hover:bg-blue-100"
+                onClick={() => {
+                  if (!conflictSheet) return;
+                  setEditTargetId(conflictSheet.id);
+                  setConflictSheet(null);
+                  setIsEditAssessmentsOpen(true);
+                }}
+              >
+                <Pencil className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <div className="min-w-0 text-left">
+                  <p className="text-sm font-semibold">Edit Assessments</p>
+                  <p className="text-xs text-blue-700">
+                    Configure sub-assessments within admin limits
+                  </p>
+                </div>
+              </Button>
+            )}
+
+            {conflictCombineMeta.canDelete && conflictSheet && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal border-rose-200 bg-rose-50/60 px-4 py-3 text-left text-rose-800 hover:bg-rose-100"
+                onClick={() => {
+                  const matched = spreadsheets.find((s) => s.id === conflictSheet.id);
+                  setDeleteTarget(
+                    matched ?? {
+                      id: conflictSheet.id,
+                      title: conflictSheet.title ?? "Existing Spreadsheet",
+                      status: "pending",
+                      createdAt: new Date().toISOString(),
+                      resultType: selectedResultType,
+                      termType: selectedTermType,
+                      hcoreAssessmentId: conflictSheet.hcoreAssessmentId ?? null,
+                      canonicalStatus: conflictSheet.canonicalStatus ?? null,
+                      recordedScoreCount: conflictSheet.recordedScoreCount ?? 0,
+                      canonicalScoreCount: conflictSheet.canonicalScoreCount ?? 0,
                     },
                   );
-                  toast.success("Empty spreadsheet reset successfully");
-                  setIsCreating(false);
-                  form.reset({
-                    classId: prefilledClassId,
-                    subjectId: prefilledSubjectId,
-                    resultType: selectedResultType,
-                    termType: selectedTermType,
-                    templateId: "",
-                    assessments: [],
-                  });
-                  const targetId = replaced.id;
-                  router.push(
-                    `/dashboard/school/${currentOrg.slug}/spreadsheets/${targetId}`,
-                  );
-                } catch (err: unknown) {
-                  setIsCreating(false);
-                  toast.error(
-                    err instanceof Error
-                      ? err.message
-                      : "Failed to reset spreadsheet",
-                  );
-                }
-              }}
-            >
-              <RefreshCw className="h-5 w-5 shrink-0" />
-              <div className="text-left">
-                <p className="text-sm font-semibold">Reset Empty Spreadsheet</p>
-                <p className="text-xs text-amber-800">
-                  Reset structure if no scores are recorded
-                </p>
-              </div>
-            </Button>
+                }}
+              >
+                <Trash2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <div className="min-w-0 text-left">
+                  <p className="text-sm font-semibold">Delete Existing Spreadsheet</p>
+                  <p className="text-xs text-rose-700">
+                    {(conflictSheet.recordedScoreCount ?? 0) > 0
+                      ? `Warning: deletes ${conflictSheet.recordedScoreCount} recorded ${conflictSheet.recordedScoreCount === 1 ? "score" : "scores"}`
+                      : "Permanently remove this sheet so you can start fresh"}
+                  </p>
+                </div>
+              </Button>
+            )}
+
             <Button
-              variant="outline"
-              className="justify-start gap-3 border-blue-200 bg-blue-50/50 py-6 text-blue-800 hover:bg-blue-100 hover:text-blue-900"
-              onClick={() => {
-                if (!conflictSheet) return;
-                setEditTargetId(conflictSheet.id);
-                setConflictSheet(null);
-                setIsEditAssessmentsOpen(true);
-              }}
-            >
-              <Pencil className="h-5 w-5 shrink-0" />
-              <div className="text-left">
-                <p className="text-sm font-semibold">Edit Assessments</p>
-                <p className="text-xs text-blue-600">
-                  Configure sub-assessments within admin limits
-                </p>
-              </div>
-            </Button>
-            <Button
+              type="button"
               variant="ghost"
-              className="text-slate-600"
+              className="min-h-11 text-slate-600"
+              disabled={isCombiningArms}
               onClick={() => setConflictSheet(null)}
             >
               Cancel
@@ -2469,10 +2745,30 @@ export default function SpreadsheetsPage() {
               Delete {deleteTarget ? `"${getSpreadsheetLabel(deleteTarget)}"` : "Spreadsheet"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes this spreadsheet, all of its sub-assessments, and every
-              recorded student score on it. This action cannot be undone.
+              This permanently removes this spreadsheet and its sub-assessments. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteTarget && (deleteTarget.recordedScoreCount ?? 0) > 0 && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+              <span>
+                {deleteTarget.recordedScoreCount} recorded student{" "}
+                {deleteTarget.recordedScoreCount === 1 ? "score" : "scores"} on this sheet will be
+                permanently deleted.
+              </span>
+            </div>
+          )}
+          {deleteTarget && needsCanonicalCancelOnDelete(deleteTarget) && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-950">
+              This sheet is synced to HCORE as{" "}
+              <span className="font-semibold">
+                {deleteTarget.canonicalStatus || "Scheduled"}
+              </span>{" "}
+              with 0 submitted canonical grades. Deleting will cancel the HCORE draft and remove the
+              spreadsheet.
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -2484,9 +2780,13 @@ export default function SpreadsheetsPage() {
               }}
             >
               {isDeleting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               )}
-              {isDeleting ? "Deleting..." : "Delete Spreadsheet"}
+              {isDeleting
+                ? "Deleting..."
+                : needsCanonicalCancelOnDelete(deleteTarget)
+                  ? "Cancel Draft & Delete"
+                  : "Delete Spreadsheet"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

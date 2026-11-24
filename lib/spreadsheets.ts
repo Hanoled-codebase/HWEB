@@ -103,13 +103,53 @@ export type SpreadsheetDetail = {
   academicTerm?: string | null;
   academicYear?: string | null;
   hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  recordedScoreCount?: number;
+  canonicalScoreCount?: number;
   status: SpreadsheetStatus;
+  classLevelId?: string;
+  classLevelIds?: string[];
+  classLevels?: Array<{ id: string; name: string }>;
   classLevel?: { id?: string; name?: string | null } | null;
   subject?: { id?: string; name?: string | null } | null;
   assessments?: SpreadsheetAssessment[];
   columns?: string[];
   data?: SpreadsheetRow[];
 };
+
+const HARD_LOCKED_CANONICAL_STATUSES = new Set(["CLOSED", "ARCHIVED"]);
+
+export function isSpreadsheetDeleteLocked(sheet?: {
+  hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  canonicalScoreCount?: number | null;
+} | null): boolean {
+  if (!sheet?.hcoreAssessmentId) return false;
+  if (typeof sheet.canonicalScoreCount === "number" && sheet.canonicalScoreCount > 0) {
+    return true;
+  }
+  return HARD_LOCKED_CANONICAL_STATUSES.has(
+    String(sheet.canonicalStatus || "").toUpperCase(),
+  );
+}
+
+export function needsCanonicalCancelOnDelete(sheet?: {
+  hcoreAssessmentId?: string | null;
+  canonicalStatus?: string | null;
+  canonicalScoreCount?: number | null;
+} | null): boolean {
+  return Boolean(sheet?.hcoreAssessmentId) && !isSpreadsheetDeleteLocked(sheet);
+}
+
+export function getSpreadsheetArmNames(sheet?: {
+  classLevel?: { name?: string | null } | null;
+  classLevels?: Array<{ id: string; name: string }> | null;
+} | null): string[] {
+  if (Array.isArray(sheet?.classLevels) && sheet.classLevels.length > 0) {
+    return sheet.classLevels.map((item) => item.name).filter(Boolean);
+  }
+  return sheet?.classLevel?.name ? [sheet.classLevel.name] : [];
+}
 
 type SpreadsheetIdentity = {
   title?: string | null;

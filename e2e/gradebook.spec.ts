@@ -289,4 +289,269 @@ test.describe("a subject teacher's gradebook", () => {
     await expect(dialog.getByText(/End-of-Term Report Sheet/i)).toBeVisible();
     await expect(dialog.getByText("Mathematics")).toBeVisible();
   });
+
+  test("admin combines extra class arms from conflict dialog preserving scores and updates arms from sheet controls", async ({ page }) => {
+    await signIn(page, "admin");
+    await expect(page).toHaveURL(/\/welcome$/);
+
+    const classes = [
+      { id: "sss2-sci", name: "SSS 2 SCIENCE", level: "SSS2" },
+      { id: "sss2-art", name: "SSS 2 ART/HUMANITIES", level: "SSS2" },
+      { id: "sss2-bus", name: "SSS 2 BUSINESS/COMMERCIAL", level: "SSS2" },
+    ];
+    let currentClassIds = ["sss2-sci"];
+    let currentVersion = 4;
+    const combinePayloads: Array<Record<string, unknown>> = [];
+
+    await page.route("**/classes/greenfield*", async (route) => {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(classes) });
+    });
+    await page.route("**/result-templates/templates/greenfield*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: "tpl-sss-end",
+            name: "SSS End-of-Term Standard",
+            isApproved: true,
+            isDefault: true,
+            schoolSection: "ALL",
+            termType: "END_TERM",
+            resultType: "END_OF_TERM",
+            assessmentCategories: [
+              { id: "cat-ca", name: "CA", maxMarks: 30, isSingleInstance: false, position: 0 },
+              { id: "cat-exam", name: "Exam", maxMarks: 70, isSingleInstance: true, position: 1 },
+            ],
+          },
+        ]),
+      });
+    });
+    await page.route("**/spreadsheets/greenfield?*", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "X-Total-Count": "1" },
+        body: JSON.stringify([
+          {
+            id: "sheet-maths",
+            title: "Mathematics - SSS 2 SCIENCE",
+            status: "pending",
+            createdAt: "2026-10-29T08:58:22.805Z",
+            resultType: "END_OF_TERM",
+            termType: "END_TERM",
+            hcoreAssessmentId: "hcore-sched-1",
+            canonicalStatus: "SCHEDULED",
+            recordedScoreCount: 24,
+            canonicalScoreCount: 0,
+            classLevelId: "sss2-sci",
+            classLevelIds: currentClassIds,
+            classLevels: classes.filter((c) => currentClassIds.includes(c.id)),
+            classLevel: { id: "sss2-sci", name: "SSS 2 SCIENCE" },
+            subject: { id: "maths", name: "Mathematics" },
+          },
+        ]),
+      });
+    });
+    await page.route("**/spreadsheets/greenfield", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            id: "sheet-maths",
+            created: false,
+            title: "Mathematics - SSS 2 SCIENCE",
+            version: currentVersion,
+            classLevelId: "sss2-sci",
+            classLevelIds: currentClassIds,
+            hasScores: true,
+            recordedScoreCount: 24,
+            hcoreAssessmentId: "hcore-sched-1",
+            canonicalStatus: "SCHEDULED",
+            canonicalScoreCount: 0,
+            assessmentStorageMode: "RELATIONAL",
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+    await page.route("**/spreadsheets/greenfield/sheet-maths/classes", async (route) => {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      combinePayloads.push(body);
+      currentClassIds = Array.isArray(body.classLevels) ? (body.classLevels as string[]) : currentClassIds;
+      currentVersion += 1;
+      const selected = classes.filter((c) => currentClassIds.includes(c.id));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "sheet-maths",
+          title: `Mathematics - ${selected.map((c) => c.name).join(", ")}`,
+          status: "pending",
+          version: currentVersion,
+          assessmentStorageMode: "RELATIONAL",
+          hcoreAssessmentId: "hcore-sched-1",
+          canonicalStatus: "SCHEDULED",
+          recordedScoreCount: 24,
+          canonicalScoreCount: 0,
+          classLevelId: selected[0]?.id ?? "sss2-sci",
+          classLevelIds: currentClassIds,
+          classLevels: selected,
+          classLevel: selected[0] ?? { id: "sss2-sci", name: "SSS 2 SCIENCE" },
+          subject: { id: "maths", name: "Mathematics" },
+          assessments: [{ id: "sub-1", name: "CA 1", total: 20, maxObtainableScore: 20 }],
+          columns: ["CA 1"],
+          data: [],
+        }),
+      });
+    });
+    await page.route("**/spreadsheets/greenfield/sheet-maths", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const selected = classes.filter((c) => currentClassIds.includes(c.id));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "sheet-maths",
+          title: `Mathematics - ${selected.map((c) => c.name).join(", ")}`,
+          status: "pending",
+          version: currentVersion,
+          assessmentStorageMode: "RELATIONAL",
+          hcoreAssessmentId: "hcore-sched-1",
+          canonicalStatus: "SCHEDULED",
+          recordedScoreCount: 24,
+          canonicalScoreCount: 0,
+          classLevelId: selected[0]?.id ?? "sss2-sci",
+          classLevelIds: currentClassIds,
+          classLevels: selected,
+          classLevel: selected[0] ?? { id: "sss2-sci", name: "SSS 2 SCIENCE" },
+          subject: { id: "maths", name: "Mathematics" },
+          assessments: [{ id: "sub-1", name: "CA 1", total: 20, maxObtainableScore: 20 }],
+          columns: ["CA 1"],
+          data: [],
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/school/greenfield/spreadsheets");
+    await page.getByRole("button", { name: "New Spreadsheet" }).click();
+
+    const createDialog = page.getByRole("dialog");
+    await createDialog.getByRole("combobox", { name: /Class/i }).click();
+    await page.getByRole("option", { name: "SSS 2 SCIENCE" }).click();
+    await createDialog.getByRole("button", { name: "SSS 2 ART/HUMANITIES", exact: true }).click();
+    await createDialog.getByRole("combobox", { name: /Subject/i }).click();
+    await page.getByRole("option", { name: "Mathematics" }).click();
+    await createDialog.getByRole("button", { name: "Create Spreadsheet" }).click();
+
+    // Conflict dialog displays score count, hides Reset Empty Spreadsheet, and offers Combine Arms.
+    await expect(page.getByText(/24 recorded student scores/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Reset Empty Spreadsheet/i })).toHaveCount(0);
+    await page.getByRole("button", { name: /Combine Selected Class Arms into Existing Sheet/i }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\/school\/greenfield\/spreadsheets\/sheet-maths$/);
+    expect(combinePayloads[0]).toEqual({
+      classLevels: ["sss2-sci", "sss2-art"],
+      expectedVersion: 4,
+    });
+
+    // Open Sheet & roster controls on detail page and add SSS 2 BUSINESS/COMMERCIAL.
+    await page.getByText("Sheet & roster controls").click();
+    await page.getByLabel("SSS 2 BUSINESS/COMMERCIAL").check();
+    await page.getByRole("button", { name: "Save class arms" }).click();
+    await expect(page.getByText("Combined class arms updated without losing any scores.")).toBeVisible();
+    expect(combinePayloads[1]).toEqual({
+      classLevels: ["sss2-sci", "sss2-art", "sss2-bus"],
+      expectedVersion: 5,
+    });
+  });
+
+  test("admin sees recorded score warning and cancels unsubmitted HCORE draft when deleting a spreadsheet", async ({ page }) => {
+    await signIn(page, "admin");
+    await expect(page).toHaveURL(/\/welcome$/);
+
+    const deletedUrls: string[] = [];
+
+    await page.route("**/spreadsheets/greenfield?*", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "X-Total-Count": "2" },
+        body: JSON.stringify([
+          {
+            id: "sheet-draft",
+            title: "Mathematics - SSS 2 SCIENCE",
+            status: "pending",
+            createdAt: "2026-10-29T08:58:22.805Z",
+            resultType: "END_OF_TERM",
+            termType: "END_TERM",
+            hcoreAssessmentId: "hcore-sched-1",
+            canonicalStatus: "SCHEDULED",
+            recordedScoreCount: 24,
+            canonicalScoreCount: 0,
+            classLevelId: "sss2-sci",
+            classLevelIds: ["sss2-sci"],
+            classLevel: { id: "sss2-sci", name: "SSS 2 SCIENCE" },
+            subject: { id: "maths", name: "Mathematics" },
+          },
+          {
+            id: "sheet-locked",
+            title: "Physics - SSS 2 SCIENCE",
+            status: "active",
+            createdAt: "2026-10-28T08:58:22.805Z",
+            resultType: "END_OF_TERM",
+            termType: "END_TERM",
+            hcoreAssessmentId: "hcore-scored-1",
+            canonicalStatus: "OPEN",
+            recordedScoreCount: 12,
+            canonicalScoreCount: 5,
+            classLevelId: "sss2-sci",
+            classLevelIds: ["sss2-sci"],
+            classLevel: { id: "sss2-sci", name: "SSS 2 SCIENCE" },
+            subject: { id: "physics", name: "Physics" },
+          },
+        ]),
+      });
+    });
+
+    await page.route("**/spreadsheets/greenfield/sheet-draft*", async (route) => {
+      if (route.request().method() === "DELETE") {
+        deletedUrls.push(route.request().url());
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: true, id: "sheet-draft", canonicalCancelled: true }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto("/dashboard/school/greenfield/spreadsheets");
+
+    // Sheet with submitted canonical scores stays delete-locked.
+    await expect(
+      page.getByRole("button", {
+        name: "Cannot delete locked spreadsheet Physics - SSS 2 SCIENCE",
+        exact: true,
+      }),
+    ).toBeDisabled();
+
+    // Unsubmitted SCHEDULED HCORE draft can be deleted after explicit score + HCORE cancel warning.
+    await page
+      .getByRole("button", { name: "Delete Mathematics - SSS 2 SCIENCE", exact: true })
+      .click();
+    const alertDialog = page.getByRole("alertdialog");
+    await expect(alertDialog.getByText(/24 recorded student scores on this sheet will be permanently deleted/i)).toBeVisible();
+    await expect(alertDialog.getByText(/Deleting will cancel the HCORE draft/i)).toBeVisible();
+    await alertDialog.getByRole("button", { name: "Cancel Draft & Delete" }).click();
+
+    await expect(page.getByText(/Cancelled HCORE draft and deleted/i)).toBeVisible();
+    expect(deletedUrls).toHaveLength(1);
+    expect(deletedUrls[0]).toContain("cancelCanonical=true");
+  });
 });

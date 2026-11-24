@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   ChevronRight,
@@ -10,6 +11,7 @@ import {
   Edit3,
   FileText,
   HelpCircle,
+  Layers,
   Loader2,
   Plus,
   RefreshCw,
@@ -67,9 +69,12 @@ import {
   countEnteredScoresForColumn,
   getErrorMessage,
   getOrderedAssessments,
+  getSpreadsheetArmNames,
   getSpreadsheetLabel,
   groupAssessmentsByCategory,
   hasTeacherSubAssessments,
+  isSpreadsheetDeleteLocked,
+  needsCanonicalCancelOnDelete,
   parseRouteParam,
   resolveSpreadsheetCategories,
   type SpreadsheetAssessment,
@@ -126,6 +131,9 @@ export default function SpreadsheetAssessmentsPage() {
   const [importingScores, setImportingScores] = useState(false);
   const scoreImportInputRef = useRef<HTMLInputElement | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [orgClasses, setOrgClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedArmIds, setSelectedArmIds] = useState<string[]>([]);
+  const [savingArms, setSavingArms] = useState(false);
   const [showDeleteSheetDialog, setShowDeleteSheetDialog] = useState(false);
   const [deletingSheet, setDeletingSheet] = useState(false);
   const [subModal, setSubModal] = useState<SubAssessmentModalMode | null>(null);
@@ -144,6 +152,9 @@ export default function SpreadsheetAssessmentsPage() {
     setReloadSeq((n) => n + 1);
   };
 
+  const isPrivilegedRole =
+    currentMember?.role === "owner" || currentMember?.role === "admin";
+
   useEffect(() => {
     if (!orgSlug || !sheetId) return;
     let cancelled = false;
@@ -151,11 +162,28 @@ export default function SpreadsheetAssessmentsPage() {
       try {
         setIsLoading(true);
         setLoadError(null);
-        const data = await apiFetch<SpreadsheetDetail>(
-          `/spreadsheets/${orgSlug}/${sheetId}`,
-        );
+        const [data, classList] = await Promise.all([
+          apiFetch<SpreadsheetDetail>(`/spreadsheets/${orgSlug}/${sheetId}`),
+          isPrivilegedRole
+            ? apiFetch<Array<{ id: string; name: string }>>(`/classes/${orgSlug}`, {
+                showErrorToast: false,
+              }).catch(() => [])
+            : Promise.resolve([]),
+        ]);
         if (cancelled) return;
         setSheet(data);
+        if (isPrivilegedRole && Array.isArray(classList)) {
+          setOrgClasses(classList);
+        }
+        const initialArms =
+          Array.isArray(data.classLevelIds) && data.classLevelIds.length > 0
+            ? data.classLevelIds
+            : data.classLevelId
+              ? [data.classLevelId]
+              : data.classLevel?.id
+                ? [data.classLevel.id]
+                : [];
+        setSelectedArmIds(initialArms);
       } catch (error) {
         if (cancelled) return;
         const message = getErrorMessage(error, "Failed to load spreadsheet");
@@ -170,7 +198,7 @@ export default function SpreadsheetAssessmentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [orgSlug, reloadSeq, sheetId]);
+  }, [isPrivilegedRole, orgSlug, reloadSeq, sheetId]);
 
   const rawAssessments = useMemo<SpreadsheetAssessment[]>(
     () =>
@@ -203,10 +231,24 @@ export default function SpreadsheetAssessmentsPage() {
     [rawAssessments],
   );
 
-  const className = sheet?.classLevel?.name || "Class";
+  const armNames = getSpreadsheetArmNames(sheet);
+  const className = armNames.length > 0 ? armNames.join(", ") : "Class";
   const subjectName = sheet?.subject?.name || "Subject";
   const spreadsheetLabel = sheet ? getSpreadsheetLabel(sheet) : "Spreadsheet";
   const totalLearners = Array.isArray(sheet?.data) ? sheet.data.length : 0;
+  const recordedScoreCount = useMemo(() => {
+    if (typeof sheet?.recordedScoreCount === "number") return sheet.recordedScoreCount;
+    if (!Array.isArray(sheet?.data)) return 0;
+    let total = 0;
+    for (const row of sheet.data) {
+      for (const value of row.values ?? []) {
+        if (value !== null && value !== undefined && value !== "") {
+          total += 1;
+        }
+      }
+    }
+    return total;
+  }, [sheet]);
 
   useMobilePageTitle(sheet ? `${subjectName} · ${className}` : null);
 
@@ -232,12 +274,24 @@ export default function SpreadsheetAssessmentsPage() {
     );
   }, [className, displayAssessments, searchQuery, subjectName]);
 
-  const isPrivileged =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const isPrivileged = isPrivilegedRole;
   const canEdit =
     isPrivileged ||
     (currentMember?.role === "member" && sheet?.status !== "inactive");
   const isPublishedLocked = Boolean(sheet?.hcoreAssessmentId);
+  const isDeleteLocked = isSpreadsheetDeleteLocked(sheet);
+  const currentArmIds = useMemo(() => {
+    if (Array.isArray(sheet?.classLevelIds) && sheet.classLevelIds.length > 0) {
+      return sheet.classLevelIds;
+    }
+    const fallback = sheet?.classLevelId || sheet?.classLevel?.id;
+    return fallback ? [fallback] : [];
+  }, [sheet]);
+  const armsChanged = useMemo(() => {
+    if (selectedArmIds.length !== currentArmIds.length) return true;
+    const currentSet = new Set(currentArmIds);
+    return selectedArmIds.some((id) => !currentSet.has(id));
+  }, [currentArmIds, selectedArmIds]);
   const editableCategories = useMemo(
     () => categories.filter((cat) => !cat.isSingleInstance),
     [categories],
@@ -324,14 +378,55 @@ export default function SpreadsheetAssessmentsPage() {
     }
   }
 
+  async function handleSaveClassArms() {
+    if (!orgSlug || !sheet || savingArms || selectedArmIds.length === 0) return;
+    if (typeof sheet.version !== "number") {
+      toast.error("Spreadsheet version missing. Refreshing...");
+      triggerRefresh();
+      return;
+    }
+    setSavingArms(true);
+    try {
+      const updated = await apiFetch<SpreadsheetDetail>(
+        `/spreadsheets/${orgSlug}/${sheet.id}/classes`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            classLevels: selectedArmIds,
+            expectedVersion: sheet.version,
+          }),
+        },
+      );
+      setSheet(updated);
+      const nextArms =
+        Array.isArray(updated.classLevelIds) && updated.classLevelIds.length > 0
+          ? updated.classLevelIds
+          : selectedArmIds;
+      setSelectedArmIds(nextArms);
+      toast.success("Combined class arms updated without losing any scores.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not update combined class arms."));
+    } finally {
+      setSavingArms(false);
+    }
+  }
+
   async function handleDeleteSheet() {
     if (!orgSlug || !sheet || deletingSheet) return;
     setDeletingSheet(true);
+    const cancelCanonical = needsCanonicalCancelOnDelete(sheet);
     try {
-      await apiFetch(`/spreadsheets/${orgSlug}/${sheet.id}`, {
-        method: "DELETE",
-      });
-      toast.success(`Deleted "${spreadsheetLabel}".`);
+      await apiFetch(
+        `/spreadsheets/${orgSlug}/${sheet.id}${cancelCanonical ? "?cancelCanonical=true" : ""}`,
+        {
+          method: "DELETE",
+        },
+      );
+      toast.success(
+        cancelCanonical
+          ? `Cancelled HCORE draft and deleted "${spreadsheetLabel}".`
+          : `Deleted "${spreadsheetLabel}".`,
+      );
       setShowDeleteSheetDialog(false);
       router.replace(sheetsHref);
     } catch (error) {
@@ -838,7 +933,7 @@ export default function SpreadsheetAssessmentsPage() {
                       Sheet &amp; roster controls
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-500">
-                      Sync class list{isPrivileged ? ", change status, or delete spreadsheet" : ""}
+                      Sync class list{isPrivileged ? ", combine arms, change status, or delete" : ""}
                     </span>
                   </span>
                   <ChevronDown
@@ -883,20 +978,92 @@ export default function SpreadsheetAssessmentsPage() {
                       Sync with class list
                     </button>
                   )}
+                  {isPrivileged && orgClasses.length > 0 && (
+                    <div className="border-t border-slate-100 pt-3">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                          <Layers className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                          Combined class arms
+                        </Label>
+                        <span className="text-xs tabular-nums text-slate-500">
+                          {selectedArmIds.length}{" "}
+                          {selectedArmIds.length === 1 ? "class" : "classes"} selected
+                        </span>
+                      </div>
+                      <p className="mb-2 text-xs text-slate-600">
+                        Combine multiple arms into this sheet without losing any recorded scores.
+                      </p>
+                      <div className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70 p-2 sm:grid-cols-2">
+                        {orgClasses.map((cls) => {
+                          const checked = selectedArmIds.includes(cls.id);
+                          return (
+                            <label
+                              key={cls.id}
+                              className={cn(
+                                "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                                checked
+                                  ? "border-[#1447E6]/40 bg-white text-[#0B1220]"
+                                  : "border-transparent bg-transparent text-slate-700 hover:bg-white/80",
+                                (isDeleteLocked || savingArms) && "cursor-not-allowed opacity-60",
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isDeleteLocked || savingArms}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedArmIds((prev) =>
+                                      prev.includes(cls.id) ? prev : [...prev, cls.id],
+                                    );
+                                  } else {
+                                    setSelectedArmIds((prev) =>
+                                      prev.filter((id) => id !== cls.id),
+                                    );
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-[#1447E6] focus:ring-[#1447E6]"
+                              />
+                              <span className="truncate">{cls.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveClassArms()}
+                        disabled={
+                          isDeleteLocked ||
+                          savingArms ||
+                          !armsChanged ||
+                          selectedArmIds.length === 0
+                        }
+                        className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                      >
+                        {savingArms ? (
+                          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                        ) : (
+                          <Layers className="h-4 w-4" aria-hidden="true" />
+                        )}
+                        {savingArms ? "Saving class arms..." : "Save class arms"}
+                      </button>
+                    </div>
+                  )}
                   {isPrivileged && (
                     <div className="border-t border-slate-100 pt-3">
                       <button
                         type="button"
                         onClick={() => setShowDeleteSheetDialog(true)}
-                        disabled={isPublishedLocked || deletingSheet}
+                        disabled={isDeleteLocked || deletingSheet}
                         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-4 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                         Delete spreadsheet
                       </button>
-                      {isPublishedLocked && (
+                      {isDeleteLocked && (
                         <p className="mt-1.5 text-xs text-slate-600">
-                          Published spreadsheets linked to HCORE cannot be deleted.
+                          Canonical grades have been submitted or closed in HCORE and cannot be
+                          deleted.
                         </p>
                       )}
                     </div>
@@ -1187,10 +1354,28 @@ export default function SpreadsheetAssessmentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete &ldquo;{spreadsheetLabel}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes this spreadsheet, all of its sub-assessments, and every
-              recorded student score on it. This action cannot be undone.
+              This permanently removes this spreadsheet and its sub-assessments. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {recordedScoreCount > 0 && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+              <span>
+                {recordedScoreCount} recorded student{" "}
+                {recordedScoreCount === 1 ? "score" : "scores"} on this sheet will be permanently
+                deleted.
+              </span>
+            </div>
+          )}
+          {needsCanonicalCancelOnDelete(sheet) && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-950">
+              This sheet is synced to HCORE as{" "}
+              <span className="font-semibold">{sheet?.canonicalStatus || "Scheduled"}</span> with 0
+              submitted canonical grades. Deleting will cancel the HCORE draft and remove the
+              spreadsheet.
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingSheet}>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -1202,9 +1387,13 @@ export default function SpreadsheetAssessmentsPage() {
               }}
             >
               {deletingSheet && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               )}
-              {deletingSheet ? "Deleting..." : "Delete Spreadsheet"}
+              {deletingSheet
+                ? "Deleting..."
+                : needsCanonicalCancelOnDelete(sheet)
+                  ? "Cancel Draft & Delete"
+                  : "Delete Spreadsheet"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
