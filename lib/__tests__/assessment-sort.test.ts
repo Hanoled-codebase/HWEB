@@ -25,35 +25,38 @@ const sampleRows: SpreadsheetRow[] = [
 ];
 
 describe("sortAssessmentRows", () => {
-  it("sorts alphabetically ascending (A-Z) by surname then first name without mutating input", () => {
+  it("sorts alphabetically ascending (A-Z) by displayed name without mutating input", () => {
     const before = sampleRows.map((r) => r.student.id);
     const result = sortAssessmentRows(sampleRows, 0, "name-asc");
 
-    expect(result.map((item) => item.row.student.id)).toEqual(["s2", "s3", "s4", "s1"]);
-    expect(result.map((item) => item.index)).toEqual([1, 2, 3, 0]);
+    // Ameerah Adesina (s4), Anjola Abodunrin (s2), Ayomikun Adebayo (s3), Victoria Awoyemi (s1)
+    expect(result.map((item) => item.row.student.id)).toEqual(["s4", "s2", "s3", "s1"]);
+    expect(result.map((item) => item.index)).toEqual([3, 1, 2, 0]);
     expect(sampleRows.map((r) => r.student.id)).toEqual(before);
   });
 
-  it("sorts alphabetically descending (Z-A) by surname then first name", () => {
+  it("sorts alphabetically descending (Z-A) by displayed name", () => {
     const result = sortAssessmentRows(sampleRows, 0, "name-desc");
-    expect(result.map((item) => item.row.student.id)).toEqual(["s1", "s4", "s3", "s2"]);
+    expect(result.map((item) => item.row.student.id)).toEqual(["s1", "s3", "s2", "s4"]);
   });
 
-  it("sorts unentered scores first (treating 0 as entered), tie-broken A-Z", () => {
+  it("sorts unentered scores first (treating 0 as entered), tie-broken A-Z by displayed name", () => {
     const result = sortAssessmentRows(sampleRows, 0, "unentered-first");
-    expect(result.map((item) => item.row.student.id)).toEqual(["s2", "s4", "s3", "s1"]);
+    // Unentered: Ameerah (s4), Anjola (s2); Entered: Ayomikun (s3), Victoria (s1)
+    expect(result.map((item) => item.row.student.id)).toEqual(["s4", "s2", "s3", "s1"]);
   });
 
-  it("sorts entered scores first (treating 0 as entered), tie-broken A-Z", () => {
+  it("sorts entered scores first (treating 0 as entered), tie-broken A-Z by displayed name", () => {
     const result = sortAssessmentRows(sampleRows, 0, "entered-first");
-    expect(result.map((item) => item.row.student.id)).toEqual(["s3", "s1", "s2", "s4"]);
+    expect(result.map((item) => item.row.student.id)).toEqual(["s3", "s1", "s4", "s2"]);
   });
 
   it("respects enteredKeysSnapshot so rows stay stable while typing", () => {
     const snapshot = new Set<string>([getSpreadsheetRowKey(sampleRows[0], 0)]);
     const result = sortAssessmentRows(sampleRows, 0, "entered-first", snapshot);
     // Only s1 is in snapshot even though s3 has score 0 in live values
-    expect(result.map((item) => item.row.student.id)).toEqual(["s1", "s2", "s3", "s4"]);
+    // Remaining unentered sorted A-Z: Ameerah (s4), Anjola (s2), Ayomikun (s3)
+    expect(result.map((item) => item.row.student.id)).toEqual(["s1", "s4", "s2", "s3"]);
   });
 
   it("handles empty and singleton lists safely", () => {
