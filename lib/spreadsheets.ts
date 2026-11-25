@@ -735,3 +735,80 @@ export function getInitials(name: string | undefined) {
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
 }
+
+export type AssessmentSortMode =
+  | "name-asc"
+  | "name-desc"
+  | "unentered-first"
+  | "entered-first";
+
+export type IndexedSpreadsheetRow = {
+  row: SpreadsheetRow;
+  index: number;
+};
+
+export function getSpreadsheetRowKey(row: SpreadsheetRow, index: number): string {
+  return row.student.id || `row:${index}`;
+}
+
+function compareStudentsAlphabetically(
+  a: SpreadsheetStudent,
+  b: SpreadsheetStudent,
+): number {
+  return (
+    (a.lastName || "").localeCompare(b.lastName || "", undefined, {
+      sensitivity: "base",
+    }) ||
+    (a.firstName || "").localeCompare(b.firstName || "", undefined, {
+      sensitivity: "base",
+    }) ||
+    (a.admissionNumber || "").localeCompare(b.admissionNumber || "", undefined, {
+      sensitivity: "base",
+    })
+  );
+}
+
+/**
+ * Returns a new array of indexed rows ordered by the selected assessment sort mode.
+ * Does not mutate `rows`. Time: O(N log N), Auxiliary Space: O(N).
+ */
+export function sortAssessmentRows(
+  rows: readonly SpreadsheetRow[],
+  assessmentIndex: number,
+  sortMode: AssessmentSortMode,
+  enteredKeysSnapshot?: ReadonlySet<string> | null,
+): IndexedSpreadsheetRow[] {
+  const indexed: IndexedSpreadsheetRow[] = rows.map((row, index) => ({ row, index }));
+  if (indexed.length <= 1) return indexed;
+
+  const isEntered = (item: IndexedSpreadsheetRow): boolean => {
+    if (enteredKeysSnapshot) {
+      return enteredKeysSnapshot.has(getSpreadsheetRowKey(item.row, item.index));
+    }
+    return toNumericValue(item.row.values?.[assessmentIndex]) !== null;
+  };
+
+  return indexed.sort((a, b) => {
+    if (sortMode === "name-desc") {
+      return (
+        compareStudentsAlphabetically(b.row.student, a.row.student) ||
+        a.index - b.index
+      );
+    }
+
+    if (sortMode === "unentered-first") {
+      const aGroup = isEntered(a) ? 1 : 0;
+      const bGroup = isEntered(b) ? 1 : 0;
+      if (aGroup !== bGroup) return aGroup - bGroup;
+    } else if (sortMode === "entered-first") {
+      const aGroup = isEntered(a) ? 0 : 1;
+      const bGroup = isEntered(b) ? 0 : 1;
+      if (aGroup !== bGroup) return aGroup - bGroup;
+    }
+
+    return (
+      compareStudentsAlphabetically(a.row.student, b.row.student) ||
+      a.index - b.index
+    );
+  });
+}
