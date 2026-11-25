@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { createElement, forwardRef, useMemo } from "react";
 import {
   CalendarDays,
   Clock,
@@ -11,7 +11,36 @@ import {
   BookOpen,
   BookText,
   type LucideIcon,
+  type LucideProps,
 } from "lucide-react";
+
+/** Crisp Lucide-compatible Nigerian Naira (₦) icon for parent Fees tab. */
+const NairaIcon = forwardRef<SVGSVGElement, LucideProps>(function NairaIcon(
+  { color = "currentColor", size = 24, strokeWidth = 2, className, ...props },
+  ref,
+) {
+  return createElement(
+    "svg",
+    {
+      ref,
+      xmlns: "http://www.w3.org/2000/svg",
+      width: size,
+      height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: color,
+      strokeWidth,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      className,
+      "aria-hidden": "true",
+      ...props,
+    },
+    createElement("path", { d: "M7 20V4l10 16V4" }),
+    createElement("path", { d: "M4 10h16" }),
+    createElement("path", { d: "M4 14h16" }),
+  );
+}) as LucideIcon;
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -72,8 +101,11 @@ export type MobileShellConfig = {
   hideBack?: boolean;
   /** Home top bar shows the signed-in person (initials, name, role) instead of a school. */
   homeBar?: "account";
-  /** Active tab is a soft pill around the icon and its label, instead of a pill behind the icon only. */
-  tabStyle?: "pill";
+  /**
+   * "pill": soft pill around icon + label.
+   * "floating-brand": floating white dock with solid school-brand active pill (parent portal).
+   */
+  tabStyle?: "pill" | "floating-brand";
   /** A bell that links somewhere (e.g. support tickets) and shows a dot only when there is something new. */
   bell?: { href: string; label: string; dot: boolean };
   /** Staff with more than one hat (teaching + bursary) switch workspaces from the menu. */
@@ -146,7 +178,7 @@ const ROLE_LABELS: Record<MobileProfile, string> = {
   "subject-teacher": "Subject Teacher",
   accountant: "Accountant",
   librarian: "Librarian",
-  parent: "Parent",
+  parent: "Parent portal",
   member: "Staff",
   student: "Student",
 };
@@ -227,7 +259,9 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
       ...tabKeys.slice(0, 3).flatMap((key) => {
         const label = profile === "parent" && key === "students" ? "Children" : TAB_LABELS[key];
         const item = toItem(key, label);
-        return item ? [{ ...item, exact: false }] : [];
+        if (!item) return [];
+        const icon = profile === "parent" && key === "invoices" ? NairaIcon : item.icon;
+        return [{ ...item, icon, exact: false }];
       }),
     ];
 
@@ -235,7 +269,7 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
       key: item.key,
       label: profile === "parent" && item.key === "students" ? "Children" : item.title,
       href: item.url,
-      icon: item.icon,
+      icon: profile === "parent" && item.key === "invoices" ? NairaIcon : item.icon,
     });
     // The active workspace's tools lead the menu.
     const leadGroup = profile === "accountant" ? "money" : profile === "librarian" ? "school-life" : null;
@@ -277,6 +311,7 @@ export function useStaffMobileConfig(): MobileShellConfig | null {
         subline: [currentOrg.category, currentOrg.subscription?.plan].filter(Boolean).join(" · "),
       },
       showCbtConsole: profile !== "parent",
+      tabStyle: profile === "parent" ? "floating-brand" : undefined,
       workspaces:
         workspace && workspaceKeys.length > 1
           ? {

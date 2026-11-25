@@ -283,6 +283,8 @@ export default function DashboardLayout({
   }
 
   const isHome = pathname === `/dashboard/school/${slug}`;
+  const isParent = currentMember?.role === "parent";
+  const isParentHome = isParent && isHome;
 
   return (
     <SchoolThemeProvider>
@@ -331,7 +333,15 @@ export default function DashboardLayout({
 
               <MobileTopBar title={getPageTitle(pathname, slug)} isHome={isHome} />
 
-              <main className="min-w-0 flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:pb-6 lg:p-8">
+              <main
+                className={
+                  isParentHome
+                    ? "min-w-0 flex-1 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:overflow-y-auto md:p-6 md:pb-6 lg:p-8"
+                    : isParent
+                      ? "min-w-0 flex-1 px-4 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:overflow-y-auto md:p-6 md:pb-6 lg:p-8"
+                      : "min-w-0 flex-1 px-4 pt-4 pb-safe-nav md:overflow-y-auto md:p-6 md:pb-6 lg:p-8"
+                }
+              >
                 <div key={pathname} className="m-page mx-auto w-full max-w-[1400px]">
                   <StaffRouteGuard slug={slug}>
                     {children}
