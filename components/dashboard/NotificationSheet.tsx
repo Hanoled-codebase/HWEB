@@ -127,7 +127,13 @@ function AttentionCard({ item, onNavigate }: { item: AttentionItem; onNavigate: 
   );
 }
 
-export function NotificationSheet({ triggerClassName }: { triggerClassName?: string } = {}) {
+export function NotificationSheet({
+  triggerClassName,
+  variant = "default",
+}: {
+  triggerClassName?: string;
+  variant?: "default" | "on-brand";
+} = {}) {
   const {
     notifications,
     attention,
@@ -186,19 +192,36 @@ export function NotificationSheet({ triggerClassName }: { triggerClassName?: str
           badgeCount > 0 ? `Notifications, ${badgeCount} need attention` : "Notifications"
         }
         className={cn(
-          "group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1447E6] focus-visible:ring-offset-1 md:h-9 md:w-9",
+          "group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 md:h-9 md:w-9",
+          variant === "on-brand"
+            ? "focus-visible:ring-[var(--primary-foreground)] focus-visible:ring-offset-[var(--primary)]"
+            : "focus-visible:ring-[#1447E6]",
           triggerClassName,
         )}
       >
-        {/* 44px touch target wrapping a crisp 36px circle so mobile stays light without losing tap area. */}
-        <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-2xs transition-colors group-hover:bg-slate-50 group-active:bg-slate-100">
-          <Bell className="h-[18px] w-[18px] text-slate-700" aria-hidden="true" />
-          {badgeCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-white">
-              {badgeCount > 9 ? "9+" : badgeCount}
-            </span>
-          )}
-        </span>
+        {variant === "on-brand" ? (
+          <span
+            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--primary-foreground)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary-foreground)_12%,transparent)] text-[var(--primary-foreground)] transition-colors group-hover:bg-[color-mix(in_srgb,var(--primary-foreground)_20%,transparent)] group-active:bg-[color-mix(in_srgb,var(--primary-foreground)_24%,transparent)]"
+          >
+            <Bell className="h-[19px] w-[19px]" aria-hidden="true" />
+            {badgeCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-[var(--primary)]"
+              />
+            )}
+          </span>
+        ) : (
+          /* 44px touch target wrapping a crisp 36px circle so mobile stays light without losing tap area. */
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-2xs transition-colors group-hover:bg-slate-50 group-active:bg-slate-100">
+            <Bell className="h-[18px] w-[18px] text-slate-700" aria-hidden="true" />
+            {badgeCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-white">
+                {badgeCount > 9 ? "9+" : badgeCount}
+              </span>
+            )}
+          </span>
+        )}
       </SheetTrigger>
 
       <SheetContent

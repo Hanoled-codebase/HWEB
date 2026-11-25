@@ -110,14 +110,14 @@ function MenuTile({ item, active, onNavigate }: { item: MobileNavItem; active: b
       className={cn(
         "flex min-h-[92px] flex-col items-center justify-start gap-2 rounded-2xl border px-1.5 pb-2.5 pt-3 text-center transition-colors active:scale-[0.97]",
         active
-          ? "border-blue-200 bg-blue-50 text-blue-700"
+          ? "border-[var(--primary-border)] bg-[var(--primary-light)] text-[var(--primary-text)]"
           : "border-slate-100 bg-white text-slate-700 active:bg-slate-50",
       )}
     >
       <span
         className={cn(
           "flex h-10 w-10 items-center justify-center rounded-xl",
-          active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600",
+          active ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-slate-100 text-slate-600",
         )}
       >
         <Icon className="h-5 w-5" />
@@ -180,7 +180,7 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
         <div className="flex items-center gap-3 px-4 pb-3 pt-3">
           <Avatar className="h-12 w-12 shrink-0 rounded-2xl">
             <AvatarImage src={identity.orgLogo} alt={identity.orgName} />
-            <AvatarFallback className="rounded-2xl bg-blue-600 text-sm font-bold text-white">
+            <AvatarFallback className="rounded-2xl bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)]">
               {identity.orgName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -267,7 +267,9 @@ function MenuBody({ config, close }: { config: MobileShellConfig; close: () => v
                 onClick={close}
                 className={cn(
                   "mb-4 flex min-h-[52px] items-center gap-3 rounded-2xl px-3.5",
-                  pathname === config.basePath ? "bg-blue-600 text-white" : "border border-slate-100 bg-white text-slate-800",
+                  pathname === config.basePath
+                    ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    : "border border-slate-100 bg-white text-slate-800",
                 )}
               >
                 <LayoutGrid className="h-5 w-5" />

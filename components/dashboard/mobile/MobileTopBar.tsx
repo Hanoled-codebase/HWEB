@@ -33,6 +33,10 @@ function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }
     config.sections.some((section) => section.items.some((item) => item.href === pathname));
   const showBack = !config.hideBack || !topLevel;
   const accountStyle = config.homeBar === "account";
+  const isParent = config.profile === "parent";
+
+  // Parent mobile home renders its own seamless full-bleed school-brand hero header.
+  if (isParent && isHome) return null;
 
   const goBack = () => {
     if (window.history.length > 2) {
@@ -43,6 +47,31 @@ function MobileTopBarInner({ title, isHome }: { title: string; isHome: boolean }
     parts.pop();
     router.push(parts.join("/") || config.basePath);
   };
+
+  if (isParent) {
+    return (
+      <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 bg-[var(--primary)] px-4 pt-safe text-[var(--primary-foreground)] shadow-[0_2px_10px_-4px_rgba(15,23,42,0.2)] md:hidden">
+        {showBack && (
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Go back"
+            className="-ml-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-foreground)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--primary)]"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--primary-foreground)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary-foreground)_12%,transparent)] text-[var(--primary-foreground)]">
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            </span>
+          </button>
+        )}
+        <h1 className="min-w-0 flex-1 truncate py-2 text-[17px] font-bold tracking-tight text-[var(--primary-foreground)]">
+          {pageTitle ?? title}
+        </h1>
+        {config.showNotifications !== false && (
+          <NotificationSheet variant="on-brand" triggerClassName={bell} />
+        )}
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-slate-100 bg-white/95 px-4 pt-safe backdrop-blur-md md:hidden">
