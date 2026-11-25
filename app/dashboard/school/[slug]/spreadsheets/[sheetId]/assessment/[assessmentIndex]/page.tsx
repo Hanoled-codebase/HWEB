@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   AlertCircle,
+  ArrowUpDown,
   Check,
   ChevronDown,
   ChevronUp,
@@ -33,6 +34,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -47,11 +57,14 @@ import {
   formatScore,
   getErrorMessage,
   getInitials,
+  getSpreadsheetRowKey,
   getStudentName,
   parseRouteParam,
   resolveAssessmentEntryTarget,
   resolveSpreadsheetCategories,
   sanitizeSpreadsheetRows,
+  sortAssessmentRows,
+  type AssessmentSortMode,
   type SpreadsheetAssessment,
   type SpreadsheetDetail,
   type SpreadsheetRow,
@@ -98,6 +111,30 @@ function padRowValues(rows: SpreadsheetRow[], minLength: number): SpreadsheetRow
   });
 }
 
+type SortOption = {
+  value: AssessmentSortMode;
+  label: string;
+  shortLabel: string;
+  group: "name" | "score";
+};
+
+const SORT_OPTIONS: readonly SortOption[] = [
+  { value: "name-asc", label: "Name (A–Z)", shortLabel: "A–Z", group: "name" },
+  { value: "name-desc", label: "Name (Z–A)", shortLabel: "Z–A", group: "name" },
+  {
+    value: "unentered-first",
+    label: "Unentered scores first",
+    shortLabel: "Unentered",
+    group: "score",
+  },
+  {
+    value: "entered-first",
+    label: "Entered scores first",
+    shortLabel: "Entered",
+    group: "score",
+  },
+];
+
 export default function AssessmentEntryPage() {
   const params = useParams();
   const router = useRouter();
@@ -113,6 +150,9 @@ export default function AssessmentEntryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<AssessmentSortMode>("name-asc");
+  const [scoreSortSnapshot, setScoreSortSnapshot] = useState<ReadonlySet<string> | null>(null);
+  const [sortAnnouncement, setSortAnnouncement] = useState("");
   const [controlsOpen, setControlsOpen] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -212,18 +252,45 @@ export default function AssessmentEntryPage() {
         : 0,
     [localData, selectedAssessment],
   );
+  const unenteredCount = Math.max(0, localData.length - enteredCount);
 
-  // Same order as the attendance register (surname, then first name).
+  const activeSortOption =
+    SORT_OPTIONS.find((option) => option.value === sortMode) ?? SORT_OPTIONS[0];
+
+  const handleSelectSortMode = (nextMode: AssessmentSortMode) => {
+    setSortMode(nextMode);
+    if (
+      selectedAssessment &&
+      (nextMode === "unentered-first" || nextMode === "entered-first")
+    ) {
+      const enteredKeys = new Set<string>();
+      for (let i = 0; i < localData.length; i += 1) {
+        if (getNumericValue(localData[i], selectedAssessment.originalIndex) !== null) {
+          enteredKeys.add(getSpreadsheetRowKey(localData[i], i));
+        }
+      }
+      setScoreSortSnapshot(enteredKeys);
+    } else {
+      setScoreSortSnapshot(null);
+    }
+    const chosen = SORT_OPTIONS.find((option) => option.value === nextMode);
+    if (chosen) {
+      setSortAnnouncement(`Sorted by ${chosen.label}`);
+    }
+  };
+
+  // Default order matches the attendance register (surname, then first name).
   const orderedRows = useMemo(
     () =>
-      localData
-        .map((row, index) => ({ row, index }))
-        .sort(
-          (a, b) =>
-            (a.row.student.lastName || "").localeCompare(b.row.student.lastName || "") ||
-            (a.row.student.firstName || "").localeCompare(b.row.student.firstName || ""),
-        ),
-    [localData],
+      sortAssessmentRows(
+        localData,
+        selectedAssessment?.originalIndex ?? 0,
+        sortMode,
+        sortMode === "unentered-first" || sortMode === "entered-first"
+          ? scoreSortSnapshot
+          : null,
+      ),
+    [localData, scoreSortSnapshot, selectedAssessment?.originalIndex, sortMode],
   );
 
   const filteredData = useMemo(() => {
@@ -235,6 +302,10 @@ export default function AssessmentEntryPage() {
         (row.student.admissionNumber || "").toLowerCase().includes(q),
     );
   }, [orderedRows, search]);
+
+  useEffect(() => {
+    inputRefs.current.length = filteredData.length;
+  }, [filteredData.length]);
 
   useMobilePageTitle(selectedAssessment?.name);
 
@@ -304,7 +375,10 @@ export default function AssessmentEntryPage() {
         setSaveErrorIsConflict(false);
       } catch (error) {
         if (cancelled) return;
-        const message = getErrorMessage(error, "Failed to load spreadsheet");
+        const message = getErrorMessage(
+          error,
+          "Could not load this assessment sheet. Check your connection and try again.",
+        );
         setSheet(null);
         setLocalData([]);
         setLoadError(message);
@@ -343,7 +417,11 @@ export default function AssessmentEntryPage() {
       const numeric = Number(trimmed);
       const maximum = selectedAssessment.maxObtainableScore ?? selectedAssessment.total;
       if (!Number.isFinite(numeric) || numeric < 0 || (maximum !== undefined && numeric > maximum)) {
-        toast.error(`Enter a score from 0 to ${maximum ?? "the assessment maximum"}`);
+        toast.error(
+          maximum !== undefined
+            ? `Enter a score between 0 and ${maximum}.`
+            : "Enter a score of 0 or higher.",
+        );
         return;
       }
     }
@@ -367,7 +445,7 @@ export default function AssessmentEntryPage() {
 
   const saveScores = async (): Promise<boolean> => {
     if (!orgSlug || !sheet || typeof sheet.version !== "number" || !selectedAssessment) {
-      toast.error("Spreadsheet version missing. Refreshing...");
+      toast.error("Sheet data is out of date. Reloading the latest version…");
       fetchSheet();
       return false;
     }
@@ -426,7 +504,7 @@ export default function AssessmentEntryPage() {
         setSaveErrorIsConflict(false);
         setRestoredDraftCount(0);
         if (draftKey) clearSpreadsheetDraft(draftKey);
-        toast.success(`${selectedAssessment.name} saved successfully`);
+        toast.success(`${selectedAssessment.name} scores saved`);
 
         if (autoProvisioned) {
           router.replace(
@@ -462,17 +540,17 @@ export default function AssessmentEntryPage() {
       setSaveErrorIsConflict(false);
       setRestoredDraftCount(0);
       if (draftKey) clearSpreadsheetDraft(draftKey);
-      toast.success(`${selectedAssessment.name} saved successfully`);
+      toast.success(`${selectedAssessment.name} scores saved`);
       return true;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to save spreadsheet");
+      const message = getErrorMessage(error, "Could not save scores");
       const status =
         typeof error === "object" && error !== null && "status" in error
           ? Number((error as { status?: number }).status)
           : undefined;
       setSaveError(message);
       setSaveErrorIsConflict(status === 409);
-      toast.error(`${message} — your scores are kept safely on this device.`);
+      toast.error(`${message}. Your scores are kept on this device.`);
       return false;
     } finally {
       setIsSaving(false);
@@ -506,15 +584,15 @@ export default function AssessmentEntryPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       setSheet({ ...sheet, status: newStatus as SpreadsheetDetail["status"] });
-      toast.success(`Status updated to ${newStatus}`);
+      toast.success(`Sheet status set to ${getStatusLabel(newStatus)}`);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to update status"));
+      toast.error(getErrorMessage(error, "Could not update sheet status"));
     }
   };
 
   const handleSyncStudents = async () => {
     if (!orgSlug || !sheet || typeof sheet.version !== "number") {
-      toast.error("Spreadsheet version missing. Refreshing...");
+      toast.error("Sheet data is out of date. Reloading the latest version…");
       fetchSheet();
       return;
     }
@@ -539,9 +617,9 @@ export default function AssessmentEntryPage() {
         : sanitizedBase;
       setSheet({ ...data, data: paddedData });
       setLocalData(paddedData);
-      toast.success("Synchronized with current class roster");
+      toast.success("Class list synced");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to synchronize students"));
+      toast.error(getErrorMessage(error, "Could not sync the class list"));
       if (!hasChanges) fetchSheet();
     } finally {
       setIsSyncing(false);
@@ -556,14 +634,14 @@ export default function AssessmentEntryPage() {
         <div className="flex flex-col items-center justify-center px-4 py-16">
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-rose-200 bg-white p-10 text-center shadow-2xs">
             <FileSpreadsheet className="mb-4 h-10 w-10 text-rose-300" aria-hidden="true" />
-            <h2 className="text-lg font-bold text-[#0B1220]">Unable to Load</h2>
+            <h2 className="text-lg font-bold text-[#0B1220]">Could not load assessment</h2>
             <p className="mt-2 max-w-xs text-sm text-slate-500">{loadError}</p>
             <button
               type="button"
               onClick={fetchSheet}
-              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
+              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6]"
             >
-              Try Again
+              Try again
             </button>
           </div>
         </div>
@@ -594,14 +672,14 @@ export default function AssessmentEntryPage() {
         <div className="flex flex-col items-center justify-center px-4 py-16">
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-blue-200 bg-white p-10 text-center shadow-2xs">
             <FileText className="mb-4 h-10 w-10 text-blue-300" aria-hidden="true" />
-            <h2 className="text-lg font-bold text-[#0B1220]">Assessment Not Found</h2>
+            <h2 className="text-lg font-bold text-[#0B1220]">Assessment not found</h2>
             <p className="mt-2 max-w-xs text-sm text-slate-500">
-              The selected assessment is unavailable.
+              This assessment may have been removed or moved.
             </p>
             <button
               type="button"
               onClick={() => router.push(backHref)}
-              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8]"
+              className="mt-5 min-h-11 rounded-xl bg-[#1447E6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6]"
             >
               {backLabel}
             </button>
@@ -667,10 +745,10 @@ export default function AssessmentEntryPage() {
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-rose-950">
-                  Could not save to server: {saveError}
+                  Scores were not saved: {saveError}
                 </p>
                 <p className="mt-0.5 text-rose-900">
-                  Your entered scores are preserved locally on this device. Retry saving or download a CSV backup.
+                  Your entries are kept on this device. Try saving again, or download a CSV backup.
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   <button
@@ -727,7 +805,7 @@ export default function AssessmentEntryPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium tabular-nums">
                 Restored {restoredDraftCount} unsaved{" "}
-                {restoredDraftCount === 1 ? "score" : "scores"} from this device. Tap Save to sync to the school record.
+                {restoredDraftCount === 1 ? "score" : "scores"} from this device. Save to update the school record.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -782,20 +860,95 @@ export default function AssessmentEntryPage() {
           </span>
         </div>
 
-        <div className="relative mt-3">
-          <Search
-            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Find a learner"
-            aria-label="Find a learner"
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 md:text-sm"
-          />
+        <div className="mt-3 flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Find by name or ID"
+              aria-label="Find a learner by name or ID"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#1447E6] focus:ring-2 focus:ring-blue-100 md:text-sm"
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              type="button"
+              aria-label={`Sort learners: ${activeSortOption.label}`}
+              className={cn(
+                "group inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] aria-expanded:border-[#1447E6] aria-expanded:bg-[#EEF0FF] aria-expanded:text-[#1447E6]",
+                sortMode !== "name-asc"
+                  ? "border-[#1447E6]/35 bg-[#EEF0FF] text-[#1447E6] hover:bg-[#E2E6FF]"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+              )}
+            >
+              <ArrowUpDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="sm:hidden">{activeSortOption.shortLabel}</span>
+              <span className="hidden sm:inline">{activeSortOption.label}</span>
+              <ChevronDown
+                className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-150 group-aria-expanded:rotate-180 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={6}
+              className="w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ring-0"
+            >
+              <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-slate-500">
+                Sort learners
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                aria-label="Sort learners"
+                value={sortMode}
+                onValueChange={(value) => handleSelectSortMode(value as AssessmentSortMode)}
+              >
+                {SORT_OPTIONS.filter((option) => option.group === "name").map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.value}
+                    value={option.value}
+                    className="min-h-11 cursor-pointer rounded-lg px-2.5 py-2 pr-8 text-sm font-medium text-slate-700 focus:bg-[#EEF0FF] focus:text-[#1447E6] data-[checked]:font-semibold data-[checked]:text-[#1447E6] md:pointer-fine:min-h-9"
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+                <DropdownMenuSeparator className="my-1 bg-slate-100" />
+                {SORT_OPTIONS.filter((option) => option.group === "score").map((option) => {
+                  const count =
+                    option.value === "unentered-first" ? unenteredCount : enteredCount;
+                  return (
+                    <DropdownMenuRadioItem
+                      key={option.value}
+                      value={option.value}
+                      onClick={() => {
+                        if (option.value === sortMode) {
+                          handleSelectSortMode(option.value);
+                        }
+                      }}
+                      className="min-h-11 cursor-pointer justify-between rounded-lg px-2.5 py-2 pr-8 text-sm font-medium text-slate-700 focus:bg-[#EEF0FF] focus:text-[#1447E6] data-[checked]:font-semibold data-[checked]:text-[#1447E6] md:pointer-fine:min-h-9"
+                    >
+                      <span>{option.label}</span>
+                      {total > 0 && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
+                          {count}
+                        </span>
+                      )}
+                    </DropdownMenuRadioItem>
+                  );
+                })}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        <p role="status" aria-live="polite" className="sr-only">
+          {sortAnnouncement}
+        </p>
 
         {canEdit && total > 0 && (
           <p className="mt-2 hidden items-center gap-1.5 text-xs font-medium text-slate-500 md:flex">
@@ -811,9 +964,22 @@ export default function AssessmentEntryPage() {
       <div className="px-4 pt-3 md:px-0">
         {filteredData.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
-            {total === 0
-              ? "No learners on this sheet yet. Open Roster controls below and sync the class list."
-              : "No learner matches that search."}
+            {total === 0 ? (
+              <p>
+                No learners on this sheet yet. Open Roster controls below and sync with the class list.
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <p>No learners match &ldquo;{search.trim()}&rdquo;.</p>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#1447E6] transition-colors hover:bg-[#EEF0FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-9"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -994,14 +1160,20 @@ export default function AssessmentEntryPage() {
 
               {isPrivileged && (
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="sheet-status-select"
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                  >
                     Sheet status
                   </label>
                   <Select
                     value={sheet.status}
                     onValueChange={(val) => void handleStatusChange(val as SpreadsheetStatus)}
                   >
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-800">
+                    <SelectTrigger
+                      id="sheet-status-select"
+                      className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-800"
+                    >
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1069,10 +1241,10 @@ export default function AssessmentEntryPage() {
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Unsaved score changes</DialogTitle>
+            <DialogTitle>Save changes before leaving?</DialogTitle>
             <DialogDescription>
               You have {unsavedCount} unsaved {unsavedCount === 1 ? "score" : "scores"} for{" "}
-              {selectedAssessment.name}. Save before going back?
+              {selectedAssessment.name}.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
@@ -1087,7 +1259,7 @@ export default function AssessmentEntryPage() {
                 router.push(backHref);
               }}
             >
-              Discard &amp; leave
+              Discard changes
             </Button>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
@@ -1097,7 +1269,7 @@ export default function AssessmentEntryPage() {
                 disabled={isSaving}
                 onClick={() => setShowLeaveDialog(false)}
               >
-                Stay on page
+                Stay here
               </Button>
               <Button
                 type="button"

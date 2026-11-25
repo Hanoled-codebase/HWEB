@@ -12,12 +12,12 @@ test.describe("a subject teacher's gradebook", () => {
     await score("Ada Obi").fill("18");
     // A score above the assessment's total is rejected (CA 2 is out of 20).
     await score("Kemi Bello").fill("25");
-    await expect(page.getByText("Enter a score from 0 to 20")).toBeVisible();
+    await expect(page.getByText("Enter a score between 0 and 20.")).toBeVisible();
     await score("Kemi Bello").fill("20");
     await expect(score("Kemi Bello")).toHaveValue("20");
 
     await page.getByRole("button", { name: "Save 2 scores" }).click();
-    await expect(page.getByText("CA 2 saved successfully")).toBeVisible();
+    await expect(page.getByText("CA 2 scores saved")).toBeVisible();
 
     const saved = (await mockRequests()).find(
       (r) => r.backend === "hsms" && r.method === "PATCH" && r.path === "/spreadsheets/greenfield/sheet-maths",
@@ -51,9 +51,9 @@ test.describe("a subject teacher's gradebook", () => {
 
     await page.getByRole("link", { name: "Back to Assessments" }).click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Unsaved score changes" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Save changes before leaving?" })).toBeVisible();
 
-    await dialog.getByRole("button", { name: "Stay on page" }).click();
+    await dialog.getByRole("button", { name: "Stay here" }).click();
     await expect(dialog).toBeHidden();
     await expect(score).toHaveValue("19");
 
@@ -81,7 +81,7 @@ test.describe("a subject teacher's gradebook", () => {
     const examAda = page.getByRole("spinbutton", { name: "Ada Obi" });
     await examAda.fill("60");
     await page.getByRole("button", { name: "Save 1 score" }).click();
-    await expect(page.getByText("Examination saved successfully")).toBeVisible();
+    await expect(page.getByText("Examination scores saved")).toBeVisible();
 
     // Back from direct entry returns to Assessments list.
     await page.getByRole("link", { name: "Back to Assessments" }).click();
@@ -108,10 +108,10 @@ test.describe("a subject teacher's gradebook", () => {
 
     const cw3Ada = page.getByRole("spinbutton", { name: "Ada Obi" });
     await cw3Ada.fill("12");
-    await expect(page.getByText("Enter a score from 0 to 10")).toBeVisible();
+    await expect(page.getByText("Enter a score between 0 and 10.")).toBeVisible();
     await cw3Ada.fill("9");
     await page.getByRole("button", { name: "Save 1 score" }).click();
-    await expect(page.getByText("Classwork 3 saved successfully")).toBeVisible();
+    await expect(page.getByText("Classwork 3 scores saved")).toBeVisible();
 
     // Back from a sub-assessment returns to the Classwork sub-assessments list.
     await page.getByRole("link", { name: "Back to Classwork" }).click();
@@ -136,7 +136,7 @@ test.describe("a subject teacher's gradebook", () => {
     await page.getByRole("spinbutton", { name: "Ada Obi" }).fill("5");
     await page.getByRole("spinbutton", { name: "Kemi Bello" }).fill("4");
     await page.getByRole("button", { name: "Save 2 scores" }).click();
-    await expect(page.getByText("Classwork saved successfully")).toBeVisible();
+    await expect(page.getByText("Classwork scores saved")).toBeVisible();
 
     const reqs = await mockRequests();
     const createdSub = reqs.find(
