@@ -3,12 +3,16 @@ export interface ImportableAssessment {
   name: string;
   total?: number;
   maxObtainableScore?: number;
+  categoryId?: string;
+  isVirtualCategory?: boolean;
+  sourceIndex?: number;
 }
 
 export interface ImportableStudentRow {
   student?: {
     id?: string;
     firstName?: string | null;
+    middleName?: string | null;
     lastName?: string | null;
     admissionNumber?: string | null;
   } | null;
@@ -16,12 +20,116 @@ export interface ImportableStudentRow {
   values: Array<number | string | null>;
 }
 
+export interface ImportedScoreEntry {
+  studentId: string;
+  assessmentIndex: number;
+  score: number;
+}
+
 export interface SpreadsheetImportSummary<T extends ImportableStudentRow> {
   updatedRows: T[];
+  importedEntries: ImportedScoreEntry[];
+  updatedAssessmentIndices: number[];
   matchedStudents: number;
   updatedCells: number;
   unmatchedRows: number;
   invalidCells: string[];
+}
+
+export interface RelationalCategoryDescriptor {
+  id: string;
+  name: string;
+  maxMarks: number;
+}
+
+export interface RelationalGroupedSubDescriptor {
+  assessment: {
+    id?: string;
+    name: string;
+    total?: number;
+    maxObtainableScore?: number;
+  };
+  originalIndex: number;
+}
+
+export interface RelationalImportModel<T extends ImportableStudentRow> {
+  assessments: ImportableAssessment[];
+  rows: T[];
+}
+
+/**
+ * Builds the full ordered export/import model for a relational spreadsheet:
+ * every template category in order (its existing SubAssessments if present, or
+ * a virtual default column for categories with 0 SubAssessments yet), plus
+ * aligned student rows without mutating inputs.
+ * Time: O(C + S + R * K), Space: O(K + R * K).
+ */
+export function buildRelationalImportModel<T extends ImportableStudentRow>(
+  categories: readonly RelationalCategoryDescriptor[],
+  groupedSubs: ReadonlyMap<string, readonly RelationalGroupedSubDescriptor[]>,
+  rows: readonly T[],
+  fallbackAssessments: readonly ImportableAssessment[] = [],
+): RelationalImportModel<T> {
+  const assessments: ImportableAssessment[] = [];
+  const includedSourceIndices = new Set<number>();
+
+  for (const category of categories) {
+    const subs = groupedSubs.get(category.id) ?? [];
+    if (subs.length > 0) {
+      for (const sub of subs) {
+        const max = sub.assessment.maxObtainableScore ?? sub.assessment.total;
+        assessments.push({
+          id: sub.assessment.id,
+          name: sub.assessment.name,
+          total: sub.assessment.total ?? max,
+          maxObtainableScore: max,
+          categoryId: category.id,
+          isVirtualCategory: false,
+          sourceIndex: sub.originalIndex,
+        });
+        includedSourceIndices.add(sub.originalIndex);
+      }
+    } else {
+      assessments.push({
+        name: category.name,
+        total: category.maxMarks,
+        maxObtainableScore: category.maxMarks,
+        categoryId: category.id,
+        isVirtualCategory: true,
+        sourceIndex: -1,
+      });
+    }
+  }
+
+  // Append any uncategorized sub-assessments so nothing already on the sheet is dropped
+  for (let idx = 0; idx < fallbackAssessments.length; idx += 1) {
+    if (includedSourceIndices.has(idx)) continue;
+    const item = fallbackAssessments[idx];
+    const max = item.maxObtainableScore ?? item.total;
+    assessments.push({
+      id: item.id,
+      name: item.name,
+      total: item.total ?? max,
+      maxObtainableScore: max,
+      categoryId: item.categoryId,
+      isVirtualCategory: false,
+      sourceIndex: idx,
+    });
+  }
+
+  const alignedRows: T[] = rows.map((row) => ({
+    ...row,
+    values: assessments.map((assessment) => {
+      const srcIdx = assessment.sourceIndex;
+      if (typeof srcIdx === "number" && srcIdx >= 0) {
+        const val = row.values[srcIdx];
+        return val === undefined ? "" : val;
+      }
+      return "";
+    }),
+  }));
+
+  return { assessments, rows: alignedRows };
 }
 
 function escapeCsvCell(value: unknown): string {
@@ -207,17 +315,20 @@ export function parseSpreadsheetScoreImport<T extends ImportableStudentRow>(
     if (admission) {
       rowIdxByAdmission.set(normalizePersonKey(admission), idx);
     }
-    const fullName = [row.student?.firstName, row.student?.lastName]
-      .filter(Boolean)
-      .join(" ");
-    if (fullName) {
-      rowIdxByName.set(normalizePersonKey(fullName), idx);
-    }
-    const revName = [row.student?.lastName, row.student?.firstName]
-      .filter(Boolean)
-      .join(" ");
-    if (revName && !rowIdxByName.has(normalizePersonKey(revName))) {
-      rowIdxByName.set(normalizePersonKey(revName), idx);
+    const nameVariants = [
+      [row.student?.firstName, row.student?.lastName],
+      [row.student?.lastName, row.student?.firstName],
+      [row.student?.firstName, row.student?.middleName, row.student?.lastName],
+      [row.student?.lastName, row.student?.firstName, row.student?.middleName],
+    ];
+    for (const parts of nameVariants) {
+      const joined = parts.filter(Boolean).join(" ").trim();
+      if (joined) {
+        const key = normalizePersonKey(joined);
+        if (!rowIdxByName.has(key)) {
+          rowIdxByName.set(key, idx);
+        }
+      }
     }
     return {
       ...row,
@@ -226,6 +337,8 @@ export function parseSpreadsheetScoreImport<T extends ImportableStudentRow>(
   });
 
   const matchedStudentIndices = new Set<number>();
+  const updatedAssessmentIndexSet = new Set<number>();
+  const importedEntries: ImportedScoreEntry[] = [];
   let updatedCells = 0;
   let unmatchedRows = 0;
   const invalidCells: string[] = [];
@@ -252,6 +365,7 @@ export function parseSpreadsheetScoreImport<T extends ImportableStudentRow>(
 
     matchedStudentIndices.add(targetIdx);
     const targetRow = updatedRows[targetIdx];
+    const resolvedStudentId = targetRow.student?.id ?? targetRow.studentId ?? "";
 
     for (const [colIdx, assessmentIdx] of columnToAssessmentIdx.entries()) {
       const rawCell = (line[colIdx] ?? "").trim();
@@ -270,12 +384,22 @@ export function parseSpreadsheetScoreImport<T extends ImportableStudentRow>(
         continue;
       }
       targetRow.values[assessmentIdx] = numeric;
+      updatedAssessmentIndexSet.add(assessmentIdx);
+      if (resolvedStudentId) {
+        importedEntries.push({
+          studentId: resolvedStudentId,
+          assessmentIndex: assessmentIdx,
+          score: numeric,
+        });
+      }
       updatedCells += 1;
     }
   }
 
   return {
     updatedRows,
+    importedEntries,
+    updatedAssessmentIndices: Array.from(updatedAssessmentIndexSet).sort((a, b) => a - b),
     matchedStudents: matchedStudentIndices.size,
     updatedCells,
     unmatchedRows,

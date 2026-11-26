@@ -23,8 +23,10 @@ import {
 import { toast } from "sonner";
 
 import {
+  buildRelationalImportModel,
   downloadSpreadsheetTemplateCsv,
   parseSpreadsheetScoreImport,
+  type ImportableAssessment,
 } from "@/lib/spreadsheet-import";
 import { BackButton } from "@/components/dashboard/shared";
 import { useMobilePageTitle } from "@/components/dashboard/mobile/MobileMenuProvider";
@@ -80,6 +82,7 @@ import {
   type SpreadsheetAssessment,
   type SpreadsheetDetail,
   type SpreadsheetQuestion,
+  type SpreadsheetRow,
   type SpreadsheetStatus,
 } from "@/lib/spreadsheets";
 import { cn } from "@/lib/utils";
@@ -218,6 +221,16 @@ export default function SpreadsheetAssessmentsPage() {
     () => groupAssessmentsByCategory(categories, rawAssessments),
     [categories, rawAssessments],
   );
+  const exportModel = useMemo<{
+    assessments: ImportableAssessment[];
+    rows: SpreadsheetRow[];
+  }>(() => {
+    const rows = sheet?.data ?? [];
+    if (isRelational && categories.length > 0) {
+      return buildRelationalImportModel(categories, groupedSubs, rows, rawAssessments);
+    }
+    return { assessments: rawAssessments, rows };
+  }, [categories, groupedSubs, isRelational, rawAssessments, sheet?.data]);
   const subCountByCategory = useMemo(() => {
     const counts = new Map<string, number>();
     for (const [catId, list] of groupedSubs.entries()) {
@@ -445,7 +458,11 @@ export default function SpreadsheetAssessmentsPage() {
     setImportingScores(true);
     try {
       const text = await file.text();
-      const parsed = parseSpreadsheetScoreImport(text, rawAssessments, sheet.data ?? []);
+      const parsed = parseSpreadsheetScoreImport(
+        text,
+        exportModel.assessments,
+        exportModel.rows,
+      );
       if (parsed.updatedCells === 0) {
         toast.warning(
           parsed.invalidCells.length > 0
@@ -454,23 +471,107 @@ export default function SpreadsheetAssessmentsPage() {
         );
         return;
       }
-      const payload: Record<string, unknown> = {
-        data: parsed.updatedRows.map((row) => ({
-          student: { id: row.student.id },
-          values: row.values,
-        })),
-        ...(!isRelational && typeof sheet.version === "number"
-          ? { expectedVersion: sheet.version }
-          : {}),
-      };
-      const updated = await apiFetch<SpreadsheetDetail>(
-        `/spreadsheets/${orgSlug}/${sheet.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        },
-      );
-      setSheet(updated);
+
+      if (isRelational) {
+        if (typeof sheet.version !== "number") {
+          toast.error("Spreadsheet version missing. Refreshing...");
+          triggerRefresh();
+          return;
+        }
+
+        let versionForSave = sheet.version;
+        const subAssessmentIdByCol = new Map<number, string>();
+
+        for (const colIdx of parsed.updatedAssessmentIndices) {
+          const col = exportModel.assessments[colIdx];
+          if (!col) continue;
+          if (col.id) {
+            subAssessmentIdByCol.set(colIdx, col.id);
+            continue;
+          }
+          if (col.isVirtualCategory && col.categoryId) {
+            const maxMarks = col.maxObtainableScore ?? col.total;
+            const created = await apiFetch<{
+              data?: { id?: string; version?: number };
+              version?: number;
+            }>(`/spreadsheets/${orgSlug}/${sheet.id}/sub-assessments`, {
+              method: "POST",
+              body: JSON.stringify({
+                categoryId: col.categoryId,
+                name: col.name,
+                maxMarks,
+              }),
+            });
+            const createdId = created?.data?.id;
+            if (!createdId) {
+              throw new Error(`Could not provision assessment "${col.name}"`);
+            }
+            subAssessmentIdByCol.set(colIdx, createdId);
+            if (typeof created?.version === "number") {
+              versionForSave = created.version;
+            } else if (typeof created?.data?.version === "number") {
+              versionForSave = created.data.version;
+            } else {
+              versionForSave += 1;
+            }
+          }
+        }
+
+        const scoresPayload = parsed.importedEntries
+          .map((entry) => {
+            const subAssessmentId = subAssessmentIdByCol.get(entry.assessmentIndex);
+            if (!entry.studentId || !subAssessmentId) return null;
+            return {
+              studentId: entry.studentId,
+              subAssessmentId,
+              score: entry.score,
+            };
+          })
+          .filter(
+            (item): item is { studentId: string; subAssessmentId: string; score: number } =>
+              item !== null,
+          );
+
+        if (scoresPayload.length === 0) {
+          toast.warning("No valid scores matched any assessment on this spreadsheet.");
+          return;
+        }
+
+        await apiFetch<{ data?: { version?: number } }>(
+          `/spreadsheets/${orgSlug}/${sheet.id}/scores`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              expectedVersion: versionForSave,
+              scores: scoresPayload,
+            }),
+          },
+        );
+
+        const refreshed = await apiFetch<SpreadsheetDetail>(
+          `/spreadsheets/${orgSlug}/${sheet.id}`,
+        );
+        setSheet(refreshed);
+      } else {
+        const payload: Record<string, unknown> = {
+          data: parsed.updatedRows.map((row) => ({
+            student: { id: row.student.id },
+            values: row.values,
+          })),
+          ...(typeof sheet.version === "number"
+            ? { expectedVersion: sheet.version }
+            : {}),
+        };
+        const updated = await apiFetch<SpreadsheetDetail>(
+          `/spreadsheets/${orgSlug}/${sheet.id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          },
+        );
+        setSheet(updated);
+      }
+
       const extras: string[] = [];
       if (parsed.unmatchedRows > 0) extras.push(`${parsed.unmatchedRows} unmatched row(s)`);
       if (parsed.invalidCells.length > 0) extras.push(`${parsed.invalidCells.length} invalid cell(s) skipped`);
@@ -745,7 +846,7 @@ export default function SpreadsheetAssessmentsPage() {
                 />
               </div>
 
-              {rawAssessments.length > 0 && (
+              {exportModel.assessments.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -753,8 +854,8 @@ export default function SpreadsheetAssessmentsPage() {
                     onClick={() =>
                       downloadSpreadsheetTemplateCsv(
                         sheet.title || `${subjectName}-${className}`,
-                        rawAssessments,
-                        sheet.data ?? [],
+                        exportModel.assessments,
+                        exportModel.rows,
                       )
                     }
                     className="h-10 flex-1 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:flex-none"
