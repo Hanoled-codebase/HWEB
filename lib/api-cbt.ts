@@ -144,13 +144,17 @@ export const cbtApi = {
 
   // ── Past Questions Proxy ────────────────────────────────────────────
   getPastQuestionSubjects: () => fetchCbt<string[]>("/api/past-questions/subjects"),
-  getPastQuestionYears: (subject: string) => fetchCbt<number[]>(`/api/past-questions/years?subject=${encodeURIComponent(subject)}`),
+  getPastQuestionYears: (subject: string, board?: string) =>
+    fetchCbt<number[]>(
+      `/api/past-questions/years?subject=${encodeURIComponent(subject)}${board ? `&ssceBoard=${encodeURIComponent(board)}` : ""}`
+    ),
   fetchPastQuestions: (subject: string, board: string, year?: number) =>
     fetchCbt(`/api/past-questions/fetch?subject=${encodeURIComponent(subject)}&ssceBoard=${board}${year ? `&year=${year}` : ""}`),
 
   // Legacy aliases
   getSubjects: () => fetchCbt("/past-questions/subjects"),
-  getYears: (subject: string) => fetchCbt(`/past-questions/years?subject=${encodeURIComponent(subject)}`),
+  getYears: (subject: string, board?: string) =>
+    fetchCbt(`/past-questions/years?subject=${encodeURIComponent(subject)}${board ? `&ssceBoard=${encodeURIComponent(board)}` : ""}`),
 
   // Offline submission sync lives in lib/cbt-sync.ts: it authenticates with the
   // attempt lease and must bypass request()'s session refresh / sign-out.

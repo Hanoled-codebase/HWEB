@@ -29,6 +29,7 @@ import {
   Loader2,
   X,
   Upload,
+  AlertCircle,
   ShieldAlert,
   Hourglass,
   Send,
@@ -425,6 +426,8 @@ export default function AdminDashboard() {
   const [fetchingPastQuestions, setFetchingPastQuestions] = useState(false);
   const [importingQuestions, setImportingQuestions] = useState(false);
   const [previewQuestionsCount, setPreviewQuestionsCount] = useState<number | null>(null);
+  const [hqbError, setHqbError] = useState<string | null>(null);
+  const [designerMobilePane, setDesignerMobilePane] = useState<"questions" | "add">("questions");
 
   // Document Import State
   const [importingDocument, setImportingDocument] = useState(false);
@@ -485,23 +488,73 @@ export default function AdminDashboard() {
     loadAdminData();
   }, [orgSlug]);
 
+  // HANOLED QUESTION BANK (HQB) SUBJECTS LOADER
+  const fetchPastQuestionSubjects = async () => {
+    setFetchingSubjects(true);
+    setHqbError(null);
+    try {
+      const res = await cbtApi.getSubjects();
+      setApiSubjects(res.subjects || res || []);
+    } catch (err: any) {
+      console.error(err);
+      setHqbError("Could not load subjects from Hanoled Question Bank. Check your connection and try again.");
+    } finally {
+      setFetchingSubjects(false);
+    }
+  };
+
   // Fetch Questions for selected exam
   const handleOpenDesigner = async (exam: any) => {
     setDesignerExam(exam);
     setLoadingQuestions(true);
-    setPreviewQuestionsCount(null); // Reset preview
+    setPreviewQuestionsCount(null);
+    setHqbError(null);
+    const preferredBoard = (exam?.ssceBoard || "waec").toLowerCase();
+    setImportParams((prev) => ({
+      ...prev,
+      ssceBoard: ["waec", "neco", "jamb"].includes(preferredBoard) ? preferredBoard : prev.ssceBoard,
+      year: "",
+    }));
     try {
-      const detail = await cbtApi.getExam(exam.id);
-      setDesignerQuestions(detail.questions || []);
-      
-      // Pre-fetch past questions subjects list
-      fetchPastQuestionSubjects();
+      const [detail] = await Promise.all([
+        cbtApi.getExam(exam.id),
+        fetchPastQuestionSubjects(),
+      ]);
+      const loadedQuestions = detail.questions || [];
+      setDesignerQuestions(loadedQuestions);
+      setDesignerMobilePane(loadedQuestions.length === 0 ? "add" : "questions");
     } catch (err: any) {
-      toast.error("Failed to load questions: " + err.message);
+      toast.error("Could not load exam questions: " + (err.message || "Try again."));
     } finally {
       setLoadingQuestions(false);
     }
   };
+
+  // Wire onboarding guide hash actions (#create, #questions, #assign, #audit) to real UI destinations
+  useEffect(() => {
+    const handleHashAction = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      if (hash === "#create") {
+        setIsCreateModalOpen(true);
+      } else if (hash === "#questions") {
+        if (exams.length > 0) {
+          void handleOpenDesigner(exams[0]);
+        } else {
+          setIsCreateModalOpen(true);
+        }
+      } else if (hash === "#assign") {
+        setActiveTab("exams");
+      } else if (hash === "#audit" && isAdmin) {
+        setActiveTab("students");
+      }
+      if (["#create", "#questions", "#assign", "#audit"].includes(hash)) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    };
+    window.addEventListener("hashchange", handleHashAction);
+    return () => window.removeEventListener("hashchange", handleHashAction);
+  }, [exams, isAdmin]);
 
   // Close designer and reload main lists
   const handleCloseDesigner = () => {
@@ -563,6 +616,7 @@ export default function AdminDashboard() {
       }
 
       const created = await cbtApi.createExam(payload);
+      const createdTitle = newExamData.title.trim();
 
       // Auto-assign if target selected (admins only — publishing/assignment is admin-gated)
       if (isAdmin && assignTarget !== "none") {
@@ -573,12 +627,16 @@ export default function AdminDashboard() {
           assignPayload.studentId = targetStudentId;
         }
         await cbtApi.assignExam(created.id, assignPayload);
-        toast.success(`Exam created and assigned successfully!`);
+        toast.success(`"${createdTitle}" created and assigned. Add questions below.`);
       } else {
-        toast.success(isAdmin ? `Exam "${newExamData.title}" created successfully!` : `Draft "${newExamData.title}" saved. An admin can review and publish it.`);
+        toast.success(
+          isAdmin
+            ? `"${createdTitle}" created. Add questions below.`
+            : `Draft "${createdTitle}" created. Add questions below — an admin can publish it when ready.`
+        );
       }
-      
-      // Reset form and reload
+
+      // Reset form, refresh background list, and open the newly created exam immediately
       setIsCreateModalOpen(false);
       setNewExamData({
         title: "",
@@ -594,9 +652,11 @@ export default function AdminDashboard() {
       setAssignTarget("none");
       setTargetClassId("");
       setTargetStudentId("");
-      loadAdminData();
+      setActiveTab("exams");
+      void loadAdminData();
+      await handleOpenDesigner(created);
     } catch (err: any) {
-      toast.error(err.message || "Failed to create exam");
+      toast.error(err.message || "Could not create exam. Check the form and try again.");
     } finally {
       setCreatingExam(false);
     }
@@ -683,80 +743,91 @@ export default function AdminDashboard() {
     }
   };
 
-  // PAST QUESTIONS API PROXY CONTROLLERS
-  const fetchPastQuestionSubjects = async () => {
-    setFetchingSubjects(true);
-    try {
-      const res = await cbtApi.getSubjects();
-      setApiSubjects(res.subjects || res || []);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to load past subjects list from proxy: " + err.message);
-    } finally {
-      setFetchingSubjects(false);
-    }
-  };
-
-  const handleSubjectChange = async (subjectName: string) => {
-    setImportParams((prev) => ({ ...prev, subject: subjectName, year: "" }));
-    setApiYears([]);
-    setPreviewQuestionsCount(null);
-    if (!subjectName) return;
-
-    setFetchingYears(true);
-    try {
-      const res = await cbtApi.getYears(subjectName);
-      setApiYears(res.years || res || []);
-    } catch (err: any) {
-      toast.error("Failed to load years: " + err.message);
-    } finally {
-      setFetchingYears(false);
-    }
-  };
-
-  // Search/Retrieve Questions from Hanoled Question Bank (HQB) and Cache them
-  const handleQueryPastQuestions = async () => {
-    if (!importParams.subject || !importParams.ssceBoard) {
-      toast.error("Please select a Subject and an SSCE Board");
+  // HANOLED QUESTION BANK (HQB) CONTROLLERS
+  const fetchHqbAvailability = async (subjectName: string, board: string, yearStr: string) => {
+    if (!subjectName || !board) {
+      setPreviewQuestionsCount(null);
       return;
     }
-
     setFetchingPastQuestions(true);
-    setPreviewQuestionsCount(null);
+    setHqbError(null);
     try {
-      toast.info(`Querying Hanoled Question Bank for ${importParams.ssceBoard.toUpperCase()} ${importParams.subject}...`);
       const res = await cbtApi.fetchPastQuestions(
-        importParams.subject,
-        importParams.ssceBoard,
-        importParams.year ? Number(importParams.year) : undefined
+        subjectName,
+        board,
+        yearStr ? Number(yearStr) : undefined
       );
-
       const count = Array.isArray(res.questions) ? res.questions.length : 0;
       setPreviewQuestionsCount(count);
-      
-      if (count > 0) {
-        const source = res.fromCache ? "local cache" : "HQB Question Bank";
-        toast.success(`Found ${count} questions from ${source}! Click "2. Import Selected" to add them to your exam.`);
-      } else {
-        toast.warning("No questions found for this combination in Hanoled Question Bank.");
+      if (count === 0) {
+        setHqbError(`No ${board.toUpperCase()} ${subjectName} questions matched that year. Choose "All years" or another board.`);
       }
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Failed to search Hanoled Question Bank.");
+      setPreviewQuestionsCount(null);
+      setHqbError(err.message || "Could not check Hanoled Question Bank. Try again.");
     } finally {
       setFetchingPastQuestions(false);
     }
   };
 
-  // Bulk Import Cached API Questions into selected Exam
+  const loadYearsForSelection = async (subjectName: string, board: string) => {
+    setApiYears([]);
+    if (!subjectName) return;
+    setFetchingYears(true);
+    try {
+      const res = await cbtApi.getYears(subjectName, board);
+      setApiYears(res.years || res || []);
+    } catch (err: any) {
+      toast.error("Could not load available years: " + (err.message || "Try again."));
+    } finally {
+      setFetchingYears(false);
+    }
+  };
+
+  const handleSubjectChange = async (subjectName: string) => {
+    const board = importParams.ssceBoard || "waec";
+    setImportParams((prev) => ({ ...prev, subject: subjectName, year: "" }));
+    setPreviewQuestionsCount(null);
+    setHqbError(null);
+    if (!subjectName) {
+      setApiYears([]);
+      return;
+    }
+    await Promise.all([
+      loadYearsForSelection(subjectName, board),
+      fetchHqbAvailability(subjectName, board, ""),
+    ]);
+  };
+
+  const handleBoardChange = async (board: string) => {
+    setImportParams((prev) => ({ ...prev, ssceBoard: board, year: "" }));
+    setPreviewQuestionsCount(null);
+    setHqbError(null);
+    if (!importParams.subject) return;
+    await Promise.all([
+      loadYearsForSelection(importParams.subject, board),
+      fetchHqbAvailability(importParams.subject, board, ""),
+    ]);
+  };
+
+  const handleYearChange = async (yearStr: string) => {
+    setImportParams((prev) => ({ ...prev, year: yearStr }));
+    setHqbError(null);
+    if (!importParams.subject) return;
+    await fetchHqbAvailability(importParams.subject, importParams.ssceBoard, yearStr);
+  };
+
+  // Direct import from Hanoled Question Bank into the open exam
   const handleImportCachedQuestions = async () => {
     if (!designerExam) return;
     if (!importParams.subject || !importParams.ssceBoard) {
-      toast.error("Please fill in the search parameters.");
+      toast.error("Choose a subject and exam board first.");
       return;
     }
 
     setImportingQuestions(true);
+    setHqbError(null);
     try {
       const payload = {
         subject: importParams.subject,
@@ -767,19 +838,22 @@ export default function AdminDashboard() {
 
       const res = await cbtApi.importQuestionsApi(designerExam.id, payload);
       const details = [];
-      if (res.added > 0) details.push(`${res.added} imported`);
-      if (res.skipped > 0) details.push(`${res.skipped} skipped (duplicates)`);
-      toast.success(`Success! ${details.join(', ')}.`);
+      if (res.added > 0) details.push(`${res.added} added`);
+      if (res.skipped > 0) details.push(`${res.skipped} duplicate${res.skipped === 1 ? "" : "s"} skipped`);
+      toast.success(details.length > 0 ? `Questions updated: ${details.join(", ")}.` : "Those questions are already in this exam.");
       if (res.totalAvailable !== undefined && res.added < Math.min(Number(importParams.count), res.totalAvailable)) {
-        toast.info(`${res.totalAvailable} unique questions available. Try increasing the count to get more.`);
+        toast.info(`${res.totalAvailable} unique questions available for this selection.`);
       }
-      
-      // Reload designer questions
+
       const detail = await cbtApi.getExam(designerExam.id);
       setDesignerQuestions(detail.questions || []);
-      setPreviewQuestionsCount(null); // Reset preview
+      if (res.added > 0) {
+        setDesignerMobilePane("questions");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to import. Make sure you queried/searched first to cache the records.");
+      const msg = err.message || "Could not add questions from Hanoled Question Bank. Try again.";
+      setHqbError(msg);
+      toast.error(msg);
     } finally {
       setImportingQuestions(false);
     }
@@ -905,59 +979,60 @@ export default function AdminDashboard() {
           /* QUESTION DESIGNER PANEL (Selected Exam details and questions) */
           <div className="space-y-6 animate-fade-in">
             {/* Header Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-              <div className="flex items-center space-x-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
                 <button
                   onClick={handleCloseDesigner}
-                  className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm group"
+                  aria-label="Back to exams"
+                  className="min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm group shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
                 </button>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-150 px-2.5 py-0.5 rounded-full uppercase">
-                      {designerExam.examType} assessment
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200/70 px-2.5 py-0.5 rounded-full">
+                      {designerExam.examType === "ssce" ? "SSCE practice" : "School exam"}
                     </span>
-                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      {designerQuestions.length} Questions
+                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full tabular-nums">
+                      {designerQuestions.length} {designerQuestions.length === 1 ? "question" : "questions"}
+                    </span>
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                      designerExam.status === "published"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                        : "bg-slate-100 text-slate-600 border border-slate-200"
+                    }`}>
+                      {designerExam.status === "published" ? "Published" : "Draft"}
                     </span>
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800 mt-1">{designerExam.title}</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-1 break-words">{designerExam.title}</h2>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  designerExam.status === "published"
-                    ? "bg-green-50 text-green-700 border border-green-150"
-                    : "bg-slate-50 text-slate-500 border border-slate-200"
-                }`}>
-                  {designerExam.status?.toUpperCase() || "DRAFT"}
-                </span>
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
                 {isAdmin && designerExam.status !== "published" && (
                   <button
                     onClick={() => {
                       const qCount = designerQuestions.length;
                       if (qCount < 5) {
-                        toast.error(`Need at least 5 questions to publish. Currently ${qCount}.`);
+                        toast.error(`Add at least ${5 - qCount} more question${5 - qCount === 1 ? "" : "s"} before publishing (minimum 5).`);
                         return;
                       }
                       handlePublish(designerExam.id);
                     }}
                     disabled={publishingId === designerExam.id}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 disabled:opacity-50"
+                    className="min-h-[44px] sm:min-h-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {publishingId === designerExam.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <CheckCircle2 className="w-3.5 h-3.5" />
                     )}
-                    <span>Publish</span>
+                    <span>Publish Exam</span>
                   </button>
                 )}
                 {designerExam.status !== "published" && !isAdmin && (
-                  <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-                    Draft — awaiting admin approval
+                  <span className="col-span-2 sm:col-span-1 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-center">
+                    Draft — an admin can publish when ready
                   </span>
                 )}
                 {isAdmin && (
@@ -969,7 +1044,7 @@ export default function AdminDashboard() {
                       cbtApi.getTeacherClasses(orgSlug).then(setTeacherClasses).catch(() => {});
                     }
                   }}
-                  className="bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5"
+                  className="min-h-[44px] sm:min-h-0 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Assign</span>
@@ -978,9 +1053,9 @@ export default function AdminDashboard() {
                 {isAdmin && (
                 <button
                   onClick={() => handleOpenPasskey(designerExam)}
-                  className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 border ${
+                  className={`min-h-[44px] sm:min-h-0 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 border ${
                     designerExam.passkeyRequired
-                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-amber-800 hover:bg-[#F5A623]/20"
+                      ? "bg-[#F5A623]/10 border-[#F5A623]/30 text-amber-900 hover:bg-[#F5A623]/20"
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
@@ -990,52 +1065,98 @@ export default function AdminDashboard() {
                 )}
                 <button
                   onClick={handleCloseDesigner}
-                  className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                  className="min-h-[44px] sm:min-h-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm"
                 >
-                  Save & Close
+                  Done
                 </button>
               </div>
             </div>
 
-            {/* Twin Panel Grid: Manual Question form & Question List */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-              
+            {/* Mobile section switcher so phones reach HQB / Add Questions without scrolling */}
+            <div className="xl:hidden flex bg-slate-100 p-1 rounded-xl gap-1" role="tablist" aria-label="Exam editor sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={designerMobilePane === "questions"}
+                onClick={() => setDesignerMobilePane("questions")}
+                className={`flex-1 min-h-[44px] rounded-lg text-xs font-bold transition-all tabular-nums ${
+                  designerMobilePane === "questions"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Questions ({designerQuestions.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={designerMobilePane === "add"}
+                onClick={() => setDesignerMobilePane("add")}
+                className={`flex-1 min-h-[44px] rounded-lg text-xs font-bold transition-all ${
+                  designerMobilePane === "add"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Add &amp; Import Questions
+              </button>
+            </div>
+
+            {/* Twin Panel Grid: Question List & Importers/Manual Creator */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
+
               {/* Question list (Left Column - Spans 7 cols) */}
-              <div className="xl:col-span-7 space-y-4">
-                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Exam Questions</h3>
+              <div className={`xl:col-span-7 space-y-4 ${designerMobilePane === "questions" ? "block" : "hidden xl:block"}`}>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                  <h3 className="text-sm font-bold text-slate-900">Exam Questions</h3>
+                  {designerQuestions.length > 0 && designerQuestions.length < 5 && (
+                    <span className="text-xs font-medium text-amber-700">
+                      Add {5 - designerQuestions.length} more to publish
+                    </span>
+                  )}
                 </div>
 
                 {loadingQuestions ? (
-                  <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                  <div className="flex flex-col items-center justify-center py-16 gap-2 text-slate-500">
+                    <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
+                    <span className="text-xs font-medium">Loading exam questions...</span>
                   </div>
                 ) : designerQuestions.length === 0 ? (
-                  <div className="bg-white rounded-xl p-12 text-center text-slate-500 shadow-sm">
-                    <Info className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="font-semibold text-slate-700">No questions added yet</p>
-                    <p className="text-xs text-slate-500 mt-1">Use the right-hand panel to create manual questions or bulk import from proxy banks.</p>
+                  <div className="bg-white rounded-2xl border border-slate-200/80 p-8 sm:p-10 text-center text-slate-600 shadow-sm">
+                    <BookOpen className="w-8 h-8 text-blue-500/70 mx-auto mb-3" />
+                    <p className="font-semibold text-slate-900 text-sm">No questions in this exam yet</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                      Import WAEC, NECO, or JAMB questions from Hanoled Question Bank, upload a Word/PDF paper, or write your own.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDesignerMobilePane("add")}
+                      className="xl:hidden mt-4 min-h-[44px] px-4 py-2.5 rounded-xl bg-[#1447E6] hover:bg-[#0f36b8] text-white text-xs font-bold shadow-sm transition-all"
+                    >
+                      Add Questions Now
+                    </button>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+                  <div className="space-y-4 xl:max-h-[680px] xl:overflow-y-auto xl:pr-1">
                     {designerQuestions.map((q, idx) => (
-                      <div key={q.id} className="bg-white p-5 rounded-xl shadow-sm relative group">
+                      <div key={q.id} className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/70 shadow-sm relative group">
                         <button
                           onClick={() => handleDeleteQuestion(q.id)}
-                          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                          title="Delete Question"
+                          aria-label={`Remove question ${idx + 1}`}
+                          className="absolute top-3.5 right-3.5 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                          title={`Remove question ${idx + 1}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
 
-                        <h4 className="font-bold text-slate-800 text-sm mb-3 pr-8 flex items-start">
-                          <span className="text-slate-400 mr-1.5">{idx + 1}.</span>
-                          <MathRenderer text={q.text} />
+                        <h4 className="font-semibold text-slate-900 text-sm mb-3 pr-10 flex items-start leading-relaxed">
+                          <span className="text-slate-400 mr-2 tabular-nums shrink-0">{idx + 1}.</span>
+                          <span className="min-w-0 break-words"><MathRenderer text={q.text} /></span>
                         </h4>
 
                         {q.passage && (
-                          <div className="bg-slate-50/60 p-3.5 rounded-xl text-xs text-slate-600 mb-3 max-h-28 overflow-y-auto leading-relaxed">
-                            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Reading Passage</span>
+                          <div className="bg-slate-50 p-3.5 rounded-xl text-xs text-slate-700 mb-3 max-h-32 overflow-y-auto leading-relaxed border border-slate-200/60">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Reading Passage</span>
                             <MathRenderer text={q.passage} />
                           </div>
                         )}
@@ -1044,8 +1165,8 @@ export default function AdminDashboard() {
                           <div className="mb-3">
                             <img
                               src={`${CBT_BACKEND_URL}${q.imageUrl}`}
-                              alt="Question diagram"
-                              className="max-h-36 object-contain rounded-xl bg-white p-1.5 shadow-sm"
+                              alt={`Diagram for question ${idx + 1}`}
+                              className="max-h-36 object-contain rounded-xl bg-white p-1.5 shadow-sm border border-slate-100"
                             />
                           </div>
                         )}
@@ -1059,31 +1180,33 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
-                          {q.options.map((opt: string, optIdx: number) => {
-                            const isCorrect = optIdx === q.correctAnswer;
-                            return (
-                              <div
-                                key={optIdx}
-                                className={`p-2.5 rounded-lg flex items-center space-x-2 ${
-                                  isCorrect 
-                                    ? "text-green-600 font-semibold bg-green-50/30" 
-                                    : "text-slate-600 bg-slate-50/50"
-                                }`}
-                              >
-                                <span className="text-xs uppercase opacity-70">
-                                  {optionLabel(optIdx)}.
-                                </span>
-                                <span className="truncate"><MathRenderer text={opt} /></span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {Array.isArray(q.options) && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
+                            {q.options.map((opt: string, optIdx: number) => {
+                              const isCorrect = optIdx === q.correctAnswer;
+                              return (
+                                <div
+                                  key={optIdx}
+                                  className={`p-2.5 rounded-lg flex items-start gap-2 border ${
+                                    isCorrect
+                                      ? "text-emerald-800 font-semibold bg-emerald-50/70 border-emerald-200/80"
+                                      : "text-slate-700 bg-slate-50/70 border-slate-200/50"
+                                  }`}
+                                >
+                                  <span className="text-xs font-bold uppercase opacity-80 shrink-0">
+                                    {optionLabel(optIdx)}.
+                                  </span>
+                                  <span className="break-words leading-snug"><MathRenderer text={opt} /></span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {q.explanation && (
-                          <div className="bg-blue-50/60 p-3 rounded-lg text-blue-800 text-xs mt-3 flex items-start space-x-1.5">
-                            <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                            <p><strong>Explanation:</strong> <MathRenderer text={q.explanation} /></p>
+                          <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-lg text-blue-900 text-xs mt-3 flex items-start gap-2 leading-relaxed">
+                            <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                            <p className="break-words"><strong>Explanation:</strong> <MathRenderer text={q.explanation} /></p>
                           </div>
                         )}
                       </div>
@@ -1093,29 +1216,37 @@ export default function AdminDashboard() {
               </div>
 
               {/* Creators & Importers (Right Column - Spans 5 cols) */}
-              <div className="xl:col-span-5 space-y-6">
-                
-                {/* 1. NIGERIA PAST QUESTIONS API IMPORTER PANEL */}
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  <div className="bg-white p-4 border-b border-slate-100">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-blue-700">SSCE past questions importer</h3>
+              <div className={`xl:col-span-5 space-y-6 ${designerMobilePane === "add" ? "block" : "hidden xl:block"}`}>
+
+                {/* 1. HANOLED QUESTION BANK (HQB) IMPORTER */}
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                  <div className="bg-white p-4 sm:p-5 border-b border-slate-100">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[#1447E6]" />
+                        <h3 className="font-bold text-sm text-slate-900">Hanoled Question Bank (HQB)</h3>
+                      </div>
+                      <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                        WAEC · NECO · JAMB
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">Quickly query, preview, and load authentic WAEC/NECO questions via our smart API cache proxy.</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Pick a subject and exam board to add verified past questions straight into this exam.
+                    </p>
                   </div>
 
-                  <div className="p-5 space-y-4">
+                  <div className="p-4 sm:p-5 space-y-4">
                     {/* Subject selection */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Subject</label>
+                      <label htmlFor="hqb-subject" className="block text-xs font-semibold text-slate-700 mb-1.5">Subject</label>
                       <select
+                        id="hqb-subject"
                         value={importParams.subject}
                         onChange={(e) => handleSubjectChange(e.target.value)}
                         disabled={fetchingSubjects}
-                        className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                       >
-                        <option value="">-- Choose Subject --</option>
+                        <option value="">{fetchingSubjects ? "Loading subjects..." : "Choose a subject"}</option>
                         {apiSubjects.map((sub, i) => (
                           <option key={i} value={sub}>{sub}</option>
                         ))}
@@ -1123,29 +1254,31 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Board and Year grid */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Board</label>
+                        <label htmlFor="hqb-board" className="block text-xs font-semibold text-slate-700 mb-1.5">Exam Board</label>
                         <select
+                          id="hqb-board"
                           value={importParams.ssceBoard}
-                          onChange={(e) => setImportParams((prev) => ({ ...prev, ssceBoard: e.target.value }))}
-                          className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                          onChange={(e) => handleBoardChange(e.target.value)}
+                          className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                         >
                           <option value="waec">WAEC (WASSCE)</option>
-                          <option value="jamb">JAMB (UTME)</option>
                           <option value="neco">NECO SSCE</option>
+                          <option value="jamb">JAMB (UTME)</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Year</label>
+                        <label htmlFor="hqb-year" className="block text-xs font-semibold text-slate-700 mb-1.5">Year</label>
                         <select
+                          id="hqb-year"
                           value={importParams.year}
-                          onChange={(e) => setImportParams((prev) => ({ ...prev, year: e.target.value }))}
+                          onChange={(e) => handleYearChange(e.target.value)}
                           disabled={fetchingYears || !importParams.subject}
-                          className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                          className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60"
                         >
-                          <option value="">-- All / Random --</option>
+                          <option value="">{fetchingYears ? "Loading years..." : "All available years"}</option>
                           {apiYears.map((yr, i) => (
                             <option key={i} value={yr}>{yr}</option>
                           ))}
@@ -1155,98 +1288,95 @@ export default function AdminDashboard() {
 
                     {/* Questions count to import */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Questions Count to Load</label>
+                      <label htmlFor="hqb-count" className="block text-xs font-semibold text-slate-700 mb-1.5">Number of Questions</label>
                       <select
+                        id="hqb-count"
                         value={importParams.count}
                         onChange={(e) => setImportParams((prev) => ({ ...prev, count: Number(e.target.value) }))}
-                        className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                        className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                       >
-                        <option value={5}>5 Questions</option>
-                        <option value={10}>10 Questions</option>
-                        <option value={15}>15 Questions</option>
-                        <option value={20}>20 Questions</option>
-                        <option value={30}>30 Questions</option>
-                        <option value={40}>40 Questions</option>
+                        <option value={5}>5 questions</option>
+                        <option value={10}>10 questions</option>
+                        <option value={15}>15 questions</option>
+                        <option value={20}>20 questions</option>
+                        <option value={30}>30 questions</option>
+                        <option value={40}>40 questions</option>
                       </select>
                     </div>
 
-                    {/* API search action triggers */}
-                    <div className="pt-2 flex gap-3">
-                      <button
-                        type="button"
-                        onClick={handleQueryPastQuestions}
-                        disabled={fetchingPastQuestions || !importParams.subject}
-                        className={`flex-1 text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
-                          previewQuestionsCount === null
-                            ? "bg-[#1447E6] hover:bg-[#0f36b8] text-white shadow-sm"
-                            : "bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {fetchingPastQuestions ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Searching...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Search className="w-3.5 h-3.5" />
-                            <span>1. Search Question Bank</span>
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleImportCachedQuestions}
-                        disabled={importingQuestions || previewQuestionsCount === null || previewQuestionsCount === 0}
-                        className={`flex-1 text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
-                          previewQuestionsCount !== null && previewQuestionsCount > 0
-                            ? "bg-[#1447E6] hover:bg-[#0f36b8] text-white shadow-sm active:scale-95"
-                            : "bg-slate-100 text-slate-400"
-                        } disabled:cursor-not-allowed disabled:scale-100`}
-                      >
-                        {importingQuestions ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Importing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ListPlus className="w-3.5 h-3.5" />
-                            <span>2. Import Selected</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Preview status note */}
-                    {previewQuestionsCount !== null && (
-                      <div className="bg-slate-50 border border-slate-250/60 p-3 rounded-xl flex items-start space-x-2.5">
-                        <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                          Found <strong className="text-slate-800">{previewQuestionsCount} questions</strong> available. Click "2. Import Selected" to append {importParams.count} samples to your exam (duplicates will be auto-skipped).
-                        </p>
+                    {/* Live availability / error status */}
+                    {fetchingPastQuestions && (
+                      <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl flex items-center gap-2 text-xs text-slate-600" role="status" aria-live="polite">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
+                        <span>Checking available {importParams.ssceBoard.toUpperCase()} {importParams.subject} questions...</span>
                       </div>
                     )}
+
+                    {!fetchingPastQuestions && hqbError && (
+                      <div className="bg-rose-50 border border-rose-200/80 p-3 rounded-xl flex items-start justify-between gap-2 text-xs text-rose-800" role="alert">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                          <span>{hqbError}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fetchHqbAvailability(importParams.subject, importParams.ssceBoard, importParams.year)}
+                          className="shrink-0 font-bold text-rose-700 underline underline-offset-2 hover:text-rose-900"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+
+                    {!fetchingPastQuestions && !hqbError && previewQuestionsCount !== null && previewQuestionsCount > 0 && (
+                      <div className="bg-emerald-50/70 border border-emerald-200/80 p-3 rounded-xl flex items-start gap-2 text-xs text-emerald-900" role="status" aria-live="polite">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <span>
+                          <strong className="tabular-nums">{previewQuestionsCount}</strong> {importParams.ssceBoard.toUpperCase()} {importParams.subject}
+                          {importParams.year ? ` (${importParams.year})` : ""} questions ready. Duplicate questions already in this exam are skipped automatically.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Single primary CTA */}
+                    <button
+                      type="button"
+                      onClick={handleImportCachedQuestions}
+                      disabled={importingQuestions || fetchingPastQuestions || !importParams.subject || previewQuestionsCount === 0}
+                      className="w-full min-h-[46px] bg-[#1447E6] hover:bg-[#0f36b8] text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {importingQuestions ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Adding questions to exam...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ListPlus className="w-4 h-4" />
+                          <span>Add {importParams.count} Questions to Exam</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
                 {/* 2. DOCUMENT IMPORT PANEL */}
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  <div className="bg-white p-4 border-b border-slate-100">
-                    <div className="flex items-center space-x-2">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                  <div className="bg-white p-4 sm:p-5 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
                       <Upload className="w-4 h-4 text-emerald-600" />
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-700">Import from document</h3>
+                      <h3 className="font-bold text-sm text-slate-900">Import from Document</h3>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">Upload a PDF, DOCX, or TXT file with pre-typed questions. The system will parse and extract them.</p>
+                    <p className="text-xs text-slate-500 mt-1">Upload a PDF, DOCX, or TXT test paper to extract questions automatically.</p>
                   </div>
 
-                  <div className="p-5 space-y-4">
+                  <div className="p-4 sm:p-5 space-y-4">
                     {parsedQuestions ? (
                       <>
-                        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
-                          <p className="text-xs font-bold text-emerald-800">
-                            ✅ {parsedQuestions.length} questions parsed from "{parsedFileName}"
+                        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <p className="text-xs font-semibold text-emerald-900">
+                            {parsedQuestions.length} questions extracted from &ldquo;{parsedFileName}&rdquo;
                           </p>
                           <p className="text-xs text-emerald-600 mt-1">Review below, then import to this exam.</p>
                         </div>
@@ -1648,27 +1778,27 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab("overview")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === "overview" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "overview" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  Dashboard Overview
+                  Overview
                 </button>
                 <button
                   onClick={() => setActiveTab("exams")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === "exams" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "exams" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  Assessment Templates
+                  Exams
                 </button>
                 {isAdmin && (
                 <button
                   onClick={() => setActiveTab("students")}
                   className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === "students" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    activeTab === "students" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  Grade Auditor
+                  Results &amp; Grades
                 </button>
                 )}
                 {/* Resets happen in HCORE, so not on the offline appliance. */}
@@ -1676,7 +1806,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setActiveTab("accounts")}
                     className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      activeTab === "accounts" ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-500 hover:text-[#0B1220]"
+                      activeTab === "accounts" ? "bg-white text-[#1447E6] shadow-sm" : "text-slate-600 hover:text-[#0B1220]"
                     }`}
                   >
                     Sign-in Help
@@ -1686,7 +1816,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setActiveTab("appliances")}
                     className={`snap-start shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      activeTab === "appliances" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     {EDGE_MODE ? "This Device" : "Edge Appliances"}
@@ -1696,10 +1826,10 @@ export default function AdminDashboard() {
 
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-xs min-h-[48px] sm:pointer-fine:min-h-0 py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-md shadow-blue-500/10 active:scale-95 transition-all w-full sm:w-auto"
+                className="bg-[#1447E6] hover:bg-[#0f36b8] text-white font-bold text-sm sm:text-xs min-h-[48px] sm:pointer-fine:min-h-0 py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.99] transition-all w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create Exam Template</span>
+                <span>Create Exam</span>
               </button>
             </div>
 
@@ -1713,58 +1843,48 @@ export default function AdminDashboard() {
 
                   <RoleOnboardingCard
                     storageKey={`cbt_admin_${resolvedOrgSlug || "default"}`}
-                    badgeLabel="CBT Exam Officer Guide"
-                    title="Setting up your HCBT Examination Hall"
-                    subtitle="Create computer-based testing templates, load questions from SSCE archives or file uploads, schedule classes, and audit results."
+                    badgeLabel="CBT Setup Guide"
+                    title="Set up your CBT exams"
+                    subtitle="Create an exam, add questions from Hanoled Question Bank or a document, assign classes, and review student results."
                     steps={[
                       {
                         id: "template",
-                        title: "Create Exam Template",
-                        description: "Set test duration, pass mark, subject name, and instruction notes.",
+                        title: "Create an Exam",
+                        description: "Set the title, duration, pass mark, and subject.",
                         href: "#create",
-                        actionText: exams.length > 0 ? "View templates" : "Create template",
+                        actionText: exams.length > 0 ? "Create another" : "Create exam",
                         isComplete: exams.length > 0,
                         icon: Plus,
                       },
                       {
                         id: "questions",
-                        title: "Populate Questions",
-                        description: "Import past WAEC/NECO questions or upload Word/PDF test sheets.",
+                        title: "Add Questions",
+                        description: "Import WAEC, NECO, or JAMB questions from HQB or upload a Word/PDF paper.",
                         href: "#questions",
-                        actionText: (stats?.totalQuestions ?? 0) > 0 ? "Review questions" : "Add questions",
+                        actionText: (stats?.totalQuestions ?? 0) > 0 ? "Open exam editor" : "Add questions",
                         isComplete: (stats?.totalQuestions ?? 0) > 0,
                         icon: BookOpen,
                       },
                       {
                         id: "schedule",
-                        title: "Assign Candidate Classes",
-                        description: "Target candidate classes and configure active examination windows.",
+                        title: "Assign Classes",
+                        description: "Choose which classes or students take each exam.",
                         href: "#assign",
-                        actionText: "Assign classes",
-                        isComplete: false,
+                        actionText: "Open exams",
+                        isComplete: (stats?.publishedExams ?? 0) > 0,
                         icon: Calendar,
                       },
                       {
                         id: "auditor",
-                        title: "Grade & Submission Auditor",
-                        description: "Track live student progress, proctoring violations, and score distributions.",
+                        title: "Review Results",
+                        description: "Check scores, submissions, and proctoring alerts.",
                         href: "#audit",
-                        actionText: "Open auditor",
-                        isComplete: (stats?.totalAttempts ?? 0) > 0,
+                        actionText: "View results",
+                        isComplete: (stats?.totalSubmissions ?? 0) > 0,
                         icon: ShieldCheck,
                       },
                     ]}
                   />
-                  
-                  {/* Greeting */}
-                  <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100/60 flex flex-col sm:flex-row items-start justify-between gap-6">
-                    <div>
-                      <h2 className="text-xl font-bold text-blue-900 mb-2">CBT Administrative Console</h2>
-                      <p className="text-xs text-blue-600/60 leading-relaxed max-w-lg">
-                        Welcome to your unified testing center. From here, you can build exam sheets, import bulk questions directly from proxy SSCE archives, and audit live student performances.
-                      </p>
-                    </div>
-                  </div>
 
                   {/* High level candidates auditor mini-list — backs onto the
                       admin-only Grade Auditor tab, so hide it for teachers
@@ -2048,62 +2168,66 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* CREATE EXAM TEMPLATE FORM MODAL */}
+      {/* CREATE EXAM FORM MODAL */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Exam Template</DialogTitle>
-            <DialogDescription>Set up parameters for your newly created test sheet.</DialogDescription>
+            <DialogTitle>Create Exam</DialogTitle>
+            <DialogDescription>Set the exam details. It will open immediately so you can add questions.</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateExam} className="space-y-4">
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Exam Title</label>
+                <label htmlFor="new-exam-title" className="block text-xs font-semibold text-slate-700 mb-1.5">Exam Title</label>
                 <input
+                  id="new-exam-title"
                   type="text"
                   required
-                  placeholder="e.g. Mathematics Midterm Assessment"
+                  placeholder="e.g. SS2 Mathematics Midterm"
                   value={newExamData.title}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, title: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500"
+                  className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Description (Optional)</label>
+                <label htmlFor="new-exam-desc" className="block text-xs font-semibold text-slate-700 mb-1.5">Instructions or Notes (Optional)</label>
                 <textarea
+                  id="new-exam-desc"
                   rows={2}
-                  placeholder="Summarize the core topics covered..."
+                  placeholder="Key topics or candidate instructions..."
                   value={newExamData.description}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-blue-500"
+                  className="w-full text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
               {/* Type selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Assessment Type</label>
+                <label htmlFor="new-exam-type" className="block text-xs font-semibold text-slate-700 mb-1.5">Exam Type</label>
                 <select
+                  id="new-exam-type"
                   value={newExamData.examType}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, examType: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                  className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl"
                 >
-                  <option value="school">School Assessment</option>
-                  <option value="ssce">SSCE Board Practice Assessment</option>
+                  <option value="school">School Exam</option>
+                  <option value="ssce">SSCE / UTME Practice Exam</option>
                 </select>
               </div>
 
               {/* Subject selector — teachers are scoped to their assigned subjects */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Subject {!isAdmin && <span className="text-rose-500">*</span>}
+                <label htmlFor="new-exam-subject" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Subject {!isAdmin && <span className="text-rose-600">*</span>}
                 </label>
                 <select
+                  id="new-exam-subject"
                   value={newExamData.subjectId}
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, subjectId: e.target.value }))}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                  className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl"
                 >
                   <option value="">
                     {orgSubjects.length === 0 ? "No subjects available" : isAdmin ? "Select subject (optional)" : "Select your subject"}
@@ -2115,65 +2239,72 @@ export default function AdminDashboard() {
                   ))}
                 </select>
                 {!isAdmin && orgSubjects.length === 0 && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    No subjects are assigned to you yet. Ask an admin to assign subjects via HCORE.
+                  <p className="text-xs text-slate-600 mt-1">
+                    No subjects are assigned to your account yet. Ask your school administrator to assign subjects.
                   </p>
                 )}
               </div>
 
               {/* Conditionally render SSCE parameters */}
               {newExamData.examType === "ssce" && (
-                <div className="grid grid-cols-2 gap-4 animate-fade-in bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="grid grid-cols-2 gap-3.5 animate-fade-in bg-slate-50 p-3 rounded-xl border border-slate-200/70">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Board</label>
+                    <label htmlFor="new-exam-board" className="block text-xs font-semibold text-slate-700 mb-1">Exam Board</label>
                     <select
+                      id="new-exam-board"
                       value={newExamData.ssceBoard}
                       onChange={(e) => setNewExamData((prev) => ({ ...prev, ssceBoard: e.target.value }))}
-                      className="w-full text-xs bg-white border border-slate-200 p-2 rounded-xl"
+                      className="w-full min-h-[44px] text-base sm:text-xs bg-white border border-slate-200 px-2.5 py-2 rounded-xl"
                     >
                       <option value="waec">WAEC</option>
                       <option value="neco">NECO</option>
+                      <option value="jamb">JAMB</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Year</label>
+                    <label htmlFor="new-exam-year" className="block text-xs font-semibold text-slate-700 mb-1">Year</label>
                     <input
+                      id="new-exam-year"
                       type="number"
+                      min={1988}
+                      max={new Date().getFullYear()}
                       value={newExamData.ssceYear}
                       onChange={(e) => setNewExamData((prev) => ({ ...prev, ssceYear: Number(e.target.value) }))}
-                      className="w-full text-xs bg-white border border-slate-200 p-2 rounded-xl"
+                      className="w-full min-h-[44px] text-base sm:text-xs bg-white border border-slate-200 px-2.5 py-2 rounded-xl"
                     />
                   </div>
                 </div>
               )}
 
               {/* Time and Pass Mark */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Duration (Mins)</label>
+                  <label htmlFor="new-exam-duration" className="block text-xs font-semibold text-slate-700 mb-1.5">Duration (Minutes)</label>
                   <input
+                    id="new-exam-duration"
                     type="number"
                     min={1}
                     value={newExamData.duration}
                     onChange={(e) => setNewExamData((prev) => ({ ...prev, duration: Number(e.target.value) }))}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                    className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Pass Mark (%)</label>
+                  <label htmlFor="new-exam-passmark" className="block text-xs font-semibold text-slate-700 mb-1.5">Pass Mark (%)</label>
                   <input
+                    id="new-exam-passmark"
                     type="number"
                     min={10}
                     max={100}
                     value={newExamData.passMark}
                     onChange={(e) => setNewExamData((prev) => ({ ...prev, passMark: Number(e.target.value) }))}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"
+                    className="w-full min-h-[44px] text-base sm:text-xs bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl"
                   />
                 </div>
               </div>
 
               {/* Shuffle Checkbox */}
-              <div className="flex items-center space-x-2.5 pt-2">
+              <div className="flex items-center gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="shuffleQuestions"
@@ -2181,8 +2312,8 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewExamData((prev) => ({ ...prev, shuffleQuestions: e.target.checked }))}
                   className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor="shuffleQuestions" className="text-xs font-bold text-slate-650 cursor-pointer">
-                  Shuffle question orders for each candidate
+                <label htmlFor="shuffleQuestions" className="text-xs font-medium text-slate-700 cursor-pointer">
+                  Shuffle question order for each student
                 </label>
               </div>
 
