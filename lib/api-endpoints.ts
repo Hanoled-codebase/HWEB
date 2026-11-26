@@ -6,7 +6,7 @@ export const EDGE_MODE = process.env.NEXT_PUBLIC_EDGE_MODE === "1";
 
 const HCORE_CLOUD_FALLBACK = "https://hanoled-core-api.netlify.app";
 const HSMS_CLOUD_FALLBACK = "https://api.hanoled.com";
-const HCBT_CLOUD_FALLBACK = "https://hanoled-cbt-api.netlify.app";
+const HCBT_CLOUD_FALLBACK = "https://hanoled-cbt-api.vercel.app";
 
 function isCloudEnvironment(): boolean {
   if (typeof window !== "undefined") {
