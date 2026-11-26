@@ -54,9 +54,6 @@
   "app/cbt/admin/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 56
-    },
-    "react/no-unescaped-entities": {
-      "count": 4
     }
   },
   "app/cbt/page.tsx": {
