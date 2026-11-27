@@ -7,6 +7,7 @@ import {
 import {
   ELYON_GRADE_SCALE,
   detectClassSection,
+  resolveFullAssessmentLabel,
   resultTemplatePreset,
   spreadsheetPreset,
 } from "@/lib/result-presets";
@@ -215,5 +216,26 @@ describe("metricWarnings", () => {
   it("returns nothing for clean metrics", () => {
     expect(metricWarnings([{ name: "EXAM", label: "Exam", score: 60, matched: true }])).toEqual([]);
     expect(metricWarnings(undefined)).toEqual([]);
+  });
+});
+
+describe("resolveFullAssessmentLabel", () => {
+  it("prefers full assessment names over short abbreviations", () => {
+    expect(resolveFullAssessmentLabel("Class Exercises", "CE")).toBe("Class Exercises");
+    expect(resolveFullAssessmentLabel("Assignments", "ASG")).toBe("Assignments");
+    expect(resolveFullAssessmentLabel("Periodic Tests", "PT")).toBe("Periodic Tests");
+    expect(resolveFullAssessmentLabel("Mid-Term Examination", "MTE")).toBe("Mid-Term Examination");
+  });
+
+  it("uses human-readable label when name is an uppercase machine key", () => {
+    expect(resolveFullAssessmentLabel("MID_TERM_EXAM", "Mid-term subject sheets")).toBe(
+      "Mid-term subject sheets",
+    );
+    expect(resolveFullAssessmentLabel("MID_TERM_EXAM", null)).toBe("Mid Term Exam");
+  });
+
+  it("falls back cleanly when name or label is blank", () => {
+    expect(resolveFullAssessmentLabel("", "Class Exercises")).toBe("Class Exercises");
+    expect(resolveFullAssessmentLabel("   ", "   ")).toBe("Assessment");
   });
 });

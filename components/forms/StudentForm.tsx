@@ -65,8 +65,8 @@ function getGuardiansFromInitialData(data?: StudentApiPayload) {
   const others = guardians.filter((g) => g !== primary && !g.isPrimary);
   return {
     guardian: getGuardianDefaults(primary),
-    guardian2: others[0] ? getGuardianDefaults(others[0]) : undefined,
-    guardian3: others[1] ? getGuardianDefaults(others[1]) : undefined,
+    guardian2: getGuardianDefaults(others[0]),
+    guardian3: getGuardianDefaults(others[1]),
   };
 }
 
@@ -112,50 +112,19 @@ function getParentInviteMessage(action?: string, isEditing?: boolean) {
     : "Student added successfully";
 }
 
-const primaryGuardianSchema = z.object({
-  firstName: z.string().min(2, "Guardian first name required"),
-  lastName: z.string().min(2, "Guardian last name required"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
-  phone: z.string().optional(),
-});
-
 const optionalGuardianSchema = z
   .object({
     firstName: z.string().optional().or(z.literal("")),
     lastName: z.string().optional().or(z.literal("")),
-    email: z.string().email("Invalid email").optional().or(z.literal("")),
+    email: z.string().trim().email("Invalid email").optional().or(z.literal("")),
     phone: z.string().optional().or(z.literal("")),
   })
-  .superRefine((data, ctx) => {
-    const hasAny = Boolean(
-      data.firstName?.trim() ||
-        data.lastName?.trim() ||
-        data.email?.trim() ||
-        data.phone?.trim(),
-    );
-
-    if (hasAny) {
-      if (!data.firstName || data.firstName.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "First name required",
-          path: ["firstName"],
-        });
-      }
-      if (!data.lastName || data.lastName.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Last name required",
-          path: ["lastName"],
-        });
-      }
-    }
-  });
+  .optional();
 
 const formSchema = z.object({
-  firstName: z.string().min(2, "First name is required"),
+  firstName: z.string().trim().min(1, "First name is required"),
   middleName: z.string().optional(),
-  lastName: z.string().min(2, "Last name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
   admissionNumber: z.string().trim().optional(),
   gender: z.enum(["male", "female", "other"]),
   dateOfBirth: z.string().optional(),
@@ -164,7 +133,7 @@ const formSchema = z.object({
   classLevel: z.string().optional().or(z.literal("none")),
   studentType: z.enum(["day", "boarding"]),
   usesBus: z.boolean().optional(),
-  guardian: primaryGuardianSchema,
+  guardian: optionalGuardianSchema,
   guardian2: optionalGuardianSchema,
   guardian3: optionalGuardianSchema,
 });
@@ -287,11 +256,18 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
         picUrl = uploadRes.url;
       }
 
+      const hasPrimaryGuardian = Boolean(
+        values.guardian?.firstName?.trim() ||
+          values.guardian?.lastName?.trim() ||
+          values.guardian?.email?.trim() ||
+          values.guardian?.phone?.trim(),
+      );
+
       // 2. Prepare payload
       const payload: Record<string, unknown> = {
-        firstName: values.firstName,
+        firstName: values.firstName.trim(),
         middleName: values.middleName || undefined,
-        lastName: values.lastName,
+        lastName: values.lastName.trim(),
         admissionNumber: values.admissionNumber?.trim() || undefined,
         gender: values.gender,
         dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth).toISOString() : undefined,
@@ -302,7 +278,7 @@ export function StudentForm({ initialData, studentId }: StudentFormProps) {
         classLevel: values.classLevel === "none" ? undefined : values.classLevel,
         profileImage: picUrl || undefined,
         organizationId: currentOrg.id,
-        guardian: values.guardian,
+        ...(hasPrimaryGuardian ? { guardian: values.guardian } : {}),
       };
 
       let response: StudentMutationResponse;

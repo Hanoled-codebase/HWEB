@@ -66,6 +66,7 @@ import {
   mergeDraftIntoSpreadsheetRows,
   saveSpreadsheetDraft,
 } from "@/lib/spreadsheet-drafts";
+import { buildRelationalImportModel } from "@/lib/spreadsheet-import";
 import { cn } from "@/lib/utils";
 
 type RelationalSpreadsheetWorkspaceProps = {
@@ -776,7 +777,7 @@ export function RelationalSpreadsheetWorkspace({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="active" disabled={!allCategoriesConfigured}>
+                  <SelectItem value="active">
                     Active
                   </SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
@@ -943,13 +944,13 @@ export function RelationalSpreadsheetWorkspace({
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
             <div>
-              <p className="font-bold">Some categories have no sub-assessments yet</p>
+              <p className="font-bold">Optional sub-assessments not added yet</p>
               <p className="mt-0.5 text-amber-900">
-                You can enter scores in existing columns now. Still empty:{" "}
+                Sub-assessments are optional. You can mark this sheet Active anytime or add sub-assessments under{" "}
                 {incompleteCategories
                   .map((cat) => `${cat.name} (${cat.maxMarks} max)`)
                   .join(" · ")}
-                . Add at least one sub-assessment to every category before marking the sheet Active.
+                {" "}whenever needed.
               </p>
             </div>
           </div>
@@ -983,13 +984,28 @@ export function RelationalSpreadsheetWorkspace({
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    const groupedForExport = new Map(
+                      Array.from(assessmentsByCategory.entries()).map(([catId, items]) => [
+                        catId,
+                        items.map((item) => ({
+                          assessment: item.assessment,
+                          originalIndex: item.columnIndex,
+                        })),
+                      ]),
+                    );
+                    const model = buildRelationalImportModel(
+                      categories,
+                      groupedForExport,
+                      localRows,
+                      assessments,
+                    );
                     downloadSpreadsheetBackupCsv(
                       `${sheet.subject?.name || "spreadsheet"}-${sheet.classLevel?.name || "scores"}`,
-                      assessments,
-                      localRows,
-                    )
-                  }
+                      model.assessments,
+                      model.rows,
+                    );
+                  }}
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3.5 text-xs font-semibold text-rose-900 transition-colors hover:bg-rose-100/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1023,13 +1039,28 @@ export function RelationalSpreadsheetWorkspace({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const groupedForExport = new Map(
+                    Array.from(assessmentsByCategory.entries()).map(([catId, items]) => [
+                      catId,
+                      items.map((item) => ({
+                        assessment: item.assessment,
+                        originalIndex: item.columnIndex,
+                      })),
+                    ]),
+                  );
+                  const model = buildRelationalImportModel(
+                    categories,
+                    groupedForExport,
+                    localRows,
+                    assessments,
+                  );
                   downloadSpreadsheetBackupCsv(
                     `${sheet.subject?.name || "spreadsheet"}-${sheet.classLevel?.name || "scores"}`,
-                    assessments,
-                    localRows,
-                  )
-                }
+                    model.assessments,
+                    model.rows,
+                  );
+                }}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1447E6] md:pointer-fine:min-h-8"
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />

@@ -61,6 +61,38 @@ export function spreadsheetPreset(section: SchoolSection, resultType: ResultStag
   return SHEET_PRESETS[section][resultType].map((assessment) => ({ ...assessment }));
 }
 
+const MACHINE_KEY_PATTERN = /^[A-Z0-9]+(?:_[A-Z0-9]+)+$/;
+
+/**
+ * Resolves the full human-readable header label for an assessment column.
+ * Prefers `name` (e.g. "Class Exercises") over short `label` abbreviations
+ * (e.g. "CE", "ASG", "PT"), while still using `label` when `name` is a
+ * machine-style uppercase identifier like "MID_TERM_EXAM".
+ */
+export function resolveFullAssessmentLabel(
+  name?: string | null,
+  label?: string | null,
+): string {
+  const trimmedName = (name ?? "").trim();
+  const trimmedLabel = (label ?? "").trim();
+
+  if (trimmedName && !MACHINE_KEY_PATTERN.test(trimmedName)) {
+    return trimmedName;
+  }
+  if (trimmedLabel) {
+    return trimmedLabel;
+  }
+  if (trimmedName) {
+    return trimmedName
+      .toLowerCase()
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  return "Assessment";
+}
+
 export function resultTemplatePreset(section: SchoolSection, resultType: ResultStage) {
   if (resultType === "MID_TERM") {
     return {

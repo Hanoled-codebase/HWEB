@@ -136,8 +136,10 @@ export default function SpreadsheetAssessmentsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [orgClasses, setOrgClasses] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedArmIds, setSelectedArmIds] = useState<string[]>([]);
+  const [customSheetTitle, setCustomSheetTitle] = useState("");
   const [savingArms, setSavingArms] = useState(false);
   const [showDeleteSheetDialog, setShowDeleteSheetDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingSheet, setDeletingSheet] = useState(false);
   const [subModal, setSubModal] = useState<SubAssessmentModalMode | null>(null);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
@@ -187,6 +189,7 @@ export default function SpreadsheetAssessmentsPage() {
                 ? [data.classLevel.id]
                 : [];
         setSelectedArmIds(initialArms);
+        setCustomSheetTitle(data.title ?? "");
       } catch (error) {
         if (cancelled) return;
         const message = getErrorMessage(error, "Failed to load spreadsheet");
@@ -305,6 +308,7 @@ export default function SpreadsheetAssessmentsPage() {
     const currentSet = new Set(currentArmIds);
     return selectedArmIds.some((id) => !currentSet.has(id));
   }, [currentArmIds, selectedArmIds]);
+  const titleChanged = customSheetTitle.trim() !== (sheet?.title ?? "").trim();
   const editableCategories = useMemo(
     () => categories.filter((cat) => !cat.isSingleInstance),
     [categories],
@@ -406,17 +410,23 @@ export default function SpreadsheetAssessmentsPage() {
           method: "PATCH",
           body: JSON.stringify({
             classLevels: selectedArmIds,
+            ...(customSheetTitle.trim() ? { title: customSheetTitle.trim() } : {}),
             expectedVersion: sheet.version,
           }),
         },
       );
       setSheet(updated);
+      setCustomSheetTitle(updated.title ?? "");
       const nextArms =
         Array.isArray(updated.classLevelIds) && updated.classLevelIds.length > 0
           ? updated.classLevelIds
           : selectedArmIds;
       setSelectedArmIds(nextArms);
-      toast.success("Combined class arms updated without losing any scores.");
+      toast.success(
+        armsChanged
+          ? "Combined class arms and spreadsheet name saved without losing any scores."
+          : "Spreadsheet name updated.",
+      );
     } catch (error) {
       toast.error(getErrorMessage(error, "Could not update combined class arms."));
     } finally {
@@ -1130,13 +1140,30 @@ export default function SpreadsheetAssessmentsPage() {
                           );
                         })}
                       </div>
+                      <div className="mb-3 space-y-1.5">
+                        <Label
+                          htmlFor="edit-spreadsheet-title"
+                          className="text-xs font-semibold text-slate-700"
+                        >
+                          Spreadsheet name
+                        </Label>
+                        <Input
+                          id="edit-spreadsheet-title"
+                          value={customSheetTitle}
+                          maxLength={200}
+                          disabled={isDeleteLocked || savingArms}
+                          onChange={(e) => setCustomSheetTitle(e.target.value)}
+                          placeholder="e.g. Mathematics - SS1"
+                          className="h-10 bg-white text-xs text-slate-900"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => void handleSaveClassArms()}
                         disabled={
                           isDeleteLocked ||
                           savingArms ||
-                          !armsChanged ||
+                          (!armsChanged && !titleChanged) ||
                           selectedArmIds.length === 0
                         }
                         className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1447E6] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0F36B8] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
@@ -1146,7 +1173,7 @@ export default function SpreadsheetAssessmentsPage() {
                         ) : (
                           <Layers className="h-4 w-4" aria-hidden="true" />
                         )}
-                        {savingArms ? "Saving class arms..." : "Save class arms"}
+                        {savingArms ? "Saving changes..." : "Save name & class arms"}
                       </button>
                     </div>
                   )}
@@ -1448,7 +1475,10 @@ export default function SpreadsheetAssessmentsPage() {
       <AlertDialog
         open={showDeleteSheetDialog}
         onOpenChange={(open) => {
-          if (!deletingSheet) setShowDeleteSheetDialog(open);
+          if (!deletingSheet) {
+            setShowDeleteSheetDialog(open);
+            if (!open) setDeleteConfirmText("");
+          }
         }}
       >
         <AlertDialogContent>
@@ -1477,14 +1507,32 @@ export default function SpreadsheetAssessmentsPage() {
               spreadsheet.
             </div>
           )}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="confirm-delete-detail-spreadsheet-input"
+              className="text-xs font-semibold text-slate-700"
+            >
+              Type <span className="font-mono font-bold text-rose-700">DELETE</span> to confirm
+            </label>
+            <Input
+              id="confirm-delete-detail-spreadsheet-input"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+              disabled={deletingSheet}
+              className="h-10 font-mono text-sm"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingSheet}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deletingSheet}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={deletingSheet || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
+              className="bg-rose-600 text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={(event) => {
                 event.preventDefault();
-                void handleDeleteSheet();
+                if (deleteConfirmText.trim().toUpperCase() !== "DELETE") return;
+                void handleDeleteSheet().finally(() => setDeleteConfirmText(""));
               }}
             >
               {deletingSheet && (
