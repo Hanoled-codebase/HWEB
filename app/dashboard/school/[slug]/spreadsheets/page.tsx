@@ -283,9 +283,11 @@ export default function SpreadsheetsPage() {
   const [isBulkActivating, setIsBulkActivating] = useState(false);
   const [isBulkActivateConfirmOpen, setIsBulkActivateConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SpreadsheetSummary | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCombiningArms, setIsCombiningArms] = useState(false);
   const [additionalClassIds, setAdditionalClassIds] = useState<string[]>([]);
+  const [customTitle, setCustomTitle] = useState("");
   const [conflictSheet, setConflictSheet] = useState<ConflictSheetState | null>(null);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [isEditAssessmentsOpen, setIsEditAssessmentsOpen] = useState(false);
@@ -751,9 +753,11 @@ export default function SpreadsheetsPage() {
       const combinedClassIds = Array.from(
         new Set([values.classId, ...additionalClassIds].filter(Boolean)),
       );
+      const trimmedTitle = customTitle.trim();
       const payload: Record<string, unknown> = {
         classLevel: values.classId,
         ...(combinedClassIds.length > 1 ? { classLevels: combinedClassIds } : {}),
+        ...(trimmedTitle ? { title: trimmedTitle } : {}),
         subject: values.subjectId,
         termType: values.termType,
         templateId: values.templateId,
@@ -791,6 +795,7 @@ export default function SpreadsheetsPage() {
       toast.success("Spreadsheet created successfully");
       setIsDialogOpen(false);
       setAdditionalClassIds([]);
+      setCustomTitle("");
       form.reset({
         classId: prefilledClassId,
         subjectId: prefilledSubjectId,
@@ -844,7 +849,7 @@ export default function SpreadsheetsPage() {
       }
       if (res.updatedCount > 0 && res.skippedCount > 0) {
         toast.success(
-          `Activated ${res.updatedCount} ${res.updatedCount === 1 ? "spreadsheet" : "spreadsheets"}. ${res.skippedCount} skipped because a category has no sub-assessment yet.`,
+          `Activated ${res.updatedCount} ${res.updatedCount === 1 ? "spreadsheet" : "spreadsheets"}. ${res.skippedCount} skipped because no assessment categories are configured yet.`,
         );
       } else if (res.updatedCount > 0) {
         toast.success(
@@ -852,7 +857,7 @@ export default function SpreadsheetsPage() {
         );
       } else if (res.skippedCount > 0) {
         toast.error(
-          `Could not activate ${res.skippedCount} ${res.skippedCount === 1 ? "spreadsheet" : "spreadsheets"}. Add at least one sub-assessment to every category first.`,
+          `Could not activate ${res.skippedCount} ${res.skippedCount === 1 ? "spreadsheet" : "spreadsheets"}. Configure assessment categories on the result template first.`,
         );
       } else {
         toast.info("All spreadsheets in this view are already active.");
@@ -946,6 +951,7 @@ export default function SpreadsheetsPage() {
           method: "PATCH",
           body: JSON.stringify({
             classLevels: conflictCombineMeta.mergedClassIds,
+            ...(customTitle.trim() ? { title: customTitle.trim() } : {}),
             expectedVersion: conflictSheet.version,
           }),
         },
@@ -1751,6 +1757,9 @@ export default function SpreadsheetsPage() {
                           onValueChange={(value) => {
                             const classId = String(value ?? "");
                             field.onChange(classId);
+                            setAdditionalClassIds((prev) =>
+                              prev.filter((id) => id !== classId),
+                            );
                           }}
                           value={field.value ?? ""}
                         >
@@ -1934,15 +1943,50 @@ export default function SpreadsheetsPage() {
                 />
               </div>
 
-              {/* Auto-Naming Preview */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <span className="font-semibold text-slate-700">Spreadsheet Name:</span>
-                <p className="mt-1 font-mono text-[#1447E6]">
-                  {buildSpreadsheetTitle(
+              {/* Auto-Naming Preview & Custom Rename */}
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="custom-spreadsheet-title"
+                    className="font-semibold text-slate-700"
+                  >
+                    Spreadsheet Name (optional)
+                  </label>
+                  {customTitle.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomTitle("")}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Use default
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="custom-spreadsheet-title"
+                  value={customTitle}
+                  maxLength={200}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder={buildSpreadsheetTitle(
                     selectedSubject?.name || "Subject",
-                    selectedClass?.name || "Class",
+                    [
+                      selectedClass?.name,
+                      ...additionalClassIds
+                        .filter((id) => id !== String(selectedClassId))
+                        .map((id) => availableClasses.find((c) => String(c.id) === id)?.name),
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "Class",
                     selectedTermType as TermType,
                   )}
+                  className="h-9 bg-white text-xs text-slate-900"
+                />
+                <p className="text-[11px] text-slate-600">
+                  Leave blank to use the auto-generated name, or enter a custom name (e.g.{" "}
+                  <span className="font-medium text-slate-800">
+                    {selectedSubject?.name || "Mathematics"} - SS1
+                  </span>{" "}
+                  when combining arms).
                 </p>
               </div>
 
@@ -2324,41 +2368,6 @@ export default function SpreadsheetsPage() {
               </Button>
             )}
 
-            {conflictCombineMeta.canDelete && conflictSheet && (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto min-h-12 w-full justify-start gap-3 whitespace-normal border-rose-200 bg-rose-50/60 px-4 py-3 text-left text-rose-800 hover:bg-rose-100"
-                onClick={() => {
-                  const matched = spreadsheets.find((s) => s.id === conflictSheet.id);
-                  setDeleteTarget(
-                    matched ?? {
-                      id: conflictSheet.id,
-                      title: conflictSheet.title ?? "Existing Spreadsheet",
-                      status: "pending",
-                      createdAt: new Date().toISOString(),
-                      resultType: selectedResultType,
-                      termType: selectedTermType,
-                      hcoreAssessmentId: conflictSheet.hcoreAssessmentId ?? null,
-                      canonicalStatus: conflictSheet.canonicalStatus ?? null,
-                      recordedScoreCount: conflictSheet.recordedScoreCount ?? 0,
-                      canonicalScoreCount: conflictSheet.canonicalScoreCount ?? 0,
-                    },
-                  );
-                }}
-              >
-                <Trash2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <div className="min-w-0 text-left">
-                  <p className="text-sm font-semibold">Delete Existing Spreadsheet</p>
-                  <p className="text-xs text-rose-700">
-                    {(conflictSheet.recordedScoreCount ?? 0) > 0
-                      ? `Warning: deletes ${conflictSheet.recordedScoreCount} recorded ${conflictSheet.recordedScoreCount === 1 ? "score" : "scores"}`
-                      : "Permanently remove this sheet so you can start fresh"}
-                  </p>
-                </div>
-              </Button>
-            )}
-
             <Button
               type="button"
               variant="ghost"
@@ -2709,8 +2718,8 @@ export default function SpreadsheetsPage() {
               {nonActiveSheetsInTab.length === 1 ? "Spreadsheet" : "Spreadsheets"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Active spreadsheets are included in student results and report cards. Any spreadsheet
-              missing required sub-assessments will be skipped.
+              Active spreadsheets are included in student results and report cards. Sub-assessments
+              are optional, so all configured spreadsheets will be activated.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2736,7 +2745,10 @@ export default function SpreadsheetsPage() {
       <AlertDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
-          if (!open && !isDeleting) setDeleteTarget(null);
+          if (!open && !isDeleting) {
+            setDeleteTarget(null);
+            setDeleteConfirmText("");
+          }
         }}
       >
         <AlertDialogContent>
@@ -2769,14 +2781,32 @@ export default function SpreadsheetsPage() {
               spreadsheet.
             </div>
           )}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="confirm-delete-spreadsheet-input"
+              className="text-xs font-semibold text-slate-700"
+            >
+              Type <span className="font-mono font-bold text-rose-700">DELETE</span> to confirm
+            </label>
+            <Input
+              id="confirm-delete-spreadsheet-input"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+              disabled={isDeleting}
+              className="h-10 font-mono text-sm"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isDeleting}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={isDeleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
+              className="bg-rose-600 text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={(event) => {
                 event.preventDefault();
-                void handleDeleteSpreadsheet();
+                if (deleteConfirmText.trim().toUpperCase() !== "DELETE") return;
+                void handleDeleteSpreadsheet().finally(() => setDeleteConfirmText(""));
               }}
             >
               {isDeleting && (

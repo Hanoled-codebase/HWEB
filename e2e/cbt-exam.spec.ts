@@ -13,8 +13,9 @@ test("a pupil sits an exam and hands it in", async ({ page }) => {
 
   await expect(page.getByText("What is 7 × 8?")).toBeVisible();
 
-  // If the exam room covers the questions with a full-screen prompt, dismiss it.
+  // If the exam room covers the questions with a full-screen prompt, wait briefly and dismiss it.
   const enterFsBtn = page.getByRole("button", { name: /full screen/i });
+  await enterFsBtn.waitFor({ state: "visible", timeout: 2000 }).catch(() => {});
   if (await enterFsBtn.isVisible()) {
     await enterFsBtn.click();
     await expect(enterFsBtn).toBeHidden();

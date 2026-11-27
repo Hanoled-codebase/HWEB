@@ -461,12 +461,16 @@ test.describe("a subject teacher's gradebook", () => {
     // Open Sheet & roster controls on detail page and add SSS 2 BUSINESS/COMMERCIAL.
     await page.getByText("Sheet & roster controls").click();
     await page.getByLabel("SSS 2 BUSINESS/COMMERCIAL").check();
-    await page.getByRole("button", { name: "Save class arms" }).click();
-    await expect(page.getByText("Combined class arms updated without losing any scores.")).toBeVisible();
-    expect(combinePayloads[1]).toEqual({
-      classLevels: ["sss2-sci", "sss2-art", "sss2-bus"],
-      expectedVersion: 5,
-    });
+    await page.getByRole("button", { name: "Save name & class arms" }).click();
+    await expect(
+      page.getByText("Combined class arms and spreadsheet name saved without losing any scores."),
+    ).toBeVisible();
+    expect(combinePayloads[1]).toEqual(
+      expect.objectContaining({
+        classLevels: ["sss2-sci", "sss2-art", "sss2-bus"],
+        expectedVersion: 5,
+      }),
+    );
   });
 
   test("admin sees recorded score warning and cancels unsubmitted HCORE draft when deleting a spreadsheet", async ({ page }) => {
@@ -548,7 +552,11 @@ test.describe("a subject teacher's gradebook", () => {
     const alertDialog = page.getByRole("alertdialog");
     await expect(alertDialog.getByText(/24 recorded student scores on this sheet will be permanently deleted/i)).toBeVisible();
     await expect(alertDialog.getByText(/Deleting will cancel the HCORE draft/i)).toBeVisible();
-    await alertDialog.getByRole("button", { name: "Cancel Draft & Delete" }).click();
+    const deleteConfirmBtn = alertDialog.getByRole("button", { name: "Cancel Draft & Delete" });
+    await expect(deleteConfirmBtn).toBeDisabled();
+    await alertDialog.getByPlaceholder("DELETE").fill("DELETE");
+    await expect(deleteConfirmBtn).toBeEnabled();
+    await deleteConfirmBtn.click();
 
     await expect(page.getByText(/Cancelled HCORE draft and deleted/i)).toBeVisible();
     expect(deletedUrls).toHaveLength(1);

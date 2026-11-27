@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRelationalImportModel,
   buildSpreadsheetTemplateCsv,
   parseSpreadsheetScoreImport,
   type ImportableAssessment,
@@ -61,5 +62,68 @@ describe("spreadsheet-import", () => {
     expect(result.invalidCells[0]).toContain("exceeds max 20");
     // Ensure input rows were not mutated
     expect(rows[0].values).toEqual(["", "", ""]);
+    expect(result.updatedAssessmentIndices).toEqual([0, 1, 2]);
+    expect(result.importedEntries).toEqual([
+      { studentId: "s1", assessmentIndex: 0, score: 9 },
+      { studentId: "s1", assessmentIndex: 1, score: 18 },
+      { studentId: "s1", assessmentIndex: 2, score: 65 },
+      { studentId: "s2", assessmentIndex: 0, score: 10 },
+      { studentId: "s2", assessmentIndex: 2, score: 60 },
+    ]);
+  });
+
+  it("includes all relational template categories in order even when only Examination exists", () => {
+    const categories = [
+      { id: "cat-cw", name: "Classwork", maxMarks: 5 },
+      { id: "cat-asg", name: "Assignment", maxMarks: 10 },
+      { id: "cat-apt", name: "Academic Progress Test", maxMarks: 15 },
+      { id: "cat-exam", name: "Examination", maxMarks: 70 },
+    ];
+    const groupedSubs = new Map([
+      ["cat-cw", []],
+      ["cat-asg", []],
+      ["cat-apt", []],
+      [
+        "cat-exam",
+        [{ assessment: { id: "sub-exam", name: "Examination", maxObtainableScore: 70 }, originalIndex: 0 }],
+      ],
+    ]);
+    const sheetRows: ImportableStudentRow[] = [
+      {
+        student: { id: "s1", firstName: "Ada", middleName: "Joy", lastName: "Okafor", admissionNumber: "DPC-2026-00001" },
+        values: [55],
+      },
+    ];
+
+    const model = buildRelationalImportModel(categories, groupedSubs, sheetRows);
+    expect(model.assessments.map((a) => ({ name: a.name, virtual: a.isVirtualCategory, id: a.id }))).toEqual([
+      { name: "Classwork", virtual: true, id: undefined },
+      { name: "Assignment", virtual: true, id: undefined },
+      { name: "Academic Progress Test", virtual: true, id: undefined },
+      { name: "Examination", virtual: false, id: "sub-exam" },
+    ]);
+    expect(model.rows[0].values).toEqual(["", "", "", 55]);
+
+    const csv = buildSpreadsheetTemplateCsv(model.assessments, model.rows);
+    expect(csv).toContain(
+      "Admission Number,Student Name,Classwork (/5),Assignment (/10),Academic Progress Test (/15),Examination (/70)",
+    );
+    expect(csv).toContain("DPC-2026-00001,Ada Okafor,,,,55");
+
+    // Partial import: fill Classwork and Examination only -> only indices 0 and 3 appear in updatedAssessmentIndices
+    const upload = [
+      "Admission Number,Student Name,Classwork (/5),Assignment (/10),Academic Progress Test (/15),Examination (/70)",
+      "DPC-2026-00001,Ada Okafor,4,,,62",
+    ].join("\r\n");
+
+    const parsed = parseSpreadsheetScoreImport(upload, model.assessments, model.rows);
+    expect(parsed.updatedAssessmentIndices).toEqual([0, 3]);
+    expect(parsed.importedEntries).toEqual([
+      { studentId: "s1", assessmentIndex: 0, score: 4 },
+      { studentId: "s1", assessmentIndex: 3, score: 62 },
+    ]);
+    // Assignment (index 1) and Academic Progress Test (index 2) have no scores -> not provisioned
+    expect(parsed.updatedAssessmentIndices).not.toContain(1);
+    expect(parsed.updatedAssessmentIndices).not.toContain(2);
   });
 });
